@@ -343,46 +343,20 @@ final class WacomKnownDevice: TabletDevice {
     /// per-session status gates above.
     private var batteryWarningLogged: Bool = false
 
-    // ── Xencelabs wireless dongle (PID 0x5203) relink ────────────────────────
-    // Confirmed 2026-07-06: the dongle only relays a paired puck's live 0xF0
-    // aux data once the driver re-sends the tablet-mode init
-    // ([0x02, 0xB0, 0x04]) with the puck's own 6-byte hardware identifier
-    // appended at offset 10-15 — without it the dongle sits sending
-    // connect-time status frames (tags 0xF8/0xF2) forever and never
-    // upgrades to real button data. That identifier isn't available from any
-    // GetReport call or from the dongle's own descriptors — but the puck
-    // broadcasts it unprompted, unconditionally, in the trailer of every
-    // single report it sends (status or real data alike, over the dongle
-    // *and* direct USB), so we can read it off the wire instead of needing
-    // any prior pairing record. One-shot per dongle connection.
-    private var xencelabsDongleRelinked = false
-    /// True once the display push is scheduled for this relink.
-    private var xencelabsPostRelinkResynced = false
-    /// Bumped when the puck reconnects or goes offline, so a pending display
-    /// push from an earlier connection stands down.
-    private var xencelabsRelinkGeneration = 0
+    /// The wireless puck's relink state, for receivers that relay one.
+    private var xencelabsRelink = XencelabsRelinkState()
     /// Timestamp of the most recent parsed report of any kind.
     /// Used to log a possible silent link drop; no recovery action yet.
     var xencelabsLastReportAt: UInt64?
     /// The puck's 6-byte identity read off the relink report, kept so the
     /// resync's label-reset write can address the same puck.
-    var xencelabsDongleIdentity: [UInt8]?
+    var xencelabsDongleIdentity: [UInt8]? { xencelabsRelink.dongleIdentity }
     /// Repeating battery-level poll, started once the dongle relink
     /// succeeds and invalidated in `close()`. The reply (tag 0xF2,
     /// XencelabsDecoder) is unsolicited-looking but is actually only ever
     /// sent in response to this poll — there's no push update on this
     /// hardware.
     var xencelabsBatteryPollTimer: CFRunLoopTimer?
-
-    /// Devices whose report-2 tunnel can relay a wireless Quick Keys puck and
-    /// therefore need the relink/re-arm/resync handling: the standalone USB
-    /// dongle, and the Pen Display — no radio of its own, but when the dongle
-    /// sits in the display's USB slot the display firmware aggregates the
-    /// puck traffic into its own vendor tunnel (confirmed 2026-07-08 via two
-    /// discovery captures — 0xF8/0xF2 status frames with the puck's identity
-    /// trailer, plus live 0xF0 aux data, all arriving on 0x520D).
-    private static let xencelabsRelayProductIDs: Set<Int> = [0x5203, 0x520D]
-    private static let xencelabsIdentityLength = 6
 
     /// `.intuosV1` devices whose wired LED report packs the ring slot and both
     /// luminances into one byte, rather than the older Intuos4 layout of a
@@ -818,7 +792,7 @@ final class WacomKnownDevice: TabletDevice {
             // The fresh firmware state lost any OLED text and dial color the
             // superseded handle received. Re-apply the LED now; dropping the
             // text cache lets the next display push actually resend.
-            let isRelay = Self.xencelabsRelayProductIDs.contains(deviceSpec.productID)
+            let isRelay = XencelabsRelinkState.relayProductIDs.contains(deviceSpec.productID)
             onPenThread {
                 self.xencelabsSentText.removeAll()
                 self.setRingLED(index: self.pendingLEDIndex)
@@ -1280,71 +1254,31 @@ final class WacomKnownDevice: TabletDevice {
             }
         }
 
-        // The receiver's 0xF8 status frame says whether a paired puck is
-        // online: byte 2 bit 1, slot in byte 3. Each online frame means the
-        // puck (re)connected and needs the handshake and display again; an
-        // offline frame means it left. The vendor driver acts on these alone.
-        let xencelabsStatus: Bool? = {
-            guard deviceSpec.parser == .xencelabs,
-                Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
-                length >= 4, report[0] == 0x02, report[1] == 0xF8, report[2] != 0,
-                (1...2).contains(report[3])
-            else { return nil }
-            return report[2] & 0x02 != 0
-        }()
-        if xencelabsStatus == true, xencelabsDongleRelinked {
-            logger.info("\(name, privacy: .public): puck online again, re-arming relink")
-            xencelabsDongleRelinked = false
-            xencelabsPostRelinkResynced = false
-            xencelabsRelinkGeneration += 1
-        } else if xencelabsStatus == false {
-            logger.info("\(name, privacy: .public): puck offline")
-            xencelabsRelinkGeneration += 1
-        }
-
-        // Xencelabs wireless dongle relink: send the tablet-mode init once
-        // with the puck's own identifier appended, read straight off this
-        // report's trailer (see the property doc above). The offset isn't
-        // constant across frame shapes: the one-off connect/restart
-        // announcement (tag 0xF8, byte[2]==0x02, byte[3]==0x01) carries it
-        // at offset 10, but ordinary ongoing traffic (live 0xF0 aux/button
-        // frames, and the 0xF2 battery-poll reply) carries it two bytes
-        // later, at offset 12 — confirmed 2026-07-14 by diffing a captured
-        // aux frame against the announce frame byte-for-byte. Getting this
-        // wrong silently "succeeds": the wrong offset still yields a
-        // nonzero-looking value (it overlaps the real identity, just
-        // shifted), so every subsequent write gets addressed to a garbled
-        // identity that the puck quietly drops — no relink ever visibly
-        // fails, but nothing it addresses ever arrives either. This is why
-        // battery (and potentially OLED/LED) only worked right after a
-        // power-cycle: only the announce frame happened to use the offset
-        // this code originally assumed.
-        let xencelabsIdentityOffset = xencelabsStatus == true ? 10 : 12
-        if deviceSpec.parser == .xencelabs, Self.xencelabsRelayProductIDs.contains(deviceSpec.productID),
-            xencelabsStatus != false, !xencelabsDongleRelinked, length >= xencelabsIdentityOffset + Self.xencelabsIdentityLength,
-            report[0] == 0x02,  // XencelabsDecoder.penReportID (internal, not visible here)
-            report[1] & 0xF0 == 0xF0  // puck tags only; the Pen Display's pen frames share report 2
-        {
-            let identity = (0..<Self.xencelabsIdentityLength).map {
-                report[xencelabsIdentityOffset + $0]
+        // Quick Keys relayed by a receiver: see XencelabsRelinkState.
+        if deviceSpec.parser == .xencelabs {
+            let relink = xencelabsRelink.noteReport(
+                report, length: length, productID: deviceSpec.productID)
+            switch relink.linkChange {
+            case .rearmed:
+                logger.info("\(name, privacy: .public): puck online again, re-arming relink")
+            case .offline:
+                logger.info("\(name, privacy: .public): puck offline")
+            case nil:
+                break
             }
-            if identity.contains(where: { $0 != 0 }) {
-                xencelabsDongleRelinked = true
-                xencelabsDongleIdentity = identity
+            if let identity = relink.relinkIdentity {
                 let ret = sendXencelabsRelink(identity: identity)
                 logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
                 startXencelabsBatteryPolling()
                 // The puck can answer polls before its screen accepts text,
                 // so wait for it to settle before pushing the display; an
                 // immediate push is lost and leaves "Please connect" up.
-                if ret == kIOReturnSuccess, !xencelabsPostRelinkResynced {
-                    xencelabsPostRelinkResynced = true
-                    let generation = xencelabsRelinkGeneration
+                if let generation = xencelabsRelink.relinkSent(succeeded: ret == kIOReturnSuccess) {
                     // On HIDThread, like every other display write.
                     let timer = CFRunLoopTimerCreateWithHandler(
                         kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 1.0, 0, 0, 0
                     ) { [weak self] _ in
-                        guard let self, self.xencelabsRelinkGeneration == generation else { return }
+                        guard let self, self.xencelabsRelink.relinkGeneration == generation else { return }
                         self.resyncXencelabsOutputsAfterRelink()
                     }
                     CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
