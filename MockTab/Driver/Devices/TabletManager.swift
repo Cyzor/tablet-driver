@@ -812,7 +812,6 @@ final class TabletManager: ObservableObject {
         let transport = probe.transport
         let productString = probe.productString
         let isBLE = probe.isBLE
-        let usbSerial = probe.usbSerial
         let locationID = probe.locationID
         let instanceKey = probe.instanceKey
         Self.lastSeenVendorID[productID] = vendorID
@@ -831,40 +830,7 @@ final class TabletManager: ObservableObject {
             return
         }
 
-        let context: DeviceContext
-        if rawProductID == Self.ack40401ProductID,
-            let home = dongleTransports[instanceKey]?.home
-        {
-            // A late interface of a dongle already rehomed onto its tablet.
-            context = home
-        } else if let existing = deviceContexts[instanceKey] {
-            context = existing
-        } else if instanceKey.instance.isEmpty {
-            // No serial on this interface: fall back to the model's existing
-            // context (claimed-namespace instance first), as PID keying did.
-            context = contexts[productID]
-                ?? DeviceContext(
-                    instanceKey: instanceKey, rawProductID: rawProductID, vendorID: vendorID)
-        } else if let stub = deviceContexts.first(where: {
-            $0.key.productID == productID && $0.key.instance.isEmpty
-        })?.value {
-            // A window-restore stub (created before connect, no instance
-            // token) exists for this model — adopt it so the open window and
-            // the driver keep sharing one settings object, then re-key it.
-            deviceContexts.removeValue(forKey: stub.instanceKey)
-            stub.adoptInstance(instanceKey, usbSerial: usbSerial, locationID: locationID)
-            // Register the claim for this instance; if another unit already
-            // owns the legacy namespace, move the stub's settings off it.
-            let prefix = DeviceRegistry.shared.settingsPrefix(for: instanceKey)
-            if prefix != stub.settings.devicePrefix {
-                stub.settings.loadForDevice(instanceKey)
-            }
-            context = stub
-        } else {
-            context = DeviceContext(
-                instanceKey: instanceKey, rawProductID: rawProductID,
-                vendorID: vendorID, usbSerial: usbSerial, locationID: locationID)
-        }
+        let context = resolveContext(probe: probe, rawProductID: rawProductID, vendorID: vendorID)
         deviceContexts[context.instanceKey] = context
         // context.hidDevice is set later, only for the interface DeviceRouter
         // identifies as the primary digitizer (the `.driver` case below) —
@@ -1123,6 +1089,52 @@ final class TabletManager: ObservableObject {
             DeviceRegistry.shared.updateModelName(
                 forDonglePairing: instanceKey, to: Self.deviceName(forProductID: rawProductID))
         }
+    }
+
+    /// The context this interface joins: its dongle's home, an existing
+    /// context, a window-restore stub, or a new one.
+    private func resolveContext(
+        probe: DeviceIdentityProbe, rawProductID: Int, vendorID: Int
+    ) -> DeviceContext {
+        let productID = probe.productID
+        let usbSerial = probe.usbSerial
+        let locationID = probe.locationID
+        let instanceKey = probe.instanceKey
+        let context: DeviceContext
+        if rawProductID == Self.ack40401ProductID,
+            let home = dongleTransports[instanceKey]?.home
+        {
+            // A late interface of a dongle already rehomed onto its tablet.
+            context = home
+        } else if let existing = deviceContexts[instanceKey] {
+            context = existing
+        } else if instanceKey.instance.isEmpty {
+            // No serial on this interface: fall back to the model's existing
+            // context (claimed-namespace instance first), as PID keying did.
+            context = contexts[productID]
+                ?? DeviceContext(
+                    instanceKey: instanceKey, rawProductID: rawProductID, vendorID: vendorID)
+        } else if let stub = deviceContexts.first(where: {
+            $0.key.productID == productID && $0.key.instance.isEmpty
+        })?.value {
+            // A window-restore stub (created before connect, no instance
+            // token) exists for this model — adopt it so the open window and
+            // the driver keep sharing one settings object, then re-key it.
+            deviceContexts.removeValue(forKey: stub.instanceKey)
+            stub.adoptInstance(instanceKey, usbSerial: usbSerial, locationID: locationID)
+            // Register the claim for this instance; if another unit already
+            // owns the legacy namespace, move the stub's settings off it.
+            let prefix = DeviceRegistry.shared.settingsPrefix(for: instanceKey)
+            if prefix != stub.settings.devicePrefix {
+                stub.settings.loadForDevice(instanceKey)
+            }
+            context = stub
+        } else {
+            context = DeviceContext(
+                instanceKey: instanceKey, rawProductID: rawProductID,
+                vendorID: vendorID, usbSerial: usbSerial, locationID: locationID)
+        }
+        return context
     }
 
     /// The HID-thread callbacks for one connecting interface.
