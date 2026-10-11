@@ -581,14 +581,18 @@ struct InfoView: View {
     private func startRawCapturePollTimer() {
         rawCaptureCountTimer?.invalidate()
         rawCaptureCountTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            rawCaptureReportCount = HIDCapture.shared.reportCount
-            // Flushing/auto-stop are owned by HIDCapture's own background
-            // timer, not this poll — this only needs to notice when
-            // isCapturing flips false on its own (the ceiling fired) and
-            // finish the UI-side teardown.
-            if rawCaptureRunning, !HIDCapture.shared.isCapturing {
-                finishRawCaptureTeardown()
-            }
+            MainActor.assumeIsolated { pollRawCapture() }
+        }
+    }
+
+    private func pollRawCapture() {
+        rawCaptureReportCount = HIDCapture.shared.reportCount
+        // Flushing/auto-stop are owned by HIDCapture's own background
+        // timer, not this poll — this only needs to notice when
+        // isCapturing flips false on its own (the ceiling fired) and
+        // finish the UI-side teardown.
+        if rawCaptureRunning, !HIDCapture.shared.isCapturing {
+            finishRawCaptureTeardown()
         }
     }
 

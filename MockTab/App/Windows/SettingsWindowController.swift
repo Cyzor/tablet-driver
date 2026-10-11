@@ -440,7 +440,7 @@ final class SettingsWindowController: NSWindowController {
         // "Scratchpad" (tilt visualizer) all consume livePoint/liveButtons, so
         // any of those tabs enables the updates.
         // Also check window focus: only update when this window is key (active).
-        let updateVisibility = { [weak self, weak window] in
+        let updateVisibility: @MainActor @Sendable () -> Void = { [weak self, weak window] in
             guard let self else { return }
             let label =
                 self.tabVC.tabViewItems[safe: self.tabVC.selectedTabViewItemIndex]?.label ?? ""
@@ -469,7 +469,7 @@ final class SettingsWindowController: NSWindowController {
             object: window, queue: .main
         ) { [weak self] _ in
             guard self != nil else { return }
-            updateVisibility()
+            MainActor.assumeIsolated { updateVisibility() }
         })
 
         observerTokens.append(NotificationCenter.default.addObserver(

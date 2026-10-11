@@ -757,7 +757,7 @@ final class SettingsWindowManager: ObservableObject {
     }
 
     private func observeClose(_ wc: SettingsWindowController) {
-        var token: NSObjectProtocol?
+        nonisolated(unsafe) var token: NSObjectProtocol?  // read once, on main
         token = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: wc.window,

@@ -166,9 +166,11 @@ struct ChipInteractionProxy: NSViewRepresentable {
             // the event-tracking run-loop mode, where a default-mode timer
             // would never fire.
             let timer = Timer(timeInterval: armDuration, repeats: false) { [weak self] _ in
-                guard let self, self.sawMouseDown, !self.holdExceededDrift else { return }
-                self.isArmed = true
-                self.onArm?()
+                MainActor.assumeIsolated {  // added to the main run loop
+                    guard let self, self.sawMouseDown, !self.holdExceededDrift else { return }
+                    self.isArmed = true
+                    self.onArm?()
+                }
             }
             RunLoop.main.add(timer, forMode: .common)
             armTimer = timer
