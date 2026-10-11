@@ -480,7 +480,7 @@ final class CaptureSessionCoordinator: ObservableObject {
         }
         let source = settingsSource(recording: primary.0, ownInterfaces: ownInterfaces)
         engine.startDiscovery(
-            devices: targets, duration: 3600, touchSettings: touchSettingsSnapshot(source),
+            devices: targets, duration: HIDCapture.maxCaptureDuration, touchSettings: touchSettingsSnapshot(source),
             appSettings: appSettingsSnapshot(source),
             everSeenTools: everSeenToolsSnapshot(source),
             settingsIdentity: settingsIdentitySnapshot(source),

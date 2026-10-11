@@ -37,8 +37,10 @@ final class HIDCapture {
     private init() {}
 
     /// Wall-clock ceiling on one session — an accidentally-left-running
-    /// capture auto-stops and saves rather than growing forever.
-    static let maxCaptureDuration: TimeInterval = 30 * 60
+    /// capture auto-stops and saves rather than growing forever. Collect
+    /// Device Data's summary uses the same limit, so its two files cover the
+    /// same time.
+    static let maxCaptureDuration: TimeInterval = 60 * 60
 
     /// How often `flushIfDue()` writes buffered samples to disk.
     static let flushInterval: TimeInterval = 15

@@ -108,7 +108,7 @@ struct InfoView: View {
             refresh()
             // A capture only runs while the guide sheet is up, but this view
             // can still disappear under it (tab switch), stopping the poll
-            // timer. Resume it, or catch up on the 30-minute auto-stop if
+            // timer. Resume it, or catch up on the auto-stop if
             // that fired while we weren't watching.
             if rawCaptureRunning {
                 if !HIDCapture.shared.isCapturing {
@@ -149,9 +149,9 @@ struct InfoView: View {
                         than: diagnosticSession)
                 },
                 onFinalizeRawCapture: {
-                    // The raw log stops at its own 30-minute ceiling, before
-                    // an hour-long session does; it's saved by then, so
-                    // package that file instead of leaving it loose.
+                    // The raw log starts first, so it reaches the shared
+                    // time limit a moment before the session does. It's
+                    // saved by then; package that file.
                     if rawCaptureRunning { finishRawCaptureTeardown() }
                     return rawCaptureSavedURL
                 }
