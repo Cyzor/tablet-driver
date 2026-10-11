@@ -545,10 +545,15 @@ struct CaptureGuideView: View {
     ) -> some View {
         let done = satisfied.contains(item)
         return HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: done ? "checkmark.circle.fill" : icon)
+            // Overlaid so a tall glyph can't change the row's height.
+            Text(verbatim: " ")
                 .appFont(.body)
-                .foregroundStyle(done ? Color.green : Color.secondary)
                 .frame(width: 18)
+                .overlay {
+                    Image(systemName: done ? "checkmark.circle.fill" : icon)
+                        .appFont(.body)
+                        .foregroundStyle(done ? Color.green : Color.secondary)
+                }
                 .accessibilityHidden(true)
             Text(text)
                 .appFont(.body)
