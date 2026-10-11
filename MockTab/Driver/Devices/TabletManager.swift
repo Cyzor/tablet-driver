@@ -893,12 +893,213 @@ final class TabletManager: ObservableObject {
         // Accessibility here rather than at launch so the request has context.
         promptForAccessibilityIfNeeded()
 
-        // The HIDThread callbacks below reach their context through this
+        // The callbacks from `makeCallbacks` reach their context through this
         // handle rather than capturing it, so a transport can later be moved
         // onto another context (dongle → paired tablet) without rebuilding
         // its driver.
         let contextHandle = DriverContextHandle(context)
 
+        // ── Create the device driver ─────────────────────────────────────────
+        // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate
+        // IOHIDDevices for each interface (digitizer, wireless status, touch,
+        // etc). We create one driver per *raw* (transport-specific) PID and
+        // reuse it across that transport's interfaces; each IOHIDDevice still
+        // registers independently for its own reports. A canonical identity
+        // reachable over more than one transport at once (Xencelabs Quick
+        // Keys wired + dongle) gets one driver per transport, ranked in
+        // `DeviceContext.tabletDevice` — see the reuse check just below.
+        // Reuse only applies to another interface of the *same* transport —
+        // keyed by raw PID, not "the context already has some driver".
+        // Xencelabs' wired puck (0x5202) and dongle (0x5203) fold onto one
+        // canonical context, so `context.tabletDevice` (the current winner)
+        // is the wrong thing to check here: it would silently register the
+        // dongle's interfaces onto the wired driver, or vice versa, instead
+        // of building each transport its own driver and slot.
+        if let existingDriver = context.driverSlot(forRawProductID: rawProductID) as? WacomKnownDevice {
+            hidDeviceMap[device] = context
+            deviceRawProductID[device] = rawProductID
+            existingDriver.registerDevice(device)
+            // This interface never reaches the `.driver` case below — same
+            // omission `captureInterfaces` exists to avoid there applies
+            // here too, since this is exactly PTH-850's path (touch
+            // interface attaches after the pen interface already has a
+            // driver installed for the same raw product ID).
+            Self.offerForCapture(device, usagePage: usagePage, on: context, driver: existingDriver)
+            return
+        }
+
+        let callbacks = makeCallbacks(
+            context: context, contextHandle: contextHandle, device: device,
+            productID: productID, instanceKey: instanceKey)
+
+        switch DeviceRouter.route(
+            device: device, productID: productID, usagePage: usagePage,
+            isBLE: isBLE, contexts: deviceContexts, callbacks: callbacks,
+            overrideSpec: vendorSpec, holdTouchCompanion: holdTouchCompanion)
+        {
+        case .deferred:
+            pendingInterfaces[rawProductID, default: []].append(device)
+            return
+
+        case .ledCompanion(let parentCtx):
+            if let driver = parentCtx.tabletDevice as? WacomKnownDevice {
+                driver.registerLEDDevice(device)
+                hidDeviceMap[device] = parentCtx
+            }
+            return
+
+        case .deferredTouchCompanion:
+            pendingTouchCompanions[productID, default: []].append(device)
+            // Siblings enumerate within a second. A sensor still waiting
+            // after this gets a window of its own, as before it could be
+            // held, so a desk whose pen never appears can still be captured.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                guard let self,
+                    let idx = self.pendingTouchCompanions[productID]?.firstIndex(where: { $0 === device })
+                else { return }
+                self.pendingTouchCompanions[productID]?.remove(at: idx)
+                if self.pendingTouchCompanions[productID]?.isEmpty == true {
+                    self.pendingTouchCompanions[productID] = nil
+                }
+                logger.info("Wacom 0x\(String(productID, radix: 16, uppercase: true), privacy: .public) — touch sensor's tablet never appeared, routing on its own")
+                self.deviceConnected(device, holdTouchCompanion: false)
+            }
+            return
+
+        case .touchCompanion(let parentCtx):
+            guard let driver = parentCtx.tabletDevice as? WacomKnownDevice else { return }
+            hidDeviceMap[device] = parentCtx
+            // Keyed to the parent's raw PID, not this interface's own: the
+            // sensor is now part of that driver, and `deviceRawProductID`
+            // is what teardown and driver-slot lookup both consult.
+            deviceRawProductID[device] = parentCtx.productID
+            driver.attachTouchSensor(device)
+            // Same reason `.driver` and the reuse path above both offer their
+            // interfaces: an interface a driver reads is capturable, and the
+            // sensor is the one a touch problem needs in the file.
+            Self.offerForCapture(device, usagePage: usagePage, on: parentCtx, driver: driver)
+            return
+
+        case .skip:
+            return
+
+        case .driver(let wacomDevice, _):
+            let hadNoDriverYet = !context.hasAnyDriverSlot
+            context.installDriver(wacomDevice, forRawProductID: rawProductID)
+            if rawProductID == Self.ack40401ProductID {
+                dongleTransports[instanceKey] = DongleTransport(handle: contextHandle, home: context)
+            }
+            // Only the first `.driver`-routed interface for this context
+            // claims `hidDevice` — see that property's doc comment for why a
+            // later sibling interface must never overwrite it.
+            if !context.firstDriverInterfaceClaimed {
+                context.firstDriverInterfaceClaimed = true
+                context.hidDevice = device
+            }
+            Self.offerForCapture(
+                device, usagePage: usagePage, on: context,
+                driver: wacomDevice as? WacomKnownDevice)
+            hidDeviceMap[device] = context
+            deviceRawProductID[device] = rawProductID
+            wacomDevice.open()
+            // Drain any interfaces that arrived before this driver was created.
+            for pending in pendingInterfaces.removeValue(forKey: rawProductID) ?? [] {
+                hidDeviceMap[pending] = context
+                deviceRawProductID[pending] = rawProductID
+                (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
+                // Deferred interfaces are registered for reports exactly like
+                // the ones that arrive after the driver exists, so they are
+                // just as capturable — and this is the path an interface takes
+                // whenever it enumerates ahead of the pen interface, which is
+                // arrival-order luck, not a property of the hardware.
+                Self.offerForCapture(
+                    pending, usagePage: hidIntProperty(pending, kIOHIDPrimaryUsagePageKey),
+                    on: context, driver: wacomDevice as? WacomKnownDevice)
+            }
+            // Same drain for a touch sensor that enumerated ahead of the
+            // tablet claiming it — held under its own PID, not this driver's.
+            if let touchPID = WacomDeviceRegistry.spec(for: productID)?.touchCompanionPID,
+                let driver = wacomDevice as? WacomKnownDevice
+            {
+                for sensor in pendingTouchCompanions.removeValue(forKey: touchPID) ?? [] {
+                    hidDeviceMap[sensor] = context
+                    deviceRawProductID[sensor] = rawProductID
+                    driver.attachTouchSensor(sensor)
+                    Self.offerForCapture(
+                        sensor, usagePage: hidIntProperty(sensor, kIOHIDPrimaryUsagePageKey),
+                        on: context, driver: driver)
+                }
+            }
+            if hadNoDriverYet {
+                // First transport this context has ever seen — wire the
+                // settings-driven hardware sinks once. A second transport
+                // (e.g. the dongle joining a context the wired puck already
+                // owns) must NOT repeat this: these sinks target whichever
+                // slot currently wins, so a second subscription fires every
+                // write twice. (after open() so initial LED sync reaches it)
+                context.observeRingLED()
+                context.observeInjectionSnapshot()
+                context.hasWiredDriverLifecycle = true
+            } else if context.activeDriverRawProductID == rawProductID {
+                // This transport just outranked whatever was already
+                // installed (USB puck connecting while the dongle was
+                // driving) — it never received the settings writes that
+                // fired while it was still a losing slot.
+                context.resyncActiveDriverDisplayState()
+            }
+            // Aux-only accessories (Quick Keys puck/dongle, ExpressKey
+            // Remote; spec.maxX == 0) move no pointer, so a display-toggle
+            // press on them must steer the tablet driving the cursor, not
+            // the accessory's own — invisible — mapping. Pen-bearing
+            // devices never get a forwarder.
+            if wacomDevice.spec.maxX == 0 {
+                let accessoryVendor = context.vendorID
+                context.injector.displayToggleForwarder = { [weak self] in
+                    Task { @MainActor in self?.toggleDisplayOnPenTablet(vendorID: accessoryVendor) }
+                }
+                context.injector.relativeModeToggleForwarder = { [weak self] in
+                    Task { @MainActor in self?.toggleRelativeModeOnPenTablet(vendorID: accessoryVendor) }
+                }
+                context.injector.spanDisplaysForwarder = { [weak self] in
+                    Task { @MainActor in self?.toggleSpanOnPenTablet(vendorID: accessoryVendor) }
+                }
+            }
+            context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
+            refreshConnectedIDs(mostRecent: productID)
+
+            context.settings.penDisplayLocator = { Self.penDisplayID(forProductID: productID) }
+            context.settings.migrateTargetDisplayUUID()
+
+            // First connection of a pen display: map it to its own screen.
+            let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
+            if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil,
+                let screen = Self.penDisplayID(forProductID: productID)
+            {
+                context.settings.applyPenDisplayDefaults(display: screen)
+            }
+
+            // A bare/still-pairing dongle must never become the active
+            // context — `activeDeviceKey()` reads it before any dongle filter.
+            if activeContext == nil && !isDongleAwaitingPairing(productID: productID) {
+                activeContext = context
+            }
+
+            DeviceRegistry.shared.recordTablet(
+                instanceKey: context.instanceKey, usbSerial: usbSerial,
+                vendorID: vendorID, productString: productString)
+            if rawProductID == Self.ack40401ProductID {
+                // Undo the paired-model rename earlier builds gave its row.
+                DeviceRegistry.shared.updateModelName(
+                    forDonglePairing: instanceKey, to: Self.deviceName(forProductID: rawProductID))
+            }
+        }
+    }
+
+    /// The HID-thread callbacks for one connecting interface.
+    private func makeCallbacks(
+        context: DeviceContext, contextHandle: DriverContextHandle, device: IOHIDDevice,
+        productID: Int, instanceKey: DeviceInstanceKey
+    ) -> DeviceRouter.Callbacks {
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         // Called on HIDThread — hop to main before touching @Published properties.
         let onToolEnter: (ToolIdentity) -> Void = { [weak self, contextHandle] identity in
@@ -1236,35 +1437,6 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        // ── Create the device driver ─────────────────────────────────────────
-        // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate
-        // IOHIDDevices for each interface (digitizer, wireless status, touch,
-        // etc). We create one driver per *raw* (transport-specific) PID and
-        // reuse it across that transport's interfaces; each IOHIDDevice still
-        // registers independently for its own reports. A canonical identity
-        // reachable over more than one transport at once (Xencelabs Quick
-        // Keys wired + dongle) gets one driver per transport, ranked in
-        // `DeviceContext.tabletDevice` — see the reuse check just below.
-        // Reuse only applies to another interface of the *same* transport —
-        // keyed by raw PID, not "the context already has some driver".
-        // Xencelabs' wired puck (0x5202) and dongle (0x5203) fold onto one
-        // canonical context, so `context.tabletDevice` (the current winner)
-        // is the wrong thing to check here: it would silently register the
-        // dongle's interfaces onto the wired driver, or vice versa, instead
-        // of building each transport its own driver and slot.
-        if let existingDriver = context.driverSlot(forRawProductID: rawProductID) as? WacomKnownDevice {
-            hidDeviceMap[device] = context
-            deviceRawProductID[device] = rawProductID
-            existingDriver.registerDevice(device)
-            // This interface never reaches the `.driver` case below — same
-            // omission `captureInterfaces` exists to avoid there applies
-            // here too, since this is exactly PTH-850's path (touch
-            // interface attaches after the pen interface already has a
-            // driver installed for the same raw product ID).
-            Self.offerForCapture(device, usagePage: usagePage, on: context, driver: existingDriver)
-            return
-        }
-
         // ── Relative wheel closure (IntuosV3 PTK-x70 scroll wheels) ────────────
         // Called on HIDThread; injectWheel runs inline (same threading contract
         // as injectAux).
@@ -1399,174 +1571,12 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        let callbacks = DeviceRouter.Callbacks(
+        return DeviceRouter.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
             onMouseButton: onMouseButton, onBattery: onBattery,
             onHardwareSerial: onHardwareSerial, onWheel: onWheel,
             onTouch: onTouch, onPairedPID: onPairedPID,
             onOpenFailed: onOpenFailed)
-
-        switch DeviceRouter.route(
-            device: device, productID: productID, usagePage: usagePage,
-            isBLE: isBLE, contexts: deviceContexts, callbacks: callbacks,
-            overrideSpec: vendorSpec, holdTouchCompanion: holdTouchCompanion)
-        {
-        case .deferred:
-            pendingInterfaces[rawProductID, default: []].append(device)
-            return
-
-        case .ledCompanion(let parentCtx):
-            if let driver = parentCtx.tabletDevice as? WacomKnownDevice {
-                driver.registerLEDDevice(device)
-                hidDeviceMap[device] = parentCtx
-            }
-            return
-
-        case .deferredTouchCompanion:
-            pendingTouchCompanions[productID, default: []].append(device)
-            // Siblings enumerate within a second. A sensor still waiting
-            // after this gets a window of its own, as before it could be
-            // held, so a desk whose pen never appears can still be captured.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-                guard let self,
-                    let idx = self.pendingTouchCompanions[productID]?.firstIndex(where: { $0 === device })
-                else { return }
-                self.pendingTouchCompanions[productID]?.remove(at: idx)
-                if self.pendingTouchCompanions[productID]?.isEmpty == true {
-                    self.pendingTouchCompanions[productID] = nil
-                }
-                logger.info("Wacom 0x\(String(productID, radix: 16, uppercase: true), privacy: .public) — touch sensor's tablet never appeared, routing on its own")
-                self.deviceConnected(device, holdTouchCompanion: false)
-            }
-            return
-
-        case .touchCompanion(let parentCtx):
-            guard let driver = parentCtx.tabletDevice as? WacomKnownDevice else { return }
-            hidDeviceMap[device] = parentCtx
-            // Keyed to the parent's raw PID, not this interface's own: the
-            // sensor is now part of that driver, and `deviceRawProductID`
-            // is what teardown and driver-slot lookup both consult.
-            deviceRawProductID[device] = parentCtx.productID
-            driver.attachTouchSensor(device)
-            // Same reason `.driver` and the reuse path above both offer their
-            // interfaces: an interface a driver reads is capturable, and the
-            // sensor is the one a touch problem needs in the file.
-            Self.offerForCapture(device, usagePage: usagePage, on: parentCtx, driver: driver)
-            return
-
-        case .skip:
-            return
-
-        case .driver(let wacomDevice, _):
-            let hadNoDriverYet = !context.hasAnyDriverSlot
-            context.installDriver(wacomDevice, forRawProductID: rawProductID)
-            if rawProductID == Self.ack40401ProductID {
-                dongleTransports[instanceKey] = DongleTransport(handle: contextHandle, home: context)
-            }
-            // Only the first `.driver`-routed interface for this context
-            // claims `hidDevice` — see that property's doc comment for why a
-            // later sibling interface must never overwrite it.
-            if !context.firstDriverInterfaceClaimed {
-                context.firstDriverInterfaceClaimed = true
-                context.hidDevice = device
-            }
-            Self.offerForCapture(
-                device, usagePage: usagePage, on: context,
-                driver: wacomDevice as? WacomKnownDevice)
-            hidDeviceMap[device] = context
-            deviceRawProductID[device] = rawProductID
-            wacomDevice.open()
-            // Drain any interfaces that arrived before this driver was created.
-            for pending in pendingInterfaces.removeValue(forKey: rawProductID) ?? [] {
-                hidDeviceMap[pending] = context
-                deviceRawProductID[pending] = rawProductID
-                (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
-                // Deferred interfaces are registered for reports exactly like
-                // the ones that arrive after the driver exists, so they are
-                // just as capturable — and this is the path an interface takes
-                // whenever it enumerates ahead of the pen interface, which is
-                // arrival-order luck, not a property of the hardware.
-                Self.offerForCapture(
-                    pending, usagePage: hidIntProperty(pending, kIOHIDPrimaryUsagePageKey),
-                    on: context, driver: wacomDevice as? WacomKnownDevice)
-            }
-            // Same drain for a touch sensor that enumerated ahead of the
-            // tablet claiming it — held under its own PID, not this driver's.
-            if let touchPID = WacomDeviceRegistry.spec(for: productID)?.touchCompanionPID,
-                let driver = wacomDevice as? WacomKnownDevice
-            {
-                for sensor in pendingTouchCompanions.removeValue(forKey: touchPID) ?? [] {
-                    hidDeviceMap[sensor] = context
-                    deviceRawProductID[sensor] = rawProductID
-                    driver.attachTouchSensor(sensor)
-                    Self.offerForCapture(
-                        sensor, usagePage: hidIntProperty(sensor, kIOHIDPrimaryUsagePageKey),
-                        on: context, driver: driver)
-                }
-            }
-            if hadNoDriverYet {
-                // First transport this context has ever seen — wire the
-                // settings-driven hardware sinks once. A second transport
-                // (e.g. the dongle joining a context the wired puck already
-                // owns) must NOT repeat this: these sinks target whichever
-                // slot currently wins, so a second subscription fires every
-                // write twice. (after open() so initial LED sync reaches it)
-                context.observeRingLED()
-                context.observeInjectionSnapshot()
-                context.hasWiredDriverLifecycle = true
-            } else if context.activeDriverRawProductID == rawProductID {
-                // This transport just outranked whatever was already
-                // installed (USB puck connecting while the dongle was
-                // driving) — it never received the settings writes that
-                // fired while it was still a losing slot.
-                context.resyncActiveDriverDisplayState()
-            }
-            // Aux-only accessories (Quick Keys puck/dongle, ExpressKey
-            // Remote; spec.maxX == 0) move no pointer, so a display-toggle
-            // press on them must steer the tablet driving the cursor, not
-            // the accessory's own — invisible — mapping. Pen-bearing
-            // devices never get a forwarder.
-            if wacomDevice.spec.maxX == 0 {
-                let accessoryVendor = context.vendorID
-                context.injector.displayToggleForwarder = { [weak self] in
-                    Task { @MainActor in self?.toggleDisplayOnPenTablet(vendorID: accessoryVendor) }
-                }
-                context.injector.relativeModeToggleForwarder = { [weak self] in
-                    Task { @MainActor in self?.toggleRelativeModeOnPenTablet(vendorID: accessoryVendor) }
-                }
-                context.injector.spanDisplaysForwarder = { [weak self] in
-                    Task { @MainActor in self?.toggleSpanOnPenTablet(vendorID: accessoryVendor) }
-                }
-            }
-            context.settings.applyExpressKeyDefaults(vendorID: context.vendorID)
-            refreshConnectedIDs(mostRecent: productID)
-
-            context.settings.penDisplayLocator = { Self.penDisplayID(forProductID: productID) }
-            context.settings.migrateTargetDisplayUUID()
-
-            // First connection of a pen display: map it to its own screen.
-            let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
-            if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil,
-                let screen = Self.penDisplayID(forProductID: productID)
-            {
-                context.settings.applyPenDisplayDefaults(display: screen)
-            }
-
-            // A bare/still-pairing dongle must never become the active
-            // context — `activeDeviceKey()` reads it before any dongle filter.
-            if activeContext == nil && !isDongleAwaitingPairing(productID: productID) {
-                activeContext = context
-            }
-
-            DeviceRegistry.shared.recordTablet(
-                instanceKey: context.instanceKey, usbSerial: usbSerial,
-                vendorID: vendorID, productString: productString)
-            if rawProductID == Self.ack40401ProductID {
-                // Undo the paired-model rename earlier builds gave its row.
-                DeviceRegistry.shared.updateModelName(
-                    forDonglePairing: instanceKey, to: Self.deviceName(forProductID: rawProductID))
-            }
-        }
     }
 
     /// List `device` as an interface a capture session may record from, unless
