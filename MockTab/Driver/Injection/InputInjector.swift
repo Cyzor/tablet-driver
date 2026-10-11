@@ -15,7 +15,7 @@ let injectLog = Logger(subsystem: "com.cyzor.mocktab", category: "inject")
 /// posted by the pen tablet's injector. Pen-button modifiers stay per
 /// instance, reconciled against that device's tool. HIDThread-confined.
 final class SharedAuxModifierState {
-    static let shared = SharedAuxModifierState()
+    nonisolated(unsafe) static let shared = SharedAuxModifierState()  // HIDThread-confined
     private init() {}
     var groundTruthFlags = CGEventFlags()
     var refCounts: [UInt64: Int] = [:]
@@ -26,7 +26,7 @@ final class SharedAuxModifierState {
 /// button can live on another device (a Quick Keys key while the pen pans).
 /// A no-op for a pen's own barrel button. HIDThread-confined.
 final class SharedPanScrollState {
-    static let shared = SharedPanScrollState()
+    nonisolated(unsafe) static let shared = SharedPanScrollState()  // HIDThread-confined
     private init() {}
     /// The injector currently hosting the live gesture, if any. Every
     /// engage and close path goes through here, so it also drives the
@@ -375,7 +375,7 @@ final class InputInjector: @unchecked Sendable {
     // Kernel receipt time of the report being handled, in CGEvent nanoseconds;
     // 0 for timer-fired posts, which keep the default. Cleared after each report,
     // so a stale stamp never replays. Static: one HIDThread serves every device.
-    static var currentReportTimestampNs: UInt64 = 0
+    nonisolated(unsafe) static var currentReportTimestampNs: UInt64 = 0  // HIDThread-confined
 
     // MARK: - Cursor smoothing, jitter, velocity
     //
