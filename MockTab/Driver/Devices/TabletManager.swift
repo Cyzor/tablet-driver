@@ -932,11 +932,24 @@ final class TabletManager: ObservableObject {
             context: context, contextHandle: contextHandle, device: device,
             productID: productID, instanceKey: instanceKey)
 
-        switch DeviceRouter.route(
+        let route = DeviceRouter.route(
             device: device, productID: productID, usagePage: usagePage,
             isBLE: isBLE, contexts: deviceContexts, callbacks: callbacks,
             overrideSpec: vendorSpec, holdTouchCompanion: holdTouchCompanion)
-        {
+        applyRoute(
+            route, device: device, context: context, contextHandle: contextHandle,
+            probe: probe, rawProductID: rawProductID, vendorID: vendorID)
+    }
+
+    /// Acts on `DeviceRouter`'s decision for one connecting interface.
+    private func applyRoute(
+        _ route: DeviceRouter.Routed, device: IOHIDDevice, context: DeviceContext,
+        contextHandle: DriverContextHandle, probe: DeviceIdentityProbe,
+        rawProductID: Int, vendorID: Int
+    ) {
+        let productID = probe.productID
+        let usagePage = probe.usagePage
+        switch route {
         case .deferred:
             pendingInterfaces[rawProductID, default: []].append(device)
             return
