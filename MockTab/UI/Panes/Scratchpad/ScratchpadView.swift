@@ -364,12 +364,15 @@ private struct TiltDisc: View, Equatable {
 /// Top-down rectangle showing normalised finger-contact positions as numbered
 /// dots. The tablet's touch surface maps to the full canvas area.
 /// Contacts fade out over ~0.3 s after they lift (lift = empty contacts array).
-private struct TouchContactsCanvas: View, @MainActor Equatable {
+private struct TouchContactsCanvas: View, Equatable {
     let contacts: [TouchContact]
     let maxContacts: Int
 
-    static func == (lhs: TouchContactsCanvas, rhs: TouchContactsCanvas) -> Bool {
-        lhs.contacts == rhs.contacts && lhs.maxContacts == rhs.maxContacts
+    nonisolated static func == (lhs: TouchContactsCanvas, rhs: TouchContactsCanvas) -> Bool {
+        // SwiftUI compares views on the main actor.
+        MainActor.assumeIsolated {
+            lhs.contacts == rhs.contacts && lhs.maxContacts == rhs.maxContacts
+        }
     }
 
     var body: some View {

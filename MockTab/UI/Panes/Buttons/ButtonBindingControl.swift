@@ -10,7 +10,7 @@ import SwiftUI
 /// • ESC cancels; Delete alone clears the binding.
 /// • Use the ▾ menu to assign click actions instead of a key combo.
 /// • The ✕ button clears any existing assignment.
-struct ButtonBindingControl: View, @MainActor Equatable {
+struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4
@@ -39,15 +39,18 @@ struct ButtonBindingControl: View, @MainActor Equatable {
     /// stopped recording — and should not restart it.
     @State private var stoppedByMouseDown = false
 
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.binding == rhs.binding
-            && lhs.compact == rhs.compact
-            && lhs.ringSlotCount == rhs.ringSlotCount
-            && lhs.offersSecondDial == rhs.offersSecondDial
-            && lhs.offersEraser == rhs.offersEraser
-            && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
-            && lhs.dialToggleControl == rhs.dialToggleControl
-            && lhs.recordRequestToken == rhs.recordRequestToken
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        // SwiftUI compares views on the main actor.
+        MainActor.assumeIsolated {
+            lhs.binding == rhs.binding
+                && lhs.compact == rhs.compact
+                && lhs.ringSlotCount == rhs.ringSlotCount
+                && lhs.offersSecondDial == rhs.offersSecondDial
+                && lhs.offersEraser == rhs.offersEraser
+                && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
+                && lhs.dialToggleControl == rhs.dialToggleControl
+                && lhs.recordRequestToken == rhs.recordRequestToken
+        }
     }
 
     var body: some View {

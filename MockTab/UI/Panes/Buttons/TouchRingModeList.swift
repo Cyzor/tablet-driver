@@ -205,7 +205,7 @@ struct TouchRingModeListView: View {
 /// closures are deliberately ignored in `==`: they're recreated identical
 /// on every parent body evaluation but always capture the same stable
 /// settings object.
-private struct TouchRingModeListCore: View, @MainActor Equatable {
+private struct TouchRingModeListCore: View, Equatable {
     let slots: [ControlSlot]
     let shownSlotCount: Int
     let ringSlotCount: Int
@@ -227,21 +227,24 @@ private struct TouchRingModeListCore: View, @MainActor Equatable {
     let onCenterTap: (() -> Void)?
     let centerBinding: Binding<ButtonBinding>?
 
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.slots == rhs.slots
-            && lhs.shownSlotCount == rhs.shownSlotCount
-            && lhs.ringSlotCount == rhs.ringSlotCount
-            && lhs.isRingActive == rhs.isRingActive
-            && lhs.activeSlotIndex == rhs.activeSlotIndex
-            && lhs.centerDown == rhs.centerDown
-            && lhs.showsDiagram == rhs.showsDiagram
-            && lhs.showsModeBadge == rhs.showsModeBadge
-            && lhs.selected == rhs.selected
-            && lhs.pressed == rhs.pressed
-            && lhs.maxSpeed == rhs.maxSpeed
-            && (lhs.ledEditor == nil) == (rhs.ledEditor == nil)
-            && (lhs.onCenterTap == nil) == (rhs.onCenterTap == nil)
-            && (lhs.centerBinding == nil) == (rhs.centerBinding == nil)
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        // SwiftUI compares views on the main actor.
+        MainActor.assumeIsolated {
+            lhs.slots == rhs.slots
+                && lhs.shownSlotCount == rhs.shownSlotCount
+                && lhs.ringSlotCount == rhs.ringSlotCount
+                && lhs.isRingActive == rhs.isRingActive
+                && lhs.activeSlotIndex == rhs.activeSlotIndex
+                && lhs.centerDown == rhs.centerDown
+                && lhs.showsDiagram == rhs.showsDiagram
+                && lhs.showsModeBadge == rhs.showsModeBadge
+                && lhs.selected == rhs.selected
+                && lhs.pressed == rhs.pressed
+                && lhs.maxSpeed == rhs.maxSpeed
+                && (lhs.ledEditor == nil) == (rhs.ledEditor == nil)
+                && (lhs.onCenterTap == nil) == (rhs.onCenterTap == nil)
+                && (lhs.centerBinding == nil) == (rhs.centerBinding == nil)
+        }
     }
 
     var body: some View {
