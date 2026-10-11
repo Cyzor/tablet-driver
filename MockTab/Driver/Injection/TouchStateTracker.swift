@@ -822,123 +822,19 @@ struct TouchStateTracker {
         // "the all-lifted frame never arrives" is the failure this change
         // targets — it must not become a way to wedge touch off entirely.
         if scrollWoundDown {
-            let overlapsOldContacts = contacts.contains { lastPositions[$0.id] != nil }
-            if contacts.isEmpty {
-                reset()
-                return .none
-            }
-            if !overlapsOldContacts {
-                // Entirely new fingers — a genuinely fresh sequence. Full
-                // reset so this frame starts from idle (onset delay, tap
-                // clock, the lot).
-                scrollWoundDown = false
-                scrollWoundDownExpiresAt = 0
-                lastPositions.removeAll(keepingCapacity: true)
-                scrollDroppedToOneContactAt = 0
-                mode = .idle
-                twoFingerKind = .undecided
-                resetScrollAxisLock()
-                lastScrollPhase = .ended
-                // Fall through.
-            } else if now >= scrollWoundDownExpiresAt {
-                // Backstop: the wound-down gesture's own finger(s) are still
-                // down after the whole backstop window — an all-lifted frame
-                // was apparently lost. Release the hold, but resume as a plain
-                // pointer, NOT a fresh `.pending`: seeding a new `tapStart`
-                // here would make this lingering finger tap-eligible, so a
-                // pan → lift-one → rest → lift would fire a phantom click.
-                // Leaving `tapStart` stale means the isEmpty branch's
-                // `now - tapStart <= tapMaxDuration` fails and no tap can.
-                scrollWoundDown = false
-                scrollWoundDownExpiresAt = 0
-                scrollDroppedToOneContactAt = 0
-                twoFingerKind = .undecided
-                resetScrollAxisLock()
-                lastScrollPhase = .ended
-                mode = .pointer
-                tapAnchor = nil
-                lastPositions = Dictionary(
-                    contacts.prefix(1).map { ($0.id, $0.screen) },
-                    uniquingKeysWith: { first, _ in first })
-                // A two-finger sequence never ran absolute-mode's own
-                // primary-pinning — clear both so `.pointer where
-                // absoluteTouch` re-derives cleanly from this frame's
-                // contact rather than chasing a stale id from before the
-                // scroll started (or warping again to a position it
-                // never actually warped to yet this sequence).
-                absolutePrimaryContactID = nil
-                absoluteLastWarpedTo = nil
-                return .none
-            } else {
-                return .none
-            }
+            if let held = processWoundDownHold(contacts: contacts, now: now) { return held }
         }
 
         // All fingers lifted — wrap up any in-progress gesture.  A sequence
         // that never outlived the onset delay can still be a tap (a tap is by
         // definition shorter than most onset windows).
         if contacts.isEmpty {
-            let priorMode = mode
-            let priorPhase = lastScrollPhase
-            let priorKind = twoFingerKind
-            let priorPinchPhase = pinchPhase
-            let priorRotatePhase = rotatePhase
-            let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
-                && now - tapStart <= Self.tapMaxDuration
-                && tapMaxDelta < Self.tapMaxDistance
-            // Captured before `reset()` clears `tapStart` — the deviation
-            // half of "was this a tap" is implicit: still being `.undecided`
-            // at teardown already proves motion stayed under
-            // `twoFingerDecideDistance` (see the tunable's doc comment).
-            let secondaryTap = twoFingerRightClick && twoFingerTapEligible
-                && maxContactsThisSequence == 2
-                && priorMode == .scroll && priorKind == .undecided
-                && now - tapStart <= Self.twoFingerTapMaxDuration
-            threeFingerTapMiss = threeFingerDrag && maxContactsThisSequence >= 3
-                && priorMode != .drag ? (threeFingerMissReason ?? "other") : nil
-            if scrollDroppedToOneContactAt != 0 {
-                // The gesture already dropped to one contact and everything was
-                // snapshotted then, while samples were fresh. Recomputing here
-                // loses it: the grace-window frames returned `.none` before the
-                // velocity-sampling line, so `recentVelocities` has nothing
-                // inside `peakVelocityWindow` and the gaps would read ~0.
-                releaseVelocity = scrollVelocityAtDrop
-                releaseSuppressedByRecency = suppressedByRecencyAtDrop
-                releaseFrameGap = frameGapAtDrop
-                releaseMotionGap = motionGapAtDrop
-            } else if priorMode == .scroll {
-                let k = releaseKinematics(now: now)
-                releaseVelocity = k.velocity
-                releaseSuppressedByRecency = k.suppressedByRecency
-                releaseFrameGap = k.frameGap
-                releaseMotionGap = k.motionGap
-            } else {
-                let k = releaseKinematics(now: now)
-                releaseVelocity = k.velocity
-                releaseSuppressedByRecency = k.suppressedByRecency
-            }
-            reset()
-            if priorMode == .drag { return .dragUp }
-            switch priorMode {
-            // Must precede the generic pan-ended case below: pinch/rotate
-            // also leave `lastScrollPhase` untouched (they track their own
-            // phases), so without this case an open pinch/rotate envelope
-            // would never close. Pinch and rotate close independently —
-            // either, both, or (if the sequence never actually committed to
-            // either) neither may be open here.
-            case .scroll where priorPinchPhase != .ended || priorRotatePhase != .ended:
-                return .twoFingerGesture(
-                    magnify: priorPinchPhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil,
-                    rotate: priorRotatePhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil)
-            case .scroll where priorPhase != .ended:
-                return .scrollDelta(dx: 0, dy: 0, phase: .ended)
-            case .scroll where secondaryTap:
-                return .secondaryClick
-            case .pointer where tap, .pending where tap:
-                return .tapClick
-            default:
-                return .none
-            }
+            return processAllLifted(
+                tapToClick: tapToClick,
+                twoFingerRightClick: twoFingerRightClick,
+                threeFingerDrag: threeFingerDrag,
+                now: now
+            )
         }
 
         // First contact — hold in pending until the onset delay elapses, so
@@ -947,53 +843,17 @@ struct TouchStateTracker {
         maxContactsThisSequence = Swift.max(maxContactsThisSequence, contacts.count)
         // Three fingers landing together start a drag, as long as no scroll,
         // zoom, or rotate has begun. The first finger leads.
-        if threeFingerDrag, contacts.count == 3, mode == .pending || mode == .scroll,
-           threeFingerMissReason == nil {
-            let mm = contacts.compactMap { rawPositions[$0.id] }
-            var closest = Double.infinity
-            for i in mm.indices {
-                for j in mm.indices where j > i {
-                    closest = Swift.min(closest, hypot(mm[i].x - mm[j].x, mm[i].y - mm[j].y))
-                }
-            }
-            let gestureBegan = mode == .scroll
-                && (twoFingerKind != .undecided || lastScrollPhase != .ended)
-            if now - tapStart > Self.threeFingerLandingWindow {
-                threeFingerMissReason = "landedApart"
-            } else if mm.count < 3 || closest < Self.threeFingerMinSpacingMM {
-                threeFingerMissReason = "tooClose"
-            } else if gestureBegan {
-                threeFingerMissReason = "moved"
-            } else {
-                let lead = contacts[0]
-                mode = .drag
-                dragPrimaryID = lead.id
-                dragFingerIDs = Set(contacts.map(\.id))
-                dragCentroidIDs = dragFingerIDs
-                dragCentroid = centroid(of: contacts.map(\.screen))
-                lastPositions = [lead.id: lead.screen]
-                return .dragDown(at: absoluteTouch ? lead.screen : nil)
-            }
-        }
-        if threeFingerDrag, contacts.count > 3, mode != .drag, threeFingerMissReason == nil {
-            threeFingerMissReason = "moreThanThree"
+        if let press = startThreeFingerDrag(
+            contacts: contacts,
+            threeFingerDrag: threeFingerDrag,
+            rawPositions: rawPositions,
+            absoluteTouch: absoluteTouch,
+            now: now
+        ) {
+            return press
         }
         if mode == .idle, let first = contacts.first {
-            mode = .pending
-            lastPositions = [first.id: first.screen]
-            tapAnchor = first.screen
-            tapStart = now
-            tapMaxDelta = 0
-            if absoluteTouch {
-                // Warp immediately on contact-down — see the `.pending`
-                // case below and `Intent.pointerWarp`'s doc comment for why
-                // absolute mode can't wait for `.pointer` mode the way
-                // relative mode does.
-                absolutePrimaryContactID = first.id
-                absoluteLastWarpedTo = first.screen
-                return .pointerWarp(to: first.screen)
-            }
-            return .none
+            return beginSequence(first: first, absoluteTouch: absoluteTouch, now: now)
         }
 
         // Escalate to scroll once two contacts are present, if enabled.
@@ -1005,71 +865,19 @@ struct TouchStateTracker {
         // specifically. Any one of the three being enabled is enough to
         // start tracking; which one(s) can actually win is decided per-frame
         // below via each flag independently.
-        let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate
-            || twoFingerRightClick || threeFingerDrag
-        if mode == .pending || mode == .pointer, contacts.count >= 2 {
-            if anyTwoFingerGesture {
-                // Pending can outlast the onset window while a finger rests
-                // still, so time it directly.
-                let firstFingerStill = mode == .pending
-                    || (mode == .pointer && tapMaxDelta < Self.tapMaxDistance)
-                let landedTogether = firstFingerStill
-                    && now - tapStart <= Swift.max(onsetDelay, Self.twoFingerLandWindow)
-                mode = .scroll
-                let pair = Array(contacts.prefix(2))
-                lastPositions = Dictionary(
-                    pair.map { ($0.id, $0.screen) },
-                    uniquingKeysWith: { first, _ in first })
-                tapAnchor = nil  // tap is off the table once we go to two fingers
-                twoFingerKind = (pinchZoom || rotate || twoFingerRightClick
-                    || threeFingerDrag) ? .undecided : .pan
-                twoFingerTapEligible = false
-                if twoFingerRightClick, landedTogether,
-                   let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id] {
-                    twoFingerTapEligible =
-                        hypot(posA.x - posB.x, posA.y - posB.y) >= Self.secondaryClickMinSpacingMM
-                }
-                lastPinchDistance = Self.distance(between: pair)
-                undecidedOriginCentroid = centroid(of: pair.map(\.screen))
-                undecidedOriginDistance = lastPinchDistance
-                // Separation gate (see `rotateMinSeparationFraction`'s doc
-                // comment): millimeter positions, computed once here, not
-                // re-evaluated per frame — a rotate gesture's finger
-                // separation is expected to stay roughly constant while the
-                // angle changes.
-                rotateEligible = false
-                if rotate, touchDiagonal > 0,
-                   let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id]
-                {
-                    let rawSeparation = hypot(posA.x - posB.x, posA.y - posB.y)
-                    rotateEligible = (rawSeparation / touchDiagonal) >= Self.rotateMinSeparationFraction
-                }
-                lastPairAngle = Self.angle(between: pair.sorted { $0.id < $1.id })
-                undecidedCumulativeAngle = 0
-                undecidedStartTime = now
-                recentVelocities.removeAll()
-                lastFrameTime = now
-                lastMotionTime = 0
-                // Defer Began until pan/pinch/rotate commits when
-                // discrimination is on — leave lastScrollPhase .ended so a
-                // lift before commit does not emit a stray scroll Ended.
-                if twoFingerKind == .undecided {
-                    return .none
-                }
-                // Only reachable with twoFingerScroll on and every other
-                // two-finger action off — the one case where pan is decided
-                // immediately rather than discriminated. `.began` waits for
-                // motion (see `pendingBeganDx`).
-                pendingBeganDx = 0
-                pendingBeganDy = 0
-                return .none
-            } else if mode == .pointer {
-                // No two-finger gesture enabled at all: ignore the second
-                // contact, keep pointer-tracking the first.
-                if let first = contacts.first, lastPositions[first.id] == nil {
-                    lastPositions[first.id] = first.screen
-                }
-            }
+        if let escalated = escalateToTwoFingers(
+            contacts: contacts,
+            twoFingerScroll: twoFingerScroll,
+            pinchZoom: pinchZoom,
+            rotate: rotate,
+            twoFingerRightClick: twoFingerRightClick,
+            threeFingerDrag: threeFingerDrag,
+            rawPositions: rawPositions,
+            touchDiagonal: touchDiagonal,
+            onsetDelay: onsetDelay,
+            now: now
+        ) {
+            return escalated
         }
 
         switch mode {
@@ -1088,7 +896,6 @@ struct TouchStateTracker {
                 tapStabilizationPt: tapStabilizationPt,
                 now: now
             )
-
         case .scroll:
             return processScroll(
                 contacts: contacts,
@@ -1102,7 +909,6 @@ struct TouchStateTracker {
             return processAbsolutePointer(contacts: contacts)
         case .pointer:
             return processPointer(contacts: contacts, sensitivity: sensitivity, now: now)
-
         case .idle:
             return .none
         }
@@ -1760,6 +1566,281 @@ struct TouchStateTracker {
         }
         lastScrollPhase = .changed
         return .scrollDelta(dx: outDx, dy: outDy, phase: .changed)
+    }
+
+    /// The frame where every finger has lifted: release velocity, then the closing intent (tap, right-click, or an envelope's end).
+    private mutating func processAllLifted(
+        tapToClick: Bool,
+        twoFingerRightClick: Bool,
+        threeFingerDrag: Bool,
+        now: CFAbsoluteTime
+    ) -> Intent {
+        let priorMode = mode
+        let priorPhase = lastScrollPhase
+        let priorKind = twoFingerKind
+        let priorPinchPhase = pinchPhase
+        let priorRotatePhase = rotatePhase
+        let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
+            && now - tapStart <= Self.tapMaxDuration
+            && tapMaxDelta < Self.tapMaxDistance
+        // Captured before `reset()` clears `tapStart` — the deviation
+        // half of "was this a tap" is implicit: still being `.undecided`
+        // at teardown already proves motion stayed under
+        // `twoFingerDecideDistance` (see the tunable's doc comment).
+        let secondaryTap = twoFingerRightClick && twoFingerTapEligible
+            && maxContactsThisSequence == 2
+            && priorMode == .scroll && priorKind == .undecided
+            && now - tapStart <= Self.twoFingerTapMaxDuration
+        threeFingerTapMiss = threeFingerDrag && maxContactsThisSequence >= 3
+            && priorMode != .drag ? (threeFingerMissReason ?? "other") : nil
+        if scrollDroppedToOneContactAt != 0 {
+            // The gesture already dropped to one contact and everything was
+            // snapshotted then, while samples were fresh. Recomputing here
+            // loses it: the grace-window frames returned `.none` before the
+            // velocity-sampling line, so `recentVelocities` has nothing
+            // inside `peakVelocityWindow` and the gaps would read ~0.
+            releaseVelocity = scrollVelocityAtDrop
+            releaseSuppressedByRecency = suppressedByRecencyAtDrop
+            releaseFrameGap = frameGapAtDrop
+            releaseMotionGap = motionGapAtDrop
+        } else if priorMode == .scroll {
+            let k = releaseKinematics(now: now)
+            releaseVelocity = k.velocity
+            releaseSuppressedByRecency = k.suppressedByRecency
+            releaseFrameGap = k.frameGap
+            releaseMotionGap = k.motionGap
+        } else {
+            let k = releaseKinematics(now: now)
+            releaseVelocity = k.velocity
+            releaseSuppressedByRecency = k.suppressedByRecency
+        }
+        reset()
+        if priorMode == .drag { return .dragUp }
+        switch priorMode {
+        // Must precede the generic pan-ended case below: pinch/rotate
+        // also leave `lastScrollPhase` untouched (they track their own
+        // phases), so without this case an open pinch/rotate envelope
+        // would never close. Pinch and rotate close independently —
+        // either, both, or (if the sequence never actually committed to
+        // either) neither may be open here.
+        case .scroll where priorPinchPhase != .ended || priorRotatePhase != .ended:
+            return .twoFingerGesture(
+                magnify: priorPinchPhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil,
+                rotate: priorRotatePhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil)
+        case .scroll where priorPhase != .ended:
+            return .scrollDelta(dx: 0, dy: 0, phase: .ended)
+        case .scroll where secondaryTap:
+            return .secondaryClick
+        case .pointer where tap, .pending where tap:
+            return .tapClick
+        default:
+            return .none
+        }
+    }
+
+    /// The first contact of a sequence: enter pending, and warp at once in absolute mode.
+    private mutating func beginSequence(
+        first: (id: Int, screen: CGPoint),
+        absoluteTouch: Bool,
+        now: CFAbsoluteTime
+    ) -> Intent {
+        mode = .pending
+        lastPositions = [first.id: first.screen]
+        tapAnchor = first.screen
+        tapStart = now
+        tapMaxDelta = 0
+        if absoluteTouch {
+            // Warp immediately on contact-down — see the `.pending`
+            // case below and `Intent.pointerWarp`'s doc comment for why
+            // absolute mode can't wait for `.pointer` mode the way
+            // relative mode does.
+            absolutePrimaryContactID = first.id
+            absoluteLastWarpedTo = first.screen
+            return .pointerWarp(to: first.screen)
+        }
+        return .none
+    }
+
+    /// A wound-down scroll's lingering fingers: hold, release, or nil when new fingers start a fresh sequence.
+    private mutating func processWoundDownHold(
+        contacts: [(id: Int, screen: CGPoint)],
+        now: CFAbsoluteTime
+    ) -> Intent? {
+        let overlapsOldContacts = contacts.contains { lastPositions[$0.id] != nil }
+        if contacts.isEmpty {
+            reset()
+            return Intent.none
+        }
+        if !overlapsOldContacts {
+            // Entirely new fingers — a genuinely fresh sequence. Full
+            // reset so this frame starts from idle (onset delay, tap
+            // clock, the lot).
+            scrollWoundDown = false
+            scrollWoundDownExpiresAt = 0
+            lastPositions.removeAll(keepingCapacity: true)
+            scrollDroppedToOneContactAt = 0
+            mode = .idle
+            twoFingerKind = .undecided
+            resetScrollAxisLock()
+            lastScrollPhase = .ended
+            // Fall through.
+        } else if now >= scrollWoundDownExpiresAt {
+            // Backstop: the wound-down gesture's own finger(s) are still
+            // down after the whole backstop window — an all-lifted frame
+            // was apparently lost. Release the hold, but resume as a plain
+            // pointer, NOT a fresh `.pending`: seeding a new `tapStart`
+            // here would make this lingering finger tap-eligible, so a
+            // pan → lift-one → rest → lift would fire a phantom click.
+            // Leaving `tapStart` stale means the isEmpty branch's
+            // `now - tapStart <= tapMaxDuration` fails and no tap can.
+            scrollWoundDown = false
+            scrollWoundDownExpiresAt = 0
+            scrollDroppedToOneContactAt = 0
+            twoFingerKind = .undecided
+            resetScrollAxisLock()
+            lastScrollPhase = .ended
+            mode = .pointer
+            tapAnchor = nil
+            lastPositions = Dictionary(
+                contacts.prefix(1).map { ($0.id, $0.screen) },
+                uniquingKeysWith: { first, _ in first })
+            // A two-finger sequence never ran absolute-mode's own
+            // primary-pinning — clear both so `.pointer where
+            // absoluteTouch` re-derives cleanly from this frame's
+            // contact rather than chasing a stale id from before the
+            // scroll started (or warping again to a position it
+            // never actually warped to yet this sequence).
+            absolutePrimaryContactID = nil
+            absoluteLastWarpedTo = nil
+            return Intent.none
+        } else {
+            return Intent.none
+        }
+        return nil
+    }
+
+    /// Three fingers landing together press the button; otherwise records why they didn't, and returns nil.
+    private mutating func startThreeFingerDrag(
+        contacts: [(id: Int, screen: CGPoint)],
+        threeFingerDrag: Bool,
+        rawPositions: [Int: CGPoint],
+        absoluteTouch: Bool,
+        now: CFAbsoluteTime
+    ) -> Intent? {
+        if threeFingerDrag, contacts.count == 3, mode == .pending || mode == .scroll,
+           threeFingerMissReason == nil {
+            let mm = contacts.compactMap { rawPositions[$0.id] }
+            var closest = Double.infinity
+            for i in mm.indices {
+                for j in mm.indices where j > i {
+                    closest = Swift.min(closest, hypot(mm[i].x - mm[j].x, mm[i].y - mm[j].y))
+                }
+            }
+            let gestureBegan = mode == .scroll
+                && (twoFingerKind != .undecided || lastScrollPhase != .ended)
+            if now - tapStart > Self.threeFingerLandingWindow {
+                threeFingerMissReason = "landedApart"
+            } else if mm.count < 3 || closest < Self.threeFingerMinSpacingMM {
+                threeFingerMissReason = "tooClose"
+            } else if gestureBegan {
+                threeFingerMissReason = "moved"
+            } else {
+                let lead = contacts[0]
+                mode = .drag
+                dragPrimaryID = lead.id
+                dragFingerIDs = Set(contacts.map(\.id))
+                dragCentroidIDs = dragFingerIDs
+                dragCentroid = centroid(of: contacts.map(\.screen))
+                lastPositions = [lead.id: lead.screen]
+                return .dragDown(at: absoluteTouch ? lead.screen : nil)
+            }
+        }
+        if threeFingerDrag, contacts.count > 3, mode != .drag, threeFingerMissReason == nil {
+            threeFingerMissReason = "moreThanThree"
+        }
+        return nil
+    }
+
+    /// A second contact during pending or pointer: start the two-finger sequence, or nil to carry on.
+    private mutating func escalateToTwoFingers(
+        contacts: [(id: Int, screen: CGPoint)],
+        twoFingerScroll: Bool,
+        pinchZoom: Bool,
+        rotate: Bool,
+        twoFingerRightClick: Bool,
+        threeFingerDrag: Bool,
+        rawPositions: [Int: CGPoint],
+        touchDiagonal: Double,
+        onsetDelay: CFAbsoluteTime,
+        now: CFAbsoluteTime
+    ) -> Intent? {
+        let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate
+            || twoFingerRightClick || threeFingerDrag
+        if mode == .pending || mode == .pointer, contacts.count >= 2 {
+            if anyTwoFingerGesture {
+                // Pending can outlast the onset window while a finger rests
+                // still, so time it directly.
+                let firstFingerStill = mode == .pending
+                    || (mode == .pointer && tapMaxDelta < Self.tapMaxDistance)
+                let landedTogether = firstFingerStill
+                    && now - tapStart <= Swift.max(onsetDelay, Self.twoFingerLandWindow)
+                mode = .scroll
+                let pair = Array(contacts.prefix(2))
+                lastPositions = Dictionary(
+                    pair.map { ($0.id, $0.screen) },
+                    uniquingKeysWith: { first, _ in first })
+                tapAnchor = nil  // tap is off the table once we go to two fingers
+                twoFingerKind = (pinchZoom || rotate || twoFingerRightClick
+                    || threeFingerDrag) ? .undecided : .pan
+                twoFingerTapEligible = false
+                if twoFingerRightClick, landedTogether,
+                   let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id] {
+                    twoFingerTapEligible =
+                        hypot(posA.x - posB.x, posA.y - posB.y) >= Self.secondaryClickMinSpacingMM
+                }
+                lastPinchDistance = Self.distance(between: pair)
+                undecidedOriginCentroid = centroid(of: pair.map(\.screen))
+                undecidedOriginDistance = lastPinchDistance
+                // Separation gate (see `rotateMinSeparationFraction`'s doc
+                // comment): millimeter positions, computed once here, not
+                // re-evaluated per frame — a rotate gesture's finger
+                // separation is expected to stay roughly constant while the
+                // angle changes.
+                rotateEligible = false
+                if rotate, touchDiagonal > 0,
+                   let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id]
+                {
+                    let rawSeparation = hypot(posA.x - posB.x, posA.y - posB.y)
+                    rotateEligible = (rawSeparation / touchDiagonal) >= Self.rotateMinSeparationFraction
+                }
+                lastPairAngle = Self.angle(between: pair.sorted { $0.id < $1.id })
+                undecidedCumulativeAngle = 0
+                undecidedStartTime = now
+                recentVelocities.removeAll()
+                lastFrameTime = now
+                lastMotionTime = 0
+                // Defer Began until pan/pinch/rotate commits when
+                // discrimination is on — leave lastScrollPhase .ended so a
+                // lift before commit does not emit a stray scroll Ended.
+                if twoFingerKind == .undecided {
+                    return Intent.none
+                }
+                // Only reachable with twoFingerScroll on and every other
+                // two-finger action off — the one case where pan is decided
+                // immediately rather than discriminated. `.began` waits for
+                // motion (see `pendingBeganDx`).
+                pendingBeganDx = 0
+                pendingBeganDy = 0
+                return Intent.none
+            } else if mode == .pointer {
+                // No two-finger gesture enabled at all: ignore the second
+                // contact, keep pointer-tracking the first.
+                if let first = contacts.first, lastPositions[first.id] == nil {
+                    lastPositions[first.id] = first.screen
+                }
+            }
+        }
+        return nil
     }
 
     /// Clears the committed-`.pan` dominant-axis lock and its pre-lock
