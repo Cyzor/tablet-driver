@@ -1215,156 +1215,9 @@ final class WacomKnownDevice: TabletDevice {
         if deviceSpec.parser == .xencelabs, !results.isEmpty {
             xencelabsLastReportAt = DispatchTime.now().uptimeNanoseconds
         }
-        // Pen and touch samples are collected, in decode order, rather than
-        // dispatched inline — a report that decoded to more than one
-        // combined (a Bluetooth batch: pen frames packed at [1..98], touch
-        // frames at [109..280] of the same 361-byte report — see
-        // BatchFramePacer.swift) is paced across the interval it actually
-        // spans instead of bursting through CGEventPost in a fraction of a
-        // millisecond. They must share one ordered queue, not two
-        // independent ones: `InputInjector.injectTouch`'s `penBusy` gate
-        // reads live pen-proximity state, so a touch frame delivered while
-        // an older, still-queued pen frame is waiting its turn would read
-        // stale proximity. Every other result kind dispatches immediately as
-        // before; a batch's toolEnter/aux/etc. entries always precede its
-        // pen/touch entries in `results` (see IntuosV2Decoder+BT), so
-        // deferring only those two doesn't reorder anything that depends on
-        // them.
-        var batchFrames: [BatchedFrame] = []
-        // Device-clock stamp per batch-frame index, for frames that carry one.
-        var touchFrameStamps: [Int: UInt16] = [:]
-        for result in results {
-            switch result {
-            case .none:
-                break
-            case .pen(let point):
-                // Wireless dongle: suppress pen events until RF link is confirmed active.
-                guard !isWireless || wirelessReady else { break }
-                if !wasInProximity { wirelessLastAcceptedPoint = nil }
-                if isWireless, let last = wirelessLastAcceptedPoint,
-                    point.maxX > 0, point.maxY > 0
-                {
-                    let dx = abs(point.x - last.x), dy = abs(point.y - last.y)
-                    let thresholdX = Double(point.maxX) * Self.wirelessOutlierFraction
-                    let thresholdY = Double(point.maxY) * Self.wirelessOutlierFraction
-                    let xOutlier = Double(dx) > thresholdX && dy < point.maxY / 20
-                    let yOutlier = Double(dy) > thresholdY && dx < point.maxX / 20
-                    if xOutlier || yOutlier {
-                        logger.warning("\(name, privacy: .public): candidate wireless coordinate outlier — last=(\(last.x, privacy: .public),\(last.y, privacy: .public)) new=(\(point.x, privacy: .public),\(point.y, privacy: .public)) maxX=\(point.maxX, privacy: .public) maxY=\(point.maxY, privacy: .public)")
-                    }
-                }
-                wirelessLastAcceptedPoint = point
-                batchFrames.append(.pen(point))
-            case .toolEnter(let identity):
-                guard !isWireless || wirelessReady else { break }
-                onToolEnter?(identity)
-            case .aux(var buttons):
-                // Diagnostic from the Xencelabs stuck-Command investigation
-                // (2026-07-05): which physical device/PID produced this aux
-                // frame and the raw bytes that decoded to it, so a phantom
-                // button-down can be traced back to its source instead of
-                // guessed at. Dropped to .debug (2026-07-14) — useful again
-                // for future Xencelabs aux work, but too noisy at .notice
-                // for routine use once the original investigation closed.
-                // OSLog builds these strings only when debug logging is on.
-                if deviceSpec.parser == .xencelabs {
-                    let pid = deviceSpec.productID
-                    let aux = buttons
-                    logger.debug("""
-                        \(name, privacy: .public) \
-                        (0x\(String(pid, radix: 16, uppercase: true), privacy: .public)) \
-                        usagePage=0x\(sender.map { String(hidIntProperty($0, kIOHIDPrimaryUsagePageKey), radix: 16) } ?? "?", privacy: .public): \
-                        aux decode — bytes=[\((0..<length).map { String(format: "%02x", report[$0]) }.joined(separator: " "), privacy: .public)] \
-                        mask=\((0..<16).map { aux[$0] ? "1" : "0" }.joined(), privacy: .public) \
-                        mech=0x\(String(aux.mechanicalMask, radix: 16), privacy: .public)
-                        """)
-                }
-                // The pen display's own 3 onboard bezel buttons ride the same
-                // aux frame format as the Quick Keys puck's express keys —
-                // this device has no puck of its own, so bits 0-2 are
-                // unambiguously the bezel buttons (confirmed 2026-07-14 via
-                // live capture: three clean one-hot taps, bits 0/1/2).
-                // Mirror them into the bezel-button slots (indices 16-18)
-                // that TabletManager/InputInjector already read for onboard
-                // bezel buttons, following the DTK-2400 precedent.
-                if deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay {
-                    var raw = buttons.buttons
-                    while raw.count < 19 { raw.append(false) }
-                    raw[16] = buttons[0]
-                    raw[17] = buttons[1]
-                    raw[18] = buttons[2]
-                    buttons.buttons = raw
-                }
-                onAux?(buttons)
-            case .wireless(let ws):
-                switch ws {
-                case .active:
-                    // Only transition once per RF link session. Multiple .active reports
-                    // are normal (dongle may send status reports frequently); don't resend
-                    // feature init or reset state on every one, as that disrupts the link.
-                    if !wirelessLinkConfirmed {
-                        logger.info("\(name, privacy: .public): wireless link active")
-                        // Reset decoder state so stale coordinates/tool identity from
-                        // before link-up are not forwarded on the first live report.
-                        state = DecoderState()
-                        wirelessReady = true
-                        wirelessLinkConfirmed = true
-                        batteryWarningLogged = false
-                        // Re-run init steps now that the RF link is confirmed.
-                        // Must be dispatched to main thread — HID callbacks are background.
-                        Task { @MainActor in
-                            self.executeInitSteps()
-                        }
-                    }
-                case .lost:
-                    if wirelessLinkConfirmed {
-                        logger.info("\(name, privacy: .public): wireless link lost")
-                        wirelessLinkConfirmed = false
-                    }
-                    wirelessReady = false
-                    batteryWarningLogged = false
-                    state = DecoderState()
-                case .lowBattery:
-                    if !batteryWarningLogged {
-                        logger.warning("\(name, privacy: .public): battery critically low")
-                        batteryWarningLogged = true
-                    }
-                case .unknown:
-                    break
-                }
-            case .battery(let pct, let chg):
-                onBattery?(pct, chg)
-            case .mouseButton(let mask):
-                onMouseButton?(mask)
-            case .wheel(let index, let delta):
-                onWheel?(index, delta)
-            case .touch(let contacts):
-                // Device-clock stamp for this frame, if the decoder recorded
-                // one (BT 361-byte container only). Indexed by how many touch
-                // frames have been appended so far — `decodeBTTouch` appends
-                // one stamp per emitted frame, in the same order.
-                let touchIndex = batchFrames.reduce(into: 0) {
-                    if case .touch = $1 { $0 += 1 }
-                }
-                if touchIndex < state.btTouchFrameStamps.count {
-                    touchFrameStamps[batchFrames.count] = state.btTouchFrameStamps[touchIndex]
-                }
-                batchFrames.append(.touch(contacts))
-            case .toolCompatibility(let message):
-                logger.info("\(name, privacy: .public): \(message, privacy: .public)")
-            case .remotePairing(let slots):
-                // Diagnostic only — nothing consumes the pairing table. The
-                // receiver repeats it roughly twice a second, so log only when
-                // it actually changes, per this project's no-log-spam rule.
-                let paired = slots.filter { $0.connected }
-                    .map { "\($0.index):\($0.serial)" }
-                    .joined(separator: ",")
-                if paired != lastRemotePairingSummary {
-                    lastRemotePairingSummary = paired
-                    logger.info("\(name, privacy: .public): paired remotes [\(paired.isEmpty ? "none" : paired, privacy: .public)]")
-                }
-            }
-        }
+        let (batchFrames, touchFrameStamps) = collectResults(
+            results, report: report, length: length, sender: sender, name: name,
+            wasInProximity: wasInProximity)
         // Contact-down state for this interface's *next* report, used only by
         // the discovery-capture gap classification. A report that decoded as
         // touch records whether any contact was present (an empty touch
@@ -1646,6 +1499,177 @@ final class WacomKnownDevice: TabletDevice {
                     self.reawaken()
                 }
             }
+        }
+    }
+
+    /// Acts on each decoded result. Pen and touch samples are returned in
+    /// decode order for `dispatchBatch`; everything else dispatches here.
+    private func collectResults(
+        _ results: [DecodeResult], report: UnsafePointer<UInt8>, length: CFIndex,
+        sender: IOHIDDevice?, name: String, wasInProximity: Bool
+    ) -> (frames: [BatchedFrame], touchStamps: [Int: UInt16]) {
+        // Pen and touch samples are collected, in decode order, rather than
+        // dispatched inline — a report that decoded to more than one
+        // combined (a Bluetooth batch: pen frames packed at [1..98], touch
+        // frames at [109..280] of the same 361-byte report — see
+        // BatchFramePacer.swift) is paced across the interval it actually
+        // spans instead of bursting through CGEventPost in a fraction of a
+        // millisecond. They must share one ordered queue, not two
+        // independent ones: `InputInjector.injectTouch`'s `penBusy` gate
+        // reads live pen-proximity state, so a touch frame delivered while
+        // an older, still-queued pen frame is waiting its turn would read
+        // stale proximity. Every other result kind dispatches immediately as
+        // before; a batch's toolEnter/aux/etc. entries always precede its
+        // pen/touch entries in `results` (see IntuosV2Decoder+BT), so
+        // deferring only those two doesn't reorder anything that depends on
+        // them.
+        var batchFrames: [BatchedFrame] = []
+        // Device-clock stamp per batch-frame index, for frames that carry one.
+        var touchFrameStamps: [Int: UInt16] = [:]
+        for result in results {
+            switch result {
+            case .none:
+                break
+            case .pen(let point):
+                // Wireless dongle: suppress pen events until RF link is confirmed active.
+                guard !isWireless || wirelessReady else { break }
+                if !wasInProximity { wirelessLastAcceptedPoint = nil }
+                if isWireless, let last = wirelessLastAcceptedPoint,
+                    point.maxX > 0, point.maxY > 0
+                {
+                    let dx = abs(point.x - last.x), dy = abs(point.y - last.y)
+                    let thresholdX = Double(point.maxX) * Self.wirelessOutlierFraction
+                    let thresholdY = Double(point.maxY) * Self.wirelessOutlierFraction
+                    let xOutlier = Double(dx) > thresholdX && dy < point.maxY / 20
+                    let yOutlier = Double(dy) > thresholdY && dx < point.maxX / 20
+                    if xOutlier || yOutlier {
+                        logger.warning("\(name, privacy: .public): candidate wireless coordinate outlier — last=(\(last.x, privacy: .public),\(last.y, privacy: .public)) new=(\(point.x, privacy: .public),\(point.y, privacy: .public)) maxX=\(point.maxX, privacy: .public) maxY=\(point.maxY, privacy: .public)")
+                    }
+                }
+                wirelessLastAcceptedPoint = point
+                batchFrames.append(.pen(point))
+            case .toolEnter(let identity):
+                guard !isWireless || wirelessReady else { break }
+                onToolEnter?(identity)
+            case .aux(let buttons):
+                handleAux(buttons, report: report, length: length, sender: sender, name: name)
+            case .wireless(let ws):
+                handleWirelessStatus(ws, name: name)
+            case .battery(let pct, let chg):
+                onBattery?(pct, chg)
+            case .mouseButton(let mask):
+                onMouseButton?(mask)
+            case .wheel(let index, let delta):
+                onWheel?(index, delta)
+            case .touch(let contacts):
+                // Device-clock stamp for this frame, if the decoder recorded
+                // one (BT 361-byte container only). Indexed by how many touch
+                // frames have been appended so far — `decodeBTTouch` appends
+                // one stamp per emitted frame, in the same order.
+                let touchIndex = batchFrames.reduce(into: 0) {
+                    if case .touch = $1 { $0 += 1 }
+                }
+                if touchIndex < state.btTouchFrameStamps.count {
+                    touchFrameStamps[batchFrames.count] = state.btTouchFrameStamps[touchIndex]
+                }
+                batchFrames.append(.touch(contacts))
+            case .toolCompatibility(let message):
+                logger.info("\(name, privacy: .public): \(message, privacy: .public)")
+            case .remotePairing(let slots):
+                // Diagnostic only — nothing consumes the pairing table. The
+                // receiver repeats it roughly twice a second, so log only when
+                // it actually changes, per this project's no-log-spam rule.
+                let paired = slots.filter { $0.connected }
+                    .map { "\($0.index):\($0.serial)" }
+                    .joined(separator: ",")
+                if paired != lastRemotePairingSummary {
+                    lastRemotePairingSummary = paired
+                    logger.info("\(name, privacy: .public): paired remotes [\(paired.isEmpty ? "none" : paired, privacy: .public)]")
+                }
+            }
+        }
+        return (batchFrames, touchFrameStamps)
+    }
+
+    private func handleAux(
+        _ buttons: AuxButtons, report: UnsafePointer<UInt8>, length: CFIndex,
+        sender: IOHIDDevice?, name: String
+    ) {
+        var buttons = buttons
+        // Diagnostic from the Xencelabs stuck-Command investigation
+        // (2026-07-05): which physical device/PID produced this aux
+        // frame and the raw bytes that decoded to it, so a phantom
+        // button-down can be traced back to its source instead of
+        // guessed at. Dropped to .debug (2026-07-14) — useful again
+        // for future Xencelabs aux work, but too noisy at .notice
+        // for routine use once the original investigation closed.
+        // OSLog builds these strings only when debug logging is on.
+        if deviceSpec.parser == .xencelabs {
+            let pid = deviceSpec.productID
+            let aux = buttons
+            logger.debug("""
+                \(name, privacy: .public) \
+                (0x\(String(pid, radix: 16, uppercase: true), privacy: .public)) \
+                usagePage=0x\(sender.map { String(hidIntProperty($0, kIOHIDPrimaryUsagePageKey), radix: 16) } ?? "?", privacy: .public): \
+                aux decode — bytes=[\((0..<length).map { String(format: "%02x", report[$0]) }.joined(separator: " "), privacy: .public)] \
+                mask=\((0..<16).map { aux[$0] ? "1" : "0" }.joined(), privacy: .public) \
+                mech=0x\(String(aux.mechanicalMask, radix: 16), privacy: .public)
+                """)
+        }
+        // The pen display's own 3 onboard bezel buttons ride the same
+        // aux frame format as the Quick Keys puck's express keys —
+        // this device has no puck of its own, so bits 0-2 are
+        // unambiguously the bezel buttons (confirmed 2026-07-14 via
+        // live capture: three clean one-hot taps, bits 0/1/2).
+        // Mirror them into the bezel-button slots (indices 16-18)
+        // that TabletManager/InputInjector already read for onboard
+        // bezel buttons, following the DTK-2400 precedent.
+        if deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay {
+            var raw = buttons.buttons
+            while raw.count < 19 { raw.append(false) }
+            raw[16] = buttons[0]
+            raw[17] = buttons[1]
+            raw[18] = buttons[2]
+            buttons.buttons = raw
+        }
+        onAux?(buttons)
+    }
+
+    private func handleWirelessStatus(_ ws: WirelessStatus, name: String) {
+        switch ws {
+        case .active:
+            // Only transition once per RF link session. Multiple .active reports
+            // are normal (dongle may send status reports frequently); don't resend
+            // feature init or reset state on every one, as that disrupts the link.
+            if !wirelessLinkConfirmed {
+                logger.info("\(name, privacy: .public): wireless link active")
+                // Reset decoder state so stale coordinates/tool identity from
+                // before link-up are not forwarded on the first live report.
+                state = DecoderState()
+                wirelessReady = true
+                wirelessLinkConfirmed = true
+                batteryWarningLogged = false
+                // Re-run init steps now that the RF link is confirmed.
+                // Must be dispatched to main thread — HID callbacks are background.
+                Task { @MainActor in
+                    self.executeInitSteps()
+                }
+            }
+        case .lost:
+            if wirelessLinkConfirmed {
+                logger.info("\(name, privacy: .public): wireless link lost")
+                wirelessLinkConfirmed = false
+            }
+            wirelessReady = false
+            batteryWarningLogged = false
+            state = DecoderState()
+        case .lowBattery:
+            if !batteryWarningLogged {
+                logger.warning("\(name, privacy: .public): battery critically low")
+                batteryWarningLogged = true
+            }
+        case .unknown:
+            break
         }
     }
 
