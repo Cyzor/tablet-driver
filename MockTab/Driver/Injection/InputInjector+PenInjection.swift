@@ -27,27 +27,7 @@ extension InputInjector {
         if snap.invertRotation && point.rotation != 0.0 {
             point.rotation = (360.0 - point.rotation).truncatingRemainder(dividingBy: 360.0)
         }
-        let rawPoint: CGPoint
-        if snap.relativeCursorMovement {
-            if point.inProximity {
-                rawPoint = displayMapper.resolveRelativePoint(
-                    point, snapshot: snap, currentCursorPosition: currentCursorPosition(),
-                    deviceProductID: deviceProductID)
-            } else {
-                // An out-of-range report's position is unreliable and would
-                // corrupt the relative anchor into a jump. Keep the cursor put.
-                rawPoint = currentCursorPosition()
-            }
-        } else if let absPoint = displayMapper.mapToScreen(
-            point, snapshot: snap, deviceProductID: deviceProductID)
-        {
-            // Points past the active area clamp to its edge. `nil` only means
-            // a degenerate area, not "pen out of range".
-            rawPoint = displayMapper.pinNearEdges(absPoint, snapshot: snap)
-        } else {
-            displayMapper.clearRelativeAnchor()
-            return
-        }
+        guard let rawPoint = resolveRawPoint(point, snap: snap) else { return }
         let rawPressure = InputInjector.curvedPressure(
             point.normalizedPressure, lut: tool.pressureLUT)
         // Mouse tools click with button1. Over USB the KC-100's left button
@@ -74,46 +54,7 @@ extension InputInjector {
             pressureSmoother.reset()
         }
 
-        // ── Xencelabs proximity-dropout debounce ────────────────────────────────
-        // A lone out-of-range report defers the exit; a report back in range
-        // before the timer fires cancels it. See proximityExitDebounceTimer.
-        if deviceVendorID == 0x28BD {
-            if point.inProximity {
-                if let timer = proximityExitDebounceTimer {
-                    CFRunLoopTimerInvalidate(timer)
-                    proximityExitDebounceTimer = nil
-                }
-            } else if lastProximity && proximityExitDebounceTimer == nil {
-                // A held button gets the long safety-net delay instead.
-                let anyButtonHeld =
-                    lastTipDown || lastButton1Down || lastButton2Down || lastButton3Down
-                    || lastMiddleDown || usbMouseLeftHeld || lastUSBMouseMask != 0
-                let delay = anyButtonHeld
-                    ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
-                if anyButtonHeld {
-                    // Cancel any pending barrel-button release so it can't fire
-                    // during this longer wait; the exit alone decides now.
-                    button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
-                    button1UpDebounceTimer = nil
-                    button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
-                    button2UpDebounceTimer = nil
-                    button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
-                    button3UpDebounceTimer = nil
-                }
-                let timer = CFRunLoopTimerCreateWithHandler(
-                    kCFAllocatorDefault,
-                    CFAbsoluteTimeGetCurrent() + delay,
-                    0, 0, 0
-                ) { [weak self] _ in
-                    guard let self else { return }
-                    self.proximityExitDebounceTimer = nil
-                    self.commitProximityExit(snap: snap)
-                }
-                CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
-                proximityExitDebounceTimer = timer
-                return
-            }
-        }
+        if deferXencelabsProximityExit(point: point, snap: snap) { return }
 
         let enteringProximity = point.inProximity && !lastProximity
         let eraserFlipped = point.inProximity && lastProximity && (point.eraser != lastEraserMode)
@@ -409,6 +350,79 @@ extension InputInjector {
         if point.mouseWheelDelta != 0 {
             postScrollWheelEvent(delta: point.mouseWheelDelta, at: screenPoint)
         }
+    }
+
+    /// Maps the pen to the screen, or returns nil (after clearing the
+    /// relative anchor) when the active area is degenerate.
+    private func resolveRawPoint(_ point: TabletPoint, snap: InjectionSnapshot) -> CGPoint? {
+        let rawPoint: CGPoint
+        if snap.relativeCursorMovement {
+            if point.inProximity {
+                rawPoint = displayMapper.resolveRelativePoint(
+                    point, snapshot: snap, currentCursorPosition: currentCursorPosition(),
+                    deviceProductID: deviceProductID)
+            } else {
+                // An out-of-range report's position is unreliable and would
+                // corrupt the relative anchor into a jump. Keep the cursor put.
+                rawPoint = currentCursorPosition()
+            }
+        } else if let absPoint = displayMapper.mapToScreen(
+            point, snapshot: snap, deviceProductID: deviceProductID)
+        {
+            // Points past the active area clamp to its edge. `nil` only means
+            // a degenerate area, not "pen out of range".
+            rawPoint = displayMapper.pinNearEdges(absPoint, snapshot: snap)
+        } else {
+            displayMapper.clearRelativeAnchor()
+            return nil
+        }
+        return rawPoint
+    }
+
+    /// Xencelabs pens drop out of range for single reports. Returns true when
+    /// this report's exit was deferred and `inject` should stop here.
+    private func deferXencelabsProximityExit(point: TabletPoint, snap: InjectionSnapshot) -> Bool {
+        // ── Xencelabs proximity-dropout debounce ────────────────────────────────
+        // A lone out-of-range report defers the exit; a report back in range
+        // before the timer fires cancels it. See proximityExitDebounceTimer.
+        if deviceVendorID == 0x28BD {
+            if point.inProximity {
+                if let timer = proximityExitDebounceTimer {
+                    CFRunLoopTimerInvalidate(timer)
+                    proximityExitDebounceTimer = nil
+                }
+            } else if lastProximity && proximityExitDebounceTimer == nil {
+                // A held button gets the long safety-net delay instead.
+                let anyButtonHeld =
+                    lastTipDown || lastButton1Down || lastButton2Down || lastButton3Down
+                    || lastMiddleDown || usbMouseLeftHeld || lastUSBMouseMask != 0
+                let delay = anyButtonHeld
+                    ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
+                if anyButtonHeld {
+                    // Cancel any pending barrel-button release so it can't fire
+                    // during this longer wait; the exit alone decides now.
+                    button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button1UpDebounceTimer = nil
+                    button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button2UpDebounceTimer = nil
+                    button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button3UpDebounceTimer = nil
+                }
+                let timer = CFRunLoopTimerCreateWithHandler(
+                    kCFAllocatorDefault,
+                    CFAbsoluteTimeGetCurrent() + delay,
+                    0, 0, 0
+                ) { [weak self] _ in
+                    guard let self else { return }
+                    self.proximityExitDebounceTimer = nil
+                    self.commitProximityExit(snap: snap)
+                }
+                CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+                proximityExitDebounceTimer = timer
+                return true
+            }
+        }
+        return false
     }
 
     /// The current report is stale backlog (see `staleReportThresholdMs`), so
