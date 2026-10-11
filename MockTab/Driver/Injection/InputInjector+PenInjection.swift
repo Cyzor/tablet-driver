@@ -300,92 +300,103 @@ extension InputInjector {
             hasPostedPoint = true
 
         } else {
-            // ── Continuous movement: delta gate ────────────────────────────────
-            // Pressure and twist count as movement, so a still pen still
-            // updates apps (airbrush buildup; Rebelle and Krita orient the
-            // brush while hovering).
-            let rotated =
-                rotationDelta(pose.rotation, lastPostedRotation) > Self.rotationEpsilon
+            postContinuousMovement(
+                tipDown: tipDown, at: screenPoint, pressure: pressure, point: point, pose: pose,
+                snap: snap)
+        }
+    }
 
-            let moved =
-                !hasPostedPoint
-                || (screenPoint.x - lastPostedPoint.x).magnitude > Self.positionEpsilon
-                || (screenPoint.y - lastPostedPoint.y).magnitude > Self.positionEpsilon
-                || rotated
-                || (tipDown
-                    && (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon)
+    /// Hover and drag motion, posted when position, pressure, or twist moved
+    /// past their thresholds.
+    private func postContinuousMovement(
+        tipDown: Bool, at screenPoint: CGPoint, pressure: Double, point: TabletPoint,
+        pose: (tiltX: Double, tiltY: Double, rotation: Double), snap: InjectionSnapshot
+    ) {
+        // ── Continuous movement: delta gate ────────────────────────────────
+        // Pressure and twist count as movement, so a still pen still
+        // updates apps (airbrush buildup; Rebelle and Krita orient the
+        // brush while hovering).
+        let rotated =
+            rotationDelta(pose.rotation, lastPostedRotation) > Self.rotationEpsilon
 
-            // A KC-100's USB left button already posted its own mouseDown.
-            let dragging = (tipDown && !tipClickSwallowed) || (activeToolIsMouse && usbMouseLeftHeld)
+        let moved =
+            !hasPostedPoint
+            || (screenPoint.x - lastPostedPoint.x).magnitude > Self.positionEpsilon
+            || (screenPoint.y - lastPostedPoint.y).magnitude > Self.positionEpsilon
+            || rotated
+            || (tipDown
+                && (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon)
 
-            // Backlogged hover reports are dropped from both post streams.
-            // Never while dragging: stroke data stays intact.
-            let isStale = !dragging && isStaleHoverMove()
+        // A KC-100's USB left button already posted its own mouseDown.
+        let dragging = (tipDown && !tipClickSwallowed) || (activeToolIsMouse && usbMouseLeftHeld)
 
-            if moved {
-                // Track velocity for tip-up assist.
-                if hasPostedPoint {
-                    let delta = hypot(
-                        screenPoint.x - lastPostedPoint.x,
-                        screenPoint.y - lastPostedPoint.y)
-                    smoother.recordMoveDelta(delta)
-                }
-                if !activeToolIsMouse && activeAppNeedsTabletPointerEvents && !isStale {
-                    postTabletPointerEvent(
-                        at: screenPoint, pressure: pressure, point: point, pose: pose,
-                        snapshot: snap)
-                }
-                // Drag threshold: no drag until the pen travels dragThreshold
-                // from touchdown, so a shaky tap stays a click.
-                let withinDragThreshold =
-                    tipDown && !didEmitDragSinceDown
-                    && snap.dragThreshold > 0
-                    && hypot(screenPoint.x - tipDownOrigin.x, screenPoint.y - tipDownOrigin.y)
-                        < snap.dragThreshold
+        // Backlogged hover reports are dropped from both post streams.
+        // Never while dragging: stroke data stays intact.
+        let isStale = !dragging && isStaleHoverMove()
 
-                if dragging {
-                    if !withinDragThreshold {
-                        postMouseDrag(
-                            button: activeButton, at: screenPoint, pressure: pressure, point: point,
-                            pose: pose, snapshot: snap)
-                        didEmitDragSinceDown = true
-                    }
-                } else if panScroll.isActive {
-                    // Panning: motion became scrolling above; the cursor stays put.
-                } else if let dragBtn = hoverDragButton {
-                    // A button binding (or Click Lock) holds a mouse button while
-                    // hovering; send drags, as SketchUp expects.
-                    postMouseDrag(
-                        button: dragBtn, at: screenPoint, pressure: 0, point: point,
-                        pose: pose, snapshot: snap)
-                } else if isStale {
-                    // Backlog: skip the post, so the cursor jumps once when live
-                    // data resumes instead of replaying history. Logged because it
-                    // freezes the cursor with nothing else to show for it.
-                    staleHoverSuppressCount += 1
-                    let now = Date()
-                    if now.timeIntervalSince(lastStaleHoverLogAt) > 1.0 {
-                        injectLog.info(
-                            "hover move suppressed as stale backlog (\(self.staleHoverSuppressCount) in a row)"
-                        )
-                        lastStaleHoverLogAt = now
-                    }
-                } else {
-                    if staleHoverSuppressCount > 0 {
-                        injectLog.info(
-                            "hover resumed after \(self.staleHoverSuppressCount) suppressed stale report(s)"
-                        )
-                        staleHoverSuppressCount = 0
-                    }
-                    postMouseMoved(
-                        at: screenPoint, point: point, pose: pose,
-                        snapshot: snap)
-                }
-                lastPostedPoint = screenPoint
-                lastPostedPressure = pressure
-                lastPostedRotation = pose.rotation
-                hasPostedPoint = true
+        if moved {
+            // Track velocity for tip-up assist.
+            if hasPostedPoint {
+                let delta = hypot(
+                    screenPoint.x - lastPostedPoint.x,
+                    screenPoint.y - lastPostedPoint.y)
+                smoother.recordMoveDelta(delta)
             }
+            if !activeToolIsMouse && activeAppNeedsTabletPointerEvents && !isStale {
+                postTabletPointerEvent(
+                    at: screenPoint, pressure: pressure, point: point, pose: pose,
+                    snapshot: snap)
+            }
+            // Drag threshold: no drag until the pen travels dragThreshold
+            // from touchdown, so a shaky tap stays a click.
+            let withinDragThreshold =
+                tipDown && !didEmitDragSinceDown
+                && snap.dragThreshold > 0
+                && hypot(screenPoint.x - tipDownOrigin.x, screenPoint.y - tipDownOrigin.y)
+                    < snap.dragThreshold
+
+            if dragging {
+                if !withinDragThreshold {
+                    postMouseDrag(
+                        button: activeButton, at: screenPoint, pressure: pressure, point: point,
+                        pose: pose, snapshot: snap)
+                    didEmitDragSinceDown = true
+                }
+            } else if panScroll.isActive {
+                // Panning: motion became scrolling above; the cursor stays put.
+            } else if let dragBtn = hoverDragButton {
+                // A button binding (or Click Lock) holds a mouse button while
+                // hovering; send drags, as SketchUp expects.
+                postMouseDrag(
+                    button: dragBtn, at: screenPoint, pressure: 0, point: point,
+                    pose: pose, snapshot: snap)
+            } else if isStale {
+                // Backlog: skip the post, so the cursor jumps once when live
+                // data resumes instead of replaying history. Logged because it
+                // freezes the cursor with nothing else to show for it.
+                staleHoverSuppressCount += 1
+                let now = Date()
+                if now.timeIntervalSince(lastStaleHoverLogAt) > 1.0 {
+                    injectLog.info(
+                        "hover move suppressed as stale backlog (\(self.staleHoverSuppressCount) in a row)"
+                    )
+                    lastStaleHoverLogAt = now
+                }
+            } else {
+                if staleHoverSuppressCount > 0 {
+                    injectLog.info(
+                        "hover resumed after \(self.staleHoverSuppressCount) suppressed stale report(s)"
+                    )
+                    staleHoverSuppressCount = 0
+                }
+                postMouseMoved(
+                    at: screenPoint, point: point, pose: pose,
+                    snapshot: snap)
+            }
+            lastPostedPoint = screenPoint
+            lastPostedPressure = pressure
+            lastPostedRotation = pose.rotation
+            hasPostedPoint = true
         }
     }
 
