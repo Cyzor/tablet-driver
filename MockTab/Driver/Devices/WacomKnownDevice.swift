@@ -1193,102 +1193,8 @@ final class WacomKnownDevice: TabletDevice {
         noteXencelabsRelay(report, length: length, name: name)
         let (wasInProximity, synthesizeIntuosV3ToolEnter) = advanceToolAnnounceGrace()
 
-        let hidReport = HIDReport(pointer: report, count: length)
-        let results: [DecodeResult]
-        if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
-            // Checked before `touchDecoders` below: the two dictionaries'
-            // report-ID spaces don't overlap for any product this applies
-            // to today, but a fixed, hand-specified layout should win over a
-            // generically-derived one if that were ever to change.
-            results = fixedTouchDecoder.decode(
-                report: hidReport, spec: spec, state: &state,
-                deviceFamily: deviceSpec.family)
-            fixedTouchDecoders[report[0]] = fixedTouchDecoder
-        } else if length > 0, let touchDecoder = touchDecoders[report[0]] {
-            results = touchDecoder.decode(report: hidReport).map { [.touch($0.contacts)] } ?? []
-        } else {
-            var decoded = decoder.decode(
-                report: hidReport, spec: spec, state: &state,
-                deviceFamily: deviceSpec.family)
-            let realToolEnter: ToolIdentity? = decoded.compactMap {
-                if case .toolEnter(let identity) = $0 { return identity } else { return nil }
-            }.first
-            if let realToolEnter {
-                lastRealToolAnnouncementAt = Date()
-                lastRealToolIdentity = realToolEnter
-            }
-            let decoderEmittedRealToolEnter = realToolEnter != nil
-            let decodedPoint: TabletPoint? = decoded.compactMap {
-                if case .pen(let point) = $0 { return point } else { return nil }
-            }.first
-            // Rotation-as-ground-truth: barrel rotation decodes on every
-            // BLE/USB frame regardless of tool identity, and a non-rotating
-            // pen sits at a fixed ~180° neutral. If the current identity
-            // isn't Art Pen but the barrel is genuinely twisted, correct it
-            // — no announcement needed. One-directional (neutral doesn't
-            // prove non-Art-Pen; a still Art Pen also reads neutral), and
-            // takes priority over the generic-synthesis fallback below since
-            // both read the same point and must not double-insert.
-            //
-            // `hasValidRotationFrame` is required, not decoration: a pen with
-            // no barrel sensor never sets it, and the decoder reports 0.0
-            // until it does — which is 180° off neutral and read here as a
-            // hard twist. That mislabelled every Pro Pen 3 on this transport
-            // as an Art Pen one frame after its real announcement.
-            let rotationImpliesArtPen =
-                deviceSpec.parser == .intuosV3 && isBluetooth
-                && state.currentToolCode != 0x0804 && state.currentToolCode != 0x1108
-                && (decodedPoint?.inProximity ?? false)
-                && state.hasValidRotationFrame
-                && abs((decodedPoint?.rotation ?? 180.0) - 180.0) > 2.0
-            if rotationImpliesArtPen {
-                // currentToolCode only — never lastToolCode/lastSerial.
-                // Those are decodeBLEReport's own change-detection latch;
-                // writing into them here made a later real Art Pen
-                // announcement compare equal and get silently swallowed,
-                // sticking the tool at "No tool" until relaunch/reconnect.
-                state.currentToolCode = 0x0804
-                decoded.insert(
-                    .toolEnter(ToolIdentity(serial: 0, toolCode: 0x0804, isEraser: false, isMouse: false)),
-                    at: 0)
-            } else if synthesizeIntuosV3ToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
-                let point = decodedPoint
-            {
-                // Fall back to the last confirmed identity rather than a
-                // generic placeholder (eraser end must still match) — most
-                // sessions use one pen, so a missed announcement usually
-                // means it came back, not that a different one arrived. See
-                // [[project_ptk870_bt_tool_identity_lost_on_pen_swap]].
-                let code: UInt16 = point.eraser ? 0x0008 : 0x0000
-                let fallbackIdentity: ToolIdentity
-                if let cached = lastRealToolIdentity, cached.isEraser == point.eraser {
-                    fallbackIdentity = cached
-                } else {
-                    fallbackIdentity = ToolIdentity(
-                        serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)
-                }
-                decoded.insert(.toolEnter(fallbackIdentity), at: 0)
-                // Drought recovery: the real announcement can stop arriving
-                // entirely after enough proximity cycling. Re-send DATAMODE
-                // (the same write open() uses) once this long since the last
-                // real one, debounced separately so a still-stuck session
-                // doesn't get it repeated every frame.
-                let now = Date()
-                if now.timeIntervalSince(lastRealToolAnnouncementAt) > Self.toolAnnouncementDroughtTimeout,
-                    now.timeIntervalSince(lastAnnouncementRecoveryAttemptAt)
-                        > Self.toolAnnouncementRecoveryCooldown
-                {
-                    lastAnnouncementRecoveryAttemptAt = now
-                    let name = deviceSpec.name
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self else { return }
-                        logger.info("\(name, privacy: .public): no real BLE tool announcement in over \(Self.toolAnnouncementDroughtTimeout, privacy: .public)s — re-sending DATAMODE to recover")
-                        self.reawaken()
-                    }
-                }
-            }
-            results = decoded
-        }
+        let results = decodeReport(
+            report, length: length, synthesizeIntuosV3ToolEnter: synthesizeIntuosV3ToolEnter)
         // Suffix the capture tag by interface when more than one is
         // registered — otherwise two interfaces' independent report streams
         // land under one tag and read as duplicates. Matches
@@ -1626,6 +1532,121 @@ final class WacomKnownDevice: TabletDevice {
             deviceSpec.parser == .intuosV3 && isBluetooth
             && state.framesSinceProximityEnter == Self.toolAnnounceGraceFrames
         return (wasInProximity, synthesizeIntuosV3ToolEnter)
+    }
+
+    /// Decodes one report with the touch decoder for its report ID, or the
+    /// main decoder plus its IntuosV3 Bluetooth identity fix-ups.
+    private func decodeReport(
+        _ report: UnsafePointer<UInt8>, length: CFIndex, synthesizeIntuosV3ToolEnter: Bool
+    ) -> [DecodeResult] {
+        let hidReport = HIDReport(pointer: report, count: length)
+        let results: [DecodeResult]
+        if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
+            // Checked before `touchDecoders` below: the two dictionaries'
+            // report-ID spaces don't overlap for any product this applies
+            // to today, but a fixed, hand-specified layout should win over a
+            // generically-derived one if that were ever to change.
+            results = fixedTouchDecoder.decode(
+                report: hidReport, spec: spec, state: &state,
+                deviceFamily: deviceSpec.family)
+            fixedTouchDecoders[report[0]] = fixedTouchDecoder
+        } else if length > 0, let touchDecoder = touchDecoders[report[0]] {
+            results = touchDecoder.decode(report: hidReport).map { [.touch($0.contacts)] } ?? []
+        } else {
+            var decoded = decoder.decode(
+                report: hidReport, spec: spec, state: &state,
+                deviceFamily: deviceSpec.family)
+            let realToolEnter: ToolIdentity? = decoded.compactMap {
+                if case .toolEnter(let identity) = $0 { return identity } else { return nil }
+            }.first
+            if let realToolEnter {
+                lastRealToolAnnouncementAt = Date()
+                lastRealToolIdentity = realToolEnter
+            }
+            let decoderEmittedRealToolEnter = realToolEnter != nil
+            let decodedPoint: TabletPoint? = decoded.compactMap {
+                if case .pen(let point) = $0 { return point } else { return nil }
+            }.first
+            fixIntuosV3BluetoothIdentity(
+                &decoded, synthesizeIntuosV3ToolEnter: synthesizeIntuosV3ToolEnter,
+                decoderEmittedRealToolEnter: decoderEmittedRealToolEnter, decodedPoint: decodedPoint)
+            results = decoded
+        }
+        return results
+    }
+
+    /// Corrects or supplies the pen's identity on IntuosV3 Bluetooth, where
+    /// the announcement frame can arrive late or not at all.
+    private func fixIntuosV3BluetoothIdentity(
+        _ decoded: inout [DecodeResult], synthesizeIntuosV3ToolEnter: Bool,
+        decoderEmittedRealToolEnter: Bool, decodedPoint: TabletPoint?
+    ) {
+        // Rotation-as-ground-truth: barrel rotation decodes on every
+        // BLE/USB frame regardless of tool identity, and a non-rotating
+        // pen sits at a fixed ~180° neutral. If the current identity
+        // isn't Art Pen but the barrel is genuinely twisted, correct it
+        // — no announcement needed. One-directional (neutral doesn't
+        // prove non-Art-Pen; a still Art Pen also reads neutral), and
+        // takes priority over the generic-synthesis fallback below since
+        // both read the same point and must not double-insert.
+        //
+        // `hasValidRotationFrame` is required, not decoration: a pen with
+        // no barrel sensor never sets it, and the decoder reports 0.0
+        // until it does — which is 180° off neutral and read here as a
+        // hard twist. That mislabelled every Pro Pen 3 on this transport
+        // as an Art Pen one frame after its real announcement.
+        let rotationImpliesArtPen =
+            deviceSpec.parser == .intuosV3 && isBluetooth
+            && state.currentToolCode != 0x0804 && state.currentToolCode != 0x1108
+            && (decodedPoint?.inProximity ?? false)
+            && state.hasValidRotationFrame
+            && abs((decodedPoint?.rotation ?? 180.0) - 180.0) > 2.0
+        if rotationImpliesArtPen {
+            // currentToolCode only — never lastToolCode/lastSerial.
+            // Those are decodeBLEReport's own change-detection latch;
+            // writing into them here made a later real Art Pen
+            // announcement compare equal and get silently swallowed,
+            // sticking the tool at "No tool" until relaunch/reconnect.
+            state.currentToolCode = 0x0804
+            decoded.insert(
+                .toolEnter(ToolIdentity(serial: 0, toolCode: 0x0804, isEraser: false, isMouse: false)),
+                at: 0)
+        } else if synthesizeIntuosV3ToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
+            let point = decodedPoint
+        {
+            // Fall back to the last confirmed identity rather than a
+            // generic placeholder (eraser end must still match) — most
+            // sessions use one pen, so a missed announcement usually
+            // means it came back, not that a different one arrived. See
+            // [[project_ptk870_bt_tool_identity_lost_on_pen_swap]].
+            let code: UInt16 = point.eraser ? 0x0008 : 0x0000
+            let fallbackIdentity: ToolIdentity
+            if let cached = lastRealToolIdentity, cached.isEraser == point.eraser {
+                fallbackIdentity = cached
+            } else {
+                fallbackIdentity = ToolIdentity(
+                    serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)
+            }
+            decoded.insert(.toolEnter(fallbackIdentity), at: 0)
+            // Drought recovery: the real announcement can stop arriving
+            // entirely after enough proximity cycling. Re-send DATAMODE
+            // (the same write open() uses) once this long since the last
+            // real one, debounced separately so a still-stuck session
+            // doesn't get it repeated every frame.
+            let now = Date()
+            if now.timeIntervalSince(lastRealToolAnnouncementAt) > Self.toolAnnouncementDroughtTimeout,
+                now.timeIntervalSince(lastAnnouncementRecoveryAttemptAt)
+                    > Self.toolAnnouncementRecoveryCooldown
+            {
+                lastAnnouncementRecoveryAttemptAt = now
+                let name = deviceSpec.name
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    logger.info("\(name, privacy: .public): no real BLE tool announcement in over \(Self.toolAnnouncementDroughtTimeout, privacy: .public)s — re-sending DATAMODE to recover")
+                    self.reawaken()
+                }
+            }
+        }
     }
 
     /// Delivers this report's decoded pen/touch samples to `onTablet`/
