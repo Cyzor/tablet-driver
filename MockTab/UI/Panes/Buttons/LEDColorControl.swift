@@ -104,7 +104,7 @@ extension LEDSwatch {
 /// is the brightness (premultiplied into the RGB on the way to the device),
 /// and the RGB bytes are wire values for swatches or raw sRGB for custom
 /// picks. Undo is coalesced internally — callers pass a plain binding.
-struct LEDColorControl: View, Equatable {
+struct LEDColorControl: View, @MainActor Equatable {
     enum Style { case inline, well }
 
     /// Equatable over the displayed values so `.equatable()` call sites skip

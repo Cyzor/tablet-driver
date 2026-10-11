@@ -8,7 +8,7 @@ import SwiftUI
 /// indicator, a label, and the shortcut-recorder control. Used by every
 /// pane section that lists assignable buttons (pen buttons, express keys,
 /// bezel buttons, Quick Keys) so they stay visually identical.
-@ViewBuilder
+@MainActor @ViewBuilder
 func buttonRow(
     _ label: String, isActive: Bool,
     binding: Binding<ButtonBinding>,

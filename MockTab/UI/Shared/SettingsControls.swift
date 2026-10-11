@@ -21,7 +21,7 @@ extension TabletSettings {
     /// For bindings that mutate a `ToolSettings`, pass `toolOwned: true`
     /// so `objectWillChange` propagates — tool mutations don't reach
     /// `settings.objectWillChange` automatically.
-    func recordingBinding<T>(
+    func recordingBinding<T: Sendable>(
         _ name: String,
         toolOwned: Bool = false,
         get: @escaping @MainActor @Sendable () -> T,
@@ -40,7 +40,7 @@ extension TabletSettings {
 
     /// Equatable overload — skips the write and the undo registration when
     /// the value didn't change (sliders and pickers re-set freely).
-    func recordingBinding<T: Equatable>(
+    func recordingBinding<T: Equatable & Sendable>(
         _ name: String,
         toolOwned: Bool = false,
         get: @escaping @MainActor @Sendable () -> T,
@@ -343,12 +343,11 @@ struct RowActionsMenu<Content: View>: View {
 func hideAutoFillPanelDuringRename() {
     let deadline = Date().addingTimeInterval(1.0)
     Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { timer in
-        let panels = NSApp.windows.filter { String(describing: type(of: $0)) == "SPRoundedWindow" }
-        if Date() > deadline {
-            timer.invalidate()
-            panels.forEach { $0.alphaValue = 1 }
-        } else {
-            panels.forEach { $0.alphaValue = 0 }
+        let expired = Date() > deadline
+        if expired { timer.invalidate() }
+        MainActor.assumeIsolated {  // scheduled on the main run loop
+            let panels = NSApp.windows.filter { String(describing: type(of: $0)) == "SPRoundedWindow" }
+            panels.forEach { $0.alphaValue = expired ? 1 : 0 }
         }
     }
 }

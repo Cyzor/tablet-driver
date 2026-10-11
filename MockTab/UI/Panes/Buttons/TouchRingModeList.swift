@@ -32,7 +32,7 @@ final class RingMenuAction: NSObject {
 /// Stateless `@objc` relay for the diagram's right-click menu items: each
 /// item carries its own action as a `RingMenuAction` in `representedObject`,
 /// so one shared target can dispatch every item across every menu instance.
-final class RingMenuTarget: NSObject {
+final class RingMenuTarget: NSObject, @unchecked Sendable {  // stateless
     static let shared = RingMenuTarget()
 
     @objc func selectAction(_ sender: NSMenuItem) {
@@ -205,7 +205,7 @@ struct TouchRingModeListView: View {
 /// closures are deliberately ignored in `==`: they're recreated identical
 /// on every parent body evaluation but always capture the same stable
 /// settings object.
-private struct TouchRingModeListCore: View, Equatable {
+private struct TouchRingModeListCore: View, @MainActor Equatable {
     let slots: [ControlSlot]
     let shownSlotCount: Int
     let ringSlotCount: Int

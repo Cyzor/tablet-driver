@@ -13,7 +13,7 @@ import UniformTypeIdentifiers
 // MARK: - Scroll-tracking preference key
 
 struct ChipContentWidthKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+    static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
     }
@@ -33,7 +33,7 @@ let chipDragType = NSPasteboard.PasteboardType("com.mocktab.app-override-chip")
 /// against these current frames; never a snapshot frozen at drag-start,
 /// which goes stale as soon as the gap indicator shifts chips.
 struct ChipFramesKey: PreferenceKey {
-    static var defaultValue: [String: CGRect] = [:]
+    static let defaultValue: [String: CGRect] = [:]
     static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
         value.merge(nextValue()) { _, new in new }
     }
@@ -50,7 +50,7 @@ enum ChipRowCoordinateSpace {
 /// overlay spans the full scroll-view width while the frames are relative to
 /// the chip HStack, so the two origins differ.
 struct ChipDropZoneOffsetKey: PreferenceKey {
-    static var defaultValue: CGPoint = .zero
+    static let defaultValue: CGPoint = .zero
     static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {
         value = nextValue()
     }

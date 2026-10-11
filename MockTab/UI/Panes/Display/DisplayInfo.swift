@@ -103,7 +103,7 @@ struct DisplayInfo {
 
     /// Keyed by desktop-image URL so re-running `all()` skips decoding
     /// thumbnails for displays whose wallpaper hasn't changed.
-    private static var thumbnailCache: [URL: NSImage] = [:]
+    nonisolated(unsafe) private static var thumbnailCache: [URL: NSImage] = [:]  // main-only
 
     private static func cachedThumbnail(from url: URL, maxEdge: CGFloat) -> NSImage? {
         if let cached = thumbnailCache[url] { return cached }

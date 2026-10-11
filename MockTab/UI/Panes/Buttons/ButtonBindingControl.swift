@@ -10,7 +10,7 @@ import SwiftUI
 /// • ESC cancels; Delete alone clears the binding.
 /// • Use the ▾ menu to assign click actions instead of a key combo.
 /// • The ✕ button clears any existing assignment.
-struct ButtonBindingControl: View, Equatable {
+struct ButtonBindingControl: View, @MainActor Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4

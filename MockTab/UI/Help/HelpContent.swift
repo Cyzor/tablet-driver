@@ -15,7 +15,7 @@ import Foundation
 /// the file from disk — useful during development with a running app.
 final class HelpContent {
 
-    static let shared = HelpContent()
+    nonisolated(unsafe) static let shared = HelpContent()  // main-only
 
     private var sections: [String: String] = [:]
 

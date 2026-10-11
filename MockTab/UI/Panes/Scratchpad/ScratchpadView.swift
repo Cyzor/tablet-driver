@@ -364,7 +364,7 @@ private struct TiltDisc: View, Equatable {
 /// Top-down rectangle showing normalised finger-contact positions as numbered
 /// dots. The tablet's touch surface maps to the full canvas area.
 /// Contacts fade out over ~0.3 s after they lift (lift = empty contacts array).
-private struct TouchContactsCanvas: View, Equatable {
+private struct TouchContactsCanvas: View, @MainActor Equatable {
     let contacts: [TouchContact]
     let maxContacts: Int
 
