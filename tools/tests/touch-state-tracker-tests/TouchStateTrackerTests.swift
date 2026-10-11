@@ -1919,6 +1919,9 @@ enum TouchStateTrackerTestRunner {
         testThreeFingerDragOffWithoutSetting()
         testAbsoluteDragPressesUnderFinger()
 
+        checks += 1
+        if !runGoldens(directory: CommandLine.arguments[1]) { failures += 1 }
+
         if failures == 0 {
             print("ok — \(checks) checks passed")
             exit(0)
