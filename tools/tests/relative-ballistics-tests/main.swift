@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// main.swift — Checks that relative mode is calm at rest and slow speeds and
-// still crosses the screen on a quick sweep. Real stationary captures under
-// Notes/ are used when present (they stay local); synthetic cases always run.
+// main.swift — Replays real stationary captures through relative mode, when
+// MOCKTAB_STATIONARY_CAPTURES names some (they stay local). The synthetic
+// checks live in MockTabTests/RelativeBallisticsTests.swift.
 
 import Foundation
 
@@ -56,67 +56,6 @@ func drive(_ samples: [(t: Double, x: Double, y: Double)], fixedGain: Double? = 
     return run
 }
 
-private func gaussian(_ sigma: Double, _ g: inout SystemRandomNumberGenerator) -> Double {
-    let u1 = Double.random(in: Double.ulpOfOne..<1, using: &g)
-    let u2 = Double.random(in: 0..<1, using: &g)
-    return sigma * (-2 * log(u1)).squareRoot() * cos(2 * .pi * u2)
-}
-
-var rng = SystemRandomNumberGenerator()
-let rate = 200.0
-
-// MARK: - Synthetic
-
-// Sensor noise at rest: 15 µm σ, 5 s. Must not move the cursor at all.
-let still = (0..<Int(5 * rate)).map { i in
-    (t: Double(i) / rate, x: gaussian(0.015, &rng), y: gaussian(0.015, &rng))
-}
-let stillRun = drive(still)
-expect(stillRun.flickers == 0, "sensor noise at rest moves the cursor (\(stillRun.flickers) flickers)")
-
-// Hand tremor: 0.3 mm at 8 Hz plus noise. About what absolute mode shows.
-let tremor = (0..<Int(3 * rate)).map { i -> (t: Double, x: Double, y: Double) in
-    let t = Double(i) / rate
-    return (t, 0.3 * sin(2 * .pi * 8 * t) + gaussian(0.015, &rng), gaussian(0.015, &rng))
-}
-let tremorRun = drive(tremor)
-let tremorSpan = tremorRun.maxX - tremorRun.minX
-expect(tremorSpan <= 0.6 * absolutePointsPerMM * 1.2, "tremor wobble \(tremorSpan) pt exceeds absolute mode's")
-
-// A quick full-width sweep, 300 mm in 1 s, still crosses a 1512 pt screen.
-let flick = (0...Int(1.0 * rate)).map { i -> (t: Double, x: Double, y: Double) in
-    let t = Double(i) / rate
-    return (t, 300 * t * t * (3 - 2 * t), 0)
-}
-let flickRun = drive(flick)
-expect(flickRun.maxX >= 1512, "full-width sweep covers only \(Int(flickRun.maxX)) pt")
-
-// Slow, deliberate positioning: 5 mm at 10 mm/s moves a small, steady amount.
-let slow = (0...Int(0.5 * rate)).map { i in (t: Double(i) / rate, x: Double(i) / rate * 10, y: 0.0) }
-let slowRun = drive(slow)
-expect((8...16).contains(slowRun.maxX), "5 mm slow move gives \(slowRun.maxX) pt")
-
-// Leaving rest doesn't jump: first nonzero output is sub-point.
-var jb = RelativeBallistics()
-var firstMove = 0.0
-for i in 1...100 where firstMove == 0 {
-    let d = jb.cursorDelta(dxMM: 0.01, dyMM: 0, dxPoints: 0.048, dyPoints: 0, dt: 1 / rate)
-    firstMove = d.dx
-    _ = i
-}
-expect(firstMove > 0 && firstMove < 1, "leaving rest jumps \(firstMove) pt")
-
-// Gain curve endpoints.
-expect(RelativeBallistics.acceleration(forSpeed: 0) == 1, "slow motion moves as absolute mode does")
-expect(RelativeBallistics.acceleration(forSpeed: 1000) == RelativeBallistics.accelFast, "full acceleration")
-
-// Proportions carry through: a squashed mapping's per-axis points pass
-// through unchanged at slow speed.
-var pb = RelativeBallistics()
-_ = pb.cursorDelta(dxMM: 0.2, dyMM: 0.2, dxPoints: 2, dyPoints: 1, dt: 0.005)
-let prop = pb.cursorDelta(dxMM: 0.02, dyMM: 0.02, dxPoints: 0.2, dyPoints: 0.1, dt: 0.005)
-expect(abs(prop.dx / prop.dy - 2) < 1e-9, "x:y proportion is kept")
-
 // MARK: - Real stationary captures (optional)
 
 // Set MOCKTAB_STATIONARY_CAPTURES to a colon-separated list of capture logs
@@ -167,6 +106,10 @@ for path in stationaryCaptures {
     }
 }
 
+if stationaryCaptures.isEmpty {
+    print("relative-ballistics-tests: no MOCKTAB_STATIONARY_CAPTURES set, skipped")
+    exit(0)
+}
 if failures == 0 {
     print("relative-ballistics-tests: \(checks) checks passed")
     exit(0)

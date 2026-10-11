@@ -24,7 +24,9 @@ under GPL-3.0-or-later.
    ```
 
    Each harness in `tools/tests/` also runs alone, e.g.
-   `tools/tests/calibration-tests/run.sh`.
+   `tools/tests/calibration-tests/run.sh`. In Xcode, ⌘U runs the
+   `MockTabTests` target, which uses Swift Testing. New tests of pure logic
+   go there; the harnesses move over as they're edited.
 
 3. **Read the "Following a…" sections of [`Architecture.md`](Architecture.md).**
    It follows a pen sample, a settings change, a device plugging in, and
