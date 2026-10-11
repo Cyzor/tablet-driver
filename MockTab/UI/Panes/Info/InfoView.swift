@@ -149,8 +149,10 @@ struct InfoView: View {
                         than: diagnosticSession)
                 },
                 onFinalizeRawCapture: {
-                    guard rawCaptureRunning else { return nil }
-                    finishRawCaptureTeardown()
+                    // The raw log stops at its own 30-minute ceiling, before
+                    // an hour-long session does; it's saved by then, so
+                    // package that file instead of leaving it loose.
+                    if rawCaptureRunning { finishRawCaptureTeardown() }
                     return rawCaptureSavedURL
                 }
             )
@@ -551,6 +553,9 @@ struct InfoView: View {
     /// and report count. Paired with every guided collection — see the
     /// Collect Device Data button.
     private func beginCollection() {
+        // Cleared even if the raw capture is refused, so an earlier log
+        // can't be packaged with this session.
+        rawCaptureSavedURL = nil
         startRawCapture()
         showCaptureGuide = true
     }
