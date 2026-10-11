@@ -56,6 +56,129 @@ extension InputInjector {
 
         if deferXencelabsProximityExit(point: point, snap: snap) { return }
 
+        let enteringProximity = applyProximityChanges(
+            point: point, rawPoint: rawPoint, rawTipDown: rawTipDown, snap: snap, tool: tool)
+
+        guard point.inProximity else { return }
+
+        // ── Position smoothing (every report) ─────────────────────────────────
+        let screenPoint = smoother.applySmoothing(
+            rawPoint: rawPoint, enteringProximity: enteringProximity, dt: smoothingDt)
+
+        // ── Scroll Drag: convert this frame's motion to a scroll delta ──────
+        // Runs before the movement code, which skips cursor motion while
+        // panning. dt must be real seconds: the damping is tuned in them.
+        let panNow = CFAbsoluteTimeGetCurrent()
+        let panDt = lastPanScrollFrameTime > 0 ? panNow - lastPanScrollFrameTime : 0
+        lastPanScrollFrameTime = panNow
+        if panScroll.isActive {
+            postPanScroll(panScroll.process(screen: screenPoint, dt: panDt))
+        }
+        // Computed once per report for every post below.
+        let pose = resolveEffectivePose(point: point, snapshot: snap)
+        shimLastPoint = point
+        shimLastScreen = screenPoint
+
+        // ── Jitter tracking (hover only, every report) ─────────────────────────
+        if !rawTipDown {
+            smoother.observeHoverRaw(rawPoint)
+        } else {
+            smoother.endHover()
+        }
+
+        // Holds a release briefly to absorb chatter. No-op at Steadiness 0.
+        let tipDown = resolveDebouncedTipDown(rawTipDown: rawTipDown, tool: tool)
+
+        postTipOrMovement(
+            tipDown: tipDown, at: screenPoint, pressure: pressure, point: point, pose: pose,
+            snap: snap, settings: settings, tool: tool)
+        lastTipDown = tipDown
+        if !tipDown { syncBarrelEraser(at: screenPoint) }
+
+        dispatchPenButtons(point: point, at: screenPoint, snap: snap, settings: settings, tool: tool)
+
+        postMouseToolExtras(point: point, at: screenPoint)
+    }
+
+    /// Maps the pen to the screen, or returns nil (after clearing the
+    /// relative anchor) when the active area is degenerate.
+    private func resolveRawPoint(_ point: TabletPoint, snap: InjectionSnapshot) -> CGPoint? {
+        let rawPoint: CGPoint
+        if snap.relativeCursorMovement {
+            if point.inProximity {
+                rawPoint = displayMapper.resolveRelativePoint(
+                    point, snapshot: snap, currentCursorPosition: currentCursorPosition(),
+                    deviceProductID: deviceProductID)
+            } else {
+                // An out-of-range report's position is unreliable and would
+                // corrupt the relative anchor into a jump. Keep the cursor put.
+                rawPoint = currentCursorPosition()
+            }
+        } else if let absPoint = displayMapper.mapToScreen(
+            point, snapshot: snap, deviceProductID: deviceProductID)
+        {
+            // Points past the active area clamp to its edge. `nil` only means
+            // a degenerate area, not "pen out of range".
+            rawPoint = displayMapper.pinNearEdges(absPoint, snapshot: snap)
+        } else {
+            displayMapper.clearRelativeAnchor()
+            return nil
+        }
+        return rawPoint
+    }
+
+    /// Xencelabs pens drop out of range for single reports. Returns true when
+    /// this report's exit was deferred and `inject` should stop here.
+    private func deferXencelabsProximityExit(point: TabletPoint, snap: InjectionSnapshot) -> Bool {
+        // ── Xencelabs proximity-dropout debounce ────────────────────────────────
+        // A lone out-of-range report defers the exit; a report back in range
+        // before the timer fires cancels it. See proximityExitDebounceTimer.
+        if deviceVendorID == 0x28BD {
+            if point.inProximity {
+                if let timer = proximityExitDebounceTimer {
+                    CFRunLoopTimerInvalidate(timer)
+                    proximityExitDebounceTimer = nil
+                }
+            } else if lastProximity && proximityExitDebounceTimer == nil {
+                // A held button gets the long safety-net delay instead.
+                let anyButtonHeld =
+                    lastTipDown || lastButton1Down || lastButton2Down || lastButton3Down
+                    || lastMiddleDown || usbMouseLeftHeld || lastUSBMouseMask != 0
+                let delay = anyButtonHeld
+                    ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
+                if anyButtonHeld {
+                    // Cancel any pending barrel-button release so it can't fire
+                    // during this longer wait; the exit alone decides now.
+                    button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button1UpDebounceTimer = nil
+                    button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button2UpDebounceTimer = nil
+                    button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+                    button3UpDebounceTimer = nil
+                }
+                let timer = CFRunLoopTimerCreateWithHandler(
+                    kCFAllocatorDefault,
+                    CFAbsoluteTimeGetCurrent() + delay,
+                    0, 0, 0
+                ) { [weak self] _ in
+                    guard let self else { return }
+                    self.proximityExitDebounceTimer = nil
+                    self.commitProximityExit(snap: snap)
+                }
+                CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+                proximityExitDebounceTimer = timer
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Proximity enter and exit, the touch-arbitration gate, and the eraser
+    /// flip. Returns whether this report brings the pen into range.
+    private func applyProximityChanges(
+        point: TabletPoint, rawPoint: CGPoint, rawTipDown: Bool,
+        snap: InjectionSnapshot, tool: InjectionSnapshot.Tool
+    ) -> Bool {
         let enteringProximity = point.inProximity && !lastProximity
         let eraserFlipped = point.inProximity && lastProximity && (point.eraser != lastEraserMode)
 
@@ -99,37 +222,16 @@ extension InputInjector {
             barrelEraserActive = false
             postProximityEvent(entering: true, at: rawPoint, eraser: point.eraser)
         }
+        return enteringProximity
+    }
 
-        guard point.inProximity else { return }
-
-        // ── Position smoothing (every report) ─────────────────────────────────
-        let screenPoint = smoother.applySmoothing(
-            rawPoint: rawPoint, enteringProximity: enteringProximity, dt: smoothingDt)
-
-        // ── Scroll Drag: convert this frame's motion to a scroll delta ──────
-        // Runs before the movement code, which skips cursor motion while
-        // panning. dt must be real seconds: the damping is tuned in them.
-        let panNow = CFAbsoluteTimeGetCurrent()
-        let panDt = lastPanScrollFrameTime > 0 ? panNow - lastPanScrollFrameTime : 0
-        lastPanScrollFrameTime = panNow
-        if panScroll.isActive {
-            postPanScroll(panScroll.process(screen: screenPoint, dt: panDt))
-        }
-        // Computed once per report for every post below.
-        let pose = resolveEffectivePose(point: point, snapshot: snap)
-        shimLastPoint = point
-        shimLastScreen = screenPoint
-
-        // ── Jitter tracking (hover only, every report) ─────────────────────────
-        if !rawTipDown {
-            smoother.observeHoverRaw(rawPoint)
-        } else {
-            smoother.endHover()
-        }
-
-        // Holds a release briefly to absorb chatter. No-op at Steadiness 0.
-        let tipDown = resolveDebouncedTipDown(rawTipDown: rawTipDown, tool: tool)
-
+    /// Tip press and release, then cursor movement: Scroll Drag bookkeeping or
+    /// the delta-gated hover and drag posts.
+    private func postTipOrMovement(
+        tipDown: Bool, at screenPoint: CGPoint, pressure: Double, point: TabletPoint,
+        pose: (tiltX: Double, tiltY: Double, rotation: Double), snap: InjectionSnapshot,
+        settings: TabletSettings?, tool: InjectionSnapshot.Tool
+    ) {
         // ── Tip press transitions (always immediate) ───────────────────────────
         if tipDown != lastTipDown {
             if !activeToolIsMouse && activeAppNeedsTabletPointerEvents {
@@ -285,9 +387,13 @@ extension InputInjector {
                 hasPostedPoint = true
             }
         }
-        lastTipDown = tipDown
-        if !tipDown { syncBarrelEraser(at: screenPoint) }
+    }
 
+    /// Barrel-button changes, through the Xencelabs debounce or directly.
+    private func dispatchPenButtons(
+        point: TabletPoint, at screenPoint: CGPoint, snap: InjectionSnapshot,
+        settings: TabletSettings?, tool: InjectionSnapshot.Tool
+    ) {
         // ── Pen button transitions (always immediate) ───────────────────────────
         let btn1 = tool.penButton1Binding
         let btn2 = tool.penButton2Binding
@@ -332,7 +438,10 @@ extension InputInjector {
                                  snap: snap, settings: settings)
             }
         }
+    }
 
+    /// The mouse tool's middle button and wheel.
+    private func postMouseToolExtras(point: TabletPoint, at screenPoint: CGPoint) {
         // ── Middle button (mouse tool only, always immediate) ──────────────────
         if point.mouseMiddleButton != lastMiddleDown {
             let type: CGEventType = point.mouseMiddleButton ? .otherMouseDown : .otherMouseUp
@@ -350,79 +459,6 @@ extension InputInjector {
         if point.mouseWheelDelta != 0 {
             postScrollWheelEvent(delta: point.mouseWheelDelta, at: screenPoint)
         }
-    }
-
-    /// Maps the pen to the screen, or returns nil (after clearing the
-    /// relative anchor) when the active area is degenerate.
-    private func resolveRawPoint(_ point: TabletPoint, snap: InjectionSnapshot) -> CGPoint? {
-        let rawPoint: CGPoint
-        if snap.relativeCursorMovement {
-            if point.inProximity {
-                rawPoint = displayMapper.resolveRelativePoint(
-                    point, snapshot: snap, currentCursorPosition: currentCursorPosition(),
-                    deviceProductID: deviceProductID)
-            } else {
-                // An out-of-range report's position is unreliable and would
-                // corrupt the relative anchor into a jump. Keep the cursor put.
-                rawPoint = currentCursorPosition()
-            }
-        } else if let absPoint = displayMapper.mapToScreen(
-            point, snapshot: snap, deviceProductID: deviceProductID)
-        {
-            // Points past the active area clamp to its edge. `nil` only means
-            // a degenerate area, not "pen out of range".
-            rawPoint = displayMapper.pinNearEdges(absPoint, snapshot: snap)
-        } else {
-            displayMapper.clearRelativeAnchor()
-            return nil
-        }
-        return rawPoint
-    }
-
-    /// Xencelabs pens drop out of range for single reports. Returns true when
-    /// this report's exit was deferred and `inject` should stop here.
-    private func deferXencelabsProximityExit(point: TabletPoint, snap: InjectionSnapshot) -> Bool {
-        // ── Xencelabs proximity-dropout debounce ────────────────────────────────
-        // A lone out-of-range report defers the exit; a report back in range
-        // before the timer fires cancels it. See proximityExitDebounceTimer.
-        if deviceVendorID == 0x28BD {
-            if point.inProximity {
-                if let timer = proximityExitDebounceTimer {
-                    CFRunLoopTimerInvalidate(timer)
-                    proximityExitDebounceTimer = nil
-                }
-            } else if lastProximity && proximityExitDebounceTimer == nil {
-                // A held button gets the long safety-net delay instead.
-                let anyButtonHeld =
-                    lastTipDown || lastButton1Down || lastButton2Down || lastButton3Down
-                    || lastMiddleDown || usbMouseLeftHeld || lastUSBMouseMask != 0
-                let delay = anyButtonHeld
-                    ? proximityExitHeldButtonSafetyInterval : proximityExitDebounceInterval
-                if anyButtonHeld {
-                    // Cancel any pending barrel-button release so it can't fire
-                    // during this longer wait; the exit alone decides now.
-                    button1UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
-                    button1UpDebounceTimer = nil
-                    button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
-                    button2UpDebounceTimer = nil
-                    button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
-                    button3UpDebounceTimer = nil
-                }
-                let timer = CFRunLoopTimerCreateWithHandler(
-                    kCFAllocatorDefault,
-                    CFAbsoluteTimeGetCurrent() + delay,
-                    0, 0, 0
-                ) { [weak self] _ in
-                    guard let self else { return }
-                    self.proximityExitDebounceTimer = nil
-                    self.commitProximityExit(snap: snap)
-                }
-                CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
-                proximityExitDebounceTimer = timer
-                return true
-            }
-        }
-        return false
     }
 
     /// The current report is stale backlog (see `staleReportThresholdMs`), so
