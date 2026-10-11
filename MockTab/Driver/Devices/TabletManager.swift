@@ -328,7 +328,8 @@ final class TabletManager: ObservableObject {
 
     func setCalibrationPointHandler(_ handler: ((TabletPoint) -> Void)?) {
         calibrationPointHandler = handler
-        _calibrationActive.withLock { $0 = handler != nil }
+        let active = handler != nil
+        _calibrationActive.withLock { $0 = active }
     }
 
     private var uiUpdateCounter = 0
@@ -1995,7 +1996,8 @@ final class TabletManager: ObservableObject {
     func promptForAccessibilityIfNeeded() -> Bool {
         guard !accessibilityPromptShown, !AXIsProcessTrusted() else { return false }
         accessibilityPromptShown = true
-        let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true]
+        // The value of `kAXTrustedCheckOptionPrompt`, which Swift 6 treats as mutable global state.
+        let opts: NSDictionary = ["AXTrustedCheckOptionPrompt": true]
         AXIsProcessTrustedWithOptions(opts)
         return true
     }

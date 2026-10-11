@@ -40,7 +40,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 /// Does NOT provide:  EA/E0 button debounce (DTK-2400 specific), Art Pen
 /// rotation, touch ring, or device seizure.  For full-fidelity support,
 /// create a dedicated `*Device.swift`.
-final class WacomFallbackDevice: TabletDevice {
+final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split between main and the pen thread; see ThreadContract
 
     // Populated at init from HID descriptor query.
     let spec: DigitizerSpec

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Foundation
-import IOKit.hid
+@preconcurrency import IOKit.hid
 import OSLog
 import TabletKit
 
@@ -14,7 +14,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 /// Replaces per-device Swift classes for any product in `WacomDeviceRegistry`
 /// whose parser family has a live decoder (IntuosV1, IntuosV2, Intuos3).
 /// Supports both USB and Bluetooth transports; BLE/BT skips USB feature inits.
-final class WacomKnownDevice: TabletDevice {
+final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split between main and the pen thread; see ThreadContract
 
     var spec: DigitizerSpec
 
@@ -1081,6 +1081,7 @@ final class WacomKnownDevice: TabletDevice {
             logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] output report result=\(hex, privacy: .public)")
             executeInitSteps(from: index + 1, on: target, steps: steps)
         case .delay(let seconds):
+            nonisolated(unsafe) let target = target  // init steps run on main only
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
                 self?.executeInitSteps(from: index + 1, on: target, steps: steps)
             }

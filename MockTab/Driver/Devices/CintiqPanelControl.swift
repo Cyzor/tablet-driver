@@ -78,7 +78,7 @@ final class CintiqPanelControl: ObservableObject {
             let hdmi = display.flatMap {
                 HardwareSurveyProbe.coreDisplayInfo($0.id)?["IODisplayIsHDMISink"] as? Bool
             } ?? false
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.link = link
                 self.writeOnly = link != nil && b == nil && c == nil && !hdmi
@@ -131,7 +131,7 @@ final class CintiqPanelControl: ObservableObject {
         pending[code] = nil
         queue.async { [weak self] in
             link.writeVCP(code, value)
-            DispatchQueue.main.async { self?.drain(link) }
+            DispatchQueue.main.async { [weak self] in self?.drain(link) }
         }
     }
 }
