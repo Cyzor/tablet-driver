@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AAT00001 /* RelativeBallisticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABT00001 /* RelativeBallisticsTests.swift */; };
+		AAT00002 /* RelativeBallistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000901 /* RelativeBallistics.swift */; };
 		053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053AB9A52F723B910084C0E2 /* TabletManager.swift */; };
 		057B24D82F899E3A0032B29E /* Path+SVGData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 057B24D72F899E3A0032B29E /* Path+SVGData.swift */; };
 		05A04B822FCA009F00D64F90 /* TabletKit in Frameworks */ = {isa = PBXBuildFile; productRef = 05A04B812FCA009F00D64F90 /* TabletKit */; };
@@ -133,6 +135,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ABT00001 /* RelativeBallisticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativeBallisticsTests.swift; sourceTree = "<group>"; };
+		ABT00099 /* MockTabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MockTabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		053AB9A52F723B910084C0E2 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
 		057B24D72F899E3A0032B29E /* Path+SVGData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Path+SVGData.swift"; sourceTree = "<group>"; };
 		05BFE59B2F79FE5200782B9E /* AboutWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowController.swift; sourceTree = "<group>"; };
@@ -269,6 +273,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ADT00011 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -293,6 +304,7 @@
 			isa = PBXGroup;
 			children = (
 				AB000099 /* MockTab.app */,
+				ABT00099 /* MockTabTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -312,6 +324,7 @@
 			isa = PBXGroup;
 			children = (
 				AC000000 /* MockTab */,
+				ACT00001 /* MockTabTests */,
 				AC000010 /* Products */,
 				05FE52D02F9E8D730084E37D /* AppIcon.icon */,
 			);
@@ -635,6 +648,14 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
+		ACT00001 /* MockTabTests */ = {
+			isa = PBXGroup;
+			children = (
+				ABT00001 /* RelativeBallisticsTests.swift */,
+			);
+			path = MockTabTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -655,6 +676,22 @@
 			productName = MockTab;
 			productReference = AB000099 /* MockTab.app */;
 			productType = "com.apple.product-type.application";
+		};
+		ADT00001 /* MockTabTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AET00010 /* Build configuration list for PBXNativeTarget "MockTabTests" */;
+			buildPhases = (
+				ADT00010 /* Sources */,
+				ADT00011 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MockTabTests;
+			productName = MockTabTests;
+			productReference = ABT00099 /* MockTabTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -691,6 +728,7 @@
 			projectRoot = "";
 			targets = (
 				AD000001 /* MockTab */,
+				ADT00001 /* MockTabTests */,
 			);
 		};
 /* End PBXProject section */
@@ -856,6 +894,15 @@
 				AB002005 /* HelpPanelView.swift in Sources */,
 				AB002007 /* MarkdownBodyView.swift in Sources */,
 				AB002009 /* HelpContent.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ADT00010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AAT00001 /* RelativeBallisticsTests.swift in Sources */,
+				AAT00002 /* RelativeBallistics.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1043,6 +1090,30 @@
 			};
 			name = Release;
 		};
+		AET00012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AET00013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1060,6 +1131,15 @@
 			buildConfigurations = (
 				AE000012 /* Debug */,
 				AE000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AET00010 /* Build configuration list for PBXNativeTarget "MockTabTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AET00012 /* Debug */,
+				AET00013 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
