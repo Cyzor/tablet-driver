@@ -31,7 +31,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 /// Thread safety: `record(...)` runs on HIDThread; `start/stop/clear/
 /// flushIfDue` and the published reads run on main. State is guarded by one
 /// unfair lock.
-final class HIDCapture {
+final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush timer is main-only
 
     static let shared = HIDCapture()
     private init() {}
