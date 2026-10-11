@@ -763,113 +763,7 @@ extension InputInjector {
                 finalizeAndPost(e)
             }
         case .keyCombo:
-            let bindingFlags = CGEventFlags(rawValue: binding.modifierFlags)
-            let modBits: [CGEventFlags] = [.maskCommand, .maskShift, .maskAlternate, .maskControl]
-
-            // Build the event before changing state, so a failed build leaves no
-            // orphaned modifier bits.
-            let isModifierOnly = binding.keyLabel.isEmpty && binding.modifierFlags != 0
-            let event: CGEvent?
-            if isModifierOnly {
-                let e = CGEvent(source: sessionSource)
-                e?.type = .flagsChanged
-                e?.setIntegerValueField(.keyboardEventKeycode, value: Int64(binding.keyCode))
-                event = e
-            } else {
-                event = CGEvent(
-                    keyboardEventSource: sessionSource,
-                    virtualKey: CGKeyCode(binding.keyCode),
-                    keyDown: down)
-            }
-
-            if event == nil {
-                modLog.error("CGEvent creation failed — keyCombo '\(binding.keyLabel, privacy: .public)' down=\(down); state NOT mutated")
-            }
-            guard let e = event else { break }
-
-            // Bracket with flagsChanged in hardware order (⌘ down, key down, key up,
-            // ⌘ up). Rebelle tracks modifiers from flagsChanged alone.
-            let bracketModifiers = !isModifierOnly && binding.modifierFlags != 0
-            if bracketModifiers && !down {
-                e.flags = currentEventFlags
-                finalizeAndPost(e)
-            }
-
-            // Aux bindings (ExpressKeys, ring center) use the shared store: a Quick
-            // Keys Shift must reach drags posted by the pen tablet's injector. Pen
-            // buttons stay local, reconciled against this device's tool.
-            if isAux {
-                let shared = SharedAuxModifierState.shared
-                let flagsBefore = shared.groundTruthFlags
-                for bit in modBits {
-                    if bindingFlags.contains(bit) {
-                        let raw = bit.rawValue
-                        let currentCount = shared.refCounts[raw] ?? 0
-                        if down {
-                            shared.refCounts[raw] = currentCount + 1
-                            shared.groundTruthFlags.insert(bit)
-                        } else {
-                            let newCount = Swift.max(0, currentCount - 1)
-                            shared.refCounts[raw] = newCount
-                            if newCount == 0 { shared.groundTruthFlags.remove(bit) }
-                        }
-                    }
-                }
-                if shared.groundTruthFlags != flagsBefore {
-                    shared.lastChangeAt = Date()
-                    modLog.debug("keyCombo(aux) \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) shared: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public)")
-                }
-            } else {
-                let flagsBefore = groundTruthSyntheticFlags
-                for bit in modBits {
-                    if bindingFlags.contains(bit) {
-                        let raw = bit.rawValue
-                        let currentCount = modifierRefCounts[raw] ?? 0
-                        if down {
-                            modifierRefCounts[raw] = currentCount + 1
-                            groundTruthSyntheticFlags.insert(bit)
-                        } else {
-                            let newCount = Swift.max(0, currentCount - 1)
-                            modifierRefCounts[raw] = newCount
-                            if newCount == 0 { groundTruthSyntheticFlags.remove(bit) }
-                        }
-                    }
-                }
-                if groundTruthSyntheticFlags != flagsBefore {
-                    lastSyntheticFlagChangeAt = Date()
-                    modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
-                }
-            }
-
-            // Track the plain key itself so a lost up-transition can still be
-            // caught by the same watchdogs that protect modifier bits — see
-            // `heldKeyComboRefCounts`.
-            if !isModifierOnly {
-                let key = CGKeyCode(binding.keyCode)
-                let count = heldKeyComboRefCounts[key] ?? 0
-                if down {
-                    heldKeyComboRefCounts[key] = count + 1
-                } else {
-                    heldKeyComboRefCounts[key] = Swift.max(0, count - 1)
-                    if heldKeyComboRefCounts[key] == 0 { heldKeyComboRefCounts.removeValue(forKey: key) }
-                }
-                lastKeyComboChangeAt = Date()
-            }
-            // Post the flagsChanged brackets with the committed flags, one per bit,
-            // each with its left-hand keycode (apps ignore keycode 0).
-            if bracketModifiers {
-                for (bit, keyCode) in Self.modifierKeyCodes where bindingFlags.contains(bit) {
-                    guard let fc = CGEvent(source: sessionSource) else { continue }
-                    fc.type = .flagsChanged
-                    fc.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
-                    fc.flags = currentEventFlags
-                    finalizeAndPost(fc)
-                }
-            }
-            if !(bracketModifiers && !down) {
-                e.flags = currentEventFlags
-                finalizeAndPost(e)
-            }
+            fireKeyCombo(binding, down: down, isAux: isAux)
         case .displayToggle:
             guard down else { break }
             // Span mode maps to every selected display simultaneously — there's
@@ -911,34 +805,7 @@ extension InputInjector {
                 }
             }
         case .doubleClick:
-            guard down else { break }
-            // Spaced like a hand's double-click. Finder icon view on macOS 27
-            // ignored all four events posted in the same instant.
-            let steps: [(delay: CFTimeInterval, clickState: Int64, isDown: Bool)] = [
-                (0, 1, true), (0.04, 1, false), (0.10, 2, true), (0.14, 2, false),
-            ]
-            for step in steps {
-                let post = { [weak self] in
-                    guard let self else { return }
-                    let type: CGEventType = step.isDown ? .leftMouseDown : .leftMouseUp
-                    if let e = CGEvent(
-                        mouseEventSource: self.sessionSource, mouseType: type,
-                        mouseCursorPosition: location, mouseButton: .left)
-                    {
-                        e.flags = self.currentEventFlags
-                        e.setIntegerValueField(.mouseEventClickState, value: step.clickState)
-                        self.finalizeAndPost(e)
-                    }
-                }
-                if step.delay == 0 {
-                    post()
-                } else {
-                    let timer = CFRunLoopTimerCreateWithHandler(
-                        kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + step.delay, 0, 0, 0
-                    ) { _ in post() }
-                    CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
-                }
-            }
+            fireDoubleClick(down: down, at: location)
         case .spacebar:
             if let e = CGEvent(keyboardEventSource: sessionSource, virtualKey: 49, keyDown: down) {
                 e.flags = currentEventFlags
@@ -966,32 +833,7 @@ extension InputInjector {
                 Task { @MainActor in s.relativeCursorMovement.toggle() }
             }
         case .scrollDrag:
-            // Hold to pan: pen motion becomes scroll events. The button can live on
-            // another device (a Quick Keys key while the pen pans), so the gesture runs
-            // on whichever injector moves the pointer. Begin and end fire at once.
-            let driver = Self.resolvePanScrollDriver(preferring: self)
-            if down {
-                SharedPanScrollState.shared.driver = driver
-                driver.panScrollUsePhases = snapshot.activeTool.panScrollMomentum
-                // A fresh grab halts any coasting tail from the previous
-                // gesture, same as touching a real trackpad mid-momentum.
-                // `stop`, not `cancel`: no `.began` follows until the pen moves.
-                driver.panMomentumTail.stop()
-                driver.postPanScroll(driver.panScroll.engage(
-                    reverse: snapshot.reverseScrollDirection,
-                    speed: snapshot.activeTool.panScrollSpeed))
-            } else {
-                let active = SharedPanScrollState.shared.driver ?? driver
-                active.cancelPanScrollSafetyNet()
-                // The backdate comes from `self`, whose debounce deferred the release, not
-                // from `active`.
-                active.postPanScroll(
-                    active.panScroll.disengage(backdate: pendingButtonUpBackdate))
-                if active.panScrollUsePhases {
-                    active.panMomentumTail.start(velocity: active.panScroll.releaseVelocity)
-                }
-                SharedPanScrollState.shared.driver = nil
-            }
+            fireScrollDrag(down: down, snapshot: snapshot)
         }
 
         // Safety valve: if nothing is physically held on the tablet but we still
@@ -1002,6 +844,176 @@ extension InputInjector {
             if !heldKeyComboRefCounts.isEmpty { releaseAllHeldKeyComboKeys() }
         }
         rearmWatchdog()
+    }
+
+    private func fireKeyCombo(_ binding: ButtonBinding, down: Bool, isAux: Bool) {
+        let bindingFlags = CGEventFlags(rawValue: binding.modifierFlags)
+        let modBits: [CGEventFlags] = [.maskCommand, .maskShift, .maskAlternate, .maskControl]
+
+        // Build the event before changing state, so a failed build leaves no
+        // orphaned modifier bits.
+        let isModifierOnly = binding.keyLabel.isEmpty && binding.modifierFlags != 0
+        let event: CGEvent?
+        if isModifierOnly {
+            let e = CGEvent(source: sessionSource)
+            e?.type = .flagsChanged
+            e?.setIntegerValueField(.keyboardEventKeycode, value: Int64(binding.keyCode))
+            event = e
+        } else {
+            event = CGEvent(
+                keyboardEventSource: sessionSource,
+                virtualKey: CGKeyCode(binding.keyCode),
+                keyDown: down)
+        }
+
+        if event == nil {
+            modLog.error("CGEvent creation failed — keyCombo '\(binding.keyLabel, privacy: .public)' down=\(down); state NOT mutated")
+        }
+        guard let e = event else { return }
+
+        // Bracket with flagsChanged in hardware order (⌘ down, key down, key up,
+        // ⌘ up). Rebelle tracks modifiers from flagsChanged alone.
+        let bracketModifiers = !isModifierOnly && binding.modifierFlags != 0
+        if bracketModifiers && !down {
+            e.flags = currentEventFlags
+            finalizeAndPost(e)
+        }
+
+        // Aux bindings (ExpressKeys, ring center) use the shared store: a Quick
+        // Keys Shift must reach drags posted by the pen tablet's injector. Pen
+        // buttons stay local, reconciled against this device's tool.
+        if isAux {
+            let shared = SharedAuxModifierState.shared
+            let flagsBefore = shared.groundTruthFlags
+            for bit in modBits {
+                if bindingFlags.contains(bit) {
+                    let raw = bit.rawValue
+                    let currentCount = shared.refCounts[raw] ?? 0
+                    if down {
+                        shared.refCounts[raw] = currentCount + 1
+                        shared.groundTruthFlags.insert(bit)
+                    } else {
+                        let newCount = Swift.max(0, currentCount - 1)
+                        shared.refCounts[raw] = newCount
+                        if newCount == 0 { shared.groundTruthFlags.remove(bit) }
+                    }
+                }
+            }
+            if shared.groundTruthFlags != flagsBefore {
+                shared.lastChangeAt = Date()
+                modLog.debug("keyCombo(aux) \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) shared: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public)")
+            }
+        } else {
+            let flagsBefore = groundTruthSyntheticFlags
+            for bit in modBits {
+                if bindingFlags.contains(bit) {
+                    let raw = bit.rawValue
+                    let currentCount = modifierRefCounts[raw] ?? 0
+                    if down {
+                        modifierRefCounts[raw] = currentCount + 1
+                        groundTruthSyntheticFlags.insert(bit)
+                    } else {
+                        let newCount = Swift.max(0, currentCount - 1)
+                        modifierRefCounts[raw] = newCount
+                        if newCount == 0 { groundTruthSyntheticFlags.remove(bit) }
+                    }
+                }
+            }
+            if groundTruthSyntheticFlags != flagsBefore {
+                lastSyntheticFlagChangeAt = Date()
+                modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
+            }
+        }
+
+        // Track the plain key itself so a lost up-transition can still be
+        // caught by the same watchdogs that protect modifier bits — see
+        // `heldKeyComboRefCounts`.
+        if !isModifierOnly {
+            let key = CGKeyCode(binding.keyCode)
+            let count = heldKeyComboRefCounts[key] ?? 0
+            if down {
+                heldKeyComboRefCounts[key] = count + 1
+            } else {
+                heldKeyComboRefCounts[key] = Swift.max(0, count - 1)
+                if heldKeyComboRefCounts[key] == 0 { heldKeyComboRefCounts.removeValue(forKey: key) }
+            }
+            lastKeyComboChangeAt = Date()
+        }
+        // Post the flagsChanged brackets with the committed flags, one per bit,
+        // each with its left-hand keycode (apps ignore keycode 0).
+        if bracketModifiers {
+            for (bit, keyCode) in Self.modifierKeyCodes where bindingFlags.contains(bit) {
+                guard let fc = CGEvent(source: sessionSource) else { continue }
+                fc.type = .flagsChanged
+                fc.setIntegerValueField(.keyboardEventKeycode, value: Int64(keyCode))
+                fc.flags = currentEventFlags
+                finalizeAndPost(fc)
+            }
+        }
+        if !(bracketModifiers && !down) {
+            e.flags = currentEventFlags
+            finalizeAndPost(e)
+        }
+    }
+
+    private func fireDoubleClick(down: Bool, at location: CGPoint) {
+        guard down else { return }
+        // Spaced like a hand's double-click. Finder icon view on macOS 27
+        // ignored all four events posted in the same instant.
+        let steps: [(delay: CFTimeInterval, clickState: Int64, isDown: Bool)] = [
+            (0, 1, true), (0.04, 1, false), (0.10, 2, true), (0.14, 2, false),
+        ]
+        for step in steps {
+            let post = { [weak self] in
+                guard let self else { return }
+                let type: CGEventType = step.isDown ? .leftMouseDown : .leftMouseUp
+                if let e = CGEvent(
+                    mouseEventSource: self.sessionSource, mouseType: type,
+                    mouseCursorPosition: location, mouseButton: .left)
+                {
+                    e.flags = self.currentEventFlags
+                    e.setIntegerValueField(.mouseEventClickState, value: step.clickState)
+                    self.finalizeAndPost(e)
+                }
+            }
+            if step.delay == 0 {
+                post()
+            } else {
+                let timer = CFRunLoopTimerCreateWithHandler(
+                    kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + step.delay, 0, 0, 0
+                ) { _ in post() }
+                CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+            }
+        }
+    }
+
+    private func fireScrollDrag(down: Bool, snapshot: InjectionSnapshot) {
+        // Hold to pan: pen motion becomes scroll events. The button can live on
+        // another device (a Quick Keys key while the pen pans), so the gesture runs
+        // on whichever injector moves the pointer. Begin and end fire at once.
+        let driver = Self.resolvePanScrollDriver(preferring: self)
+        if down {
+            SharedPanScrollState.shared.driver = driver
+            driver.panScrollUsePhases = snapshot.activeTool.panScrollMomentum
+            // A fresh grab halts any coasting tail from the previous
+            // gesture, same as touching a real trackpad mid-momentum.
+            // `stop`, not `cancel`: no `.began` follows until the pen moves.
+            driver.panMomentumTail.stop()
+            driver.postPanScroll(driver.panScroll.engage(
+                reverse: snapshot.reverseScrollDirection,
+                speed: snapshot.activeTool.panScrollSpeed))
+        } else {
+            let active = SharedPanScrollState.shared.driver ?? driver
+            active.cancelPanScrollSafetyNet()
+            // The backdate comes from `self`, whose debounce deferred the release, not
+            // from `active`.
+            active.postPanScroll(
+                active.panScroll.disengage(backdate: pendingButtonUpBackdate))
+            if active.panScrollUsePhases {
+                active.panMomentumTail.start(velocity: active.panScroll.releaseVelocity)
+            }
+            SharedPanScrollState.shared.driver = nil
+        }
     }
 
     // MARK: - Scroll wheel
