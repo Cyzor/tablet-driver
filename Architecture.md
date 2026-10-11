@@ -61,10 +61,10 @@ A new setting usually touches four things: the property, how it's saved, the sna
 
 macOS presents one tablet as several devices, called interfaces, often one each for the pen, buttons, and touch. `TabletManager.deviceConnected(_:)` runs once for each:
 
-1. It finds which physical tablet the interface belongs to and finds or creates its `DeviceContext`, which holds the tablet's settings, injector, and driver.
-2. It sets up the closures that receive this tablet's pen, button, touch, and battery results.
-3. `DeviceRouter.route` decides what the interface is: a new tablet, the touch or light half of a known one, a part that should wait for its sibling, or something to ignore.
-4. A new tablet gets one of three drivers:
+1. It finds which physical tablet the interface belongs to, and `resolveContext` finds or creates its `DeviceContext`, which holds the tablet's settings, injector, and driver.
+2. `makeCallbacks` sets up the closures that receive this tablet's pen, button, touch, and battery results.
+3. `DeviceRouter.route` decides what the interface is: a new tablet, the touch or light half of a known one, a part that should wait for its sibling, or something to ignore. `applyRoute` acts on that decision.
+4. A new tablet gets one of three drivers, which `installRoutedDriver` installs:
    - **`WacomKnownDevice`** for any tablet in the registry, which is almost all of them.
    - **`WacomFallbackDevice`** for Wacom tablets missing from it. It reads the tablet's own description of its reports and makes a best guess.
    - **`GenericHIDDigitizer`** for standard pen tablets from any maker. macOS decodes the fields.
