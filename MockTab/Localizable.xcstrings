@@ -9278,6 +9278,29 @@
         }
       }
     },
+    "Hold the outer ExpressKeys for 5 seconds, then reconnect." : {
+      "comment" : "Body of the Android-mode banner: how to switch the tablet back to PC mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Äußere ExpressKeys 5 Sekunden halten, dann neu verbinden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén las ExpressKeys exteriores 5 segundos y vuelve a conectarla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "両端のExpressKeyを5秒間長押ししてから再接続。"
+          }
+        }
+      }
+    },
     "Hold to pan/scroll with pen motion (Hand-tool style)" : {
       "localizations" : {
         "de" : {
@@ -18872,6 +18895,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タブレット領域"
+          }
+        }
+      }
+    },
+    "Tablet is in Android mode" : {
+      "comment" : "Banner title shown when a Wacom Intuos reports its Android-mode vendor ID",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grafiktablett im Android-Modus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tableta está en modo Android"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットがAndroidモードです"
           }
         }
       }

@@ -37,6 +37,13 @@ final class GenericHIDDigitizer: TabletDevice {
     /// device" wording on the unrecognised-device banner.
     let detectedBrand: String?
 
+    /// A CTL-x100 Intuos in Android mode, which swaps Wacom's vendor ID for
+    /// 0x2D1F and offers only a basic pen report. Holding the outer
+    /// ExpressKeys switches it back to PC mode.
+    let isWacomAndroidMode: Bool
+    private static let androidModeVendorID = 0x2D1F
+    private static let androidModeProductIDs: Set<Int> = [0x0374, 0x0375, 0x0376, 0x0378, 0x03C5, 0x03C7]
+
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
     private let tag: String
@@ -78,6 +85,7 @@ final class GenericHIDDigitizer: TabletDevice {
         let manufacturer = IOHIDDeviceGetProperty(device, kIOHIDManufacturerKey as CFString) as? String
         tag = productName ?? "HID-digitizer-\(String(vid, radix: 16))/\(String(pid, radix: 16))"
         detectedBrand = BrandHeuristic.likelyBrand(manufacturer: manufacturer, product: productName)
+        isWacomAndroidMode = vid == Self.androidModeVendorID && Self.androidModeProductIDs.contains(pid)
 
         let probed = queryHIDDigitizerSpec(device)
         spec = DigitizerSpec(maxX: probed.maxX, maxY: probed.maxY, maxPressure: probed.maxPressure)

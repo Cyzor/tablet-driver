@@ -71,9 +71,15 @@ struct InfoView: View {
         ) {
             if fallbackDevice != nil || genericDigitizer != nil {
                 Section {
-                    unknownDeviceBanner
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
+                    Group {
+                        if genericDigitizer?.isWacomAndroidMode == true {
+                            androidModeBanner
+                        } else {
+                            unknownDeviceBanner
+                        }
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
                 }
             }
             Section {
@@ -197,6 +203,30 @@ struct InfoView: View {
     /// only `GenericHIDDigitizer` carries a heuristic guess.
     private var detectedBrand: String? {
         genericDigitizer?.detectedBrand
+    }
+
+    private var androidModeBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .imageScale(.large)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(String(localized: "Tablet is in Android mode", comment: "Banner title shown when a Wacom Intuos reports its Android-mode vendor ID"))
+                    .appFont(.headline)
+                Text(String(localized: "Hold the outer ExpressKeys for 5 seconds, then reconnect.", comment: "Body of the Android-mode banner: how to switch the tablet back to PC mode"))
+                    .appFont(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color.orange.opacity(0.45), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     private var unknownDeviceBanner: some View {
