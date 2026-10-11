@@ -1074,82 +1074,20 @@ struct TouchStateTracker {
 
         switch mode {
         case .drag:
-            if !absoluteTouch {
-                let ids = Set(contacts.map(\.id))
-                let c = centroid(of: contacts.map(\.screen))
-                guard let prev = dragCentroid, ids == dragCentroidIDs else {
-                    dragCentroid = c
-                    dragCentroidIDs = ids
-                    lastPointerSampleTime = 0
-                    return .none
-                }
-                dragCentroid = c
-                let rawDx = c.x - prev.x, rawDy = c.y - prev.y
-                if rawDx == 0 && rawDy == 0 { return .none }
-                let gain = adaptivePointerGain(rawDx: rawDx, rawDy: rawDy, now: now, sensitivity: sensitivity)
-                return .dragMove(dx: rawDx * gain, dy: rawDy * gain)
-            }
-            // The lead finger lifting hands the drag to another without a jump.
-            if dragPrimaryID.map({ id in !contacts.contains { $0.id == id } }) ?? true,
-               let next = contacts.first {
-                dragPrimaryID = next.id
-                lastPositions = [next.id: next.screen]
-                return .none
-            }
-            guard let id = dragPrimaryID,
-                  let p = contacts.first(where: { $0.id == id })?.screen,
-                  let prev = lastPositions[id], p != prev
-            else { return .none }
-            lastPositions[id] = p
-            if absoluteTouch { return .dragWarp(to: p) }
-            return .dragMove(dx: (p.x - prev.x) * sensitivity, dy: (p.y - prev.y) * sensitivity)
+            return processDrag(
+                contacts: contacts,
+                sensitivity: sensitivity,
+                absoluteTouch: absoluteTouch,
+                now: now
+            )
         case .pending:
-            // Track motion for tap detection. Relative mode emits nothing
-            // here and anchors at commit instead, so motion accumulated
-            // during the window is discarded rather than replayed as a
-            // cursor jump — there's no equivalent hazard in absolute mode
-            // (a warp is never a "jump" relative to prior motion, it's just
-            // where the finger is), and skipping the warp here would leave
-            // the cursor stale for a tap that lifts before onset ever
-            // elapses (see `Intent.pointerWarp`'s doc comment).
-            //
-            // Tap stabilization extends that hold from a time bound to
-            // time-and-distance: a barely-moving finger stays pinned past
-            // `onsetDelay` until it clears `tapStabilizationPt`. `lastPositions`
-            // is rewritten every frame below, so the release delta is still
-            // one frame's worth of motion — no catch-up jump.
-            if let first = contacts.first {
-                if let anchor = tapAnchor {
-                    tapMaxDelta = Swift.max(tapMaxDelta, hypot(
-                        first.screen.x - anchor.x, first.screen.y - anchor.y))
-                }
-                lastPositions = [first.id: first.screen]
-                if absoluteTouch {
-                    // Absolute mode holds on time only — no drift to suppress
-                    // (every frame warps to the finger), and skipping the warp
-                    // would break `absoluteLastWarpedTo`'s warp-once invariant.
-                    if absolutePrimaryContactID == nil {
-                        absolutePrimaryContactID = first.id
-                    }
-                    if now - tapStart >= onsetDelay {
-                        mode = .pointer
-                    }
-                    if absoluteLastWarpedTo != first.screen {
-                        absoluteLastWarpedTo = first.screen
-                        return .pointerWarp(to: first.screen)
-                    }
-                    return .none
-                }
-            }
-            // Relative mode: commit once onset has elapsed and the finger has
-            // cleared the stabilization tolerance (`tapMaxDelta` is this
-            // frame's, updated just above; `> 0` guard = feature off / no-op).
-            let heldForStabilization =
-                tapStabilizationPt > 0 && tapMaxDelta < tapStabilizationPt
-            if now - tapStart >= onsetDelay, !heldForStabilization {
-                mode = .pointer
-            }
-            return .none
+            return processPending(
+                contacts: contacts,
+                absoluteTouch: absoluteTouch,
+                onsetDelay: onsetDelay,
+                tapStabilizationPt: tapStabilizationPt,
+                now: now
+            )
 
         case .scroll:
             let dt = now - lastFrameTime
@@ -1585,53 +1523,160 @@ struct TouchStateTracker {
             return .scrollDelta(dx: outDx, dy: outDy, phase: .changed)
 
         case .pointer where absoluteTouch:
-            // Pin to the contact that started this sequence rather than
-            // re-reading `contacts.first` every frame — see
-            // `absolutePrimaryContactID`'s doc comment for why relative
-            // mode's own "just take .first" approach would misbehave here.
-            let primaryID = absolutePrimaryContactID ?? contacts.first?.id
-            absolutePrimaryContactID = primaryID
-            guard let primaryID, let primary = contacts.first(where: { $0.id == primaryID })
-            else { return .none }
-            lastPositions[primary.id] = primary.screen
-            if let anchor = tapAnchor {
-                tapMaxDelta = Swift.max(tapMaxDelta, hypot(
-                    primary.screen.x - anchor.x, primary.screen.y - anchor.y))
-            }
-            // Skip a repeat warp to the same position — a still finger
-            // would otherwise post ~100 identical .mouseMoved CGEvents/sec,
-            // the same waste the scroll case's dead-frame skip above exists
-            // to avoid. `absoluteLastWarpedTo` still gets set on the first
-            // frame regardless of motion (from the .idle/.pending
-            // transitions above), which is what makes a motionless
-            // tap-to-click resolve at the right position — this guard only
-            // suppresses *repeats* of a warp already emitted, never the
-            // first one.
-            if absoluteLastWarpedTo == primary.screen { return .none }
-            absoluteLastWarpedTo = primary.screen
-            return .pointerWarp(to: primary.screen)
-
+            return processAbsolutePointer(contacts: contacts)
         case .pointer:
-            guard let first = contacts.first else { return .none }
-            let prev = lastPositions[first.id] ?? first.screen
-            let rawDx = first.screen.x - prev.x
-            let rawDy = first.screen.y - prev.y
-
-            let gain = adaptivePointerGain(rawDx: rawDx, rawDy: rawDy, now: now, sensitivity: sensitivity)
-
-            let dx = rawDx * gain
-            let dy = rawDy * gain
-            lastPositions[first.id] = first.screen
-            if let anchor = tapAnchor {
-                tapMaxDelta = Swift.max(tapMaxDelta, hypot(
-                    first.screen.x - anchor.x, first.screen.y - anchor.y))
-            }
-            if dx == 0 && dy == 0 { return .none }
-            return .pointerMove(dx: dx, dy: dy)
+            return processPointer(contacts: contacts, sensitivity: sensitivity, now: now)
 
         case .idle:
             return .none
         }
+    }
+
+    /// One frame of a three-finger drag.
+    private mutating func processDrag(
+        contacts: [(id: Int, screen: CGPoint)],
+        sensitivity: Double,
+        absoluteTouch: Bool,
+        now: CFAbsoluteTime
+    ) -> Intent {
+        if !absoluteTouch {
+            let ids = Set(contacts.map(\.id))
+            let c = centroid(of: contacts.map(\.screen))
+            guard let prev = dragCentroid, ids == dragCentroidIDs else {
+                dragCentroid = c
+                dragCentroidIDs = ids
+                lastPointerSampleTime = 0
+                return .none
+            }
+            dragCentroid = c
+            let rawDx = c.x - prev.x, rawDy = c.y - prev.y
+            if rawDx == 0 && rawDy == 0 { return .none }
+            let gain = adaptivePointerGain(rawDx: rawDx, rawDy: rawDy, now: now, sensitivity: sensitivity)
+            return .dragMove(dx: rawDx * gain, dy: rawDy * gain)
+        }
+        // The lead finger lifting hands the drag to another without a jump.
+        if dragPrimaryID.map({ id in !contacts.contains { $0.id == id } }) ?? true,
+           let next = contacts.first {
+            dragPrimaryID = next.id
+            lastPositions = [next.id: next.screen]
+            return .none
+        }
+        guard let id = dragPrimaryID,
+              let p = contacts.first(where: { $0.id == id })?.screen,
+              let prev = lastPositions[id], p != prev
+        else { return .none }
+        lastPositions[id] = p
+        if absoluteTouch { return .dragWarp(to: p) }
+        return .dragMove(dx: (p.x - prev.x) * sensitivity, dy: (p.y - prev.y) * sensitivity)
+    }
+
+    /// One frame while the first contact waits out the onset delay.
+    private mutating func processPending(
+        contacts: [(id: Int, screen: CGPoint)],
+        absoluteTouch: Bool,
+        onsetDelay: CFAbsoluteTime,
+        tapStabilizationPt: Double,
+        now: CFAbsoluteTime
+    ) -> Intent {
+        // Track motion for tap detection. Relative mode emits nothing
+        // here and anchors at commit instead, so motion accumulated
+        // during the window is discarded rather than replayed as a
+        // cursor jump — there's no equivalent hazard in absolute mode
+        // (a warp is never a "jump" relative to prior motion, it's just
+        // where the finger is), and skipping the warp here would leave
+        // the cursor stale for a tap that lifts before onset ever
+        // elapses (see `Intent.pointerWarp`'s doc comment).
+        //
+        // Tap stabilization extends that hold from a time bound to
+        // time-and-distance: a barely-moving finger stays pinned past
+        // `onsetDelay` until it clears `tapStabilizationPt`. `lastPositions`
+        // is rewritten every frame below, so the release delta is still
+        // one frame's worth of motion — no catch-up jump.
+        if let first = contacts.first {
+            if let anchor = tapAnchor {
+                tapMaxDelta = Swift.max(tapMaxDelta, hypot(
+                    first.screen.x - anchor.x, first.screen.y - anchor.y))
+            }
+            lastPositions = [first.id: first.screen]
+            if absoluteTouch {
+                // Absolute mode holds on time only — no drift to suppress
+                // (every frame warps to the finger), and skipping the warp
+                // would break `absoluteLastWarpedTo`'s warp-once invariant.
+                if absolutePrimaryContactID == nil {
+                    absolutePrimaryContactID = first.id
+                }
+                if now - tapStart >= onsetDelay {
+                    mode = .pointer
+                }
+                if absoluteLastWarpedTo != first.screen {
+                    absoluteLastWarpedTo = first.screen
+                    return .pointerWarp(to: first.screen)
+                }
+                return .none
+            }
+        }
+        // Relative mode: commit once onset has elapsed and the finger has
+        // cleared the stabilization tolerance (`tapMaxDelta` is this
+        // frame's, updated just above; `> 0` guard = feature off / no-op).
+        let heldForStabilization =
+            tapStabilizationPt > 0 && tapMaxDelta < tapStabilizationPt
+        if now - tapStart >= onsetDelay, !heldForStabilization {
+            mode = .pointer
+        }
+        return .none
+    }
+
+    /// One frame of absolute-mode pointing: warp to the sequence's primary contact.
+    private mutating func processAbsolutePointer(contacts: [(id: Int, screen: CGPoint)]) -> Intent {
+        // Pin to the contact that started this sequence rather than
+        // re-reading `contacts.first` every frame — see
+        // `absolutePrimaryContactID`'s doc comment for why relative
+        // mode's own "just take .first" approach would misbehave here.
+        let primaryID = absolutePrimaryContactID ?? contacts.first?.id
+        absolutePrimaryContactID = primaryID
+        guard let primaryID, let primary = contacts.first(where: { $0.id == primaryID })
+        else { return .none }
+        lastPositions[primary.id] = primary.screen
+        if let anchor = tapAnchor {
+            tapMaxDelta = Swift.max(tapMaxDelta, hypot(
+                primary.screen.x - anchor.x, primary.screen.y - anchor.y))
+        }
+        // Skip a repeat warp to the same position — a still finger
+        // would otherwise post ~100 identical .mouseMoved CGEvents/sec,
+        // the same waste the scroll case's dead-frame skip above exists
+        // to avoid. `absoluteLastWarpedTo` still gets set on the first
+        // frame regardless of motion (from the .idle/.pending
+        // transitions above), which is what makes a motionless
+        // tap-to-click resolve at the right position — this guard only
+        // suppresses *repeats* of a warp already emitted, never the
+        // first one.
+        if absoluteLastWarpedTo == primary.screen { return .none }
+        absoluteLastWarpedTo = primary.screen
+        return .pointerWarp(to: primary.screen)
+    }
+
+    /// One frame of relative pointing.
+    private mutating func processPointer(
+        contacts: [(id: Int, screen: CGPoint)],
+        sensitivity: Double,
+        now: CFAbsoluteTime
+    ) -> Intent {
+        guard let first = contacts.first else { return .none }
+        let prev = lastPositions[first.id] ?? first.screen
+        let rawDx = first.screen.x - prev.x
+        let rawDy = first.screen.y - prev.y
+
+        let gain = adaptivePointerGain(rawDx: rawDx, rawDy: rawDy, now: now, sensitivity: sensitivity)
+
+        let dx = rawDx * gain
+        let dy = rawDy * gain
+        lastPositions[first.id] = first.screen
+        if let anchor = tapAnchor {
+            tapMaxDelta = Swift.max(tapMaxDelta, hypot(
+                first.screen.x - anchor.x, first.screen.y - anchor.y))
+        }
+        if dx == 0 && dy == 0 { return .none }
+        return .pointerMove(dx: dx, dy: dy)
     }
 
     /// Clears the committed-`.pan` dominant-axis lock and its pre-lock
