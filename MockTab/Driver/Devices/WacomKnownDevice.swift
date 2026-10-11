@@ -1155,6 +1155,11 @@ final class WacomKnownDevice: TabletDevice {
 
     // MARK: - Report dispatch
 
+    /// Runs one report through capture, the per-device quirks, decode, and
+    /// dispatch. The quirk methods (`recoverFromUSBIdleReport`,
+    /// `adoptDonglePairedTablet`, `noteXencelabsRelay`, and
+    /// `fixIntuosV3BluetoothIdentity`) are the hooks a per-device session
+    /// layer would take over.
     private func handleReport(
         reportID: UInt32 = 0,
         report: UnsafePointer<UInt8>, length: CFIndex, sender: IOHIDDevice? = nil,
