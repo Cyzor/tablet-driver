@@ -1187,127 +1187,11 @@ final class WacomKnownDevice: TabletDevice {
         CaptureEngine.recordRaw(
             device: captureInterface, reportID: reportID, pointer: report, length: length,
             contactDown: lastReportHadContact[ObjectIdentifier(captureInterface)])
-        // USB idle-report recovery — see `firstUSBIdleReportAt`'s doc comment.
-        // Report 0x06 with no length requirement beyond a report ID is the
-        // pre-DATAMODE idle frame on PTK-470/670/870/Movink 13 (this watchdog's
-        // original target); any other report ID means real data is flowing
-        // and clears the stuck-timer.
-        //
-        // CTC-4110WL/CTC-6110WL (Wacom One S/M, PIDs 0x0100/0x0102/0x0104)
-        // excluded 2026-09-22: confirmed via real captures + the device's own
-        // HID descriptor that 0x06 is THIS family's genuine standard-HID pen
-        // report (`IntuosV3Decoder.decodeStandardDigitizerReport`), not an
-        // idle placeholder — treating it as stuck would fire a spurious
-        // DATAMODE re-send every time the user's pen sits out of proximity
-        // for longer than `usbIdleRecoveryTimeout`, during perfectly normal
-        // use. Gated on product ID rather than parser, since `.intuosV3` is
-        // shared across devices where 0x06 means opposite things.
-        if deviceSpec.parser == .intuosV3, !isBluetooth,
-            !Self.usbIdleWatchdogExemptPIDs.contains(deviceSpec.productID)
-        {
-            if length > 0, report[0] == 0x06 {
-                let now = Date()
-                let idleSince = firstUSBIdleReportAt ?? now
-                if firstUSBIdleReportAt == nil { firstUSBIdleReportAt = now }
-                if now.timeIntervalSince(idleSince) > Self.usbIdleRecoveryTimeout,
-                    now.timeIntervalSince(lastUSBIdleRecoveryAttemptAt) > Self.usbIdleRecoveryTimeout
-                {
-                    lastUSBIdleRecoveryAttemptAt = now
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self else { return }
-                        logger.info("\(name, privacy: .public): USB stuck on idle report 0x06 for over \(Self.usbIdleRecoveryTimeout, privacy: .public)s — re-sending DATAMODE to recover")
-                        self.reawaken()
-                    }
-                }
-            } else if length > 0, report[0] == 0x1E || report[0] == 0x1B {
-                firstUSBIdleReportAt = nil
-            }
-        }
-        // For wireless dongles, extract paired tablet PID from 0x80 status report and
-        // use its spec for accurate coordinate ranges (instead of fallback guesses).
-        if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
-            let pairedTabletPID = Int(UInt16(report[7]) | UInt16(report[6]) << 8)  // Big-endian
-            if pairedTabletPID > 0, pairedTabletPID != pairedPID,
-                let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
-                pairedSpec.maxX > 0 && pairedSpec.maxY > 0
-            {
-                // Update our spec with the paired tablet's actual dimensions.
-                // Never let a registry row missing touch data (e.g. PTH-650,
-                // never decoded) downgrade hasFingerTouch from the dongle's
-                // own true — it'd silently kill touch mid-session.
-                var updatedSpec = Self.makeDigitizerSpec(from: pairedSpec)
-                if spec.hasFingerTouch, !updatedSpec.hasFingerTouch {
-                    updatedSpec.hasFingerTouch = true
-                    updatedSpec.maxTouchContacts = spec.maxTouchContacts
-                }
-                spec = updatedSpec
-                // deriveTouchDecoders reads deviceSpec, not spec — without this,
-                // a dongle that paired after its interfaces were registered
-                // never gets touch decoders even though `spec` is now correct.
-                deviceSpec = Self.applyingTouchCapability(pairedSpec, to: deviceSpec)
-                for interface in registeredInterfaces {
-                    deriveTouchDecoders(from: interface)
-                }
-                pairedPID = pairedTabletPID
-                onPairedPID?(pairedTabletPID)
-                logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
-            }
-        }
 
-        // Quick Keys relayed by a receiver: see XencelabsRelinkState.
-        if deviceSpec.parser == .xencelabs {
-            let relink = xencelabsRelink.noteReport(
-                report, length: length, productID: deviceSpec.productID)
-            switch relink.linkChange {
-            case .rearmed:
-                logger.info("\(name, privacy: .public): puck online again, re-arming relink")
-            case .offline:
-                logger.info("\(name, privacy: .public): puck offline")
-            case nil:
-                break
-            }
-            if let identity = relink.relinkIdentity {
-                let ret = sendXencelabsRelink(identity: identity)
-                logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
-                startXencelabsBatteryPolling()
-                // The puck can answer polls before its screen accepts text,
-                // so wait for it to settle before pushing the display; an
-                // immediate push is lost and leaves "Please connect" up.
-                if let generation = xencelabsRelink.relinkSent(succeeded: ret == kIOReturnSuccess) {
-                    // On HIDThread, like every other display write.
-                    let timer = CFRunLoopTimerCreateWithHandler(
-                        kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 1.0, 0, 0, 0
-                    ) { [weak self] _ in
-                        guard let self, self.xencelabsRelink.relinkGeneration == generation else { return }
-                        self.resyncXencelabsOutputsAfterRelink()
-                    }
-                    CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
-                }
-            }
-        }
-
-        // IntuosV3's BLE announcement frame is one-shot per proximity-enter
-        // and sometimes never arrives at all — see the decoder's own doc
-        // comment. When missed, synthesize a placeholder .toolEnter so the
-        // pen still registers (BLE only: USB re-reads real identity every
-        // report, so a synthetic insert there would never get corrected —
-        // see [[project_ptk870_tool_identity_and_transport_bugs]]).
-        // Delayed by a grace window, not fired on the first frame after
-        // re-entry: the real announcement usually arrives within a few
-        // frames, and firing early routinely beat it, which is worse than a
-        // wrong label — "stylus"/"eraser" alias the shared device-default
-        // settings bucket (`toolSettings(forID:)`), so a binding edit made
-        // while misidentified as generic can bleed across different pens.
-        let wasInProximity = state.prevInProximity
-        if wasInProximity {
-            state.framesSinceProximityEnter =
-                min(state.framesSinceProximityEnter + 1, Self.toolAnnounceGraceFrames + 1)
-        } else {
-            state.framesSinceProximityEnter = 0
-        }
-        let synthesizeIntuosV3ToolEnter =
-            deviceSpec.parser == .intuosV3 && isBluetooth
-            && state.framesSinceProximityEnter == Self.toolAnnounceGraceFrames
+        recoverFromUSBIdleReport(report, length: length, name: name)
+        adoptDonglePairedTablet(report, length: length, name: name)
+        noteXencelabsRelay(report, length: length, name: name)
+        let (wasInProximity, synthesizeIntuosV3ToolEnter) = advanceToolAnnounceGrace()
 
         let hidReport = HIDReport(pointer: report, count: length)
         let results: [DecodeResult]
@@ -1606,6 +1490,142 @@ final class WacomKnownDevice: TabletDevice {
         if kernelTimestamp != 0 && !didDeferFrames {
             LatencyProbe.shared.recordPipelineComplete(kernelTimestamp: kernelTimestamp)
         }
+    }
+
+    /// Re-sends DATAMODE when an IntuosV3 tablet sits on its USB idle report.
+    private func recoverFromUSBIdleReport(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
+        // USB idle-report recovery — see `firstUSBIdleReportAt`'s doc comment.
+        // Report 0x06 with no length requirement beyond a report ID is the
+        // pre-DATAMODE idle frame on PTK-470/670/870/Movink 13 (this watchdog's
+        // original target); any other report ID means real data is flowing
+        // and clears the stuck-timer.
+        //
+        // CTC-4110WL/CTC-6110WL (Wacom One S/M, PIDs 0x0100/0x0102/0x0104)
+        // excluded 2026-09-22: confirmed via real captures + the device's own
+        // HID descriptor that 0x06 is THIS family's genuine standard-HID pen
+        // report (`IntuosV3Decoder.decodeStandardDigitizerReport`), not an
+        // idle placeholder — treating it as stuck would fire a spurious
+        // DATAMODE re-send every time the user's pen sits out of proximity
+        // for longer than `usbIdleRecoveryTimeout`, during perfectly normal
+        // use. Gated on product ID rather than parser, since `.intuosV3` is
+        // shared across devices where 0x06 means opposite things.
+        if deviceSpec.parser == .intuosV3, !isBluetooth,
+            !Self.usbIdleWatchdogExemptPIDs.contains(deviceSpec.productID)
+        {
+            if length > 0, report[0] == 0x06 {
+                let now = Date()
+                let idleSince = firstUSBIdleReportAt ?? now
+                if firstUSBIdleReportAt == nil { firstUSBIdleReportAt = now }
+                if now.timeIntervalSince(idleSince) > Self.usbIdleRecoveryTimeout,
+                    now.timeIntervalSince(lastUSBIdleRecoveryAttemptAt) > Self.usbIdleRecoveryTimeout
+                {
+                    lastUSBIdleRecoveryAttemptAt = now
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        logger.info("\(name, privacy: .public): USB stuck on idle report 0x06 for over \(Self.usbIdleRecoveryTimeout, privacy: .public)s — re-sending DATAMODE to recover")
+                        self.reawaken()
+                    }
+                }
+            } else if length > 0, report[0] == 0x1E || report[0] == 0x1B {
+                firstUSBIdleReportAt = nil
+            }
+        }
+    }
+
+    /// Takes on the paired tablet's spec when a wireless dongle names it.
+    private func adoptDonglePairedTablet(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
+        // For wireless dongles, extract paired tablet PID from 0x80 status report and
+        // use its spec for accurate coordinate ranges (instead of fallback guesses).
+        if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
+            let pairedTabletPID = Int(UInt16(report[7]) | UInt16(report[6]) << 8)  // Big-endian
+            if pairedTabletPID > 0, pairedTabletPID != pairedPID,
+                let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
+                pairedSpec.maxX > 0 && pairedSpec.maxY > 0
+            {
+                // Update our spec with the paired tablet's actual dimensions.
+                // Never let a registry row missing touch data (e.g. PTH-650,
+                // never decoded) downgrade hasFingerTouch from the dongle's
+                // own true — it'd silently kill touch mid-session.
+                var updatedSpec = Self.makeDigitizerSpec(from: pairedSpec)
+                if spec.hasFingerTouch, !updatedSpec.hasFingerTouch {
+                    updatedSpec.hasFingerTouch = true
+                    updatedSpec.maxTouchContacts = spec.maxTouchContacts
+                }
+                spec = updatedSpec
+                // deriveTouchDecoders reads deviceSpec, not spec — without this,
+                // a dongle that paired after its interfaces were registered
+                // never gets touch decoders even though `spec` is now correct.
+                deviceSpec = Self.applyingTouchCapability(pairedSpec, to: deviceSpec)
+                for interface in registeredInterfaces {
+                    deriveTouchDecoders(from: interface)
+                }
+                pairedPID = pairedTabletPID
+                onPairedPID?(pairedTabletPID)
+                logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
+            }
+        }
+    }
+
+    /// Relinks a wireless Quick Keys puck relayed by a receiver.
+    private func noteXencelabsRelay(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
+        // Quick Keys relayed by a receiver: see XencelabsRelinkState.
+        if deviceSpec.parser == .xencelabs {
+            let relink = xencelabsRelink.noteReport(
+                report, length: length, productID: deviceSpec.productID)
+            switch relink.linkChange {
+            case .rearmed:
+                logger.info("\(name, privacy: .public): puck online again, re-arming relink")
+            case .offline:
+                logger.info("\(name, privacy: .public): puck offline")
+            case nil:
+                break
+            }
+            if let identity = relink.relinkIdentity {
+                let ret = sendXencelabsRelink(identity: identity)
+                logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
+                startXencelabsBatteryPolling()
+                // The puck can answer polls before its screen accepts text,
+                // so wait for it to settle before pushing the display; an
+                // immediate push is lost and leaves "Please connect" up.
+                if let generation = xencelabsRelink.relinkSent(succeeded: ret == kIOReturnSuccess) {
+                    // On HIDThread, like every other display write.
+                    let timer = CFRunLoopTimerCreateWithHandler(
+                        kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 1.0, 0, 0, 0
+                    ) { [weak self] _ in
+                        guard let self, self.xencelabsRelink.relinkGeneration == generation else { return }
+                        self.resyncXencelabsOutputsAfterRelink()
+                    }
+                    CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+                }
+            }
+        }
+    }
+
+    /// Counts frames since the pen entered range, for the BLE announcement grace.
+    private func advanceToolAnnounceGrace() -> (wasInProximity: Bool, synthesizeToolEnter: Bool) {
+        // IntuosV3's BLE announcement frame is one-shot per proximity-enter
+        // and sometimes never arrives at all — see the decoder's own doc
+        // comment. When missed, synthesize a placeholder .toolEnter so the
+        // pen still registers (BLE only: USB re-reads real identity every
+        // report, so a synthetic insert there would never get corrected —
+        // see [[project_ptk870_tool_identity_and_transport_bugs]]).
+        // Delayed by a grace window, not fired on the first frame after
+        // re-entry: the real announcement usually arrives within a few
+        // frames, and firing early routinely beat it, which is worse than a
+        // wrong label — "stylus"/"eraser" alias the shared device-default
+        // settings bucket (`toolSettings(forID:)`), so a binding edit made
+        // while misidentified as generic can bleed across different pens.
+        let wasInProximity = state.prevInProximity
+        if wasInProximity {
+            state.framesSinceProximityEnter =
+                min(state.framesSinceProximityEnter + 1, Self.toolAnnounceGraceFrames + 1)
+        } else {
+            state.framesSinceProximityEnter = 0
+        }
+        let synthesizeIntuosV3ToolEnter =
+            deviceSpec.parser == .intuosV3 && isBluetooth
+            && state.framesSinceProximityEnter == Self.toolAnnounceGraceFrames
+        return (wasInProximity, synthesizeIntuosV3ToolEnter)
     }
 
     /// Delivers this report's decoded pen/touch samples to `onTablet`/
