@@ -1090,438 +1090,14 @@ struct TouchStateTracker {
             )
 
         case .scroll:
-            let dt = now - lastFrameTime
-            lastFrameTime = now
-            // Centroid delta over the contacts present in both this frame and
-            // the last.  Contacts with new ids (finger lifted and re-landed,
-            // or upstream palm filtering churned the set) are seeded for the
-            // next frame instead of stalling the gesture — losing both
-            // original ids used to kill the scroll until every finger lifted.
-            let current = Array(contacts.prefix(2))
-            let tracked = current.filter { lastPositions[$0.id] != nil }
-            let oldCentroid = centroid(of: tracked.compactMap { lastPositions[$0.id] })
-            let newCentroid = centroid(of: tracked.map { $0.screen })
-            // Hold last distance when a finger lifts mid-gesture (1-contact
-            // frames). distance(between:) would be 0 and invent a huge scaleDelta.
-            let newDistance = current.count >= 2
-                ? Self.distance(between: current)
-                : lastPinchDistance
-            let oldDistance = lastPinchDistance
-            let scaleDelta = newDistance - oldDistance
-            lastPositions = Dictionary(
-                current.map { ($0.id, $0.screen) },
-                uniquingKeysWith: { first, _ in first })
-            lastPinchDistance = newDistance
-
-            // A committed pan that has dropped to a single contact for longer
-            // than the grace window is finished — the user lifted one finger
-            // and kept the other down. Without this it would keep emitting
-            // `scrollDelta` from the lone finger's motion until every finger
-            // lifted, so a later unrelated single-finger touch keeps scrolling
-            // the view (`scrollWoundDown` blocks that resurrection). Capture
-            // the flick velocity now, from the window when both fingers were
-            // still moving, then close the phase envelope. Pinch/rotate are
-            // excluded: `newDistance` collapses to nonsense on one contact, so
-            // a 1-contact frame there is already ignored above.
-            if twoFingerKind == .pan {
-                if current.count >= 2 {
-                    scrollDroppedToOneContactAt = 0
-                } else {
-                    if scrollDroppedToOneContactAt == 0 {
-                        // First frame of the drop — both fingers were still
-                        // down last frame, so `recentVelocities` is fresh
-                        // right now. Snapshot the flick velocity *and* the
-                        // frame/motion gaps here; the wind-down below fires too
-                        // late for any of it to be recomputed meaningfully.
-                        // `dt` is this frame's real spacing (`lastFrameTime`
-                        // was reassigned to `now` earlier this frame).
-                        scrollDroppedToOneContactAt = now
-                        let k = releaseKinematics(now: now, frameGapOverride: dt)
-                        scrollVelocityAtDrop = k.velocity
-                        suppressedByRecencyAtDrop = k.suppressedByRecency
-                        frameGapAtDrop = k.frameGap
-                        motionGapAtDrop = k.motionGap
-                    }
-                    if now - scrollDroppedToOneContactAt >= Self.scrollSingleContactGrace {
-                        let priorPhase = lastScrollPhase
-                        // All release diagnostics come from the drop-site
-                        // snapshot — this frame is far too late to measure any
-                        // of them (see `scrollVelocityAtDrop`).
-                        releaseVelocity = scrollVelocityAtDrop
-                        releaseSuppressedByRecency = suppressedByRecencyAtDrop
-                        releaseFrameGap = frameGapAtDrop
-                        releaseMotionGap = motionGapAtDrop
-                        scrollWoundDown = true
-                        scrollWoundDownThisFrame = true
-                        scrollWoundDownExpiresAt = now + Self.scrollWoundDownBackstop
-                        return priorPhase != .ended
-                            ? .scrollDelta(dx: 0, dy: 0, phase: .ended)
-                            : .none
-                    }
-                    // Inside the grace window: emit nothing rather than the
-                    // lone finger's delta, so the symptom doesn't just shrink
-                    // to the grace duration. `lastPositions`/`lastPinchDistance`
-                    // were re-seeded above, so a returning second finger picks
-                    // the pan back up cleanly.
-                    return .none
-                }
-            }
-
-            guard !tracked.isEmpty else { return .none }
-            let dx = newCentroid.x - oldCentroid.x
-            let dy = newCentroid.y - oldCentroid.y
-
-            // Not just `pinchZoom || rotate`: an .undecided sequence reaches
-            // here whenever any non-pan candidate was in play at escalation
-            // (see `anyTwoFingerGesture`), and an already-committed .pinch/
-            // .rotate sequence must keep being tracked here even if its flag
-            // were somehow toggled off mid-gesture.
-            if twoFingerKind != .pan {
-                if twoFingerKind == .undecided {
-                    // A 1-contact frame collapses the centroid onto that single
-                    // finger, roughly half the finger separation away from the
-                    // two-finger anchor — enough to clear the decide threshold
-                    // on its own and commit a phantom pan. Wait for two contacts.
-                    guard current.count >= 2 else { return .none }
-                    // Cumulative motion since two-finger sequence start — not
-                    // per-frame deltas, which stay tiny at high report rates.
-                    let totalTranslation = hypot(
-                        newCentroid.x - undecidedOriginCentroid.x,
-                        newCentroid.y - undecidedOriginCentroid.y)
-                    let totalScaleChange = abs(newDistance - undecidedOriginDistance)
-
-                    // Tangential motion: angle change converted into the same
-                    // unit (screen points) as the other two candidates, so it
-                    // can share `twoFingerDecideDistance`/`pinchDominanceRatio`
-                    // without a second, unrelated tunable. `rotateEligible`
-                    // was decided once at escalation from raw device-unit
-                    // separation — when it's false (or rotate is off), this
-                    // stays exactly 0 and the block below behaves identically
-                    // to the pinch-only two-way decision it replaced.
-                    var totalTangentialMotion = 0.0
-                    if rotate, rotateEligible {
-                        let sortedPair = current.sorted { $0.id < $1.id }
-                        let newAngle = Self.angle(between: sortedPair)
-                        undecidedCumulativeAngle += Self.wrappedDelta(from: lastPairAngle, to: newAngle)
-                        lastPairAngle = newAngle
-                        totalTangentialMotion = abs(undecidedCumulativeAngle) * (newDistance / 2)
-                    }
-
-                    let decide = Self.twoFingerDecideDistance
-                    // Tangential motion's own leg uses `rotateNoiseFloor`
-                    // (9.0), not `decide` (6.0): rotate's actual
-                    // qualification bar below is the higher floor, so
-                    // ending the "still just landing noise" wait at the
-                    // lower `decide` opened a dead zone — tangential motion
-                    // between 6 and 9 stopped the wait but couldn't yet
-                    // qualify, and neither pinch nor pan had cleared their
-                    // own bars either, so the sequence fell through to the
-                    // "neither qualified" pan default below regardless.
-                    // That default only makes sense once every live
-                    // candidate has had a real chance to clear its own bar
-                    // — confirmed against hardware captures (2026-08-25)
-                    // showing genuine rotate gestures losing the race to an
-                    // instant, premature pan commit before tangential
-                    // motion ever reached 9.
-                    if totalScaleChange < decide, totalTranslation < decide,
-                        totalTangentialMotion < Self.rotateNoiseFloor
-                    {
-                        return .none
-                    }
-                    // Dwell: a rotate-eligible sequence gets a brief grace
-                    // period before rotate can win, because `decide` is tiny
-                    // enough (see `rotateMinDwell`'s doc comment) that
-                    // landing noise alone often clears it within the first
-                    // frame or two — deciding this early is a coin flip, not
-                    // a discrimination. Obviously large, fast motion bypasses
-                    // the wait so a real pan/pinch on a wide-enough pair
-                    // isn't held up by a clock meant for a slow twist onset.
-                    // Pan and pinch are otherwise untouched by this: when
-                    // rotate is off or the pair isn't eligible, this block
-                    // never runs.
-                    if rotate, rotateEligible,
-                        now - undecidedStartTime < Self.rotateMinDwell,
-                        totalTranslation < Self.rotateDwellBypassDistance,
-                        totalScaleChange < Self.rotateDwellBypassDistance
-                    {
-                        return .none
-                    }
-                    // Pinch and rotate are evaluated independently — each
-                    // just needs to beat pan's translation by
-                    // `pinchDominanceRatio` (the bar that matters for "pan
-                    // wins on ambiguity", including the anchored-finger-arc
-                    // case — documented, intentional limitation, not a bug)
-                    // and clear its own absolute noise floor. No *exclusive*
-                    // bar between them: a real trackpad can magnify and
-                    // rotate at once (see `TwoFingerKind`'s doc comment), so
-                    // both may qualify together here.
-                    var pinchQualifies = pinchZoom
-                        && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
-                        && totalScaleChange >= Self.pinchNoiseFloor
-                    var rotateQualifies = rotate && rotateEligible
-                        && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
-                        && totalTangentialMotion >= Self.rotateNoiseFloor
-                    // Independent floors alone let a much smaller companion
-                    // signal ride along with a much larger dominant one — a
-                    // real pinch's incidental angle jitter (or a real
-                    // twist's incidental separation drift) can each clear
-                    // their own floor without being a genuine second
-                    // gesture. Suppress whichever signal is small relative
-                    // to the other (below `companionSuppressionRatio` of
-                    // it); comparable signals still both survive, which is
-                    // what makes true concurrent pinch+rotate possible here.
-                    // Symmetric and gentler than the exclusive dominance
-                    // rule it replaced — a near-tie (say tangential 25 vs
-                    // scale 26, which used to hand pinch an outright win)
-                    // now clears suppression on both sides and fires both.
-                    if pinchQualifies, rotateQualifies {
-                        if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
-                            rotateQualifies = false
-                        } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
-                            pinchQualifies = false
-                        }
-                    }
-                    if pinchQualifies || rotateQualifies {
-                        twoFingerKind = .gesture
-                        pinchInGesture = pinchQualifies
-                        rotateInGesture = rotateQualifies
-                        if pinchQualifies { pinchPhase = .began }
-                        if rotateQualifies { rotatePhase = .began }
-                        return .twoFingerGesture(
-                            magnify: pinchQualifies ? GestureDelta(value: 0, phase: .began) : nil,
-                            rotate: rotateQualifies ? GestureDelta(value: 0, phase: .began) : nil)
-                    }
-                    // Neither qualified. Pan isn't a candidate at all when
-                    // twoFingerScroll is off — stay undecided (rather than
-                    // lock in a fallback that will never be emitted) so a
-                    // clearer pinch/rotate signal later in the same sequence
-                    // can still win.
-                    guard twoFingerScroll else { return .none }
-                    twoFingerKind = .pan
-                    pendingBeganDx = 0
-                    pendingBeganDy = 0
-                    return .none
-                }
-                if twoFingerKind == .gesture {
-                    // Angle tracking runs for the whole sequence, not just while
-                    // rotate is an active component: the late-join window below
-                    // needs a per-frame angle delta even while rotate is
-                    // dormant, and a gap in `lastPairAngle` would make the
-                    // first delta after a join one large jump.
-                    //
-                    // Hold the last angle on a 1-contact frame instead of
-                    // computing — same treatment `lastPinchDistance` gets
-                    // above, for the same reason (a lone survivor's angle
-                    // relative to nothing is meaningless and would invent a
-                    // huge delta).
-                    var frameAngleDelta = 0.0
-                    if rotate, rotateEligible {
-                        let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
-                        let newAngle = current.count >= 2 ? Self.angle(between: sortedPair) : lastPairAngle
-                        frameAngleDelta = Self.wrappedDelta(from: lastPairAngle, to: newAngle)
-                        lastPairAngle = newAngle
-                    }
-
-                    // Late join. The commit above picks the components from one
-                    // frame's evidence; a hand that starts as a clean zoom and
-                    // then adds a twist (or the reverse) produced that evidence
-                    // *later*, and freezing the set at commit meant the second
-                    // gesture could never arrive — the sequence had to be lifted
-                    // and restarted. A trackpad has no such commit: it derives
-                    // magnification and rotation independently every frame. This
-                    // re-runs the qualification for whichever component isn't in
-                    // play yet, so the second gesture joins when its evidence
-                    // arrives.
-                    //
-                    // Measured over a trailing window, *not* cumulative since
-                    // the sequence origin the commit uses. Since-origin totals
-                    // make the join bar climb with the gesture's own length:
-                    // `companionSuppressionRatio` asks the newcomer to reach
-                    // half of a scale change that has been growing the whole
-                    // time, so a twist that joins after ~20° a moment after
-                    // commit needed ~46° once the zoom had been running (probed
-                    // 2026-08-27, which is why this isn't the commit's own
-                    // accumulators). A window keeps the bar constant, and "how
-                    // hard am I twisting *now*" is the question this is actually
-                    // asking.
-                    //
-                    // Latch-on only: a component that has begun is never removed
-                    // mid-sequence. Removal would mean posting an `.ended` and
-                    // then a fresh `.began` if it came back, and apps read that
-                    // envelope churn as separate gestures. Growth is safe;
-                    // retraction isn't.
-                    if current.count >= 2 {
-                        recentGestureDeltas.append((
-                            time: now,
-                            scale: abs(scaleDelta),
-                            tangential: abs(frameAngleDelta) * (newDistance / 2),
-                            translation: hypot(dx, dy)))
-                        recentGestureDeltas.removeAll { now - $0.time > Self.lateJoinWindow }
-                    }
-                    if current.count >= 2, !pinchInGesture || !rotateInGesture {
-                        let totalTranslation = recentGestureDeltas.reduce(0) { $0 + $1.translation }
-                        let totalScaleChange = recentGestureDeltas.reduce(0) { $0 + $1.scale }
-                        let totalTangentialMotion = (rotate && rotateEligible)
-                            ? recentGestureDeltas.reduce(0) { $0 + $1.tangential }
-                            : 0
-                        var pinchQualifies = pinchZoom
-                            && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
-                            && totalScaleChange >= Self.pinchNoiseFloor
-                        var rotateQualifies = rotate && rotateEligible
-                            && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
-                            && totalTangentialMotion >= Self.rotateNoiseFloor
-                        // Same companion suppression as at commit, and it is
-                        // what keeps this from firing on drift: over a long
-                        // pinch the incidental angle wobble does eventually
-                        // clear `rotateNoiseFloor` in absolute terms, but it
-                        // stays far below `companionSuppressionRatio` of the
-                        // scale change unless the user is really twisting.
-                        if pinchQualifies, rotateQualifies {
-                            if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
-                                rotateQualifies = false
-                            } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
-                                pinchQualifies = false
-                            }
-                        }
-                        let joinPinch = !pinchInGesture && pinchQualifies
-                        let joinRotate = !rotateInGesture && rotateQualifies
-                        if joinPinch || joinRotate {
-                            if joinPinch { pinchInGesture = true; pinchPhase = .began }
-                            if joinRotate { rotateInGesture = true; rotatePhase = .began }
-                            // Open the new envelope with a zero delta and skip
-                            // the already-active component's delta for this one
-                            // frame, exactly as the commit path does. One frame
-                            // at report rate is imperceptible; mixing a `.began`
-                            // and a `.changed` for different components in one
-                            // return is not worth the extra state.
-                            return .twoFingerGesture(
-                                magnify: joinPinch ? GestureDelta(value: 0, phase: .began) : nil,
-                                rotate: joinRotate ? GestureDelta(value: 0, phase: .began) : nil)
-                        }
-                    }
-
-                    // Each active component reports its own per-frame delta,
-                    // independently of the other.
-                    var magnify: GestureDelta?
-                    if pinchInGesture, scaleDelta != 0, oldDistance > 0 {
-                        // Exact relative growth this frame — see the
-                        // `twoFingerGesture` doc comment for why this is the
-                        // correct (not approximate) per-frame value for a
-                        // multiplicative magnify stream.
-                        pinchPhase = .changed
-                        magnify = GestureDelta(value: scaleDelta / oldDistance, phase: .changed)
-                    }
-                    var rotateComponent: GestureDelta?
-                    if rotateInGesture {
-                        let delta = frameAngleDelta
-                        if delta != 0 {
-                            rotatePhase = .changed
-                            // Negated: hardware-confirmed 2026-08-08 that raw
-                            // atan2 delta reads backwards from the actual
-                            // finger twist. `atan2`'s "positive is counter-
-                            // clockwise" convention holds in math coordinates
-                            // (y-up); screen coordinates here are y-down,
-                            // which flips the handedness. Internal tracking
-                            // (`lastPairAngle`, `undecidedCumulativeAngle`)
-                            // stays in the raw, unflipped convention — only
-                            // the emitted intent is corrected, right at the
-                            // boundary.
-                            rotateComponent = GestureDelta(value: -delta, phase: .changed)
-                        }
-                    }
-                    guard magnify != nil || rotateComponent != nil else { return .none }
-                    return .twoFingerGesture(magnify: magnify, rotate: rotateComponent)
-                }
-            }
-
-            // Dominant-axis lock (see `scrollAxisLock`). Only a committed
-            // `.pan` reaches here with `twoFingerKind == .pan` — pinch/rotate/
-            // undecided all returned above. `lockedDx`/`lockedDy` carry the
-            // axis-suppressed delta forward; `dx`/`dy` stay raw for velocity
-            // seeding and brake detection, which must track the real finger
-            // (not the locked axis) so momentum coasts the way the hand
-            // flicked if `twoFingerScrollMomentum` is ever back on — matching
-            // `PanScrollTracker`, which likewise seeds from unlocked travel.
-            var lockedDx = dx
-            var lockedDy = dy
-            if twoFingerKind == .pan {
-                if let scrollAxisLock {
-                    switch scrollAxisLock {
-                    case .vertical: lockedDx = 0
-                    case .horizontal: lockedDy = 0
-                    }
-                } else if !scrollAxisResolved && tracked.count >= 2 {
-                    // Only feed the lock decision from genuine two-finger
-                    // centroid deltas. A frame with one new id (`current.count
-                    // == 2` but `tracked.count == 1` — finger re-landed, or
-                    // palm filtering churned the set) yields only that single
-                    // finger's own motion here, not a centroid translation.
-                    // Defensive, not a known failure: `oldCentroid` and
-                    // `newCentroid` are both taken over `tracked`, so such a
-                    // frame doesn't inject a jump — but it also isn't the
-                    // signal this accumulator is meant to measure, so skip it.
-                    // `lastPositions` was re-seeded for the new id above; the
-                    // next full two-contact frame resumes the decision.
-                    scrollPreLockAccumX += abs(dx)
-                    scrollPreLockAccumY += abs(dy)
-                    if scrollPreLockAccumX + scrollPreLockAccumY >= Self.scrollAxisLockWindow {
-                        let ratio = Self.scrollAxisLockRatio
-                        if scrollPreLockAccumX >= scrollPreLockAccumY * ratio {
-                            scrollAxisLock = .horizontal
-                            lockedDy = 0
-                        } else if scrollPreLockAccumY >= scrollPreLockAccumX * ratio {
-                            scrollAxisLock = .vertical
-                            lockedDx = 0
-                        }
-                        // Neither axis dominates — a genuinely diagonal
-                        // two-finger drag. Give up on locking for the rest of
-                        // this gesture and stay omnidirectional.
-                        scrollAxisResolved = true
-                    }
-                }
-            }
-
-            // Default (reverseScrollDirection=false): content follows finger.
-            // Reversed: classic scroll-wheel semantics, content moves opposite.
-            let sign = reverseScrollDirection ? -1.0 : 1.0
-            let outDx = sign * lockedDx
-            let outDy = sign * lockedDy
-            // Only sample velocity from frames spaced at least `minVelocityDt`
-            // apart. A Bluetooth batch delivered in a burst puts several frames
-            // microseconds apart (see `BatchFramePacer` / `subMillisecondDtFrames`);
-            // `delta / dt` on one of those is a velocity 10–100× the real finger
-            // speed, and `peak` below is a max, so it latches onto exactly that
-            // sample and seeds a runaway coast. The device's true touch cadence
-            // is ~5.6ms on BT (a ~22.5ms batch carrying ~4 touch frames), so
-            // 2ms is comfortably below real spacing and above burst spacing.
-            // `lastMotionTime` still updates from burst frames (it gates on
-            // delta, not dt), so brake detection is unaffected. Both use the
-            // raw pre-lock centroid delta, not the axis-locked one.
-            if dt >= Self.minVelocityDt {
-                recentVelocities.append((time: now, v: CGVector(dx: sign * dx / dt, dy: sign * dy / dt)))
-                recentVelocities.removeAll { now - $0.time > Self.peakVelocityWindow }
-            }
-            if dx != 0 || dy != 0 {
-                lastMotionTime = now
-            }
-            // Skip dead frames: a stationary palm with two contacts down would
-            // otherwise post 100 no-op scroll events per second. After an axis
-            // lock this also swallows a frame of pure off-axis wobble (its
-            // on-axis component zeroed) — correct: a phase-free stream must
-            // not emit that at all, not even as a zero.
-            if outDx == 0 && outDy == 0 { return .none }
-            if lastScrollPhase == .ended {
-                // Nothing posted yet: open with `.began` carrying the motion.
-                pendingBeganDx += outDx
-                pendingBeganDy += outDy
-                guard Swift.max(abs(pendingBeganDx), abs(pendingBeganDy)) >= 1 else { return .none }
-                defer { pendingBeganDx = 0; pendingBeganDy = 0 }
-                lastScrollPhase = .began
-                return .scrollDelta(dx: pendingBeganDx, dy: pendingBeganDy, phase: .began)
-            }
-            lastScrollPhase = .changed
-            return .scrollDelta(dx: outDx, dy: outDy, phase: .changed)
-
+            return processScroll(
+                contacts: contacts,
+                twoFingerScroll: twoFingerScroll,
+                reverseScrollDirection: reverseScrollDirection,
+                pinchZoom: pinchZoom,
+                rotate: rotate,
+                now: now
+            )
         case .pointer where absoluteTouch:
             return processAbsolutePointer(contacts: contacts)
         case .pointer:
@@ -1677,6 +1253,448 @@ struct TouchStateTracker {
         }
         if dx == 0 && dy == 0 { return .none }
         return .pointerMove(dx: dx, dy: dy)
+    }
+
+    /// One frame of a two-finger sequence: undecided, pan, or pinch and rotate.
+    private mutating func processScroll(
+        contacts: [(id: Int, screen: CGPoint)],
+        twoFingerScroll: Bool,
+        reverseScrollDirection: Bool,
+        pinchZoom: Bool,
+        rotate: Bool,
+        now: CFAbsoluteTime
+    ) -> Intent {
+        let dt = now - lastFrameTime
+        lastFrameTime = now
+        // Centroid delta over the contacts present in both this frame and
+        // the last.  Contacts with new ids (finger lifted and re-landed,
+        // or upstream palm filtering churned the set) are seeded for the
+        // next frame instead of stalling the gesture — losing both
+        // original ids used to kill the scroll until every finger lifted.
+        let current = Array(contacts.prefix(2))
+        let tracked = current.filter { lastPositions[$0.id] != nil }
+        let oldCentroid = centroid(of: tracked.compactMap { lastPositions[$0.id] })
+        let newCentroid = centroid(of: tracked.map { $0.screen })
+        // Hold last distance when a finger lifts mid-gesture (1-contact
+        // frames). distance(between:) would be 0 and invent a huge scaleDelta.
+        let newDistance = current.count >= 2
+            ? Self.distance(between: current)
+            : lastPinchDistance
+        let oldDistance = lastPinchDistance
+        let scaleDelta = newDistance - oldDistance
+        lastPositions = Dictionary(
+            current.map { ($0.id, $0.screen) },
+            uniquingKeysWith: { first, _ in first })
+        lastPinchDistance = newDistance
+
+        // A committed pan that has dropped to a single contact for longer
+        // than the grace window is finished — the user lifted one finger
+        // and kept the other down. Without this it would keep emitting
+        // `scrollDelta` from the lone finger's motion until every finger
+        // lifted, so a later unrelated single-finger touch keeps scrolling
+        // the view (`scrollWoundDown` blocks that resurrection). Capture
+        // the flick velocity now, from the window when both fingers were
+        // still moving, then close the phase envelope. Pinch/rotate are
+        // excluded: `newDistance` collapses to nonsense on one contact, so
+        // a 1-contact frame there is already ignored above.
+        if twoFingerKind == .pan {
+            if current.count >= 2 {
+                scrollDroppedToOneContactAt = 0
+            } else {
+                if scrollDroppedToOneContactAt == 0 {
+                    // First frame of the drop — both fingers were still
+                    // down last frame, so `recentVelocities` is fresh
+                    // right now. Snapshot the flick velocity *and* the
+                    // frame/motion gaps here; the wind-down below fires too
+                    // late for any of it to be recomputed meaningfully.
+                    // `dt` is this frame's real spacing (`lastFrameTime`
+                    // was reassigned to `now` earlier this frame).
+                    scrollDroppedToOneContactAt = now
+                    let k = releaseKinematics(now: now, frameGapOverride: dt)
+                    scrollVelocityAtDrop = k.velocity
+                    suppressedByRecencyAtDrop = k.suppressedByRecency
+                    frameGapAtDrop = k.frameGap
+                    motionGapAtDrop = k.motionGap
+                }
+                if now - scrollDroppedToOneContactAt >= Self.scrollSingleContactGrace {
+                    let priorPhase = lastScrollPhase
+                    // All release diagnostics come from the drop-site
+                    // snapshot — this frame is far too late to measure any
+                    // of them (see `scrollVelocityAtDrop`).
+                    releaseVelocity = scrollVelocityAtDrop
+                    releaseSuppressedByRecency = suppressedByRecencyAtDrop
+                    releaseFrameGap = frameGapAtDrop
+                    releaseMotionGap = motionGapAtDrop
+                    scrollWoundDown = true
+                    scrollWoundDownThisFrame = true
+                    scrollWoundDownExpiresAt = now + Self.scrollWoundDownBackstop
+                    return priorPhase != .ended
+                        ? .scrollDelta(dx: 0, dy: 0, phase: .ended)
+                        : .none
+                }
+                // Inside the grace window: emit nothing rather than the
+                // lone finger's delta, so the symptom doesn't just shrink
+                // to the grace duration. `lastPositions`/`lastPinchDistance`
+                // were re-seeded above, so a returning second finger picks
+                // the pan back up cleanly.
+                return .none
+            }
+        }
+
+        guard !tracked.isEmpty else { return .none }
+        let dx = newCentroid.x - oldCentroid.x
+        let dy = newCentroid.y - oldCentroid.y
+
+        // Not just `pinchZoom || rotate`: an .undecided sequence reaches
+        // here whenever any non-pan candidate was in play at escalation
+        // (see `anyTwoFingerGesture`), and an already-committed .pinch/
+        // .rotate sequence must keep being tracked here even if its flag
+        // were somehow toggled off mid-gesture.
+        if twoFingerKind != .pan {
+            if twoFingerKind == .undecided {
+                // A 1-contact frame collapses the centroid onto that single
+                // finger, roughly half the finger separation away from the
+                // two-finger anchor — enough to clear the decide threshold
+                // on its own and commit a phantom pan. Wait for two contacts.
+                guard current.count >= 2 else { return .none }
+                // Cumulative motion since two-finger sequence start — not
+                // per-frame deltas, which stay tiny at high report rates.
+                let totalTranslation = hypot(
+                    newCentroid.x - undecidedOriginCentroid.x,
+                    newCentroid.y - undecidedOriginCentroid.y)
+                let totalScaleChange = abs(newDistance - undecidedOriginDistance)
+
+                // Tangential motion: angle change converted into the same
+                // unit (screen points) as the other two candidates, so it
+                // can share `twoFingerDecideDistance`/`pinchDominanceRatio`
+                // without a second, unrelated tunable. `rotateEligible`
+                // was decided once at escalation from raw device-unit
+                // separation — when it's false (or rotate is off), this
+                // stays exactly 0 and the block below behaves identically
+                // to the pinch-only two-way decision it replaced.
+                var totalTangentialMotion = 0.0
+                if rotate, rotateEligible {
+                    let sortedPair = current.sorted { $0.id < $1.id }
+                    let newAngle = Self.angle(between: sortedPair)
+                    undecidedCumulativeAngle += Self.wrappedDelta(from: lastPairAngle, to: newAngle)
+                    lastPairAngle = newAngle
+                    totalTangentialMotion = abs(undecidedCumulativeAngle) * (newDistance / 2)
+                }
+
+                let decide = Self.twoFingerDecideDistance
+                // Tangential motion's own leg uses `rotateNoiseFloor`
+                // (9.0), not `decide` (6.0): rotate's actual
+                // qualification bar below is the higher floor, so
+                // ending the "still just landing noise" wait at the
+                // lower `decide` opened a dead zone — tangential motion
+                // between 6 and 9 stopped the wait but couldn't yet
+                // qualify, and neither pinch nor pan had cleared their
+                // own bars either, so the sequence fell through to the
+                // "neither qualified" pan default below regardless.
+                // That default only makes sense once every live
+                // candidate has had a real chance to clear its own bar
+                // — confirmed against hardware captures (2026-08-25)
+                // showing genuine rotate gestures losing the race to an
+                // instant, premature pan commit before tangential
+                // motion ever reached 9.
+                if totalScaleChange < decide, totalTranslation < decide,
+                    totalTangentialMotion < Self.rotateNoiseFloor
+                {
+                    return .none
+                }
+                // Dwell: a rotate-eligible sequence gets a brief grace
+                // period before rotate can win, because `decide` is tiny
+                // enough (see `rotateMinDwell`'s doc comment) that
+                // landing noise alone often clears it within the first
+                // frame or two — deciding this early is a coin flip, not
+                // a discrimination. Obviously large, fast motion bypasses
+                // the wait so a real pan/pinch on a wide-enough pair
+                // isn't held up by a clock meant for a slow twist onset.
+                // Pan and pinch are otherwise untouched by this: when
+                // rotate is off or the pair isn't eligible, this block
+                // never runs.
+                if rotate, rotateEligible,
+                    now - undecidedStartTime < Self.rotateMinDwell,
+                    totalTranslation < Self.rotateDwellBypassDistance,
+                    totalScaleChange < Self.rotateDwellBypassDistance
+                {
+                    return .none
+                }
+                // Pinch and rotate are evaluated independently — each
+                // just needs to beat pan's translation by
+                // `pinchDominanceRatio` (the bar that matters for "pan
+                // wins on ambiguity", including the anchored-finger-arc
+                // case — documented, intentional limitation, not a bug)
+                // and clear its own absolute noise floor. No *exclusive*
+                // bar between them: a real trackpad can magnify and
+                // rotate at once (see `TwoFingerKind`'s doc comment), so
+                // both may qualify together here.
+                var pinchQualifies = pinchZoom
+                    && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
+                    && totalScaleChange >= Self.pinchNoiseFloor
+                var rotateQualifies = rotate && rotateEligible
+                    && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
+                    && totalTangentialMotion >= Self.rotateNoiseFloor
+                // Independent floors alone let a much smaller companion
+                // signal ride along with a much larger dominant one — a
+                // real pinch's incidental angle jitter (or a real
+                // twist's incidental separation drift) can each clear
+                // their own floor without being a genuine second
+                // gesture. Suppress whichever signal is small relative
+                // to the other (below `companionSuppressionRatio` of
+                // it); comparable signals still both survive, which is
+                // what makes true concurrent pinch+rotate possible here.
+                // Symmetric and gentler than the exclusive dominance
+                // rule it replaced — a near-tie (say tangential 25 vs
+                // scale 26, which used to hand pinch an outright win)
+                // now clears suppression on both sides and fires both.
+                if pinchQualifies, rotateQualifies {
+                    if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
+                        rotateQualifies = false
+                    } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
+                        pinchQualifies = false
+                    }
+                }
+                if pinchQualifies || rotateQualifies {
+                    twoFingerKind = .gesture
+                    pinchInGesture = pinchQualifies
+                    rotateInGesture = rotateQualifies
+                    if pinchQualifies { pinchPhase = .began }
+                    if rotateQualifies { rotatePhase = .began }
+                    return .twoFingerGesture(
+                        magnify: pinchQualifies ? GestureDelta(value: 0, phase: .began) : nil,
+                        rotate: rotateQualifies ? GestureDelta(value: 0, phase: .began) : nil)
+                }
+                // Neither qualified. Pan isn't a candidate at all when
+                // twoFingerScroll is off — stay undecided (rather than
+                // lock in a fallback that will never be emitted) so a
+                // clearer pinch/rotate signal later in the same sequence
+                // can still win.
+                guard twoFingerScroll else { return .none }
+                twoFingerKind = .pan
+                pendingBeganDx = 0
+                pendingBeganDy = 0
+                return .none
+            }
+            if twoFingerKind == .gesture {
+                // Angle tracking runs for the whole sequence, not just while
+                // rotate is an active component: the late-join window below
+                // needs a per-frame angle delta even while rotate is
+                // dormant, and a gap in `lastPairAngle` would make the
+                // first delta after a join one large jump.
+                //
+                // Hold the last angle on a 1-contact frame instead of
+                // computing — same treatment `lastPinchDistance` gets
+                // above, for the same reason (a lone survivor's angle
+                // relative to nothing is meaningless and would invent a
+                // huge delta).
+                var frameAngleDelta = 0.0
+                if rotate, rotateEligible {
+                    let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
+                    let newAngle = current.count >= 2 ? Self.angle(between: sortedPair) : lastPairAngle
+                    frameAngleDelta = Self.wrappedDelta(from: lastPairAngle, to: newAngle)
+                    lastPairAngle = newAngle
+                }
+
+                // Late join. The commit above picks the components from one
+                // frame's evidence; a hand that starts as a clean zoom and
+                // then adds a twist (or the reverse) produced that evidence
+                // *later*, and freezing the set at commit meant the second
+                // gesture could never arrive — the sequence had to be lifted
+                // and restarted. A trackpad has no such commit: it derives
+                // magnification and rotation independently every frame. This
+                // re-runs the qualification for whichever component isn't in
+                // play yet, so the second gesture joins when its evidence
+                // arrives.
+                //
+                // Measured over a trailing window, *not* cumulative since
+                // the sequence origin the commit uses. Since-origin totals
+                // make the join bar climb with the gesture's own length:
+                // `companionSuppressionRatio` asks the newcomer to reach
+                // half of a scale change that has been growing the whole
+                // time, so a twist that joins after ~20° a moment after
+                // commit needed ~46° once the zoom had been running (probed
+                // 2026-08-27, which is why this isn't the commit's own
+                // accumulators). A window keeps the bar constant, and "how
+                // hard am I twisting *now*" is the question this is actually
+                // asking.
+                //
+                // Latch-on only: a component that has begun is never removed
+                // mid-sequence. Removal would mean posting an `.ended` and
+                // then a fresh `.began` if it came back, and apps read that
+                // envelope churn as separate gestures. Growth is safe;
+                // retraction isn't.
+                if current.count >= 2 {
+                    recentGestureDeltas.append((
+                        time: now,
+                        scale: abs(scaleDelta),
+                        tangential: abs(frameAngleDelta) * (newDistance / 2),
+                        translation: hypot(dx, dy)))
+                    recentGestureDeltas.removeAll { now - $0.time > Self.lateJoinWindow }
+                }
+                if current.count >= 2, !pinchInGesture || !rotateInGesture {
+                    let totalTranslation = recentGestureDeltas.reduce(0) { $0 + $1.translation }
+                    let totalScaleChange = recentGestureDeltas.reduce(0) { $0 + $1.scale }
+                    let totalTangentialMotion = (rotate && rotateEligible)
+                        ? recentGestureDeltas.reduce(0) { $0 + $1.tangential }
+                        : 0
+                    var pinchQualifies = pinchZoom
+                        && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
+                        && totalScaleChange >= Self.pinchNoiseFloor
+                    var rotateQualifies = rotate && rotateEligible
+                        && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
+                        && totalTangentialMotion >= Self.rotateNoiseFloor
+                    // Same companion suppression as at commit, and it is
+                    // what keeps this from firing on drift: over a long
+                    // pinch the incidental angle wobble does eventually
+                    // clear `rotateNoiseFloor` in absolute terms, but it
+                    // stays far below `companionSuppressionRatio` of the
+                    // scale change unless the user is really twisting.
+                    if pinchQualifies, rotateQualifies {
+                        if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
+                            rotateQualifies = false
+                        } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
+                            pinchQualifies = false
+                        }
+                    }
+                    let joinPinch = !pinchInGesture && pinchQualifies
+                    let joinRotate = !rotateInGesture && rotateQualifies
+                    if joinPinch || joinRotate {
+                        if joinPinch { pinchInGesture = true; pinchPhase = .began }
+                        if joinRotate { rotateInGesture = true; rotatePhase = .began }
+                        // Open the new envelope with a zero delta and skip
+                        // the already-active component's delta for this one
+                        // frame, exactly as the commit path does. One frame
+                        // at report rate is imperceptible; mixing a `.began`
+                        // and a `.changed` for different components in one
+                        // return is not worth the extra state.
+                        return .twoFingerGesture(
+                            magnify: joinPinch ? GestureDelta(value: 0, phase: .began) : nil,
+                            rotate: joinRotate ? GestureDelta(value: 0, phase: .began) : nil)
+                    }
+                }
+
+                // Each active component reports its own per-frame delta,
+                // independently of the other.
+                var magnify: GestureDelta?
+                if pinchInGesture, scaleDelta != 0, oldDistance > 0 {
+                    // Exact relative growth this frame — see the
+                    // `twoFingerGesture` doc comment for why this is the
+                    // correct (not approximate) per-frame value for a
+                    // multiplicative magnify stream.
+                    pinchPhase = .changed
+                    magnify = GestureDelta(value: scaleDelta / oldDistance, phase: .changed)
+                }
+                var rotateComponent: GestureDelta?
+                if rotateInGesture {
+                    let delta = frameAngleDelta
+                    if delta != 0 {
+                        rotatePhase = .changed
+                        // Negated: hardware-confirmed 2026-08-08 that raw
+                        // atan2 delta reads backwards from the actual
+                        // finger twist. `atan2`'s "positive is counter-
+                        // clockwise" convention holds in math coordinates
+                        // (y-up); screen coordinates here are y-down,
+                        // which flips the handedness. Internal tracking
+                        // (`lastPairAngle`, `undecidedCumulativeAngle`)
+                        // stays in the raw, unflipped convention — only
+                        // the emitted intent is corrected, right at the
+                        // boundary.
+                        rotateComponent = GestureDelta(value: -delta, phase: .changed)
+                    }
+                }
+                guard magnify != nil || rotateComponent != nil else { return .none }
+                return .twoFingerGesture(magnify: magnify, rotate: rotateComponent)
+            }
+        }
+
+        // Dominant-axis lock (see `scrollAxisLock`). Only a committed
+        // `.pan` reaches here with `twoFingerKind == .pan` — pinch/rotate/
+        // undecided all returned above. `lockedDx`/`lockedDy` carry the
+        // axis-suppressed delta forward; `dx`/`dy` stay raw for velocity
+        // seeding and brake detection, which must track the real finger
+        // (not the locked axis) so momentum coasts the way the hand
+        // flicked if `twoFingerScrollMomentum` is ever back on — matching
+        // `PanScrollTracker`, which likewise seeds from unlocked travel.
+        var lockedDx = dx
+        var lockedDy = dy
+        if twoFingerKind == .pan {
+            if let scrollAxisLock {
+                switch scrollAxisLock {
+                case .vertical: lockedDx = 0
+                case .horizontal: lockedDy = 0
+                }
+            } else if !scrollAxisResolved && tracked.count >= 2 {
+                // Only feed the lock decision from genuine two-finger
+                // centroid deltas. A frame with one new id (`current.count
+                // == 2` but `tracked.count == 1` — finger re-landed, or
+                // palm filtering churned the set) yields only that single
+                // finger's own motion here, not a centroid translation.
+                // Defensive, not a known failure: `oldCentroid` and
+                // `newCentroid` are both taken over `tracked`, so such a
+                // frame doesn't inject a jump — but it also isn't the
+                // signal this accumulator is meant to measure, so skip it.
+                // `lastPositions` was re-seeded for the new id above; the
+                // next full two-contact frame resumes the decision.
+                scrollPreLockAccumX += abs(dx)
+                scrollPreLockAccumY += abs(dy)
+                if scrollPreLockAccumX + scrollPreLockAccumY >= Self.scrollAxisLockWindow {
+                    let ratio = Self.scrollAxisLockRatio
+                    if scrollPreLockAccumX >= scrollPreLockAccumY * ratio {
+                        scrollAxisLock = .horizontal
+                        lockedDy = 0
+                    } else if scrollPreLockAccumY >= scrollPreLockAccumX * ratio {
+                        scrollAxisLock = .vertical
+                        lockedDx = 0
+                    }
+                    // Neither axis dominates — a genuinely diagonal
+                    // two-finger drag. Give up on locking for the rest of
+                    // this gesture and stay omnidirectional.
+                    scrollAxisResolved = true
+                }
+            }
+        }
+
+        // Default (reverseScrollDirection=false): content follows finger.
+        // Reversed: classic scroll-wheel semantics, content moves opposite.
+        let sign = reverseScrollDirection ? -1.0 : 1.0
+        let outDx = sign * lockedDx
+        let outDy = sign * lockedDy
+        // Only sample velocity from frames spaced at least `minVelocityDt`
+        // apart. A Bluetooth batch delivered in a burst puts several frames
+        // microseconds apart (see `BatchFramePacer` / `subMillisecondDtFrames`);
+        // `delta / dt` on one of those is a velocity 10–100× the real finger
+        // speed, and `peak` below is a max, so it latches onto exactly that
+        // sample and seeds a runaway coast. The device's true touch cadence
+        // is ~5.6ms on BT (a ~22.5ms batch carrying ~4 touch frames), so
+        // 2ms is comfortably below real spacing and above burst spacing.
+        // `lastMotionTime` still updates from burst frames (it gates on
+        // delta, not dt), so brake detection is unaffected. Both use the
+        // raw pre-lock centroid delta, not the axis-locked one.
+        if dt >= Self.minVelocityDt {
+            recentVelocities.append((time: now, v: CGVector(dx: sign * dx / dt, dy: sign * dy / dt)))
+            recentVelocities.removeAll { now - $0.time > Self.peakVelocityWindow }
+        }
+        if dx != 0 || dy != 0 {
+            lastMotionTime = now
+        }
+        // Skip dead frames: a stationary palm with two contacts down would
+        // otherwise post 100 no-op scroll events per second. After an axis
+        // lock this also swallows a frame of pure off-axis wobble (its
+        // on-axis component zeroed) — correct: a phase-free stream must
+        // not emit that at all, not even as a zero.
+        if outDx == 0 && outDy == 0 { return .none }
+        if lastScrollPhase == .ended {
+            // Nothing posted yet: open with `.began` carrying the motion.
+            pendingBeganDx += outDx
+            pendingBeganDy += outDy
+            guard Swift.max(abs(pendingBeganDx), abs(pendingBeganDy)) >= 1 else { return .none }
+            defer { pendingBeganDx = 0; pendingBeganDy = 0 }
+            lastScrollPhase = .began
+            return .scrollDelta(dx: pendingBeganDx, dy: pendingBeganDy, phase: .began)
+        }
+        lastScrollPhase = .changed
+        return .scrollDelta(dx: outDx, dy: outDy, phase: .changed)
     }
 
     /// Clears the committed-`.pan` dominant-axis lock and its pre-lock
