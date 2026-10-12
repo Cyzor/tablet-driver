@@ -1030,67 +1030,46 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // devices unchanged.
         let device = target ?? capableInterfaceDevice ?? self.device
         let steps = steps ?? deviceSpec.initSteps
-        guard index < steps.count else { return }
-        switch steps[index] {
-        case .featureReport(var bytes):
-            let reportID = CFIndex(bytes[0])
-            let name = deviceSpec.name
-            let ret = hidSetReport(device, reportID: reportID, bytes: &bytes,
-                         tag: "\(name) initStep[\(index)]", log: logger)
-            // Recorded whether or not a capture is running: this happens at
-            // open, usually long before one starts, and a device left in
-            // reduced mode otherwise yields a capture that looks healthy with
-            // no trace of why. Carries the usage page because the failure this
-            // catches is about which endpoint got the write, not the bytes.
-            CaptureEngine.recordAutoInitReport(
-                reportID: Int(reportID),
-                value: Int(bytes.count > 1 ? bytes[1] : 0),
-                ioReturn: ret,
-                usagePage: hidIntProperty(device, kIOHIDPrimaryUsagePageKey))
-            // hidSetReport only logs failures — success doesn't mean the
-            // firmware honored it (cf. Xencelabs LED writes). Log success
-            // too so a capture can tell "write succeeded" from "device left
-            // reduced mode" instead of assuming one implies the other.
-            if ret == kIOReturnSuccess {
-                let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
-                logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] feature report succeeded on interface usagePage=0x\(String(usagePage, radix: 16), privacy: .public)")
+        let name = deviceSpec.name
+        let logger = logger
+        let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
+        InitStepRunner.run(steps, on: IOKitHIDInterface(device), from: index) { outcome in
+            let index = outcome.index
+            switch outcome.step {
+            case .featureReport(let bytes):
+                let ret = outcome.result ?? kIOReturnSuccess
+                if ret != kIOReturnSuccess {
+                    logger.error("hidSetReport \(name, privacy: .public) initStep[\(index, privacy: .public)] failed: \(String(format: "0x%08x", ret), privacy: .public)")
+                }
+                // Recorded whether or not a capture is running: this happens at
+                // open, usually long before one starts, and a device left in
+                // reduced mode otherwise yields a capture that looks healthy with
+                // no trace of why. Carries the usage page because the failure this
+                // catches is about which endpoint got the write, not the bytes.
+                CaptureEngine.recordAutoInitReport(
+                    reportID: Int(bytes[0]),
+                    value: Int(bytes.count > 1 ? bytes[1] : 0),
+                    ioReturn: ret,
+                    usagePage: usagePage)
+                // Success doesn't mean the firmware honored it (cf. Xencelabs
+                // LED writes); logging it lets a capture tell "write succeeded"
+                // from "device left reduced mode".
+                if ret == kIOReturnSuccess {
+                    logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] feature report succeeded on interface usagePage=0x\(String(usagePage, radix: 16), privacy: .public)")
+                }
+            case .outputReport(let bytes):
+                // Padded by the runner: a short write to Xencelabs firmware
+                // reports success and is ignored.
+                let hex = String(format: "0x%08x", outcome.result ?? kIOReturnSuccess)
+                let padding = outcome.sentLength > bytes.count ? " (padded to \(outcome.sentLength))" : ""
+                logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] output report\(padding, privacy: .public) result=\(hex, privacy: .public)")
+            case .stringDescriptor(let descriptorIndex):
+                // Reading is what switches some tablets on; nothing here uses
+                // the reply yet.
+                logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] string descriptor \(descriptorIndex, privacy: .public) → \(outcome.reply.map { "\($0.count) bytes" } ?? "no answer", privacy: .public)")
+            case .delay:
+                break
             }
-            executeInitSteps(from: index + 1, on: target, steps: steps)
-        case .outputReport(let bytes):
-            // Vendor tablet-mode init over the HID output pipe (Xencelabs:
-            // [0x02, 0xB0, 0x04]). Confirmed 2026-07-01 on a Pen Display: a
-            // raw short write reports kIOReturnSuccess at the transport level
-            // but the firmware silently ignores it — no report ID 7 ever
-            // arrives afterward. Pad to the device's declared
-            // MaxOutputReportSize up front rather than treating that as a
-            // fallback-on-failure retry, since a successful-but-ignored write
-            // never triggers the retry path.
-            let reportID = CFIndex(bytes[0])
-            let name = deviceSpec.name
-            var padded = paddedOutputReport(bytes, for: device)
-            let ret = hidSetReport(
-                device, type: kIOHIDReportTypeOutput, reportID: reportID,
-                bytes: &padded,
-                tag: padded.count > bytes.count
-                    ? "\(name) initStep[\(index)] output padded to \(padded.count)"
-                    : "\(name) initStep[\(index)] output",
-                log: logger)
-            // hidSetReport only logs on failure — log the outcome unconditionally
-            // here, since "no error" has been ambiguous with "never ran."
-            let hex = String(format: "0x%08x", ret)
-            logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] output report result=\(hex, privacy: .public)")
-            executeInitSteps(from: index + 1, on: target, steps: steps)
-        case .delay(let seconds):
-            nonisolated(unsafe) let target = target  // init steps run on main only
-            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
-                self?.executeInitSteps(from: index + 1, on: target, steps: steps)
-            }
-        case .stringDescriptor(let descriptorIndex):
-            // Reading is what switches some tablets on; nothing here uses the
-            // reply yet.
-            let reply = readStringDescriptor(device, index: UInt8(truncatingIfNeeded: descriptorIndex))
-            logger.info("\(self.deviceSpec.name, privacy: .public): initStep[\(index, privacy: .public)] string descriptor \(descriptorIndex, privacy: .public) → \(reply.map { "\($0.count) bytes" } ?? "no answer", privacy: .public)")
-            executeInitSteps(from: index + 1, on: target, steps: steps)
         }
     }
 
