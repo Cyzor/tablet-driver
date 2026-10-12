@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild corpus.json from local captures (Notes/Scratch, untracked) and
+"""Rebuild TabletKit's routing corpus.json from local captures (Notes/Scratch, untracked) and
 public recordings cloned under Notes/Scratch/upstream: bentiss/hid-devices
 and the kernel's HID selftests. Descriptors from linuxwacom/wacom-hid-descriptors
 go to corpus-linuxwacom.json, which keeps that database's ODbL license.
@@ -7,14 +7,14 @@ go to corpus-linuxwacom.json, which keeps that database's ODbL license.
 Keeps only what routing reads: each interface's top-level collections, per
 product ID and transport. No reports, serials, or submitter details.
 
-Usage (from the repo root): tools/tests/interface-routing-tests/build-corpus.py
+Usage (from the repo root): tools/build-interface-routing-corpus.py
 """
 import json, os, zipfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[1]
 SCRATCH = ROOT / "Notes" / "Scratch"
-OUT = Path(__file__).with_name("corpus.json")
+OUT = ROOT / "TabletKit" / "Tests" / "Fixtures" / "InterfaceRouting" / "corpus.json"
 WACOM_VIDS = {"0x056A", "0x0531"}
 REGISTRY = ROOT / "TabletKit" / "registry.json"
 
