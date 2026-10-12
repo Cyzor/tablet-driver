@@ -115,22 +115,34 @@ enum DeviceRouter {
         holdTouchCompanion: Bool = true
     ) -> Routed {
 
-        // Wacom-specific routing (dongle remap, registry decoders) only applies
-        // to actual Wacom hardware. A non-Wacom PID can numerically collide with
-        // a Wacom registry entry, so gate these branches by vendor. Drivable
-        // non-Wacom devices arrive with an explicit `overrideSpec` instead.
+        // The decision is TabletKit's (`InterfaceRouting.decide`); this builds
+        // what it names. Non-Wacom PIDs can collide with Wacom registry rows,
+        // so the decision gates on vendor; Xencelabs arrives as `overrideSpec`.
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
-        let isWacom = WacomDeviceRegistry.vendorIDs.contains(vendorID)
         let pidStr = String(productID, radix: 16, uppercase: true)
+        let facts = InterfaceRouting.Facts(
+            vendorID: vendorID, productID: productID, usagePage: usagePage,
+            usagePairs: usagePairs(device), isBluetooth: isBLE, overrideSpec: overrideSpec)
+        let attached = contexts.values.filter { $0.tabletDevice is WacomKnownDevice }
+        let decision = InterfaceRouting.decide(
+            facts, attachedProductIDs: attached.map(\.productID),
+            holdTouchCompanion: holdTouchCompanion
+        ) {
+            let (maxX, _, _, _) = queryHIDDigitizerSpec(device)
+            // Classified only when there is X/Y to classify, as before.
+            return .init(
+                hasXY: maxX > 0,
+                kind: maxX > 0 ? classifyDigitizerInterface(device) : .undetermined)
+        }
+        func parent(_ pid: Int) -> DeviceContext? {
+            attached.first { $0.productID == pid }
+        }
 
-        // ── ACK-40401 RF wireless dongle ─────────────────────────────────────
-        // The dongle presents the same HID descriptor as the paired tablet
-        // (PTH-x50/x51 family, IntuosV1 format). We synthesize a spec from the
-        // live descriptor — pen events are gated by WacomKnownDevice until the
-        // 0x80 wireless status report confirms the RF link.
-        // Pinned to 0x056A, not `isWacom`: the ACK-40401 is a main-line Wacom
-        // accessory, and nothing on the consumer 0x0531 VID pairs with it.
-        if vendorID == 0x056A && productID == 0x0084 {
+        switch decision {
+        case .wirelessDongle:
+            // Same descriptor as the paired tablet (PTH-x50/x51, IntuosV1), so
+            // the spec comes from the live descriptor. Pen events wait for the
+            // 0x80 status report to confirm the RF link.
             routerLog.info("ACK-40401 wireless dongle connected")
             let (dMaxX, dMaxY, dMaxP, _) = queryHIDDigitizerSpec(device)
             let dongleSpec = TabletSpec(
@@ -151,53 +163,22 @@ enum DeviceRouter {
                 onPairedPID: callbacks.onPairedPID,
                 onOpenFailed: callbacks.onOpenFailed)
             return .driver(drv, seized: false)
-        }
 
-        // ── Touch sensor enumerating under its own PID ───────────────────────
-        // Checked ahead of the registry lookup below: these sensors do have
-        // registry rows, but name-only ones (maxX and buttonCount both 0), so
-        // they fail that branch's digitizer gate and fall through to the
-        // observe-only multitouch fallback — reports reach diagnostics and
-        // nothing else. Routing to the pen driver instead gets the sensor's
-        // descriptor read by a spec that declares `hasFingerTouch`, which is
-        // what `deriveTouchDecoders` gates on.
-        //
-        // Ordered after the dongle branch above so a dongle PID can never be
-        // claimed as someone's touch companion.
-        if isWacom, overrideSpec == nil {
-            let touchParent = contexts.values.first { ctx in
-                ctx.tabletDevice is WacomKnownDevice
-                    && WacomDeviceRegistry.spec(for: ctx.productID)?.touchCompanionPID == productID
-            }
-            if let parent = touchParent {
-                routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor for 0x\(String(parent.productID, radix: 16, uppercase: true), privacy: .public)")
-                return .touchCompanion(parentContext: parent)
-            }
-            if holdTouchCompanion, WacomDeviceRegistry.touchCompanionPIDs.contains(productID) {
-                routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor, holding until its tablet enumerates")
-                return .deferredTouchCompanion
-            }
-        }
+        case .touchCompanion(let parentPID):
+            guard let parent = parent(parentPID) else { return .skip }
+            routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor for 0x\(String(parent.productID, radix: 16, uppercase: true), privacy: .public)")
+            return .touchCompanion(parentContext: parent)
 
-        // ── Recognised PID with a live decoder ───────────────────────────────
-        // maxX == 0 with a nonzero buttonCount is a legitimate aux-only device
-        // (Xencelabs Quick Keys: express keys + dial, no pen digitizer);
-        // maxX == 0 otherwise means a malformed spec, rejected as before.
-        if let deviceSpec = overrideSpec ?? (isWacom ? WacomDeviceRegistry.spec(for: productID) : nil),
-            deviceSpec.maxX > 0 || deviceSpec.buttonCount > 0
-        {
-            // Interface routing depends on parser family; see `InterfaceRouting`.
-            let isCintiqV1 = deviceSpec.format == .cintiqV1
-            let shouldDefer = InterfaceRouting.shouldDefer(
-                spec: deviceSpec, usagePage: usagePage, isBLE: isBLE, pairs: usagePairs(device))
-            if shouldDefer {
-                routerLog.info("\(deviceSpec.name, privacy: .public) — deferring 0x\(String(usagePage, radix: 16), privacy: .public) interface")
-                return .deferred
-            }
+        case .holdTouchCompanion:
+            routerLog.info("Wacom 0x\(pidStr, privacy: .public) — touch sensor, holding until its tablet enumerates")
+            return .deferredTouchCompanion
 
-            // Seize the digitizer interface for CintiqV1 to stop the OS from
-            // interpreting tip-switch as a native left-click.
-            let shouldSeize = !isBLE && isCintiqV1 && deviceSpec.seizeUSB && usagePage == 0x01
+        case .deferToSibling:
+            let name = (overrideSpec ?? WacomDeviceRegistry.spec(for: productID))?.name ?? pidStr
+            routerLog.info("\(name, privacy: .public) — deferring 0x\(String(usagePage, radix: 16), privacy: .public) interface")
+            return .deferred
+
+        case .driver(let deviceSpec, let shouldSeize):
             routerLog.info("\(deviceSpec.name, privacy: .public) connected via universal driver\(shouldSeize ? " (seized)" : "", privacy: .public)")
             let drv = WacomKnownDevice(
                 device: device, deviceSpec: deviceSpec, seize: shouldSeize,
@@ -210,77 +191,42 @@ enum DeviceRouter {
                 onTouch: callbacks.onTouch,
                 onOpenFailed: callbacks.onOpenFailed)
             return .driver(drv, seized: shouldSeize)
-        }
 
-        // ── Unrecognised PID — probe the descriptor ─────────────────────────
-        // Devices with X/Y digitizer elements get the generic fallback driver.
-        // Devices without are either non-input interfaces (LED controller,
-        // status interface) or LED companions of a previously-attached tablet.
-        let (probeX, _, _, _) = queryHIDDigitizerSpec(device)
-
-        // A multitouch interface passes the X/Y probe — `queryHIDDigitizerSpec`
-        // reads IOKit elements, which carry no collection context, so a touch
-        // report's Generic Desktop X looks exactly like a pen's. Attaching a pen
-        // driver to one is actively wrong rather than merely useless: the report
-        // repeats X/Y once per finger and IOKit cannot say which repetition a
-        // value came from, so the cursor is dragged between contacts.
-        //
-        // Only reachable for unregistered PIDs. Registered devices returned
-        // above, so nothing whose touch arrives on a Wacom vendor interface
-        // (PTH-860 and friends, decoded by IntuosV2Decoder) is affected.
-        //
-        // Attached for observation rather than skipped: a device with no driver
-        // gets no `DeviceContext`, and `CaptureGuideView` resolves its capture
-        // target through `tabletManager.contexts`, so returning `.skip` here
-        // would make novel touch hardware invisible to the discovery flow that
-        // exists to onboard it. Observing keeps reports flowing to
-        // `CaptureEngine` while emitting no cursor input.
-        //
-        // No device path constructs a `PrecisionTouchDecoder` yet; when touch
-        // wiring lands, this is where it hooks in.
-        if probeX > 0, classifyDigitizerInterface(device) == .touchOnly {
+        case .observeTouchOnly:
+            // Observed rather than skipped: a device with no driver gets no
+            // `DeviceContext`, which would hide novel touch hardware from the
+            // capture flow that exists to onboard it.
             routerLog.info("0x\(pidStr, privacy: .public) — multitouch-only interface, observing without cursor input")
             let drv = GenericHIDDigitizer(
                 device: device, onTablet: callbacks.onTablet, observeOnly: true)
             return .driver(drv, seized: false)
-        }
 
-        if probeX > 0 {
-            // Unknown *Wacom* gets the Intuos-family fallback (knows the Wacom
-            // report layout). Any other vendor's standards-compliant pen
-            // digitizer gets the vendor-agnostic universal floor, which reads
-            // only standard HID usages and needs no per-device knowledge.
-            if isWacom {
-                routerLog.info("unknown Wacom 0x\(pidStr, privacy: .public) — attaching Wacom fallback driver")
-                let drv = WacomFallbackDevice(
-                    device: device,
-                    onTablet: callbacks.onTablet,
-                    onAux: callbacks.onAux,
-                    onToolEnter: callbacks.onToolEnter)
-                return .driver(drv, seized: false)
-            }
+        case .wacomFallback:
+            routerLog.info("unknown Wacom 0x\(pidStr, privacy: .public) — attaching Wacom fallback driver")
+            let drv = WacomFallbackDevice(
+                device: device,
+                onTablet: callbacks.onTablet,
+                onAux: callbacks.onAux,
+                onToolEnter: callbacks.onToolEnter)
+            return .driver(drv, seized: false)
+
+        case .genericDigitizer:
             let drv = GenericHIDDigitizer(device: device, onTablet: callbacks.onTablet)
             let brandNote = drv.detectedBrand.map { " (looks like \($0))" } ?? ""
             routerLog.info("0x\(String(vendorID, radix: 16), privacy: .public)/0x\(pidStr, privacy: .public)\(brandNote, privacy: .public) — attaching generic HID digitizer (universal floor)")
             return .driver(drv, seized: false)
-        }
 
-        // No digitizer — is it a known LED companion for an attached tablet?
-        let companion = contexts.values.first { ctx in
-            guard ctx.tabletDevice is WacomKnownDevice,
-                  let companionPID = WacomDeviceRegistry.spec(for: ctx.productID)?.ledCompanionPID
-            else { return false }
-            return companionPID == productID
-        }
-        if let parent = companion {
-            let parentPID = parent.productID == 0
+        case .ledCompanion(let parentPID):
+            guard let parent = parent(parentPID) else { return .skip }
+            let parentName = parent.productID == 0
                 ? "unknown"
                 : String(parent.productID, radix: 16, uppercase: true)
-            routerLog.info("Wacom 0x\(pidStr, privacy: .public) — LED companion for \(parentPID, privacy: .public)")
+            routerLog.info("Wacom 0x\(pidStr, privacy: .public) — LED companion for \(parentName, privacy: .public)")
             return .ledCompanion(parentContext: parent)
-        }
 
-        routerLog.debug("Wacom 0x\(pidStr, privacy: .public) — no digitizer elements, skipping")
-        return .skip
+        case .skip:
+            routerLog.debug("Wacom 0x\(pidStr, privacy: .public) — no digitizer elements, skipping")
+            return .skip
+        }
     }
 }
