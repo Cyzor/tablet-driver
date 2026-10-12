@@ -16,7 +16,11 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 /// Supports both USB and Bluetooth transports; BLE/BT skips USB feature inits.
 final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split between main and the pen thread; see ThreadContract
 
-    var spec: DigitizerSpec
+    /// Kept in the decoder, which reads every report against it.
+    var spec: DigitizerSpec {
+        get { decoder.digitizer }
+        set { decoder.digitizer = newValue }
+    }
 
     /// Registry spec → decoder spec, for the initial device and a wirelessly
     /// paired tablet alike.
@@ -115,7 +119,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// with no standard HID Digitizer descriptor to derive a
     /// `PrecisionTouchDecoder` from. See `deriveFixedTouchDecoder` below —
     /// NOT hardware-verified for any device it currently applies to.
-    private var fixedTouchDecoders: [UInt8: any TabletReportDecoder] = [:]
+    private var fixedTouchDecoders: [UInt8: DeviceDecoder] = [:]
     /// Called when the hardware serial is successfully queried from a WACOM_REPORT_USB
     /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
     /// query fails or the device does not support the feature report.
@@ -126,8 +130,10 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// silent except for an os_log line no one is watching.
     private let onOpenFailed: ((IOReturn) -> Void)?
 
-    private var decoder: any TabletReportDecoder
-    private var state = DecoderState()
+    private var decoder: DeviceDecoder
+    /// Reports since the pen came into range, for the Bluetooth
+    /// announcement grace (`advanceToolAnnounceGrace`).
+    private var framesSinceProximityEnter = 0
     /// IOKit keeps writing here after registration, and an array's inout
     /// pointer lasts only for the call, so the driver owns this buffer.
     private let reportBuffer: UnsafeMutablePointer<UInt8>
@@ -425,9 +431,9 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         self.onPairedPID = onPairedPID
         self.onOpenFailed = onOpenFailed
 
-        self.spec = Self.makeDigitizerSpec(from: deviceSpec)
-
-        self.decoder = deviceSpec.format.makeDecoder()
+        self.decoder = DeviceDecoder(
+            format: deviceSpec.format, digitizer: Self.makeDigitizerSpec(from: deviceSpec),
+            family: deviceSpec.family)
 
         // Use at least 192 bytes so both IntuosV1 (10-byte pen, 64-byte BLE)
         // and IntuosV2 (192-byte) reports always fit.
@@ -619,7 +625,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         guard let entry = Self.fixedTouchDecoderPIDs[pid],
             fixedTouchDecoders[entry.reportID] == nil
         else { return }
-        fixedTouchDecoders[entry.reportID] = entry.decoder
+        fixedTouchDecoders[entry.reportID] = DeviceDecoder(
+            entry.decoder, digitizer: spec, family: deviceSpec.family)
 
         // Vendor-format reports, but the descriptor still names the finger
         // X/Y range, the same place Linux reads it for these sensors.
@@ -1380,16 +1387,16 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // wrong label — "stylus"/"eraser" alias the shared device-default
         // settings bucket (`toolSettings(forID:)`), so a binding edit made
         // while misidentified as generic can bleed across different pens.
-        let wasInProximity = state.prevInProximity
+        let wasInProximity = decoder.penInRange
         if wasInProximity {
-            state.framesSinceProximityEnter =
-                min(state.framesSinceProximityEnter + 1, Self.toolAnnounceGraceFrames + 1)
+            framesSinceProximityEnter =
+                min(framesSinceProximityEnter + 1, Self.toolAnnounceGraceFrames + 1)
         } else {
-            state.framesSinceProximityEnter = 0
+            framesSinceProximityEnter = 0
         }
         let synthesizeIntuosV3ToolEnter =
             deviceSpec.format == .intuosV3 && isBluetooth
-            && state.framesSinceProximityEnter == Self.toolAnnounceGraceFrames
+            && framesSinceProximityEnter == Self.toolAnnounceGraceFrames
         return (wasInProximity, synthesizeIntuosV3ToolEnter)
     }
 
@@ -1405,72 +1412,51 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             // report-ID spaces don't overlap for any product this applies
             // to today, but a fixed, hand-specified layout should win over a
             // generically-derived one if that were ever to change.
-            results = fixedTouchDecoder.decode(
-                report: hidReport, spec: spec, state: &state,
-                deviceFamily: deviceSpec.family)
+            fixedTouchDecoder.digitizer = spec
+            results = fixedTouchDecoder.decode(hidReport)
             fixedTouchDecoders[report[0]] = fixedTouchDecoder
         } else if length > 0, let touchDecoder = touchDecoders[report[0]] {
             results = touchDecoder.decode(report: hidReport).map { [.touch($0.contacts)] } ?? []
         } else {
-            var decoded = decoder.decode(
-                report: hidReport, spec: spec, state: &state,
-                deviceFamily: deviceSpec.family)
+            var decoded = decoder.decode(hidReport)
+            // Over Bluetooth the decoder also announces an Art Pen it infers
+            // from a twisted barrel, alongside that frame's pen point. A real
+            // announcement arrives alone, so only that one counts here.
+            let inferredArtPen =
+                deviceSpec.format == .intuosV3 && isBluetooth
+                && decoded.contains { if case .pen = $0 { return true } else { return false } }
             let realToolEnter: ToolIdentity? = decoded.compactMap {
                 if case .toolEnter(let identity) = $0 { return identity } else { return nil }
-            }.first
+            }.first.flatMap { identity in
+                inferredArtPen && identity.serial == 0 && identity.toolCode == 0x0804 ? nil : identity
+            }
             if let realToolEnter {
                 lastRealToolAnnouncementAt = Date()
                 lastRealToolIdentity = realToolEnter
             }
-            let decoderEmittedRealToolEnter = realToolEnter != nil
+            // Real or inferred: either way the fallback must not add a second.
+            let decoderEmittedToolEnter = decoded.contains {
+                if case .toolEnter = $0 { return true } else { return false }
+            }
             let decodedPoint: TabletPoint? = decoded.compactMap {
                 if case .pen(let point) = $0 { return point } else { return nil }
             }.first
             fixIntuosV3BluetoothIdentity(
                 &decoded, synthesizeIntuosV3ToolEnter: synthesizeIntuosV3ToolEnter,
-                decoderEmittedRealToolEnter: decoderEmittedRealToolEnter, decodedPoint: decodedPoint)
+                decoderEmittedToolEnter: decoderEmittedToolEnter, decodedPoint: decodedPoint)
             results = decoded
         }
         return results
     }
 
-    /// Corrects or supplies the pen's identity on IntuosV3 Bluetooth, where
-    /// the announcement frame can arrive late or not at all.
+    /// Supplies the pen's identity on IntuosV3 Bluetooth when the
+    /// announcement frame is late or missing. The decoder itself handles a
+    /// twisted barrel (an Art Pen); this covers the rest.
     private func fixIntuosV3BluetoothIdentity(
         _ decoded: inout [DecodeResult], synthesizeIntuosV3ToolEnter: Bool,
-        decoderEmittedRealToolEnter: Bool, decodedPoint: TabletPoint?
+        decoderEmittedToolEnter: Bool, decodedPoint: TabletPoint?
     ) {
-        // Rotation-as-ground-truth: barrel rotation decodes on every
-        // BLE/USB frame regardless of tool identity, and a non-rotating
-        // pen sits at a fixed ~180° neutral. If the current identity
-        // isn't Art Pen but the barrel is genuinely twisted, correct it
-        // — no announcement needed. One-directional (neutral doesn't
-        // prove non-Art-Pen; a still Art Pen also reads neutral), and
-        // takes priority over the generic-synthesis fallback below since
-        // both read the same point and must not double-insert.
-        //
-        // `hasValidRotationFrame` is required, not decoration: a pen with
-        // no barrel sensor never sets it, and the decoder reports 0.0
-        // until it does — which is 180° off neutral and read here as a
-        // hard twist. That mislabelled every Pro Pen 3 on this transport
-        // as an Art Pen one frame after its real announcement.
-        let rotationImpliesArtPen =
-            deviceSpec.format == .intuosV3 && isBluetooth
-            && state.currentToolCode != 0x0804 && state.currentToolCode != 0x1108
-            && (decodedPoint?.inProximity ?? false)
-            && state.hasValidRotationFrame
-            && abs((decodedPoint?.rotation ?? 180.0) - 180.0) > 2.0
-        if rotationImpliesArtPen {
-            // currentToolCode only — never lastToolCode/lastSerial.
-            // Those are decodeBLEReport's own change-detection latch;
-            // writing into them here made a later real Art Pen
-            // announcement compare equal and get silently swallowed,
-            // sticking the tool at "No tool" until relaunch/reconnect.
-            state.currentToolCode = 0x0804
-            decoded.insert(
-                .toolEnter(ToolIdentity(serial: 0, toolCode: 0x0804, isEraser: false, isMouse: false)),
-                at: 0)
-        } else if synthesizeIntuosV3ToolEnter, !decoderEmittedRealToolEnter, state.prevInProximity,
+        if synthesizeIntuosV3ToolEnter, !decoderEmittedToolEnter, decoder.penInRange,
             let point = decodedPoint
         {
             // Fall back to the last confirmed identity rather than a
@@ -1575,8 +1561,9 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 let touchIndex = batchFrames.reduce(into: 0) {
                     if case .touch = $1 { $0 += 1 }
                 }
-                if touchIndex < state.btTouchFrameStamps.count {
-                    touchFrameStamps[batchFrames.count] = state.btTouchFrameStamps[touchIndex]
+                let stamps = decoder.touchFrameStamps
+                if touchIndex < stamps.count {
+                    touchFrameStamps[batchFrames.count] = stamps[touchIndex]
                 }
                 batchFrames.append(.touch(contacts))
             case .toolCompatibility(let message):
@@ -1651,7 +1638,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 logger.info("\(name, privacy: .public): wireless link active")
                 // Reset decoder state so stale coordinates/tool identity from
                 // before link-up are not forwarded on the first live report.
-                state = DecoderState()
+                decoder.reset()
                 wirelessReady = true
                 wirelessLinkConfirmed = true
                 batteryWarningLogged = false
@@ -1668,7 +1655,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             }
             wirelessReady = false
             batteryWarningLogged = false
-            state = DecoderState()
+            decoder.reset()
         case .lowBattery:
             if !batteryWarningLogged {
                 logger.warning("\(name, privacy: .public): battery critically low")
