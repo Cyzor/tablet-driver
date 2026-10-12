@@ -238,7 +238,7 @@ final class TabletManager: ObservableObject {
     /// Keyed by raw PID, not canonical PID — two transports that fold onto
     /// the same canonical identity (Xencelabs puck/dongle) build separate
     /// drivers and must not drain into each other's.
-    private var pendingInterfaces: [Int: [IOHIDDevice]] = [:]
+    private var pendingInterfaces = HeldInterfaces<IOHIDDevice>()
     /// Touch sensors that enumerate under their own PID (Cintiq 27QHD Touch's
     /// 0x032C) and arrived before the pen interface that claims them via
     /// `touchCompanionPID`. Keyed by the sensor's own PID; drained when the
@@ -247,7 +247,7 @@ final class TabletManager: ObservableObject {
     /// definition doesn't share. Enumeration order is arrival luck, so without
     /// this the sensor's fate would depend on which interface macOS reports
     /// first.
-    private var pendingTouchCompanions: [Int: [IOHIDDevice]] = [:]
+    private var pendingTouchCompanions = HeldInterfaces<IOHIDDevice>()
 
     // MARK: - Manager-level published state
     //
@@ -918,7 +918,7 @@ final class TabletManager: ObservableObject {
         let usagePage = probe.usagePage
         switch route {
         case .deferred:
-            pendingInterfaces[rawProductID, default: []].append(device)
+            pendingInterfaces.hold(device, under: rawProductID)
             return
 
         case .ledCompanion(let parentCtx):
@@ -929,18 +929,13 @@ final class TabletManager: ObservableObject {
             return
 
         case .deferredTouchCompanion:
-            pendingTouchCompanions[productID, default: []].append(device)
+            pendingTouchCompanions.hold(device, under: productID)
             // Siblings enumerate within a second. A sensor still waiting
             // after this gets a window of its own, as before it could be
             // held, so a desk whose pen never appears can still be captured.
             DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-                guard let self,
-                    let idx = self.pendingTouchCompanions[productID]?.firstIndex(where: { $0 === device })
+                guard let self, self.pendingTouchCompanions.take(device, under: productID)
                 else { return }
-                self.pendingTouchCompanions[productID]?.remove(at: idx)
-                if self.pendingTouchCompanions[productID]?.isEmpty == true {
-                    self.pendingTouchCompanions[productID] = nil
-                }
                 logger.info("Wacom 0x\(String(productID, radix: 16, uppercase: true), privacy: .public) — touch sensor's tablet never appeared, routing on its own")
                 self.deviceConnected(device, holdTouchCompanion: false)
             }
@@ -1001,7 +996,7 @@ final class TabletManager: ObservableObject {
         deviceRawProductID[device] = rawProductID
         wacomDevice.open()
         // Drain any interfaces that arrived before this driver was created.
-        for pending in pendingInterfaces.removeValue(forKey: rawProductID) ?? [] {
+        for pending in pendingInterfaces.release(rawProductID) {
             hidDeviceMap[pending] = context
             deviceRawProductID[pending] = rawProductID
             (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
@@ -1019,7 +1014,7 @@ final class TabletManager: ObservableObject {
         if let touchPID = WacomDeviceRegistry.spec(for: productID)?.touchCompanionPID,
             let driver = wacomDevice as? WacomKnownDevice
         {
-            for sensor in pendingTouchCompanions.removeValue(forKey: touchPID) ?? [] {
+            for sensor in pendingTouchCompanions.release(touchPID) {
                 hidDeviceMap[sensor] = context
                 deviceRawProductID[sensor] = rawProductID
                 driver.attachTouchSensor(sensor)
@@ -1649,14 +1644,10 @@ final class TabletManager: ObservableObject {
     }
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
-        for (pid, held) in pendingTouchCompanions where held.contains(where: { $0 === device }) {
-            pendingTouchCompanions[pid] = held.filter { $0 !== device }
-        }
+        pendingTouchCompanions.drop(device)
         // Drop deferred interfaces that leave before their driver exists, or
         // the next connect registers them dead.
-        for (pid, held) in pendingInterfaces where held.contains(where: { $0 === device }) {
-            pendingInterfaces[pid] = held.filter { $0 !== device }
-        }
+        pendingInterfaces.drop(device)
         guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
         // Only clear hidDevice when the disconnecting interface is the one it
         // actually points to (the primary digitizer interface). A secondary
