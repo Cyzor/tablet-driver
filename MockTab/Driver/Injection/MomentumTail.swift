@@ -334,7 +334,9 @@ final class RingScrollGlide {
         let posted = abs(whole) > abs(pending) ? pending.rounded() : whole
         pending -= posted
         if posted != 0 { post(posted) }
-        if abs(pending) < 0.5 { pending = 0; return }
+        // `<=`: a remainder of exactly ±0.5 rounds to ∓1 and flips sign every
+        // tick, so the page wobbled forever (speed 0.25 makes 7.5-point notches).
+        if abs(pending) <= 0.5 { pending = 0; return }
         scheduleTick()
     }
 }

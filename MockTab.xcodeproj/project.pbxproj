@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AAT00010 /* TabletKit in Frameworks */ = {isa = PBXBuildFile; productRef = ADT00020 /* TabletKit */; };
+		AAT00003 /* MomentumTail.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00MT01 /* MomentumTail.swift */; };
+		AAT00004 /* RingScrollGlideTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABT00002 /* RingScrollGlideTests.swift */; };
 		AAT00001 /* RelativeBallisticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABT00001 /* RelativeBallisticsTests.swift */; };
 		AAT00002 /* RelativeBallistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000901 /* RelativeBallistics.swift */; };
 		053AB9A62F723B910084C0E2 /* TabletManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053AB9A52F723B910084C0E2 /* TabletManager.swift */; };
@@ -135,6 +138,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		ABT00002 /* RingScrollGlideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingScrollGlideTests.swift; sourceTree = "<group>"; };
 		ABT00001 /* RelativeBallisticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativeBallisticsTests.swift; sourceTree = "<group>"; };
 		ABT00099 /* MockTabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MockTabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		053AB9A52F723B910084C0E2 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
@@ -277,6 +281,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AAT00010 /* TabletKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -652,6 +657,7 @@
 			isa = PBXGroup;
 			children = (
 				ABT00001 /* RelativeBallisticsTests.swift */,
+				ABT00002 /* RingScrollGlideTests.swift */,
 			);
 			path = MockTabTests;
 			sourceTree = "<group>";
@@ -689,6 +695,9 @@
 			dependencies = (
 			);
 			name = MockTabTests;
+			packageProductDependencies = (
+				ADT00020 /* TabletKit */,
+			);
 			productName = MockTabTests;
 			productReference = ABT00099 /* MockTabTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -903,6 +912,8 @@
 			files = (
 				AAT00001 /* RelativeBallisticsTests.swift in Sources */,
 				AAT00002 /* RelativeBallistics.swift in Sources */,
+				AAT00003 /* MomentumTail.swift in Sources */,
+				AAT00004 /* RingScrollGlideTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1156,6 +1167,11 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		ADT00020 /* TabletKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 05A04B802FCA009F00D64F90 /* XCLocalSwiftPackageReference "TabletKit" */;
+			productName = TabletKit;
+		};
 		05A04B812FCA009F00D64F90 /* TabletKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TabletKit;
