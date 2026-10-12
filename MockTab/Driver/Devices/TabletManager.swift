@@ -560,7 +560,7 @@ final class TabletManager: ObservableObject {
         return TabletSpec(
             productID: productID,
             name: profile.productName,
-            parser: .xencelabs,
+            format: .xencelabs,
             maxX: profile.maxX ?? 0,
             maxY: profile.maxY ?? 0,
             maxPressure: profile.maxPressure ?? 8191,
@@ -2015,7 +2015,7 @@ extension TabletSpec {
     /// Keys and a dial or ring, no pen: the Quick Keys puck and the
     /// ExpressKey Remote. Gets the Buttons, Devices and Info window.
     var isAuxOnly: Bool {
-        maxX == 0 && (parser == .xencelabs || parser == .expressKeyRemote)
+        maxX == 0 && (format == .xencelabs || format == .expressKeyRemote)
     }
 }
 

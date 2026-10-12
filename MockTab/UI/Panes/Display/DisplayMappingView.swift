@@ -109,7 +109,7 @@ struct DisplayMappingView: View {
     private var hasBrightnessControl: Bool {
         guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
         else { return false }
-        return spec.parser == .xencelabs && spec.isPenDisplay
+        return spec.format == .xencelabs && spec.isPenDisplay
     }
 
     /// Model name of a Wacom pen display, whose panel may answer DDC/CI
@@ -655,7 +655,7 @@ struct DisplayMappingView: View {
                 let auxSpec = TabletManager.staticSpec(forProductID: aux.productID)
                 let device = registry.row(forKey: aux.instanceKey)?.nickname ?? auxSpec?.name ?? ""
                 let auxKeys = aux.settings.expressKeyBindings
-                if auxSpec?.parser == .expressKeyRemote {
+                if auxSpec?.format == .expressKeyRemote {
                     // Its firmware owns the ring button, so only keys count.
                     rows += (auxKeys + aux.settings.bezelButtonBindings.prefix(1)).enumerated().map { slot, binding in
                         (binding, { qualified(device, ButtonMappingView.remoteKeyLabel(slot: slot)) })

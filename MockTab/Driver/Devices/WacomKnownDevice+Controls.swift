@@ -10,7 +10,7 @@ extension WacomKnownDevice: RingLEDControl, LabelControl, DisplayPanelControl, Q
     /// control exactly when writing to it does something. Read on the pen
     /// thread: a dongle's spec changes there when it learns its tablet.
     var controls: TabletControls {
-        let parser = deviceSpec.parser
+        let parser = deviceSpec.format
         return TabletControls(
             // Per parser, as in `setRingLED`; not yet per model.
             ringLED: [.intuosV1, .intuosV2, .cintiqV1, .xencelabs].contains(parser) ? self : nil,

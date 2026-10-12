@@ -31,7 +31,7 @@ extension WacomKnownDevice {
         logger.info(
             "\(name, privacy: .public): ring LED → slot \(index) (\(self.isBluetooth ? "BT" : "USB", privacy: .public))"
         )
-        switch deviceSpec.parser {
+        switch deviceSpec.format {
         case .intuosV2 where !isBluetooth:
             // USB ring LED: reports 0x31 (brightness) + 0x32 (slot selection), both sent
             // to the primary device. Format confirmed by USB capture against official

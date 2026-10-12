@@ -23,7 +23,7 @@ extension WacomKnownDevice {
     /// the active slot's color if anything changed. Deduped here because the
     /// settings pipeline re-fires this on every settings change.
     func setRingLEDColors(_ colors: [(r: UInt8, g: UInt8, b: UInt8)?]) {
-        guard deviceSpec.parser == .xencelabs else { return }
+        guard deviceSpec.format == .xencelabs else { return }
         guard !dialSlotColors.elementsEqual(colors, by: { a, b in
             a?.r == b?.r && a?.g == b?.g && a?.b == b?.b
         }) else { return }
@@ -33,7 +33,7 @@ extension WacomKnownDevice {
 
     /// Show the active dial mode's name on the Quick Keys OLED mode line.
     func setRingModeLabel(_ label: String) {
-        guard deviceSpec.parser == .xencelabs else { return }
+        guard deviceSpec.format == .xencelabs else { return }
         xencelabsRequestedText["mode"] = label
         guard xencelabsSentText["mode"] != label else { return }
         xencelabsSentText["mode"] = label
@@ -46,7 +46,7 @@ extension WacomKnownDevice {
 
     /// Sync per-key labels (labels[0] = key 1) to the Quick Keys OLED.
     func setAuxKeyLabels(_ labels: [String]) {
-        if deviceSpec.parser == .xencelabs {
+        if deviceSpec.format == .xencelabs {
             let joined = labels.joined(separator: "\u{1F}")
             xencelabsRequestedText["keys"] = joined
             guard xencelabsSentText["keys"] != joined else { return }
@@ -99,7 +99,7 @@ extension WacomKnownDevice {
     /// Panel brightness is exposed on Xencelabs pen displays via the vendor
     /// 0xB5 display-control frame family (see XencelabsOutputProtocol).
     var hasDisplayBrightnessControl: Bool {
-        deviceSpec.parser == .xencelabs && deviceSpec.isPenDisplay
+        deviceSpec.format == .xencelabs && deviceSpec.isPenDisplay
     }
 
     /// Set the Quick Keys OLED text orientation, in 90° steps (0 = upright,
@@ -108,7 +108,7 @@ extension WacomKnownDevice {
     /// this is an independent, settings-driven entry point pre-wired ahead
     /// of a UI control — no caller sets a value other than the sentinel yet.
     func setQuickKeysOrientation(steps: Int) {
-        guard deviceSpec.parser == .xencelabs else { return }
+        guard deviceSpec.format == .xencelabs else { return }
         let clamped = ((steps % 4) + 4) % 4
         guard clamped != lastQuickKeysOrientation else { return }
         lastQuickKeysOrientation = clamped
@@ -122,7 +122,7 @@ extension WacomKnownDevice {
     /// Hardware-confirmed 2026-07-26: a value written this way survives a
     /// puck power cycle and reads back correctly in the native panel.
     func setQuickKeysSleepMinutes(_ minutes: Int) {
-        guard deviceSpec.parser == .xencelabs else { return }
+        guard deviceSpec.format == .xencelabs else { return }
         let clamped = min(max(minutes, 0), 255)
         guard clamped != lastQuickKeysSleepMinutes else { return }
         lastQuickKeysSleepMinutes = clamped
@@ -136,7 +136,7 @@ extension WacomKnownDevice {
     /// (bright). Distinct from `setDisplayBrightness`, which controls a pen
     /// display's panel backlight over a different frame family.
     func setQuickKeysOledBrightness(_ level: Int) {
-        guard deviceSpec.parser == .xencelabs else { return }
+        guard deviceSpec.format == .xencelabs else { return }
         let clamped = min(max(level, 0), 3)
         guard clamped != lastQuickKeysOledBrightness else { return }
         lastQuickKeysOledBrightness = clamped
@@ -349,7 +349,7 @@ extension WacomKnownDevice {
         // No tunnel yet, and the interface we were constructed with is not
         // one: this write cannot succeed. Hold it for the flush in
         // `registerDevice` rather than burning it on the wrong interface.
-        if deviceSpec.parser == .xencelabs, secondaryDevice == nil,
+        if deviceSpec.format == .xencelabs, secondaryDevice == nil,
             !acceptsReports(from: device)
         {
             if pendingVendorWrites.count < Self.maxPendingVendorWrites {
@@ -361,7 +361,7 @@ extension WacomKnownDevice {
             return
         }
 
-        let target = (deviceSpec.parser == .xencelabs ? secondaryDevice : nil) ?? device
+        let target = (deviceSpec.format == .xencelabs ? secondaryDevice : nil) ?? device
         let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
         var padded = bytes
         if declared > padded.count {

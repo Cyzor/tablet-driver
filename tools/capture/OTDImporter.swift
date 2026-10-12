@@ -329,7 +329,7 @@ enum OTDImporter {
         let spec = TabletSpec(
             productID: config.productID,
             name: config.name,
-            parser: parser,
+            format: parser,
             maxX: maxX,
             maxY: maxY,
             maxPressure: maxPressure,
@@ -523,7 +523,7 @@ enum OTDImporter {
             lines.append("        .init(")
             lines.append("            productID: 0x\(String(format: "%04X", spec.productID)),")
             lines.append("            name: \"\(spec.name)\",")
-            lines.append("            parser: .\(spec.parser.rawValue),")
+            lines.append("            format: .\(spec.format.rawValue),")
             lines.append("            maxX: \(spec.maxX),")
             lines.append("            maxY: \(spec.maxY),")
             lines.append("            maxPressure: \(spec.maxPressure),")

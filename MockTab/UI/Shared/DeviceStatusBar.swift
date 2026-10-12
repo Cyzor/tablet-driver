@@ -249,7 +249,7 @@ struct DeviceStatusBar: View {
     /// carries the battery level, so no battery yet means not heard from.
     private var awaitingRemote: Bool {
         guard let context, context.isConnected, context.batteryPercent == nil else { return false }
-        return WacomDeviceRegistry.spec(for: context.productID)?.parser == .expressKeyRemote
+        return WacomDeviceRegistry.spec(for: context.productID)?.format == .expressKeyRemote
     }
 
     private var batteryTint: Color {

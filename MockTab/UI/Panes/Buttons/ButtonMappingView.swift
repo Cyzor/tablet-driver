@@ -86,7 +86,7 @@ struct ButtonMappingView: View {
     private var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
     /// ExpressKey Remote: keys and a ring, no pen. Its firmware owns the
     /// ring's mode button, so that row is omitted.
-    private var isRemote: Bool { spec?.parser == .expressKeyRemote }
+    private var isRemote: Bool { spec?.format == .expressKeyRemote }
 
     // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
 
@@ -173,7 +173,7 @@ struct ButtonMappingView: View {
             // a tablet's window, just fed from this window's own settings and
             // live state. One component, identical look and behavior (LED
             // color wells included) wherever the puck's controls appear.
-            if spec?.parser == .xencelabs && spec?.maxX == 0 {
+            if spec?.format == .xencelabs && spec?.maxX == 0 {
                 QuickKeysSectionView(
                     settings: settings, spec: spec, liveButtons: liveButtons,
                     isDeviceConnected: isSelfConnected,
@@ -806,7 +806,7 @@ struct ButtonMappingView: View {
     private var hasBezelLED: Bool {
         guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
         else { return false }
-        return spec.parser == .xencelabs && spec.isPenDisplay
+        return spec.format == .xencelabs && spec.isPenDisplay
     }
 
 
@@ -948,14 +948,14 @@ extension ButtonMappingView {
     }
 
     static func hasSplitPadLayout(_ spec: TabletSpec?) -> Bool {
-        spec?.hasDualRings == true && spec?.parser == .cintiqV1
+        spec?.hasDualRings == true && spec?.format == .cintiqV1
     }
 
     /// Mice show all 5 HID-path button slots: `buttonCount` describes only
     /// the digitizer path. `tool` is nil until a pen first reports in; 3
     /// covers the Xencelabs 3 Button Pen until then.
     static func penButtonCount(tool: ToolSpec?, device: TabletSpec?) -> Int {
-        tool?.toolType == .mouse ? 5 : (tool?.buttonCount ?? (device?.parser == .xencelabs ? 3 : 2))
+        tool?.toolType == .mouse ? 5 : (tool?.buttonCount ?? (device?.format == .xencelabs ? 3 : 2))
     }
 
     /// Label for pen or mouse button `n`, counting from 1.

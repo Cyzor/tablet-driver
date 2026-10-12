@@ -136,7 +136,7 @@ enum DeviceRouter {
             let dongleSpec = TabletSpec(
                 productID: 0x0084,
                 name: "ACK-40401 Wireless Dongle",
-                parser: .intuosV1,
+                format: .intuosV1,
                 maxX: dMaxX, maxY: dMaxY, maxPressure: dMaxP,
                 buttonCount: 8, hasTouchRing: true, hasEraser: true,
                 hasFingerTouch: true, maxTouchContacts: 5,
@@ -187,7 +187,7 @@ enum DeviceRouter {
             deviceSpec.maxX > 0 || deviceSpec.buttonCount > 0
         {
             // Interface routing depends on parser family; see `InterfaceRouting`.
-            let isCintiqV1 = deviceSpec.parser == .cintiqV1
+            let isCintiqV1 = deviceSpec.format == .cintiqV1
             let shouldDefer = InterfaceRouting.shouldDefer(
                 spec: deviceSpec, usagePage: usagePage, isBLE: isBLE, pairs: usagePairs(device))
             if shouldDefer {

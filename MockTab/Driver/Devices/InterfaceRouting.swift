@@ -26,7 +26,7 @@ enum InterfaceRouting {
         spec: TabletSpec, usagePage: Int, isBLE: Bool, pairs: [UsagePair]
     ) -> Bool {
         guard !isBLE, spec.seizeUSB else { return false }
-        switch spec.parser {
+        switch spec.format {
         case .cintiqV1:
             return usagePage == 0xFF00
         case .intuosV2:

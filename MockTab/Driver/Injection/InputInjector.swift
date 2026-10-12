@@ -231,7 +231,7 @@ final class InputInjector: @unchecked Sendable {
         self.tabletDeviceID = Self.nextTabletDeviceID
         Self.nextTabletDeviceID += 1
         self.ringDeltaIsInverted =
-            WacomDeviceRegistry.spec(for: productID)?.parser == .intuosV1
+            WacomDeviceRegistry.spec(for: productID)?.format == .intuosV1
         if let spec = WacomDeviceRegistry.spec(for: productID) {
             self.hasMechanicalDial = spec.hasMechanicalDial
             self.dialStepsPerRevolution = Self.wacomDialStepsPerRevolution
