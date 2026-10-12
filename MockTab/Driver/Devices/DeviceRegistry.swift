@@ -251,9 +251,9 @@ final class DeviceRegistry: ObservableObject {
     // MARK: - Pen model lookup
 
     /// Full name for a Wacom tool code, including "(Eraser)" suffix when appropriate.
-    /// Delegates to WacomToolCatalog for the authoritative name table.
+    /// Delegates to ToolCatalog for the authoritative name table.
     static func penName(forToolCode toolCode: UInt16) -> String {
-        return WacomToolCatalog.name(forToolCode: toolCode)
+        return ToolCatalog.name(forToolCode: toolCode)
     }
 
     /// Fallback used for IntuosV1 devices that don't report a tool code.
@@ -407,7 +407,7 @@ final class DeviceRegistry: ObservableObject {
         // Check tool support for this device family
         let deviceSpec = WacomDeviceRegistry.spec(for: deviceID)
         let family = deviceSpec?.family
-        let caps = WacomToolCatalog.capabilities(forToolCode: identity.toolCode, family: family)
+        let caps = ToolCatalog.capabilities(forToolCode: identity.toolCode, family: family)
 
         knownTools.append(
             KnownTool(
@@ -702,7 +702,7 @@ final class DeviceRegistry: ObservableObject {
             }
             // Refresh support status
             if let tc = list[i].toolCode {
-                let caps = WacomToolCatalog.capabilities(forToolCode: tc, family: family)
+                let caps = ToolCatalog.capabilities(forToolCode: tc, family: family)
                 if list[i].isSupported != caps.isSupported {
                     list[i].isSupported = caps.isSupported
                     changed = true
@@ -772,7 +772,7 @@ final class DeviceRegistry: ObservableObject {
         if id == "stylus" { return "eraser" }
         if id.hasPrefix("0x") { return "eraser-" + id }
         if let code = toolCode(in: id, prefix: "stylus-tc0x"),
-            let eraser = WacomToolCatalog.spec(forToolCode: code)?.eraserToolCode
+            let eraser = ToolCatalog.spec(forToolCode: code)?.eraserToolCode
         {
             return String(format: "eraser-tc0x%04X", eraser)
         }
@@ -784,7 +784,7 @@ final class DeviceRegistry: ObservableObject {
         if id == "eraser" { return "stylus" }
         if id.hasPrefix("eraser-0x") { return String(id.dropFirst("eraser-".count)) }
         if let code = toolCode(in: id, prefix: "eraser-tc0x"),
-            let tip = WacomToolCatalog.allTools.values.first(where: { $0.eraserToolCode == code })
+            let tip = ToolCatalog.allTools.values.first(where: { $0.eraserToolCode == code })
         {
             return String(format: "stylus-tc0x%04X", tip.toolCode)
         }

@@ -150,7 +150,7 @@ struct ScratchpadView: View {
         return productID
     }
 
-    private var spec: WacomDeviceSpec? {
+    private var spec: TabletSpec? {
         effectiveProductID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
 

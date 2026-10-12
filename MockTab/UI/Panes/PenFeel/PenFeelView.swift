@@ -205,7 +205,7 @@ struct PenFeelView: View {
     /// pane labels them, so a checkbox shows which buttons it reaches.
     private func sideButtonsUsing(_ kind: ButtonBinding.Kind) -> String {
         let ctx = tabletManager.context(forKey: instanceKey)
-        let toolSpec = ctx.flatMap { WacomToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
+        let toolSpec = ctx.flatMap { ToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
         let device = productID.flatMap { ButtonMappingView.layoutSpec(productID: $0, context: ctx) }
         let count = toolSpec?.toolType == .mouse
             ? 0 : min(ButtonMappingView.penButtonCount(tool: toolSpec, device: device), 3)

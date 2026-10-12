@@ -121,7 +121,7 @@ final class InputInjector: @unchecked Sendable {
     let ringDeltaIsInverted: Bool
 
     /// The ring control is a mechanical dial, not a touch ring; see
-    /// `WacomDeviceSpec.hasMechanicalDial`. Xencelabs isn't in the Wacom
+    /// `TabletSpec.hasMechanicalDial`. Xencelabs isn't in the Wacom
     /// registry, so its Quick Keys dial comes from `VendorDeviceRegistry`.
     let hasMechanicalDial: Bool
 

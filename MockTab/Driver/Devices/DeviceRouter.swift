@@ -111,7 +111,7 @@ enum DeviceRouter {
         isBLE: Bool,
         contexts: [DeviceInstanceKey: DeviceContext],
         callbacks: Callbacks,
-        overrideSpec: WacomDeviceSpec? = nil,
+        overrideSpec: TabletSpec? = nil,
         holdTouchCompanion: Bool = true
     ) -> Routed {
 
@@ -133,7 +133,7 @@ enum DeviceRouter {
         if vendorID == 0x056A && productID == 0x0084 {
             routerLog.info("ACK-40401 wireless dongle connected")
             let (dMaxX, dMaxY, dMaxP, _) = queryHIDDigitizerSpec(device)
-            let dongleSpec = WacomDeviceSpec(
+            let dongleSpec = TabletSpec(
                 productID: 0x0084,
                 name: "ACK-40401 Wireless Dongle",
                 parser: .intuosV1,

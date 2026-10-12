@@ -529,7 +529,7 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Capacitive finger touch
     //
-    // Only meaningful on devices whose WacomDeviceSpec has hasFingerTouch=true.
+    // Only meaningful on devices whose TabletSpec has hasFingerTouch=true.
     // The UI (TouchView) hides these on devices without finger touch.  No
     // decoder produces touch reports yet — these settings exist so the path
     // is wired the moment a real touch capture allows the decoder to land.

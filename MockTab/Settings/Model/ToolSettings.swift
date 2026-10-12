@@ -312,7 +312,7 @@ final class ToolSettings: ObservableObject {
     }
 
     /// Factory `pressureThreshold` for whichever device owns `prefix`, read
-    /// from the registry (see `WacomDeviceSpec.defaultPressureThreshold`).
+    /// from the registry (see `TabletSpec.defaultPressureThreshold`).
     ///
     /// Takes the PID back out of the storage prefix rather than threading a
     /// spec through `init`: every prefix is `device-0x{PIDHEX}.` with an

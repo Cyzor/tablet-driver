@@ -20,7 +20,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
     /// Registry spec → decoder spec, for the initial device and a wirelessly
     /// paired tablet alike.
-    private static func makeDigitizerSpec(from spec: WacomDeviceSpec) -> DigitizerSpec {
+    private static func makeDigitizerSpec(from spec: TabletSpec) -> DigitizerSpec {
         spec.digitizerSpec
     }
 
@@ -31,10 +31,10 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// `spec`, so it needs the same touch fields `makeDigitizerSpec` above
     /// already forwards.
     private static func applyingTouchCapability(
-        _ pairedSpec: WacomDeviceSpec, to base: WacomDeviceSpec
-    ) -> WacomDeviceSpec {
+        _ pairedSpec: TabletSpec, to base: TabletSpec
+    ) -> TabletSpec {
         guard pairedSpec.hasFingerTouch else { return base }
-        return WacomDeviceSpec(
+        return TabletSpec(
             productID: base.productID, name: base.name, parser: base.parser,
             maxX: base.maxX, maxY: base.maxY, maxPressure: base.maxPressure,
             buttonCount: base.buttonCount, bezelButtonCount: base.bezelButtonCount,
@@ -59,7 +59,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         OSAllocatedUnfairLock<[Int: (x: Int, y: Int, exact: Bool)]>(initialState: [:])
 
     let device: IOHIDDevice
-    var deviceSpec: WacomDeviceSpec
+    var deviceSpec: TabletSpec
     /// Last logged pairing-table summary, so the receiver's twice-a-second
     /// repeat of an unchanged table doesn't write a line every time.
     private var lastRemotePairingSummary: String?
@@ -371,7 +371,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// them "Wacom Intuos5 S/M", so a name-based split would have put them on
     /// the wrong side.
     ///
-    /// Kept as an explicit PID set because `WacomDeviceSpec.family` derives
+    /// Kept as an explicit PID set because `TabletSpec.family` derives
     /// this family by sniffing the name string, which mis-sorts several of
     /// these rows (see the `.intuosV1` case in that property).
     static let intuos5PackedLEDProductIDs: Set<Int> = [
@@ -396,7 +396,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
     init(
         device: IOHIDDevice,
-        deviceSpec: WacomDeviceSpec,
+        deviceSpec: TabletSpec,
         seize: Bool = false,
         isWireless: Bool = false,
         onTablet: @escaping (TabletPoint) -> Void,
@@ -963,7 +963,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
     /// Register the companion LED controller interface for this device.
     /// Called by TabletManager when a no-digitizer Wacom interface is matched
-    /// to this device via `WacomDeviceSpec.ledCompanionPID`.
+    /// to this device via `TabletSpec.ledCompanionPID`.
     func registerLEDDevice(_ device: IOHIDDevice) {
         let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
         logger.info("\(self.deviceSpec.name, privacy: .public): LED companion interface registered (open ret=\(ret, privacy: .public))")

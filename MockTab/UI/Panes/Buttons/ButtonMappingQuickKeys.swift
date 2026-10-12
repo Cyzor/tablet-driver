@@ -24,7 +24,7 @@ struct QuickKeysSectionView: View {
     /// observes — without the subscription its edits (and undo replays)
     /// would persist but never re-render these rows.
     @ObservedObject var settings: TabletSettings
-    let spec: WacomDeviceSpec?
+    let spec: TabletSpec?
     let liveButtons: LiveButtonState
     /// Whether the puck is reachable right now. Only the Hardware section
     /// reads this: the binding rows above it are software and stay editable
@@ -365,7 +365,7 @@ struct QuickKeysSectionView: View {
 extension QuickKeysSectionView {
     /// Numbered keys ahead of the Mode button, which rides the last
     /// express-key slot (buttons[8] in AuxButtons; see XencelabsDecoder.decodeAux).
-    static func keyCount(_ spec: WacomDeviceSpec?) -> Int {
+    static func keyCount(_ spec: TabletSpec?) -> Int {
         min(max(spec?.buttonCount ?? 8, 0) - 1, 16)
     }
 

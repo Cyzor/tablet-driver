@@ -7,7 +7,7 @@ import TabletKit
 
 /// Capacitive finger-touch settings.
 ///
-/// Only registered as a sidebar tab on devices whose `WacomDeviceSpec` has
+/// Only registered as a sidebar tab on devices whose `TabletSpec` has
 /// `hasFingerTouch == true`.  See `SettingsWindowController` for the gate.
 ///
 /// What this pane *can* do via macOS-supported public APIs:
@@ -42,7 +42,7 @@ struct TouchView: View {
         return productID
     }
 
-    private var spec: WacomDeviceSpec? {
+    private var spec: TabletSpec? {
         effectiveProductID.flatMap { WacomDeviceRegistry.spec(for: $0) }
     }
 
@@ -273,7 +273,7 @@ struct TouchView: View {
     /// `NormalizedAreaEditor` the pen pane uses, configured to match it.
     private struct TouchAreaCropView: View {
         @ObservedObject var settings: TabletSettings
-        let spec: WacomDeviceSpec?
+        let spec: TabletSpec?
         let productID: Int?
 
         /// Sourced from the tablet's own physical/pen-digitizer proportions —

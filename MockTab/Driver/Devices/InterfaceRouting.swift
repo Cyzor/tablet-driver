@@ -23,7 +23,7 @@ enum InterfaceRouting {
     /// 0x02, 0x0C) and gets the driver. 0xFF00 carries only the periodic 0x80
     /// status report, so it defers until 0x01 has the driver.
     static func shouldDefer(
-        spec: WacomDeviceSpec, usagePage: Int, isBLE: Bool, pairs: [UsagePair]
+        spec: TabletSpec, usagePage: Int, isBLE: Bool, pairs: [UsagePair]
     ) -> Bool {
         guard !isBLE, spec.seizeUSB else { return false }
         switch spec.parser {

@@ -561,7 +561,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     let family = Int(pid.dropFirst(2), radix: 16).flatMap { WacomDeviceRegistry.spec(for: $0)?.family }
     let unknownTools = (result.observedToolCodes ?? []).filter { hex in
         guard let code = UInt16(hex.dropFirst(2), radix: 16) else { return false }
-        return !WacomToolCatalog.capabilities(forToolCode: code, family: family).isSupported
+        return !ToolCatalog.capabilities(forToolCode: code, family: family).isSupported
     }
     if !unknownTools.isEmpty {
         found.append(

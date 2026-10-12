@@ -592,7 +592,7 @@ struct DisplayMappingView: View {
     private func buttonNames(boundTo kind: ButtonBinding.Kind) -> [String] {
         let ctx = tabletManager.context(forKey: instanceKey)
         let spec = productID.flatMap { ButtonMappingView.layoutSpec(productID: $0, context: ctx) }
-        let tool = ctx.flatMap { WacomToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
+        let tool = ctx.flatMap { ToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
         let isMouse = tool?.toolType == .mouse
         // A device or side ahead of a row label, e.g. "Pucky-Puck Key 1".
         let qualified: (String, String) -> String = { owner, label in

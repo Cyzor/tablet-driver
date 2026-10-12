@@ -534,7 +534,7 @@ final class TabletManager: ObservableObject {
     /// vendor — `WacomDeviceRegistry.spec(for:)` alone returns nil for
     /// non-Wacom hardware.
     @MainActor
-    static func staticSpec(forProductID productID: Int) -> WacomDeviceSpec? {
+    static func staticSpec(forProductID productID: Int) -> TabletSpec? {
         if let spec = WacomDeviceRegistry.spec(for: productID) { return spec }
         let vendorID = DeviceRegistry.shared.vendorID(forProductID: productID)
             ?? lastSeenVendorID[productID]
@@ -542,14 +542,14 @@ final class TabletManager: ObservableObject {
         return vendorDeviceSpec(forVendorID: vendorID, productID: productID)
     }
 
-    /// Synthesizes the `WacomDeviceSpec` for a drivable non-Wacom device from
+    /// Synthesizes the `TabletSpec` for a drivable non-Wacom device from
     /// its `VendorDeviceRegistry` profile. Shared by `deviceConnected` (which
     /// needs it live, to attach a driver) and UI callers like
     /// `ButtonMappingView` (which need the same shape — `hasTouchRing`,
     /// `buttonCount`, etc. — even when no live `DeviceContext` spec is
     /// reachable, since these devices aren't in the Wacom-only
     /// `WacomDeviceRegistry` the UI otherwise consults).
-    static func vendorDeviceSpec(forVendorID vendorID: Int, productID: Int) -> WacomDeviceSpec? {
+    static func vendorDeviceSpec(forVendorID vendorID: Int, productID: Int) -> TabletSpec? {
         guard !WacomDeviceRegistry.vendorIDs.contains(vendorID),
             let profile = VendorDeviceRegistry.drivableProfile(
                 forVendorID: vendorID, productID: productID)
@@ -557,7 +557,7 @@ final class TabletManager: ObservableObject {
         // Profiles without coordinate maxima are aux-only devices
         // (Quick Keys: express keys + dial, no pen digitizer).
         let isAuxOnly = profile.maxX == nil
-        return WacomDeviceSpec(
+        return TabletSpec(
             productID: productID,
             name: profile.productName,
             parser: .xencelabs,
@@ -601,7 +601,7 @@ final class TabletManager: ObservableObject {
         /// vendors (the Xencelabs allowlist); nil for Wacom and for the
         /// generic-pen-digitizer fallback (DeviceRouter attaches
         /// GenericHIDDigitizer in that case).
-        case proceed(spec: WacomDeviceSpec?)
+        case proceed(spec: TabletSpec?)
         /// `deviceConnected` should return immediately — no further state
         /// touched.
         case bail
@@ -774,7 +774,7 @@ final class TabletManager: ObservableObject {
         Self.lastSeenVendorID[rawProductID] = vendorID
 
         let vendorGateDecision = Self.vendorGate(device, vendorID: vendorID, rawProductID: rawProductID)
-        let vendorSpec: WacomDeviceSpec?
+        let vendorSpec: TabletSpec?
         switch vendorGateDecision {
         case .bail:
             return
@@ -2011,7 +2011,7 @@ final class TabletManager: ObservableObject {
     }
 }
 
-extension WacomDeviceSpec {
+extension TabletSpec {
     /// Keys and a dial or ring, no pen: the Quick Keys puck and the
     /// ExpressKey Remote. Gets the Buttons, Devices and Info window.
     var isAuxOnly: Bool {

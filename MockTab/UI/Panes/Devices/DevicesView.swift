@@ -610,7 +610,7 @@ struct DevicesView: View {
 
     private func toolIcon(for tool: DeviceRegistry.KnownTool) -> String {
         let toolCode = tool.toolCode ?? 0
-        let type = WacomToolCatalog.toolType(forToolCode: toolCode)
+        let type = ToolCatalog.toolType(forToolCode: toolCode)
         switch type {
         case .stylus, .eraser, .airbrush, .artPen, .inkingPen:
             return "pencil.tip.crop.circle"

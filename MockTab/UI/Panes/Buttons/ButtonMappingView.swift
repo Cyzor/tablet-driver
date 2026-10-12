@@ -49,18 +49,18 @@ struct ButtonMappingView: View {
     // ButtonMappingBindings.swift.
     var tool: ToolSettings { settings.activeTool }
 
-    private var spec: WacomDeviceSpec? {
+    private var spec: TabletSpec? {
         guard let pid = productID else { return nil }
         return Self.layoutSpec(productID: pid, context: tabletManager.context(forKey: instanceKey))
     }
 
-    private var activeToolSpec: WacomToolSpec? {
+    private var activeToolSpec: ToolSpec? {
         guard let ctx = tabletManager.context(forKey: instanceKey) else { return nil }
         // Use the last-known tool, not just the currently-in-proximity one:
         // otherwise the button layout reverts to a generic default every
         // time the pen briefly lifts off, since activeToolCode goes back to
         // 0 on proximity exit.
-        return WacomToolCatalog.spec(forToolCode: ctx.lastKnownToolCode)
+        return ToolCatalog.spec(forToolCode: ctx.lastKnownToolCode)
     }
 
     private var hasTouchRing: Bool { spec?.hasTouchRing == true }
@@ -72,7 +72,7 @@ struct ButtonMappingView: View {
     /// — confirmed on real hardware 2026-09-16 that these dials have no
     /// press action at all; the mode-cycle function Wacom's own driver
     /// exposes lives on an ExpressKey ("Dial toggle"), not a ring center
-    /// button. See `WacomDeviceSpec.hasMechanicalDial`'s doc comment.
+    /// button. See `TabletSpec.hasMechanicalDial`'s doc comment.
     private var hasMechanicalDial: Bool { spec?.hasMechanicalDial == true }
 
     /// Whether to draw the split left/right *pad* layout (three toggle buttons
@@ -124,7 +124,7 @@ struct ButtonMappingView: View {
         companionProductID.flatMap { tabletManager.contexts[$0] }
     }
 
-    private var companionSpec: WacomDeviceSpec? {
+    private var companionSpec: TabletSpec? {
         guard let pid = companionProductID, let ctx = companionContext else { return nil }
         return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
     }
@@ -932,7 +932,7 @@ struct ButtonMappingView: View {
 /// Static so the Display pane's toggle hint names each button as this pane does.
 extension ButtonMappingView {
     /// The spec that decides this pane's layout.
-    static func layoutSpec(productID pid: Int, context ctx: DeviceContext?) -> WacomDeviceSpec? {
+    static func layoutSpec(productID pid: Int, context ctx: DeviceContext?) -> TabletSpec? {
         // Most devices are in the registry keyed by their own PID.
         // The ACK-40401 wireless dongle's own registry entry is a
         // name-only placeholder (maxX/maxY/buttonCount all 0) — skip it
@@ -947,14 +947,14 @@ extension ButtonMappingView {
         return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
     }
 
-    static func hasSplitPadLayout(_ spec: WacomDeviceSpec?) -> Bool {
+    static func hasSplitPadLayout(_ spec: TabletSpec?) -> Bool {
         spec?.hasDualRings == true && spec?.parser == .cintiqV1
     }
 
     /// Mice show all 5 HID-path button slots: `buttonCount` describes only
     /// the digitizer path. `tool` is nil until a pen first reports in; 3
     /// covers the Xencelabs 3 Button Pen until then.
-    static func penButtonCount(tool: WacomToolSpec?, device: WacomDeviceSpec?) -> Int {
+    static func penButtonCount(tool: ToolSpec?, device: TabletSpec?) -> Int {
         tool?.toolType == .mouse ? 5 : (tool?.buttonCount ?? (device?.parser == .xencelabs ? 3 : 2))
     }
 
@@ -979,7 +979,7 @@ extension ButtonMappingView {
         }
     }
 
-    static func wheelLabel(tool: WacomToolSpec?) -> String {
+    static func wheelLabel(tool: ToolSpec?) -> String {
         tool?.toolType == .airbrush
             ? String(localized: "Fingerwheel", comment: "Airbrush fingerwheel row label")
             : String(localized: "Scroll Wheel", comment: "Mouse scroll wheel row label")

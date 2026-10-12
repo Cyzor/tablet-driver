@@ -177,8 +177,8 @@ enum OTDReportParser: String {
     case bambooReportParser = "BambooReportParser"
     case bambooPadReportParser = "BambooPadReportParser"
 
-    /// Map to MockTab ReportParser enum
-    func toReportParser() -> ReportParser? {
+    /// Map to MockTab ReportFormat enum
+    func toReportParser() -> ReportFormat? {
         switch self {
         case .wacomDriverlessTablet, .wacomDriverless, .graphire:
             return .graphire
@@ -214,7 +214,7 @@ struct OTDImportResult {
     let deviceName: String
     let productID: Int
     let vendorID: Int
-    let spec: WacomDeviceSpec?
+    let spec: TabletSpec?
     let tools: [OTDTool]
     let warnings: [String]
     let errors: [String]
@@ -326,7 +326,7 @@ enum OTDImporter {
         let hasEraser = config.specifications?.pen?.hasEraser ?? true
 
         // Create the device spec
-        let spec = WacomDeviceSpec(
+        let spec = TabletSpec(
             productID: config.productID,
             name: config.name,
             parser: parser,
@@ -377,7 +377,7 @@ enum OTDImporter {
         return (config.width, config.height, config.maxPressure)
     }
 
-    private static func determineParser(from config: OTDDeviceConfig) -> ReportParser? {
+    private static func determineParser(from config: OTDDeviceConfig) -> ReportFormat? {
         // Try digitizer identifiers first
         if let identifiers = config.digitizerIdentifiers {
             for ident in identifiers {
@@ -462,9 +462,9 @@ enum OTDImporter {
     static func importDirectory(
         at directory: URL,
         skipExisting: Bool = true
-    ) -> (specs: [WacomDeviceSpec], warnings: [String], errors: [String]) {
+    ) -> (specs: [TabletSpec], warnings: [String], errors: [String]) {
 
-        var specs: [WacomDeviceSpec] = []
+        var specs: [TabletSpec] = []
         var allWarnings: [String] = []
         var allErrors: [String] = []
 
@@ -512,7 +512,7 @@ enum OTDImporter {
     }
 
     /// Export specs to a format suitable for adding to WacomDeviceRegistry.
-    static func generateSwiftCode(for specs: [WacomDeviceSpec]) -> String {
+    static func generateSwiftCode(for specs: [TabletSpec]) -> String {
         var lines: [String] = []
 
         lines.append("// OTD-imported device specifications")
@@ -573,8 +573,8 @@ enum OTDToolImporter {
         ("Inking Pen", 0x0812, "Inking Pen"),
     ]
 
-    /// Create a WacomToolSpec from an OTD tool definition.
-    static func importTool(type: String, buttonCount: Int) -> WacomToolSpec? {
+    /// Create a ToolSpec from an OTD tool definition.
+    static func importTool(type: String, buttonCount: Int) -> ToolSpec? {
         // Find matching mapping
         guard let mapping = toolTypeMappings.first(where: { $0.otdType == type }) else {
             return nil
@@ -585,7 +585,7 @@ enum OTDToolImporter {
         let hasWheel = type == "Airbrush" || type == "Mouse"
         let isEraser = type == "Eraser"
 
-        return WacomToolSpec(
+        return ToolSpec(
             toolCode: mapping.toolCode,
             name: isEraser ? "\(mapping.name) (Eraser)" : mapping.name,
             toolType: mapToolType(type),
@@ -600,7 +600,7 @@ enum OTDToolImporter {
         )
     }
 
-    private static func mapToolType(_ otdType: String) -> WacomToolType {
+    private static func mapToolType(_ otdType: String) -> ToolKind {
         switch otdType {
         case "Pen": return .stylus
         case "Eraser": return .eraser
