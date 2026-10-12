@@ -53,6 +53,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             initSteps: base.initSteps, ledCompanionPID: base.ledCompanionPID,
             confidence: base.confidence, productStringMatch: base.productStringMatch,
             activeWidthMM: base.activeWidthMM, activeHeightMM: base.activeHeightMM)
+            .with(quirks: base.quirks)
     }
 
     /// Touch range each touch sensor's own descriptor declares, keyed by the
@@ -148,12 +149,6 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// put, unlike a real fast stroke, which moves both together.
     private static let wirelessOutlierFraction = 0.2
 
-    /// Frames to wait after a PTK-870/Movink BLE proximity-enter before
-    /// synthesizing a generic tool identity, giving the one-shot real
-    /// announcement frame a chance to win honestly. See the fallback's own
-    /// comment in decodeBLEReport's caller below for the full rationale.
-    private static let toolAnnounceGraceFrames = 4
-
     /// Last genuine (non-synthesized) BLE `.toolEnter`. `.distantPast` until
     /// the first one arrives. Drives the drought recovery below.
     private var lastRealToolAnnouncementAt = Date.distantPast
@@ -185,9 +180,6 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// DATAMODE feature report on connect. Same "detect no real data,
     /// re-send DATAMODE" shape.
     private var firstUSBIdleReportAt: Date?
-    private static let usbIdleRecoveryTimeout: TimeInterval = 5.0
-    /// Wacom One S and M, whose report 0x06 is real pen data; see `handleReport`.
-    private static let usbIdleWatchdogExemptPIDs: Set<Int> = [0x0100, 0x0102, 0x0104]
     private var lastUSBIdleRecoveryAttemptAt = Date.distantPast
 
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
@@ -473,7 +465,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
         // IntuosV2 USB: mode-switch activates full tablet mode.
         // BLE: GATT is always active; writing InputMode suppresses pen data — skip.
-        if deviceSpec.format == .intuosV2 && !isBluetooth {
+        if deviceSpec.quirks.inputModeWriteOverUSB && !isBluetooth {
             sendWacomInputModeInit(device, tag: deviceSpec.name)
         }
 
@@ -484,7 +476,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // real pen/pad reports (0x1A/0x1B) after the same DATAMODE feature
         // report ([0x02, 0x02]) used on USB — confirmed 2026-09-16 on a real
         // PTK-870 via the diagnostics "switch into data mode" control.
-        if isBluetooth && deviceSpec.format == .intuosV3 {
+        if isBluetooth && deviceSpec.quirks.initOverBluetooth {
             executeInitSteps()
         }
 
@@ -501,9 +493,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             // the enumeration race, the DataMode write silently lands
             // nowhere. Wait for a capable sibling via registerDevice()
             // rather than firing a doomed write.
-            if deviceSpec.format == .intuosV1 || deviceSpec.format == .intuosV3
-                || deviceSpec.format == .bamboo
-            {
+            if deviceSpec.quirks.initNeedsDeclaringInterface {
                 // Must declare the *specific* feature reports initSteps writes,
                 // not merely some feature report — see
                 // `declaresInitFeatureReports` for the PTK-870 case where the
@@ -523,7 +513,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             // Wacom only — Xencelabs firmware never answers report 0x03, and the
             // synchronous IOHIDDeviceGetReport blocks the main thread ~4–5 s
             // (beachball on connect) waiting for the kernel HID timeout.
-            if deviceSpec.format != .xencelabs {
+            if deviceSpec.quirks.answersSerialQuery {
                 queryHardwareSerial()
             } else {
                 onHardwareSerial?(0)
@@ -702,7 +692,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// otherwise also reaches macOS, which on Sequoia held the left button
     /// while a hand rested on a 27QHD.
     func attachTouchSensor(_ device: IOHIDDevice) {
-        if deviceSpec.format == .cintiqV1 {
+        if deviceSpec.quirks.seizesTouchSensor {
             // The HID manager already opened it without options, and IOKit
             // ignores a second open from the same client, seize included.
             IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -761,7 +751,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // Bluetooth driver and would inherit its latched `isBluetooth`, skipping
         // the mode-switch write. Without it the tablet sends touch but no pen.
         let interfaceIsBluetooth = transport.lowercased().contains("bluetooth")
-        if deviceSpec.format == .intuosV2 && !interfaceIsBluetooth {
+        if deviceSpec.quirks.inputModeWriteOverUSB && !interfaceIsBluetooth {
             sendWacomInputModeInit(device, tag: name)
             // Apply any LED slot requested before this interface existed.
             // Driver-level `isBluetooth` on purpose — setRingLED picks its
@@ -778,8 +768,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // registered sibling is, send the init sequence and any pending LED
         // slot here instead — the first (and only) time a capable interface
         // is found. If `open()` already found one, this is a no-op.
-        if (deviceSpec.format == .intuosV1 || deviceSpec.format == .intuosV3
-            || deviceSpec.format == .bamboo)
+        if deviceSpec.quirks.initNeedsDeclaringInterface
             && !interfaceIsBluetooth && capableInterfaceDevice == nil
             && declaresInitFeatureReports(device)
         {
@@ -794,7 +783,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // device's tablet-mode init was addressed to the now-superseded
         // handle, so the live interface never actually left mouse-emulation
         // mode. Re-run init against the interface that's actually live.
-        if deviceSpec.format == .xencelabs && !isBluetooth && acceptsReports(from: device) {
+        if deviceSpec.quirks.reinitOnReenumeration && !isBluetooth && acceptsReports(from: device) {
             executeInitSteps(on: device)
             // The fresh firmware state lost any OLED text and dial color the
             // superseded handle received. Re-apply the LED now; dropping the
@@ -1012,7 +1001,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// Intuos Pro gen 3 BLE, which needs the same DATAMODE re-send `open()`
     /// performs (see the comment there).
     func reawaken() {
-        guard !isBluetooth || deviceSpec.format == .intuosV3 else { return }
+        guard !isBluetooth || deviceSpec.quirks.initOverBluetooth else { return }
         executeInitSteps()
     }
 
@@ -1265,33 +1254,23 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // original target); any other report ID means real data is flowing
         // and clears the stuck-timer.
         //
-        // CTC-4110WL/CTC-6110WL (Wacom One S/M, PIDs 0x0100/0x0102/0x0104)
-        // excluded 2026-09-22: confirmed via real captures + the device's own
-        // HID descriptor that 0x06 is THIS family's genuine standard-HID pen
-        // report (`IntuosV3Decoder.decodeStandardDigitizerReport`), not an
-        // idle placeholder — treating it as stuck would fire a spurious
-        // DATAMODE re-send every time the user's pen sits out of proximity
-        // for longer than `usbIdleRecoveryTimeout`, during perfectly normal
-        // use. Gated on product ID rather than parser, since `.intuosV3` is
-        // shared across devices where 0x06 means opposite things.
-        if deviceSpec.format == .intuosV3, !isBluetooth,
-            !Self.usbIdleWatchdogExemptPIDs.contains(deviceSpec.productID)
-        {
-            if length > 0, report[0] == 0x06 {
+        // The Wacom One S/M rows turn this off: their 0x06 is real pen data.
+        if let rule = deviceSpec.quirks.usbIdleReport, !isBluetooth {
+            if length > 0, report[0] == rule.reportID {
                 let now = Date()
                 let idleSince = firstUSBIdleReportAt ?? now
                 if firstUSBIdleReportAt == nil { firstUSBIdleReportAt = now }
-                if now.timeIntervalSince(idleSince) > Self.usbIdleRecoveryTimeout,
-                    now.timeIntervalSince(lastUSBIdleRecoveryAttemptAt) > Self.usbIdleRecoveryTimeout
+                if now.timeIntervalSince(idleSince) > rule.timeout,
+                    now.timeIntervalSince(lastUSBIdleRecoveryAttemptAt) > rule.timeout
                 {
                     lastUSBIdleRecoveryAttemptAt = now
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
-                        logger.info("\(name, privacy: .public): USB stuck on idle report 0x06 for over \(Self.usbIdleRecoveryTimeout, privacy: .public)s — re-sending DATAMODE to recover")
+                        logger.info("\(name, privacy: .public): USB stuck on idle report 0x\(String(rule.reportID, radix: 16), privacy: .public) for over \(rule.timeout, privacy: .public)s — re-sending DATAMODE to recover")
                         self.reawaken()
                     }
                 }
-            } else if length > 0, report[0] == 0x1E || report[0] == 0x1B {
+            } else if length > 0, rule.liveReportIDs.contains(report[0]) {
                 firstUSBIdleReportAt = nil
             }
         }
@@ -1371,15 +1350,14 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // settings bucket (`toolSettings(forID:)`), so a binding edit made
         // while misidentified as generic can bleed across different pens.
         let wasInProximity = decoder.penInRange
+        let graceFrames = deviceSpec.quirks.toolAnnounceGraceFrames ?? 0
         if wasInProximity {
-            framesSinceProximityEnter =
-                min(framesSinceProximityEnter + 1, Self.toolAnnounceGraceFrames + 1)
+            framesSinceProximityEnter = min(framesSinceProximityEnter + 1, graceFrames + 1)
         } else {
             framesSinceProximityEnter = 0
         }
         let synthesizeIntuosV3ToolEnter =
-            deviceSpec.format == .intuosV3 && isBluetooth
-            && framesSinceProximityEnter == Self.toolAnnounceGraceFrames
+            graceFrames > 0 && isBluetooth && framesSinceProximityEnter == graceFrames
         return (wasInProximity, synthesizeIntuosV3ToolEnter)
     }
 
