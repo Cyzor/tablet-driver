@@ -74,7 +74,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// interface (usagePage=0x01) AND the device spec requires seizure.
     private let seize: Bool
     private let onTablet: (TabletPoint) -> Void
-    private let onAux: ((AuxButtons) -> Void)?
+    private let onAux: ((PadState) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
     /// Called when a USB HID mouse button report (0x01, 4 bytes) arrives from the
     /// standard mouse interface (usagePage=0x01).  Carries button bitmask only;
@@ -401,7 +401,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         seize: Bool = false,
         isWireless: Bool = false,
         onTablet: @escaping (TabletPoint) -> Void,
-        onAux: ((AuxButtons) -> Void)? = nil,
+        onAux: ((PadState) -> Void)? = nil,
         onToolEnter: ((ToolIdentity) -> Void)? = nil,
         onMouseButton: ((UInt8) -> Void)? = nil,
         onBattery: ((Int, Bool) -> Void)? = nil,
@@ -1496,8 +1496,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 guard event.phase == .enter, !isWireless || wirelessReady else { break }
                 onToolEnter?(event.identity)
             case .pad(let pad):
-                // The injector still reads AuxButtons; W5.4 step 3 moves it.
-                handleAux(AuxButtons(pad), report: report, length: length, sender: sender, name: name)
+                handleAux(pad, report: report, length: length, sender: sender, name: name)
             case .dial(let index, let delta):
                 onWheel?(index, delta)
             case .touch(let frame):
@@ -1536,10 +1535,10 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     }
 
     private func handleAux(
-        _ buttons: AuxButtons, report: UnsafePointer<UInt8>, length: CFIndex,
+        _ pad: PadState, report: UnsafePointer<UInt8>, length: CFIndex,
         sender: IOHIDDevice?, name: String
     ) {
-        var buttons = buttons
+        var pad = pad
         // Diagnostic from the Xencelabs stuck-Command investigation
         // (2026-07-05): which physical device/PID produced this aux
         // frame and the raw bytes that decoded to it, so a phantom
@@ -1550,14 +1549,14 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // OSLog builds these strings only when debug logging is on.
         if deviceSpec.format == .xencelabs {
             let pid = deviceSpec.productID
-            let aux = buttons
+            let aux = pad
             logger.debug("""
                 \(name, privacy: .public) \
                 (0x\(String(pid, radix: 16, uppercase: true), privacy: .public)) \
                 usagePage=0x\(sender.map { String(hidIntProperty($0, kIOHIDPrimaryUsagePageKey), radix: 16) } ?? "?", privacy: .public): \
                 aux decode — bytes=[\((0..<length).map { String(format: "%02x", report[$0]) }.joined(separator: " "), privacy: .public)] \
-                mask=\((0..<16).map { aux[$0] ? "1" : "0" }.joined(), privacy: .public) \
-                mech=0x\(String(aux.mechanicalMask, radix: 16), privacy: .public)
+                mask=\((0..<16).map { aux.button($0) ? "1" : "0" }.joined(), privacy: .public) \
+                mech=0x\(String(aux.pressedThisReport.reduce(0) { $1 < 8 ? $0 | 1 << $1 : $0 }, radix: 16), privacy: .public)
                 """)
         }
         // The pen display's own 3 onboard bezel buttons ride the same
@@ -1569,14 +1568,14 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // that TabletManager/InputInjector already read for onboard
         // bezel buttons, following the DTK-2400 precedent.
         if deviceSpec.format == .xencelabs && deviceSpec.isPenDisplay {
-            var raw = buttons.buttons
+            var raw = pad.buttons
             while raw.count < 19 { raw.append(false) }
-            raw[16] = buttons[0]
-            raw[17] = buttons[1]
-            raw[18] = buttons[2]
-            buttons.buttons = raw
+            raw[16] = pad.button(0)
+            raw[17] = pad.button(1)
+            raw[18] = pad.button(2)
+            pad.buttons = raw
         }
-        onAux?(buttons)
+        onAux?(pad)
     }
 
     private func handleWirelessStatus(_ ws: WirelessStatus, name: String) {
@@ -1831,25 +1830,3 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     }
 }
 
-extension AuxButtons {
-    /// `pad` in the shape the injector reads, until W5.4 step 3 moves it to
-    /// `PadState`. No contact is the `0x7F`/`0xFF` sentinel, as decoders wrote it.
-    init(_ pad: PadState) {
-        let ring = { (i: Int) in pad.rings.indices.contains(i) ? pad.rings[i] : nil }
-        let strip = { (i: Int) in pad.strips.indices.contains(i) ? pad.strips[i] : nil }
-        self.init(
-            buttons: pad.buttons,
-            mechanicalMask: pad.pressedThisReport.reduce(0) { $1 < 8 ? $0 | UInt8(1 << $1) : $0 },
-            touchRingActive: ring(0)?.position != nil,
-            touchRingButtonDown: ring(0)?.buttonDown ?? false,
-            touchRingPosition: ring(0)?.position.map { UInt8($0) } ?? 0x7F,
-            touchRing2Active: ring(1)?.position != nil,
-            touchRing2ButtonDown: ring(1)?.buttonDown ?? false,
-            touchRing2Position: ring(1)?.position.map { UInt8($0) } ?? 0x7F,
-            touchStrip1Active: strip(0)?.position != nil,
-            touchStrip1Position: strip(0)?.position.map { UInt8($0) } ?? 0xFF,
-            touchStrip2Active: strip(1)?.position != nil,
-            touchStrip2Position: strip(1)?.position.map { UInt8($0) } ?? 0xFF)
-        touchRingHardwareMode = pad.hardwareMode
-    }
-}

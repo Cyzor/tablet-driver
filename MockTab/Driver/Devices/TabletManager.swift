@@ -1380,9 +1380,9 @@ final class TabletManager: ObservableObject {
         // ── Express key closure ──────────────────────────────────────────────
         // Called on HIDThread. injectAux runs inline (it reads from injectionSnapshot
         // and posts CGEvents — both thread-safe). UI state mutations hop to main.
-        let onAux: (AuxButtons) -> Void = { [weak self, contextHandle] aux in
+        let onAux: (PadState) -> Void = { [weak self, contextHandle] aux in
             guard let context = contextHandle.context else { return }
-            context.injector.injectAux(buttons: aux, settings: context.settings)
+            context.injector.injectAux(pad: aux, settings: context.settings)
             // HID-thread gate: skip the Task hop entirely when no UI is watching.
             // Ring scrubbing streams aux reports at ~100 Hz; without this gate every
             // report spawned a main-actor Task whose body did nothing. Same pattern
@@ -1392,31 +1392,38 @@ final class TabletManager: ObservableObject {
             guard let self, let context else { return }
             // Update UI only when app is frontmost, state changed, and Info/Buttons tab is visible.
             guard appIsFrontmost && infoViewVisible else { return }
-            let keys = (0..<16).map { aux[$0] }
+            let keys = (0..<16).map { aux.button($0) }
             if keys != context.liveButtons.expressKeys {
                 context.liveButtons.expressKeys = keys
             }
-            let bezelKeys = (16..<19).map { aux[$0] }
+            let bezelKeys = (16..<19).map { aux.button($0) }
+            let ring1 = aux.rings.first, ring2 = aux.rings.dropFirst().first
+            let touchRingActive = ring1?.position != nil
+            let touchRing2Active = ring2?.position != nil
+            let touchRingButtonDown = ring1?.buttonDown ?? false
+            let touchRing2ButtonDown = ring2?.buttonDown ?? false
+            let touchStrip1Active = aux.strips.first?.position != nil
+            let touchStrip2Active = aux.strips.dropFirst().first?.position != nil
             if bezelKeys != context.liveButtons.bezelButtons {
                 context.liveButtons.bezelButtons = bezelKeys
             }
-            if aux.touchRingActive != context.liveButtons.touchRingActive {
-                context.liveButtons.touchRingActive = aux.touchRingActive
+            if touchRingActive != context.liveButtons.touchRingActive {
+                context.liveButtons.touchRingActive = touchRingActive
             }
-            if aux.touchRing2Active != context.liveButtons.touchRing2Active {
-                context.liveButtons.touchRing2Active = aux.touchRing2Active
+            if touchRing2Active != context.liveButtons.touchRing2Active {
+                context.liveButtons.touchRing2Active = touchRing2Active
             }
-            if aux.touchRingButtonDown != context.liveButtons.touchRingButtonDown {
-                context.liveButtons.touchRingButtonDown = aux.touchRingButtonDown
+            if touchRingButtonDown != context.liveButtons.touchRingButtonDown {
+                context.liveButtons.touchRingButtonDown = touchRingButtonDown
             }
-            if aux.touchRing2ButtonDown != context.liveButtons.touchRing2ButtonDown {
-                context.liveButtons.touchRing2ButtonDown = aux.touchRing2ButtonDown
+            if touchRing2ButtonDown != context.liveButtons.touchRing2ButtonDown {
+                context.liveButtons.touchRing2ButtonDown = touchRing2ButtonDown
             }
-            if aux.touchStrip1Active != context.liveButtons.touchStrip1Active {
-                context.liveButtons.touchStrip1Active = aux.touchStrip1Active
+            if touchStrip1Active != context.liveButtons.touchStrip1Active {
+                context.liveButtons.touchStrip1Active = touchStrip1Active
             }
-            if aux.touchStrip2Active != context.liveButtons.touchStrip2Active {
-                context.liveButtons.touchStrip2Active = aux.touchStrip2Active
+            if touchStrip2Active != context.liveButtons.touchStrip2Active {
+                context.liveButtons.touchStrip2Active = touchStrip2Active
             }
             } // end Task @MainActor
         }

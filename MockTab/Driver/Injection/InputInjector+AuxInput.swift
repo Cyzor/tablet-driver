@@ -23,17 +23,26 @@ extension InputInjector {
         fireButtonAction(binding, down: false, at: loc, snapshot: snapshot, settings: settings)
     }
 
-    func injectAux(buttons: AuxButtons, settings: TabletSettings?) {
+    func injectAux(pad: PadState, settings: TabletSettings?) {
         ThreadContract.expectPenThread()
         rearmWatchdog()
         guard let snap = injectionSnapshot else { return }
         let bindings = snap.expressKeyBindings
         let cursorPos = currentCursorPosition()
 
+        // Positions as the tracking state below holds them: 0x7F (ring) and
+        // 0xFF (strip) for no contact.
+        let ring1 = pad.rings.first
+        let ring2 = pad.rings.dropFirst().first
+        let touchRingActive = ring1?.position != nil
+        let touchRing2Active = ring2?.position != nil
+        let touchStrip1Active = pad.strips.first?.position != nil
+        let touchStrip2Active = pad.strips.dropFirst().first?.position != nil
+
         // ── Express keys ───────────────────────────────────────────────────────
         for i in 0..<16 {
-            let down = buttons[i]
-            let hasMechanicalPulse = i < 8 && (buttons.mechanicalMask >> i) & 1 != 0
+            let down = pad.button(i)
+            let hasMechanicalPulse = pad.pressedThisReport.contains(i)
             if down != lastAuxButtons[i] {
                 // Update first so fireButtonAction's quiescent check sees the new state.
                 lastAuxButtons[i] = down
@@ -56,7 +65,7 @@ extension InputInjector {
         let bezelBindings = snap.bezelButtonBindings
         for i in 0..<3 {
             let auxIndex = 16 + i
-            let down = buttons[auxIndex]
+            let down = pad.button(auxIndex)
             if down != lastAuxButtons[auxIndex] {
                 lastAuxButtons[auxIndex] = down
                 fireButtonAction(bezelBindings[i], down: down, at: cursorPos,
@@ -68,7 +77,7 @@ extension InputInjector {
         // The remote's center button switches its own mode LEDs, so the
         // active slot follows the reported mode and the button fires nothing:
         // a host-side cycle on the same press would drift out of step.
-        if let mode = buttons.touchRingHardwareMode {
+        if let mode = pad.hardwareMode {
             if mode != lastHardwareRingMode {
                 lastHardwareRingMode = mode
                 closeRingGestureEnvelopes()
@@ -78,19 +87,19 @@ extension InputInjector {
                     }
                 }
             }
-            lastRingButtonDown = buttons.touchRingButtonDown
+            lastRingButtonDown = ring1?.buttonDown ?? false
         }
 
         // ── Touch ring center button ───────────────────────────────────────────
-        let ringButtonDown = buttons.touchRingButtonDown
-        if buttons.touchRingHardwareMode == nil, ringButtonDown != lastRingButtonDown {
+        let ringButtonDown = ring1?.buttonDown ?? false
+        if pad.hardwareMode == nil, ringButtonDown != lastRingButtonDown {
             lastRingButtonDown = ringButtonDown
             fireButtonAction(snap.touchRingButtonBinding, down: ringButtonDown,
                              at: cursorPos, snapshot: snap, settings: settings, isAux: true)
         }
 
         // ── Second dial's toggle key (PTK-670/870) ────────────────────────────
-        let ring2ButtonDown = buttons.touchRing2ButtonDown
+        let ring2ButtonDown = ring2?.buttonDown ?? false
         if ring2ButtonDown != lastRing2ButtonDown {
             lastRing2ButtonDown = ring2ButtonDown
             fireButtonAction(snap.touchRingButtonBinding2, down: ring2ButtonDown,
@@ -103,14 +112,14 @@ extension InputInjector {
 
         // Zoom/rotate gesture on a touch ring: begins on contact, before this
         // report's delta, and ends on lift. Dials use an idle timer instead.
-        // Keyed on `touchRingActive` alone; see `ring1GestureOpen`.
+        // Keyed on contact alone; see `ring1GestureOpen`.
         if !hasMechanicalDial, let slot = activeSlot, slot.action == .zoom || slot.action == .rotate {
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
-            if buttons.touchRingActive, !ring1GestureOpen {
+            if touchRingActive, !ring1GestureOpen {
                 ring1GestureOpen = true
                 ring1GestureKind = kind
                 postRingGesture(delta: 0, phase: .began, kind: kind)
-            } else if !buttons.touchRingActive, ring1GestureOpen {
+            } else if !touchRingActive, ring1GestureOpen {
                 ring1GestureOpen = false
                 postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
             }
@@ -120,27 +129,27 @@ extension InputInjector {
             postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
         }
 
-        let ringPos = buttons.touchRingPosition
+        let ringPos = ring1?.position.map { UInt8($0) } ?? 0x7F
         let now = CFAbsoluteTimeGetCurrent()
         // A slow finger can read as lifted for a frame mid-turn and come back
         // several steps on (PTH-660 capture, 2026-09-27: 41 → no contact →
         // 36 after 320 ms). Treat a quick, nearby re-touch as the same touch
         // so that distance isn't dropped.
         var fromPos = lastRingPos
-        if buttons.touchRingActive, lastRingPos == 0x7F, ringLiftPos != 0x7F,
+        if touchRingActive, lastRingPos == 0x7F, ringLiftPos != 0x7F,
            now - ringLiftTime < Self.ringDropoutBridge {
             var gap = Int(ringPos) - Int(ringLiftPos)
             if gap > 36 { gap -= 72 }
             if gap < -36 { gap += 72 }
             if abs(gap) < 10 { fromPos = ringLiftPos }
         }
-        if !buttons.touchRingActive, lastRingPos != 0x7F {
+        if !touchRingActive, lastRingPos != 0x7F {
             ringLiftPos = lastRingPos
             ringLiftTime = now
-        } else if buttons.touchRingActive {
+        } else if touchRingActive {
             ringLiftPos = 0x7F
         }
-        if buttons.touchRingActive, fromPos != 0x7F {
+        if touchRingActive, fromPos != 0x7F {
             var delta = Int(ringPos) - Int(fromPos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
@@ -151,19 +160,19 @@ extension InputInjector {
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         }
-        if !buttons.touchRingActive { ringAccum = 0 }
-        lastRingPos = buttons.touchRingActive ? ringPos : 0x7F
+        if !touchRingActive { ringAccum = 0 }
+        lastRingPos = touchRingActive ? ringPos : 0x7F
 
         // ── Touch ring 2 (DTK-2400 right bezel) ──────────────────────────
         // Reads control 1: the 24HD's rings mirror each other.
         let ring2Slot = activeSlot
         if !hasMechanicalDial, let slot = ring2Slot, slot.action == .zoom || slot.action == .rotate {
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
-            if buttons.touchRing2Active, !ring2GestureOpen {
+            if touchRing2Active, !ring2GestureOpen {
                 ring2GestureOpen = true
                 ring2GestureKind = kind
                 postRingGesture(delta: 0, phase: .began, kind: kind)
-            } else if !buttons.touchRing2Active, ring2GestureOpen {
+            } else if !touchRing2Active, ring2GestureOpen {
                 ring2GestureOpen = false
                 postRingGesture(delta: 0, phase: .ended, kind: ring2GestureKind)
             }
@@ -172,8 +181,8 @@ extension InputInjector {
             postRingGesture(delta: 0, phase: .ended, kind: ring2GestureKind)
         }
 
-        let ring2Pos = buttons.touchRing2Position
-        if buttons.touchRing2Active, lastRing2Pos != 0x7F {
+        let ring2Pos = ring2?.position.map { UInt8($0) } ?? 0x7F
+        if touchRing2Active, lastRing2Pos != 0x7F {
             var delta = Int(ring2Pos) - Int(lastRing2Pos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
@@ -183,35 +192,35 @@ extension InputInjector {
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         }
-        if !buttons.touchRing2Active { ring2Accum = 0 }
-        lastRing2Pos = buttons.touchRing2Active ? ring2Pos : 0x7F
+        if !touchRing2Active { ring2Accum = 0 }
+        lastRing2Pos = touchRing2Active ? ring2Pos : 0x7F
 
         // ── Touch strips (Intuos3 WS) — share touchRingSlots ───────────────────
         // Strips are linear (no wrap); each zone step maps 1:1 to a scroll event.
 
         // Strip 1 (left).
-        let s1pos = buttons.touchStrip1Position
-        if buttons.touchStrip1Active, lastStrip1Pos != 0xFF {
+        let s1pos = pad.strips.first?.position.map { UInt8($0) } ?? 0xFF
+        if touchStrip1Active, lastStrip1Pos != 0xFF {
             let delta = Int(s1pos) - Int(lastStrip1Pos)
             if delta != 0, let slot = activeSlot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip1Accum,
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         }
-        if !buttons.touchStrip1Active { strip1Accum = 0 }
-        lastStrip1Pos = buttons.touchStrip1Active ? s1pos : 0xFF
+        if !touchStrip1Active { strip1Accum = 0 }
+        lastStrip1Pos = touchStrip1Active ? s1pos : 0xFF
 
         // Strip 2 (right).
-        let s2pos = buttons.touchStrip2Position
-        if buttons.touchStrip2Active, lastStrip2Pos != 0xFF {
+        let s2pos = pad.strips.dropFirst().first?.position.map { UInt8($0) } ?? 0xFF
+        if touchStrip2Active, lastStrip2Pos != 0xFF {
             let delta = Int(s2pos) - Int(lastStrip2Pos)
             if delta != 0, let slot = activeSlot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip2Accum,
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         }
-        if !buttons.touchStrip2Active { strip2Accum = 0 }
-        lastStrip2Pos = buttons.touchStrip2Active ? s2pos : 0xFF
+        if !touchStrip2Active { strip2Accum = 0 }
+        lastStrip2Pos = touchStrip2Active ? s2pos : 0xFF
     }
 
     // MARK: - Relative wheel (IntuosV3 PTK-x70 side scroll wheels)
@@ -281,5 +290,12 @@ extension InputInjector {
             let d = snap.reverseRingDirection ? -delta : delta
             postScrollWheelEvent(delta: Self.naturalScrollingEnabled ? d : -d, at: cursorPos)
         }
+    }
+}
+
+extension PadState {
+    /// Button `index`, or released past the end.
+    func button(_ index: Int) -> Bool {
+        buttons.indices.contains(index) && buttons[index]
     }
 }

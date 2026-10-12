@@ -50,7 +50,7 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
 
     private let device: IOHIDDevice
     private let onTablet: (TabletPoint) -> Void
-    private let onAux: ((AuxButtons) -> Void)?
+    private let onAux: ((PadState) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
     /// IOKit keeps writing here after registration, and an array's inout
     /// pointer lasts only for the call, so the driver owns this buffer.
@@ -132,7 +132,7 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
     init(
         device: IOHIDDevice,
         onTablet: @escaping (TabletPoint) -> Void,
-        onAux: ((AuxButtons) -> Void)? = nil,
+        onAux: ((PadState) -> Void)? = nil,
         onToolEnter: ((ToolIdentity) -> Void)? = nil
     ) {
         self.device = device
@@ -443,7 +443,7 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
         // ── BLE HOGP pad report (Report ID 0x03, ≥3 bytes) ──────────────
         if id == 0x03 && length >= 3 {
             if let aux = decodeBLEPadReport(report: HIDReport(pointer: report, count: length)) {
-                onAux?(aux)
+                onAux?(PadState(aux))
             } else {
                 // Fall back to IntuosV1 express key decode (0x03 also used by PTZ-631W).
                 handleExpressKeys(id: id, report: report, length: length)
@@ -808,10 +808,11 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
             let posByte: UInt8 = length >= 5 ? report[4] : 0x7F
             let ringActive = ringByte != 0
             onAux(
-                AuxButtons(
+                PadState(
                     buttons: (0..<8).map { (auxByte & (1 << $0)) != 0 },
-                    touchRingActive: ringActive,
-                    touchRingPosition: ringActive ? posByte : 0x7F))
+                    rings: [RingState(
+                        position: ringActive && posByte != 0x7F ? Int(posByte) : nil,
+                        buttonDown: false)]))
 
         case 0x0C:
             // Intuos3/4 style: byte 1 = keys 1–8, OR bytes 5–6 = 4+4.
@@ -820,19 +821,19 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
                 let lo = report[5]
                 let hi = report[6]
                 onAux(
-                    AuxButtons(
+                    PadState(
                         buttons: (0..<4).map { (lo & (1 << $0)) != 0 }
                             + (0..<4).map { (hi & (1 << $0)) != 0 }))
             } else if length >= 2 {
                 let keyByte = report[1]
-                onAux(AuxButtons(buttons: (0..<8).map { (keyByte & (1 << $0)) != 0 }))
+                onAux(PadState(buttons: (0..<8).map { (keyByte & (1 << $0)) != 0 }))
             }
 
         case 0x03:
             // IntuosV1 pad: byte 4 = 8 keys.
             guard length >= 5 else { return }
             let byte = report[4]
-            onAux(AuxButtons(buttons: (0..<8).map { (byte & (1 << $0)) != 0 }))
+            onAux(PadState(buttons: (0..<8).map { (byte & (1 << $0)) != 0 }))
 
         default:
             break

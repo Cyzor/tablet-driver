@@ -27,7 +27,7 @@ enum DeviceRouter {
     /// once per `deviceConnected` call and reused across multi-interface devices.
     struct Callbacks {
         let onTablet: (TabletPoint) -> Void
-        let onAux: (AuxButtons) -> Void
+        let onAux: (PadState) -> Void
         let onToolEnter: (ToolIdentity) -> Void
         let onMouseButton: (UInt8) -> Void
         let onBattery: (Int, Bool) -> Void
