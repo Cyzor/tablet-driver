@@ -580,8 +580,8 @@ final class TabletManager: ObservableObject {
             // sensing, rotation only. See hasMechanicalDial's doc comment.
             hasTouchRing: isAuxOnly, hasMechanicalDial: isAuxOnly,
             hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
-            // Hardware-confirmed — see XencelabsDecoder.tiltMaxDegrees.
-            tiltMaxDegrees: isAuxOnly ? nil : XencelabsDecoder.tiltMaxDegrees,
+            // Hardware-confirmed — see ReportFormat.tiltMaxDegrees.
+            tiltMaxDegrees: isAuxOnly ? nil : ReportFormat.xencelabs.tiltMaxDegrees,
             isPenDisplay: profile.isPenDisplay,
             seizeUSB: false,
             // Tablet-mode handshake; without it the device stays in

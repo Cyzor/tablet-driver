@@ -1739,7 +1739,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         let anchor = touchFrameStamps.keys.max().flatMap { key in
             touchFrameStamps[key].map { (index: key, stamp: $0) }
         }
-        let maxPlausibleSpanCounts = UInt64(DecoderState.btTouchCountsPerFrame) * 16
+        let maxPlausibleSpanCounts = UInt64(TouchFrame.deviceTimeCountsPerBluetoothFrame) * 16
         let scheduled: [(frame: BatchedFrame, timestampNs: UInt64)] = frames.dropFirst()
             .enumerated().map { offset, frame in
                 let index = offset + 1
@@ -1762,7 +1762,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 // frame overall instead, or stamped touch frames will be placed
                 // later than they were sampled.
                 let nsBehind = UInt64(
-                    Double(countsBehind) * DecoderState.btTouchMsPerCount * 1_000_000.0)
+                    Double(countsBehind) * TouchFrame.deviceTimeMsPerCount * 1_000_000.0)
                 guard reportTimestampNs > nsBehind else { return (frame, interpolated) }
                 return (frame, reportTimestampNs - nsBehind)
             }
