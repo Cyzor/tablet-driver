@@ -489,6 +489,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         var minLength = Int.max
         var maxLength = 0
         var firstHex: String = ""
+        var firstDecoded: [DecodeResult]?
         var lastHex: String = ""
         var xRange: ClosedRange<Int>?
         var yRange: ClosedRange<Int>?
@@ -570,7 +571,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             count += 1
             minLength = min(minLength, sample.length)
             maxLength = max(maxLength, sample.length)
-            if count == 1 { firstHex = sample.hex }
+            if count == 1 { firstHex = sample.hex; firstDecoded = sample.decoded }
             lastHex = sample.hex
             guard let decoded = sample.decoded else { return }
             for result in decoded {
@@ -623,6 +624,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             let padded = Self.pad(tag)
             if count == 1 {
                 return "[\(ts)] \(padded) ID=\(hexDigitID) len=\(String(format: "%-4d", minLength))  \(firstHex)"
+                    + (firstDecoded.flatMap(HIDCapture.summarize).map { "  → \($0)" } ?? "")
             }
             let lenRange = minLength == maxLength ? "\(minLength)" : "\(minLength)-\(maxLength)"
             var fields: [String] = []

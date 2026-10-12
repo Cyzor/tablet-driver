@@ -501,6 +501,26 @@ do {
         "the note must follow the run that started before it: \(lines)")
 }
 
+do {
+    // A run that closes after one sample still shows its decode, like a
+    // verbatim line. A first report followed by a transition hits this.
+    let aux = { (mask: UInt8) -> [DecodeResult] in
+        [.aux(AuxButtons(
+            buttons: (0..<8).map { (mask & (1 << $0)) != 0 }, mechanicalMask: mask,
+            touchRingActive: false, touchRingButtonDown: false, touchRingPosition: 0x7F))]
+    }
+    let samples = [UInt8(0x01), 0x00].enumerated().map { i, mask in
+        HIDCapture.Sample(
+            elapsed: Double(i) * 0.1, tag: "Test Device", reportID: 0x11, length: 9,
+            hex: String(format: "11 %02X", mask), decoded: aux(mask),
+            signature: HIDCapture.signature(for: aux(mask)))
+    }
+    let lines = condenseAll(samples)
+    expect(
+        lines.contains { $0.contains("11 01") && $0.contains("→ aux buttons=[0]") },
+        "a single-sample run must keep its decode: \(lines)")
+}
+
 if failures > 0 {
     FileHandle.standardError.write(Data("hid-capture-condense-tests: \(failures)/\(checks) checks FAILED\n".utf8))
     exit(1)
