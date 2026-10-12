@@ -132,9 +132,9 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     private let onOpenFailed: ((IOReturn) -> Void)?
 
     private var decoder: DeviceDecoder
-    /// Reports since the pen came into range, for the Bluetooth
-    /// announcement grace (`advanceToolAnnounceGrace`).
-    private var framesSinceProximityEnter = 0
+    /// The Bluetooth announcement grace (`advanceToolAnnounceGrace`).
+    private lazy var toolGrace = ToolAnnouncementGrace(
+        frames: deviceSpec.quirks.toolAnnounceGraceFrames ?? 0)
     /// IOKit keeps writing here after registration, and an array's inout
     /// pointer lasts only for the call, so the driver owns this buffer.
     private let reportBuffer: UnsafeMutablePointer<UInt8>
@@ -179,8 +179,9 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// after a preceding BT session, even though `open()` already sends the
     /// DATAMODE feature report on connect. Same "detect no real data,
     /// re-send DATAMODE" shape.
-    private var firstUSBIdleReportAt: Date?
-    private var lastUSBIdleRecoveryAttemptAt = Date.distantPast
+    private lazy var idleWatcher = deviceSpec.quirks.usbIdleReport.map(IdleReportWatcher.init)
+    /// The paired tablet a wireless receiver names in its status report.
+    private var pairingWatcher = DonglePairingWatcher()
 
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
     // See BatchFramePacer.swift and dispatchBatch(_:reportTimestampNs:) below.
@@ -1248,31 +1249,18 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
     /// Re-sends DATAMODE when an IntuosV3 tablet sits on its USB idle report.
     private func recoverFromUSBIdleReport(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
-        // USB idle-report recovery — see `firstUSBIdleReportAt`'s doc comment.
-        // Report 0x06 with no length requirement beyond a report ID is the
-        // pre-DATAMODE idle frame on PTK-470/670/870/Movink 13 (this watchdog's
-        // original target); any other report ID means real data is flowing
-        // and clears the stuck-timer.
-        //
-        // The Wacom One S/M rows turn this off: their 0x06 is real pen data.
-        if let rule = deviceSpec.quirks.usbIdleReport, !isBluetooth {
-            if length > 0, report[0] == rule.reportID {
-                let now = Date()
-                let idleSince = firstUSBIdleReportAt ?? now
-                if firstUSBIdleReportAt == nil { firstUSBIdleReportAt = now }
-                if now.timeIntervalSince(idleSince) > rule.timeout,
-                    now.timeIntervalSince(lastUSBIdleRecoveryAttemptAt) > rule.timeout
-                {
-                    lastUSBIdleRecoveryAttemptAt = now
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self else { return }
-                        logger.info("\(name, privacy: .public): USB stuck on idle report 0x\(String(rule.reportID, radix: 16), privacy: .public) for over \(rule.timeout, privacy: .public)s — re-sending DATAMODE to recover")
-                        self.reawaken()
-                    }
-                }
-            } else if length > 0, rule.liveReportIDs.contains(report[0]) {
-                firstUSBIdleReportAt = nil
-            }
+        // USB idle-report recovery — see `idleWatcher`'s doc comment. The
+        // Wacom One S/M rows turn this off: their 0x06 is real pen data.
+        guard !isBluetooth, var watcher = idleWatcher else { return }
+        let stuck = watcher.observe(
+            HIDReport(pointer: report, count: length), now: ProcessInfo.processInfo.systemUptime)
+        idleWatcher = watcher
+        guard stuck else { return }
+        let rule = watcher.rule
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            logger.info("\(name, privacy: .public): USB stuck on idle report 0x\(String(rule.reportID, radix: 16), privacy: .public) for over \(rule.timeout, privacy: .public)s — re-sending DATAMODE to recover")
+            self.reawaken()
         }
     }
 
@@ -1280,9 +1268,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     private func adoptDonglePairedTablet(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
         // For wireless dongles, extract paired tablet PID from 0x80 status report and
         // use its spec for accurate coordinate ranges (instead of fallback guesses).
-        if isWireless && length >= 8 && report[0] == 0x80 && (report[1] & 0x01) != 0 {
-            let pairedTabletPID = Int(UInt16(report[7]) | UInt16(report[6]) << 8)  // Big-endian
-            if pairedTabletPID > 0, pairedTabletPID != pairedPID,
+        if isWireless, let pairedTabletPID = pairingWatcher.observe(HIDReport(pointer: report, count: length)) {
+            if pairedTabletPID != pairedPID,
                 let pairedSpec = WacomDeviceRegistry.spec(for: pairedTabletPID),
                 pairedSpec.maxX > 0 && pairedSpec.maxY > 0
             {
@@ -1350,14 +1337,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         // settings bucket (`toolSettings(forID:)`), so a binding edit made
         // while misidentified as generic can bleed across different pens.
         let wasInProximity = decoder.penInRange
-        let graceFrames = deviceSpec.quirks.toolAnnounceGraceFrames ?? 0
-        if wasInProximity {
-            framesSinceProximityEnter = min(framesSinceProximityEnter + 1, graceFrames + 1)
-        } else {
-            framesSinceProximityEnter = 0
-        }
-        let synthesizeIntuosV3ToolEnter =
-            graceFrames > 0 && isBluetooth && framesSinceProximityEnter == graceFrames
+        let graceEnded = toolGrace.advance(penInRange: wasInProximity)
+        let synthesizeIntuosV3ToolEnter = isBluetooth && graceEnded
         return (wasInProximity, synthesizeIntuosV3ToolEnter)
     }
 
