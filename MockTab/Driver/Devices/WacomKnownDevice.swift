@@ -1056,7 +1056,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] feature report succeeded on interface usagePage=0x\(String(usagePage, radix: 16), privacy: .public)")
             }
             executeInitSteps(from: index + 1, on: target, steps: steps)
-        case .outputReport(var bytes):
+        case .outputReport(let bytes):
             // Vendor tablet-mode init over the HID output pipe (Xencelabs:
             // [0x02, 0xB0, 0x04]). Confirmed 2026-07-01 on a Pen Display: a
             // raw short write reports kIOReturnSuccess at the transport level
@@ -1066,22 +1066,15 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             // fallback-on-failure retry, since a successful-but-ignored write
             // never triggers the retry path.
             let reportID = CFIndex(bytes[0])
-            let declared = hidIntProperty(device, kIOHIDMaxOutputReportSizeKey)
             let name = deviceSpec.name
-            let ret: IOReturn
-            if declared > bytes.count {
-                var padded = bytes + [UInt8](repeating: 0, count: declared - bytes.count)
-                ret = hidSetReport(
-                    device, type: kIOHIDReportTypeOutput, reportID: reportID,
-                    bytes: &padded,
-                    tag: "\(name) initStep[\(index)] output padded to \(declared)",
-                    log: logger)
-            } else {
-                ret = hidSetReport(
-                    device, type: kIOHIDReportTypeOutput, reportID: reportID,
-                    bytes: &bytes, tag: "\(name) initStep[\(index)] output",
-                    log: logger)
-            }
+            var padded = paddedOutputReport(bytes, for: device)
+            let ret = hidSetReport(
+                device, type: kIOHIDReportTypeOutput, reportID: reportID,
+                bytes: &padded,
+                tag: padded.count > bytes.count
+                    ? "\(name) initStep[\(index)] output padded to \(padded.count)"
+                    : "\(name) initStep[\(index)] output",
+                log: logger)
             // hidSetReport only logs on failure — log the outcome unconditionally
             // here, since "no error" has been ambiguous with "never ran."
             let hex = String(format: "0x%08x", ret)
@@ -1092,8 +1085,11 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
                 self?.executeInitSteps(from: index + 1, on: target, steps: steps)
             }
-        case .stringDescriptor:
-            // Not yet wired up (Huion); advance to keep the sequence moving.
+        case .stringDescriptor(let descriptorIndex):
+            // Reading is what switches some tablets on; nothing here uses the
+            // reply yet.
+            let reply = readStringDescriptor(device, index: UInt8(truncatingIfNeeded: descriptorIndex))
+            logger.info("\(self.deviceSpec.name, privacy: .public): initStep[\(index, privacy: .public)] string descriptor \(descriptorIndex, privacy: .public) → \(reply.map { "\($0.count) bytes" } ?? "no answer", privacy: .public)")
             executeInitSteps(from: index + 1, on: target, steps: steps)
         }
     }

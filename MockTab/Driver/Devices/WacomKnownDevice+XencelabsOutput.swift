@@ -233,11 +233,7 @@ extension WacomKnownDevice {
     @discardableResult
     func sendXencelabsRelink(identity: [UInt8]) -> IOReturn {
         let target = secondaryDevice ?? device
-        var relink: [UInt8] = [0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity
-        let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
-        if declared > relink.count {
-            relink += [UInt8](repeating: 0, count: declared - relink.count)
-        }
+        var relink = paddedOutputReport([0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity, for: target)
         paceXencelabsWrite()
         return hidSetReport(
             target, type: kIOHIDReportTypeOutput, reportID: CFIndex(relink[0]),
@@ -362,11 +358,7 @@ extension WacomKnownDevice {
         }
 
         let target = (deviceSpec.format == .xencelabs ? secondaryDevice : nil) ?? device
-        let declared = hidIntProperty(target, kIOHIDMaxOutputReportSizeKey)
-        var padded = bytes
-        if declared > padded.count {
-            padded += [UInt8](repeating: 0, count: declared - padded.count)
-        }
+        var padded = paddedOutputReport(bytes, for: target)
         paceXencelabsWrite()
         hidSetReport(target, type: kIOHIDReportTypeOutput,
                      reportID: CFIndex(padded[0]), bytes: &padded,
