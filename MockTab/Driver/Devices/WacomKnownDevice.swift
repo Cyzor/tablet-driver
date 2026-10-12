@@ -344,6 +344,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
     /// The wireless puck's relink state, for receivers that relay one.
     private var xencelabsRelink = XencelabsRelayWatcher()
+    /// The ExpressKey Remotes this receiver relays.
+    private var remoteLinks = ExpressKeyRemoteWatcher()
     /// Timestamp of the most recent parsed report of any kind.
     /// Used to log a possible silent link drop; no recovery action yet.
     var xencelabsLastReportAt: UInt64?
@@ -1187,6 +1189,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         recoverFromUSBIdleReport(report, length: length, name: name)
         adoptDonglePairedTablet(report, length: length, name: name)
         noteXencelabsRelay(report, length: length, name: name)
+        noteRemoteLinks(report, length: length, name: name)
         let (wasInProximity, synthesizeIntuosV3ToolEnter) = advanceToolAnnounceGrace()
 
         let results = decodeReport(
@@ -1319,6 +1322,14 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                     self?.onPenThread { self?.relinkWriteFinished(ret) }
                 }
             }
+        }
+    }
+
+    /// Logs ExpressKey Remotes coming online or leaving the receiver.
+    private func noteRemoteLinks(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
+        guard deviceSpec.format == .expressKeyRemote else { return }
+        for change in remoteLinks.observe(HIDReport(pointer: report, count: length)) {
+            logger.info("\(name, privacy: .public): remote \(change.serial, privacy: .public) \(change.link == .online ? "online" : "unpaired", privacy: .public)")
         }
     }
 
