@@ -1357,21 +1357,21 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// main decoder plus its IntuosV3 Bluetooth identity fix-ups.
     private func decodeReport(
         _ report: UnsafePointer<UInt8>, length: CFIndex, synthesizeIntuosV3ToolEnter: Bool
-    ) -> [DecodeResult] {
+    ) -> [TabletEvent] {
         let hidReport = HIDReport(pointer: report, count: length)
-        let results: [DecodeResult]
+        let results: [TabletEvent]
         if length > 0, var fixedTouchDecoder = fixedTouchDecoders[report[0]] {
             // Checked before `touchDecoders` below: the two dictionaries'
             // report-ID spaces don't overlap for any product this applies
             // to today, but a fixed, hand-specified layout should win over a
             // generically-derived one if that were ever to change.
             fixedTouchDecoder.digitizer = spec
-            results = fixedTouchDecoder.decode(hidReport)
+            results = fixedTouchDecoder.events(hidReport)
             fixedTouchDecoders[report[0]] = fixedTouchDecoder
         } else if length > 0, let touchDecoder = touchDecoders[report[0]] {
-            results = touchDecoder.decode(report: hidReport).map { [.touch($0.contacts)] } ?? []
+            results = touchDecoder.decode(report: hidReport).map { [.touch(TouchFrame(contacts: $0.contacts))] } ?? []
         } else {
-            var decoded = decoder.decode(hidReport)
+            var decoded = decoder.events(hidReport)
             // Over Bluetooth the decoder also announces an Art Pen it infers
             // from a twisted barrel, alongside that frame's pen point. A real
             // announcement arrives alone, so only that one counts here.
@@ -1379,7 +1379,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 deviceSpec.format == .intuosV3 && isBluetooth
                 && decoded.contains { if case .pen = $0 { return true } else { return false } }
             let realToolEnter: ToolIdentity? = decoded.compactMap {
-                if case .toolEnter(let identity) = $0 { return identity } else { return nil }
+                if case .tool(let event) = $0, event.phase == .enter { return event.identity } else { return nil }
             }.first.flatMap { identity in
                 inferredArtPen && identity.serial == 0 && identity.toolCode == 0x0804 ? nil : identity
             }
@@ -1389,7 +1389,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             }
             // Real or inferred: either way the fallback must not add a second.
             let decoderEmittedToolEnter = decoded.contains {
-                if case .toolEnter = $0 { return true } else { return false }
+                if case .tool(let event) = $0 { return event.phase == .enter } else { return false }
             }
             let decodedPoint: TabletPoint? = decoded.compactMap {
                 if case .pen(let point) = $0 { return point } else { return nil }
@@ -1406,7 +1406,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// announcement frame is late or missing. The decoder itself handles a
     /// twisted barrel (an Art Pen); this covers the rest.
     private func fixIntuosV3BluetoothIdentity(
-        _ decoded: inout [DecodeResult], synthesizeIntuosV3ToolEnter: Bool,
+        _ decoded: inout [TabletEvent], synthesizeIntuosV3ToolEnter: Bool,
         decoderEmittedToolEnter: Bool, decodedPoint: TabletPoint?
     ) {
         if synthesizeIntuosV3ToolEnter, !decoderEmittedToolEnter, decoder.penInRange,
@@ -1425,7 +1425,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 fallbackIdentity = ToolIdentity(
                     serial: 0, toolCode: code, isEraser: point.eraser, isMouse: false)
             }
-            decoded.insert(.toolEnter(fallbackIdentity), at: 0)
+            decoded.insert(.tool(ToolEvent(identity: fallbackIdentity, phase: .enter)), at: 0)
             // Drought recovery: the real announcement can stop arriving
             // entirely after enough proximity cycling. Re-send DATAMODE
             // (the same write open() uses) once this long since the last
@@ -1450,7 +1450,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// Acts on each decoded result. Pen and touch samples are returned in
     /// decode order for `dispatchBatch`; everything else dispatches here.
     private func collectResults(
-        _ results: [DecodeResult], report: UnsafePointer<UInt8>, length: CFIndex,
+        _ results: [TabletEvent], report: UnsafePointer<UInt8>, length: CFIndex,
         sender: IOHIDDevice?, name: String, wasInProximity: Bool
     ) -> (frames: [BatchedFrame], touchStamps: [Int: UInt16]) {
         // Pen and touch samples are collected, in decode order, rather than
@@ -1473,8 +1473,6 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         var touchFrameStamps: [Int: UInt16] = [:]
         for result in results {
             switch result {
-            case .none:
-                break
             case .pen(let point):
                 // Wireless dongle: suppress pen events until RF link is confirmed active.
                 guard !isWireless || wirelessReady else { break }
@@ -1493,44 +1491,44 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 }
                 wirelessLastAcceptedPoint = point
                 batchFrames.append(.pen(point))
-            case .toolEnter(let identity):
-                guard !isWireless || wirelessReady else { break }
-                onToolEnter?(identity)
-            case .aux(let buttons):
-                handleAux(buttons, report: report, length: length, sender: sender, name: name)
-            case .wireless(let ws):
-                handleWirelessStatus(ws, name: name)
-            case .battery(let pct, let chg):
-                onBattery?(pct, chg)
-            case .mouseButton(let mask):
-                onMouseButton?(mask)
-            case .wheel(let index, let delta):
+            case .tool(let event):
+                // Leave is inferred from the pen point, as before.
+                guard event.phase == .enter, !isWireless || wirelessReady else { break }
+                onToolEnter?(event.identity)
+            case .pad(let pad):
+                // The injector still reads AuxButtons; W5.4 step 3 moves it.
+                handleAux(AuxButtons(pad), report: report, length: length, sender: sender, name: name)
+            case .dial(let index, let delta):
                 onWheel?(index, delta)
-            case .touch(let contacts):
-                // Device-clock stamp for this frame, if the decoder recorded
-                // one (BT 361-byte container only). Indexed by how many touch
-                // frames have been appended so far — `decodeBTTouch` appends
-                // one stamp per emitted frame, in the same order.
-                let touchIndex = batchFrames.reduce(into: 0) {
-                    if case .touch = $1 { $0 += 1 }
+            case .touch(let frame):
+                // Device-clock stamp, where the decoder has one (BT 361-byte container only).
+                if let time = frame.deviceTime {
+                    touchFrameStamps[batchFrames.count] = time
                 }
-                let stamps = decoder.touchFrameStamps
-                if touchIndex < stamps.count {
-                    touchFrameStamps[batchFrames.count] = stamps[touchIndex]
-                }
-                batchFrames.append(.touch(contacts))
-            case .toolCompatibility(let message):
-                logger.info("\(name, privacy: .public): \(message, privacy: .public)")
-            case .remotePairing(let slots):
-                // Diagnostic only — nothing consumes the pairing table. The
-                // receiver repeats it roughly twice a second, so log only when
-                // it actually changes, per this project's no-log-spam rule.
-                let paired = slots.filter { $0.connected }
-                    .map { "\($0.index):\($0.serial)" }
-                    .joined(separator: ",")
-                if paired != lastRemotePairingSummary {
-                    lastRemotePairingSummary = paired
-                    logger.info("\(name, privacy: .public): paired remotes [\(paired.isEmpty ? "none" : paired, privacy: .public)]")
+                batchFrames.append(.touch(frame.contacts))
+            case .device(let event):
+                switch event.kind {
+                case .wireless:
+                    if let ws = event.wireless { handleWirelessStatus(ws, name: name) }
+                case .battery:
+                    if let b = event.battery { onBattery?(b.percent, b.charging) }
+                case .mouseButtons:
+                    if let mask = event.mouseButtons { onMouseButton?(mask) }
+                case .toolSupport:
+                    logger.info("\(name, privacy: .public): \(event.unsupportedToolNote ?? "", privacy: .public)")
+                case .remotePairing:
+                    // Diagnostic only — nothing consumes the pairing table. The
+                    // receiver repeats it roughly twice a second, so log only when
+                    // it actually changes, per this project's no-log-spam rule.
+                    let paired = (event.remotePairing ?? []).filter { $0.connected }
+                        .map { "\($0.index):\($0.serial)" }
+                        .joined(separator: ",")
+                    if paired != lastRemotePairingSummary {
+                        lastRemotePairingSummary = paired
+                        logger.info("\(name, privacy: .public): paired remotes [\(paired.isEmpty ? "none" : paired, privacy: .public)]")
+                    }
+                default:
+                    break
                 }
             }
         }
@@ -1830,5 +1828,28 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         case .pen(let point): onTablet(point)
         case .touch(let contacts): onTouch?(contacts)
         }
+    }
+}
+
+extension AuxButtons {
+    /// `pad` in the shape the injector reads, until W5.4 step 3 moves it to
+    /// `PadState`. No contact is the `0x7F`/`0xFF` sentinel, as decoders wrote it.
+    init(_ pad: PadState) {
+        let ring = { (i: Int) in pad.rings.indices.contains(i) ? pad.rings[i] : nil }
+        let strip = { (i: Int) in pad.strips.indices.contains(i) ? pad.strips[i] : nil }
+        self.init(
+            buttons: pad.buttons,
+            mechanicalMask: pad.pressedThisReport.reduce(0) { $1 < 8 ? $0 | UInt8(1 << $1) : $0 },
+            touchRingActive: ring(0)?.position != nil,
+            touchRingButtonDown: ring(0)?.buttonDown ?? false,
+            touchRingPosition: ring(0)?.position.map { UInt8($0) } ?? 0x7F,
+            touchRing2Active: ring(1)?.position != nil,
+            touchRing2ButtonDown: ring(1)?.buttonDown ?? false,
+            touchRing2Position: ring(1)?.position.map { UInt8($0) } ?? 0x7F,
+            touchStrip1Active: strip(0)?.position != nil,
+            touchStrip1Position: strip(0)?.position.map { UInt8($0) } ?? 0xFF,
+            touchStrip2Active: strip(1)?.position != nil,
+            touchStrip2Position: strip(1)?.position.map { UInt8($0) } ?? 0xFF)
+        touchRingHardwareMode = pad.hardwareMode
     }
 }

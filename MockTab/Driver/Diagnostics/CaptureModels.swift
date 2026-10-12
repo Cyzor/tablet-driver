@@ -848,7 +848,7 @@ struct DiscoveryTouchSettings: Codable {
 /// frame — the distinction matters, since a partially filtered frame still
 /// reaches the gesture tracker.
 struct DiscoveryTouchPipeline: Codable {
-    /// Frames the decoder emitted (`DecodeResult.touch`), and the total
+    /// Frames the decoder emitted (`TabletEvent.touch`), and the total
     /// contacts across them. A nonzero `framesDecoded` with everything else
     /// zero means the decode half is working and the loss is downstream.
     var framesDecoded: Int = 0

@@ -49,7 +49,7 @@ private func sample(
     at elapsed: TimeInterval, id: UInt8 = 0x1F, x: Int, y: Int, pressure: Int = 0,
     inProximity: Bool = true, eraser: Bool = false, penButton1: Bool = false,
     rotation: Double = 0, hoverDistance: Int = 0,
-    decoded: [DecodeResult]? = nil
+    decoded: [TabletEvent]? = nil
 ) -> HIDCapture.Sample {
     let results = decoded ?? [.pen(penPoint(x: x, y: y, pressure: pressure, inProximity: inProximity, eraser: eraser, penButton1: penButton1, rotation: rotation, hoverDistance: hoverDistance))]
     return HIDCapture.Sample(
@@ -118,9 +118,9 @@ do {
     samples.append(
         HIDCapture.Sample(
             elapsed: 0.01, tag: "Test Device", reportID: 0x1F, length: 18, hex: "1F 01",
-            decoded: [.toolEnter(ToolIdentity(serial: 12345, toolCode: 0x0842, isEraser: false, isMouse: false))],
+            decoded: [.tool(ToolEvent(identity: ToolIdentity(serial: 12345, toolCode: 0x0842, isEraser: false, isMouse: false), phase: .enter))],
             signature: HIDCapture.signature(for: [
-                .toolEnter(ToolIdentity(serial: 12345, toolCode: 0x0842, isEraser: false, isMouse: false))
+                .tool(ToolEvent(identity: ToolIdentity(serial: 12345, toolCode: 0x0842, isEraser: false, isMouse: false), phase: .enter))
             ])))
     samples.append(sample(at: 0.02, x: 1000, y: 2000))
     let lines = condenseAll(samples)
@@ -137,8 +137,8 @@ do {
             samples.append(
                 HIDCapture.Sample(
                     elapsed: TimeInterval(i) * 0.01 + 0.001, tag: "Test Device", reportID: 0x13, length: 9,
-                    hex: "13 50 00", decoded: [.battery(percent: 80, charging: false)],
-                    signature: HIDCapture.signature(for: [.battery(percent: 80, charging: false)])))
+                    hex: "13 50 00", decoded: [.device(.battery(percent: 80, charging: false))],
+                    signature: HIDCapture.signature(for: [.device(.battery(percent: 80, charging: false))])))
         }
     }
     let lines = condenseAll(samples)
@@ -187,16 +187,16 @@ do {
     let samples: [HIDCapture.Sample] = [
         HIDCapture.Sample(
             elapsed: 0.0, tag: "A", reportID: 0x01, length: 4, hex: "01 00",
-            decoded: [.battery(percent: 10, charging: false)],
-            signature: HIDCapture.signature(for: [.battery(percent: 10, charging: false)])),
+            decoded: [.device(.battery(percent: 10, charging: false))],
+            signature: HIDCapture.signature(for: [.device(.battery(percent: 10, charging: false))])),
         HIDCapture.Sample(
             elapsed: 0.5, tag: "B", reportID: 0x01, length: 4, hex: "01 00",
-            decoded: [.battery(percent: 20, charging: false)],
-            signature: HIDCapture.signature(for: [.battery(percent: 20, charging: false)])),
+            decoded: [.device(.battery(percent: 20, charging: false))],
+            signature: HIDCapture.signature(for: [.device(.battery(percent: 20, charging: false))])),
         HIDCapture.Sample(
             elapsed: 0.2, tag: "A", reportID: 0x02, length: 4, hex: "02 00",
-            decoded: [.battery(percent: 30, charging: false)],
-            signature: HIDCapture.signature(for: [.battery(percent: 30, charging: false)])),
+            decoded: [.device(.battery(percent: 30, charging: false))],
+            signature: HIDCapture.signature(for: [.device(.battery(percent: 30, charging: false))])),
     ]
     let lines = condenseAll(samples)
     // Extract each line's leading [mm:ss.ms] and confirm non-decreasing order.
@@ -213,8 +213,8 @@ do {
 do {
     let a = HIDCapture.Sample(
         elapsed: 1.0, tag: "Test Device", reportID: 0x02, length: 4, hex: "02 AA BB CC",
-        decoded: [.toolEnter(ToolIdentity(serial: 1, toolCode: 0x0842, isEraser: false, isMouse: false)), .pen(penPoint(x: 100, y: 200))],
-        signature: HIDCapture.signature(for: [.toolEnter(ToolIdentity(serial: 1, toolCode: 0x0842, isEraser: false, isMouse: false))]))
+        decoded: [.tool(ToolEvent(identity: ToolIdentity(serial: 1, toolCode: 0x0842, isEraser: false, isMouse: false), phase: .enter)), .pen(penPoint(x: 100, y: 200))],
+        signature: HIDCapture.signature(for: [.tool(ToolEvent(identity: ToolIdentity(serial: 1, toolCode: 0x0842, isEraser: false, isMouse: false), phase: .enter))]))
     let b = HIDCapture.Sample(
         elapsed: 1.0, tag: "Test Device", reportID: 0x02, length: 4, hex: "02 AA BB CC",
         decoded: [.pen(penPoint(x: 100, y: 200))],
@@ -332,8 +332,8 @@ do {
             HIDCapture.Sample(
                 elapsed: TimeInterval(batchStart) * 0.1 + 0.05, tag: "StreamA", reportID: 0x13,
                 length: 4, hex: "13 00",
-                decoded: [.battery(percent: batchStart, charging: false)],
-                signature: HIDCapture.signature(for: [.battery(percent: batchStart, charging: false)])))
+                decoded: [.device(.battery(percent: batchStart, charging: false))],
+                signature: HIDCapture.signature(for: [.device(.battery(percent: batchStart, charging: false))])))
         batch.sort { $0.elapsed < $1.elapsed }
         allOut.append(contentsOf: condenser.feed(batch))
     }
@@ -504,10 +504,8 @@ do {
 do {
     // A run that closes after one sample still shows its decode, like a
     // verbatim line. A first report followed by a transition hits this.
-    let aux = { (mask: UInt8) -> [DecodeResult] in
-        [.aux(AuxButtons(
-            buttons: (0..<8).map { (mask & (1 << $0)) != 0 }, mechanicalMask: mask,
-            touchRingActive: false, touchRingButtonDown: false, touchRingPosition: 0x7F))]
+    let aux = { (mask: UInt8) -> [TabletEvent] in
+        [.pad(PadState(buttons: (0..<8).map { (mask & (1 << $0)) != 0 }))]
     }
     let samples = [UInt8(0x01), 0x00].enumerated().map { i, mask in
         HIDCapture.Sample(

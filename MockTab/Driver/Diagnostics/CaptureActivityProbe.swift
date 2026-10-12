@@ -60,7 +60,7 @@ enum CaptureActivityProbe {
 
     /// Record decoded activity. Flags latch on — a row records what the
     /// session captured, so lifting the pen must not un-tick it.
-    static func note(_ results: [DecodeResult]) {
+    static func note(_ results: [TabletEvent]) {
         for result in results {
             switch result {
             case .pen(let point):
@@ -81,20 +81,19 @@ enum CaptureActivityProbe {
                         $0.decoded.insert(.penButtons)
                     }
                 }
-            case .toolEnter(let identity):
+            case .tool(let event):
                 // A puck has no pressure, so arriving is all it can show.
-                if identity.isMouse {
+                if event.phase == .enter, event.identity.isMouse {
                     state.withLock { _ = $0.decoded.insert(.penTip) }
                 }
-            case .aux(let aux):
+            case .pad(let pad):
                 state.withLock {
-                    if aux.buttons.contains(true) {
+                    if pad.buttons.contains(true) {
                         $0.decoded.insert(.tabletButtons)
                         $0.features.insert(.tabletButtons)
                     }
-                    let ring = aux.touchRingActive || aux.touchRing2Active
-                        || aux.touchRingButtonDown || aux.touchRing2ButtonDown
-                    let strip = aux.touchStrip1Active || aux.touchStrip2Active
+                    let ring = pad.rings.contains { $0.position != nil || $0.buttonDown }
+                    let strip = pad.strips.contains { $0.position != nil }
                     if ring || strip { $0.decoded.insert(.ringOrStrip) }
                     // A dial reports as a ring; the engine tells them apart.
                     if ring { $0.features.insert(.ring) }

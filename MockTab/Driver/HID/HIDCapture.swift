@@ -68,7 +68,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         var reportID: UInt8
         var length: Int
         var hex: String
-        var decoded: [DecodeResult]?
+        var decoded: [TabletEvent]?
         /// Cheap-to-compare summary of `decoded`, so condensing can detect
         /// "did anything change" without re-parsing `hex`/`decoded`.
         var signature: Signature
@@ -298,7 +298,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// only while capturing.
     func record(
         tag: @autoclosure () -> String, report: UnsafePointer<UInt8>, length: Int,
-        decoded: [DecodeResult]? = nil, productID: Int? = nil
+        decoded: [TabletEvent]? = nil, productID: Int? = nil
     ) {
         guard length > 0 else { return }
 
@@ -311,8 +311,8 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         let elapsed = Date().timeIntervalSince(start)
 
         // See `CaptureSerialRedaction`.
-        for case .toolEnter(let tool) in decoded ?? [] {
-            CaptureSerialRedaction.noteToolEnter(serial: tool.serial)
+        for case .tool(let tool) in decoded ?? [] where tool.phase == .enter {
+            CaptureSerialRedaction.noteToolEnter(serial: tool.identity.serial)
         }
         let shown = CaptureSerialRedaction.redacted(
             [UInt8](UnsafeBufferPointer(start: report, count: length)),
@@ -383,15 +383,13 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
 
     // MARK: - Decode-result formatting
 
-    /// Renders one report's `[DecodeResult]` tersely for the end of a
+    /// Renders one report's events tersely for the end of a
     /// hex-dump line — only the fields relevant to eyeballing decode
     /// sanity, not every field on every case.
-    static func summarize(_ results: [DecodeResult]) -> String? {
+    static func summarize(_ results: [TabletEvent]) -> String? {
         guard !results.isEmpty else { return nil }
         let parts: [String] = results.compactMap { result in
             switch result {
-            case .none:
-                return nil
             case .pen(let p):
                 let tilt = String(format: "(%.2f,%.2f)", p.tiltX, p.tiltY)
                 var flags: [String] = []
@@ -401,33 +399,43 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 if p.penButton2 { flags.append("btn2") }
                 let flagStr = flags.isEmpty ? "" : " " + flags.joined(separator: ",")
                 return "pen x=\(p.x) y=\(p.y) p=\(p.pressure) tilt=\(tilt) hover=\(p.hoverDistance)\(flagStr)"
-            case .toolEnter(let t):
+            case .tool(let event):
+                // Leave is new with TabletEvent; left out so capture text is unchanged.
+                guard event.phase == .enter else { return nil }
+                let t = event.identity
                 return "toolEnter serial=\(CaptureSerialRedaction.standIn(forPenSerial: t.serial)) code=0x\(String(t.toolCode, radix: 16)) eraser=\(t.isEraser) mouse=\(t.isMouse)"
-            case .aux(let a):
+            case .pad(let a):
                 let downs = a.buttons.enumerated().filter { $0.element }.map { String($0.offset) }
                 return "aux buttons=[\(downs.joined(separator: ","))]"
-            case .wireless(let w):
-                switch w {
-                case .active: return "wireless=active"
-                case .lost: return "wireless=lost"
-                case .lowBattery: return "wireless=lowBattery"
-                case .unknown(let v): return "wireless=unknown(0x\(String(v, radix: 16)))"
+            case .device(let event):
+                switch event.kind {
+                case .wireless:
+                    switch event.wireless {
+                    case .active: return "wireless=active"
+                    case .lost: return "wireless=lost"
+                    case .lowBattery: return "wireless=lowBattery"
+                    case .unknown(let v): return "wireless=unknown(0x\(String(v, radix: 16)))"
+                    case nil: return nil
+                    }
+                case .battery:
+                    guard let b = event.battery else { return nil }
+                    return "battery=\(b.percent)% charging=\(b.charging)"
+                case .remotePairing:
+                    let paired = (event.remotePairing ?? []).filter { $0.connected }
+                    guard !paired.isEmpty else { return "pairing none" }
+                    let listed = paired.map { "\($0.index):\($0.serial)" }
+                    return "pairing \(listed.joined(separator: ","))"
+                case .toolSupport:
+                    return "toolCompatibility=\"\(event.unsupportedToolNote ?? "")\""
+                case .mouseButtons:
+                    return "mouseButton=0x\(String(event.mouseButtons ?? 0, radix: 16))"
+                default:
+                    return nil
                 }
-            case .battery(let percent, let charging):
-                return "battery=\(percent)% charging=\(charging)"
-            case .remotePairing(let slots):
-                let paired = slots.filter { $0.connected }
-                guard !paired.isEmpty else { return "pairing none" }
-                let listed = paired.map { "\($0.index):\($0.serial)" }
-                return "pairing \(listed.joined(separator: ","))"
-            case .toolCompatibility(let msg):
-                return "toolCompatibility=\"\(msg)\""
-            case .mouseButton(let mask):
-                return "mouseButton=0x\(String(mask, radix: 16))"
-            case .wheel(let index, let delta):
+            case .dial(let index, let delta):
                 return "wheel[\(index)]=\(delta)"
-            case .touch(let contacts):
-                return "touch contacts=\(contacts.count)"
+            case .touch(let frame):
+                return "touch contacts=\(frame.contacts.count)"
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: "; ")
@@ -436,7 +444,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// Extracts the "steady state vs. transition" fields from decoded
     /// results. `decoded == nil` gets an all-nil, `isUndecoded` signature —
     /// see `Signature.isUndecoded`.
-    static func signature(for results: [DecodeResult]?) -> Signature {
+    static func signature(for results: [TabletEvent]?) -> Signature {
         guard let results else {
             return Signature(
                 inProximity: nil, eraser: nil, buttonsDown: nil, toolEnterSerial: nil,
@@ -453,18 +461,22 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 sig.buttonsDown = [
                     p.penButton1, p.penButton2, p.penButton3, p.penButton4, p.penButton5,
                 ]
-            case .aux(let a):
+            case .pad(let a):
                 sig.buttonsDown = a.buttons
-            case .toolEnter, .battery, .wireless, .toolCompatibility, .mouseButton, .wheel:
+            case .tool(let event):
+                // Leave is new with TabletEvent; ignored so condensing is unchanged.
+                if event.phase == .enter {
+                    sig.hasOneShotEvent = true
+                    sig.toolEnterSerial = event.identity.serial
+                }
+            case .dial:
                 sig.hasOneShotEvent = true
-                if case .toolEnter(let t) = result { sig.toolEnterSerial = t.serial }
-            case .touch, .none:
-                break
-            case .remotePairing:
-                // Steady state, not a one-shot: the receiver repeats an
-                // unchanged pairing table roughly twice a second, so marking
-                // it as an event would defeat condensing and pad the capture
-                // with thousands of identical rows.
+            case .device(let event):
+                // The receiver repeats an unchanged pairing table roughly
+                // twice a second; marking it as an event would defeat
+                // condensing and pad the capture with identical rows.
+                if event.kind != .remotePairing { sig.hasOneShotEvent = true }
+            case .touch:
                 break
             }
         }
@@ -489,7 +501,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         var minLength = Int.max
         var maxLength = 0
         var firstHex: String = ""
-        var firstDecoded: [DecodeResult]?
+        var firstDecoded: [TabletEvent]?
         var lastHex: String = ""
         var xRange: ClosedRange<Int>?
         var yRange: ClosedRange<Int>?
@@ -576,10 +588,10 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             guard let decoded = sample.decoded else { return }
             for result in decoded {
                 switch result {
-                case .touch(let contacts):
-                    touchContactRange = Self.extend(touchContactRange, with: contacts.count)
-                case .aux: otherKinds.insert("buttons")
-                case .remotePairing: otherKinds.insert("pairing table")
+                case .touch(let frame):
+                    touchContactRange = Self.extend(touchContactRange, with: frame.contacts.count)
+                case .pad: otherKinds.insert("buttons")
+                case .device(let event) where event.kind == .remotePairing: otherKinds.insert("pairing table")
                 default: break
                 }
                 guard case .pen(let p) = result else { continue }
