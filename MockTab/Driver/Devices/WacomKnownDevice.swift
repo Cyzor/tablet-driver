@@ -343,7 +343,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     private var batteryWarningLogged: Bool = false
 
     /// The wireless puck's relink state, for receivers that relay one.
-    private var xencelabsRelink = XencelabsRelinkState()
+    private var xencelabsRelink = XencelabsRelayWatcher()
     /// Timestamp of the most recent parsed report of any kind.
     /// Used to log a possible silent link drop; no recovery action yet.
     var xencelabsLastReportAt: UInt64?
@@ -789,7 +789,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             // The fresh firmware state lost any OLED text and dial color the
             // superseded handle received. Re-apply the LED now; dropping the
             // text cache lets the next display push actually resend.
-            let isRelay = XencelabsRelinkState.relayProductIDs.contains(deviceSpec.productID)
+            let isRelay = XencelabsRelayWatcher.relayProductIDs.contains(deviceSpec.productID)
             onPenThread {
                 self.xencelabsSentText.removeAll()
                 self.setRingLED(index: self.pendingLEDIndex)
@@ -1299,12 +1299,12 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
     /// Relinks a wireless Quick Keys puck relayed by a receiver.
     private func noteXencelabsRelay(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
-        // Quick Keys relayed by a receiver: see XencelabsRelinkState.
+        // Quick Keys relayed by a receiver: see XencelabsRelayWatcher.
         if deviceSpec.format == .xencelabs {
-            let relink = xencelabsRelink.noteReport(
-                report, length: length, productID: deviceSpec.productID)
+            let relink = xencelabsRelink.observe(
+                HIDReport(pointer: report, count: length), productID: deviceSpec.productID)
             switch relink.linkChange {
-            case .rearmed:
+            case .online:
                 logger.info("\(name, privacy: .public): puck online again, re-arming relink")
             case .offline:
                 logger.info("\(name, privacy: .public): puck offline")
