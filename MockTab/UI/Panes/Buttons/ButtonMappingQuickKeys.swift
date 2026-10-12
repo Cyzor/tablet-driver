@@ -74,7 +74,7 @@ struct QuickKeysSectionView: View {
                     ))
             }
             // The bottom mode button rides the same indexed express-key
-            // array as the last slot (buttons[8] in AuxButtons — see
+            // array as the last slot (pad buttons[8] — see
             // XencelabsDecoder.decodeAux).
             buttonRow(
                 Self.keyLabel(slot: keyCount, keyCount: keyCount),
@@ -90,7 +90,7 @@ struct QuickKeysSectionView: View {
                 ))
             // Dial center click — reuses the touch-ring center-button
             // slot, mirroring how XencelabsDecoder reports it via
-            // AuxButtons.touchRingButtonDown rather than an indexed key.
+            // the first ring's center button rather than an indexed key.
             buttonRow(
                 Self.dialLabel,
                 isActive: lb.touchRingButtonDown,
@@ -364,7 +364,7 @@ struct QuickKeysSectionView: View {
 /// Static so the Display pane's toggle hint names each key as this section does.
 extension QuickKeysSectionView {
     /// Numbered keys ahead of the Mode button, which rides the last
-    /// express-key slot (buttons[8] in AuxButtons; see XencelabsDecoder.decodeAux).
+    /// express-key slot (pad buttons[8]; see XencelabsDecoder.decodeAux).
     static func keyCount(_ spec: TabletSpec?) -> Int {
         min(max(spec?.buttonCount ?? 8, 0) - 1, 16)
     }
