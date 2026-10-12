@@ -45,12 +45,12 @@ extension WacomKnownDevice {
             // Hardware LED byte 0 = BL, 1 = TL, 2 = TR, 3 = BR.  Our slot 0 is TL
             // (Mode 1 = upper-left), so we add 1 for quarterly rings before sending.
             let ledByte = UInt8((index + (deviceSpec.ringSlotCount == 4 ? 1 : 0)) & 0x03)
-            var r31: [UInt8] = [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
-            hidSetReport(device, reportID: CFIndex(0x31), bytes: &r31,
-                         tag: "\(name) USB LED brightness", severity: .bestEffort, log: logger)
-            var r32: [UInt8] = [0x32, 0x46, ledByte]
-            hidSetReport(device, reportID: CFIndex(0x32), bytes: &r32,
-                         tag: "\(name) USB LED slot=\(index)", log: logger)
+            let r31: [UInt8] = [0x31, 0x46, 0x46, 0x46, 0x46, 0x46]
+            queueSetReport(device, r31,
+                           tag: "\(name) USB LED brightness", severity: .bestEffort)
+            let r32: [UInt8] = [0x32, 0x46, ledByte]
+            queueSetReport(device, r32,
+                           tag: "\(name) USB LED slot=\(index)")
 
         case .intuosV2 where isBluetooth:
             // BT ring LED: report 0x82 (WAC_CMD_WL_INTUOSP2), 51-byte feature report.
@@ -71,8 +71,8 @@ extension WacomKnownDevice {
             buf[4]  = 0x46; buf[5] = 0x46; buf[6] = 0x46
             buf[7]  = 0x46; buf[8] = 0x46; buf[9] = 0x46
             buf[10] = ledByteBT
-            hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
-                         tag: "\(name) BT LED ring slot=\(index)", log: logger)
+            queueSetReport(device, buf,
+                           tag: "\(name) BT LED ring slot=\(index)")
 
         case .cintiqV1:
             // LED control via WAC_CMD_LED_CONTROL (0x20), 9-byte feature report.
@@ -99,8 +99,8 @@ extension WacomKnownDevice {
             var buf = [UInt8](repeating: 0, count: 9)
             buf[0] = 0x20  // WAC_CMD_LED_CONTROL
             buf[1] = 0x44 | slot | (slot << 4)  // mirror: both rings track same slot
-            hidSetReport(ledTarget, reportID: CFIndex(buf[0]), bytes: &buf,
-                         tag: "\(name) CintiqV1 LED slot=\(slot) (both rings)", log: logger)
+            queueSetReport(ledTarget, buf,
+                           tag: "\(name) CintiqV1 LED slot=\(slot) (both rings)")
 
         case .intuosV1:
             // The Linux kernel's wacom_led_control() switches report format
@@ -126,8 +126,8 @@ extension WacomKnownDevice {
                 var buf = [UInt8](repeating: 0, count: 13)
                 buf[0] = 0x03  // WAC_CMD_WL_LED_CONTROL
                 buf[4] = (Self.intuos5CropLuminance << 4) | (Self.intuos5RingLuminance << 2) | slot
-                hidSetReport(device, reportID: CFIndex(buf[0]), bytes: &buf,
-                             tag: "\(name) IntuosV1 WL LED slot=\(index)", severity: .bestEffort, log: logger)
+                queueSetReport(device, buf,
+                               tag: "\(name) IntuosV1 WL LED slot=\(index)", severity: .bestEffort)
             } else if Self.intuos5PackedLEDProductIDs.contains(deviceSpec.productID) {
                 // Intuos5 / Intuos Pro (1st gen), wired: WAC_CMD_LED_CONTROL
                 // (0x20), 9 bytes, but a *packed* buf[1] — not the byte layout
@@ -159,9 +159,9 @@ extension WacomKnownDevice {
                 var buf = [UInt8](repeating: 0, count: 9)
                 buf[0] = 0x20  // WAC_CMD_LED_CONTROL
                 buf[1] = (Self.intuos5CropLuminance << 4) | (Self.intuos5RingLuminance << 2) | slot
-                hidSetReport(capableInterfaceDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
-                             tag: "\(name) Intuos5 LED slot=\(index)",
-                             severity: capableInterfaceDevice == nil ? .bestEffort : .required, log: logger)
+                queueSetReport(capableInterfaceDevice ?? device, buf,
+                               tag: "\(name) Intuos5 LED slot=\(index)",
+                               severity: capableInterfaceDevice == nil ? .bestEffort : .required)
             } else {
                 // Intuos4 and earlier, wired: WAC_CMD_LED_CONTROL (0x20), 9-byte
                 // feature report. The kernel reaches this layout through
@@ -190,9 +190,9 @@ extension WacomKnownDevice {
                 buf[0] = 0x20  // WAC_CMD_LED_CONTROL
                 buf[1] = (llv & 0x1f) | (UInt8(index & 0x07) << 5)
                 buf[2] = hlv & 0x1f
-                hidSetReport(capableInterfaceDevice ?? device, reportID: CFIndex(buf[0]), bytes: &buf,
-                             tag: "\(name) IntuosV1 LED slot=\(index)",
-                             severity: capableInterfaceDevice == nil ? .bestEffort : .required, log: logger)
+                queueSetReport(capableInterfaceDevice ?? device, buf,
+                               tag: "\(name) IntuosV1 LED slot=\(index)",
+                               severity: capableInterfaceDevice == nil ? .bestEffort : .required)
             }
 
         case .xencelabs:

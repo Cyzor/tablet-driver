@@ -91,9 +91,7 @@ extension WacomKnownDevice {
     /// there's no persistent device state at risk, so failures are logged
     /// rather than treated as fatal.
     private func sendIntuos4Feature(_ payload: [UInt8], tag: String) {
-        var bytes = payload
-        let reportID = CFIndex(payload[0])
-        hidSetReport(device, reportID: reportID, bytes: &bytes, tag: tag, severity: .bestEffort, log: logger)
+        queueSetReport(device, payload, tag: tag, severity: .bestEffort)
     }
 
     /// Panel brightness is exposed on Xencelabs pen displays via the vendor
@@ -230,14 +228,12 @@ extension WacomKnownDevice {
     /// puck's identity appended) to the dongle's vendor interface, padded to
     /// the declared output size. Sent each time the receiver reports the puck
     /// online (see the relink block in `handleReport`).
-    @discardableResult
-    func sendXencelabsRelink(identity: [UInt8]) -> IOReturn {
+    func sendXencelabsRelink(identity: [UInt8], completion: @escaping @Sendable (IOReturn) -> Void) {
         let target = secondaryDevice ?? device
-        var relink = paddedOutputReport([0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity, for: target)
-        paceXencelabsWrite()
-        return hidSetReport(
-            target, type: kIOHIDReportTypeOutput, reportID: CFIndex(relink[0]),
-            bytes: &relink, tag: "\(deviceSpec.name) dongle relink", log: logger)
+        let relink = paddedOutputReport([0x02, 0xB0, 0x04, 0, 0, 0, 0, 0, 0, 0] + identity, for: target)
+        queueSetReport(
+            target, type: .output, relink, tag: "\(deviceSpec.name) dongle relink", paced: true,
+            completion: completion)
     }
 
     /// Resend the ring LED and OLED labels once a dongle relink is confirmed
@@ -299,22 +295,6 @@ extension WacomKnownDevice {
         xencelabsBatteryPollTimer = timer
     }
 
-    /// Space vendor writes at least 3 ms apart. The firmware silently drops output
-    /// reports that arrive while it is busy repainting, and the transport
-    /// still returns success, so back-to-back writes "succeed" without ever
-    /// reaching the display.
-    private func paceXencelabsWrite() {
-        let gap: UInt64 = 3_000_000  // 3 ms in nanoseconds
-        let now = DispatchTime.now().uptimeNanoseconds
-        if lastXencelabsWriteUptime != 0 {
-            let elapsed = now &- lastXencelabsWriteUptime
-            if elapsed < gap {
-                usleep(UInt32((gap - elapsed) / 1_000))
-            }
-        }
-        lastXencelabsWriteUptime = DispatchTime.now().uptimeNanoseconds
-    }
-
     /// Replay writes that arrived before the vendor tunnel did, in order.
     /// Called once, from `registerDevice`, the moment `secondaryDevice` is
     /// set — every one of these would otherwise have been lost.
@@ -358,10 +338,29 @@ extension WacomKnownDevice {
         }
 
         let target = (deviceSpec.format == .xencelabs ? secondaryDevice : nil) ?? device
-        var padded = paddedOutputReport(bytes, for: target)
-        paceXencelabsWrite()
-        hidSetReport(target, type: kIOHIDReportTypeOutput,
-                     reportID: CFIndex(padded[0]), bytes: &padded,
-                     tag: "\(deviceSpec.name) \(tag)", severity: .bestEffort, log: logger)
+        queueSetReport(
+            target, type: .output, paddedOutputReport(bytes, for: target),
+            tag: "\(deviceSpec.name) \(tag)", severity: .bestEffort, paced: true)
+    }
+
+    /// Sends a control write on `outputQueue`, logging a failure as
+    /// `hidSetReport` does. `completion` runs on the output queue.
+    func queueSetReport(
+        _ target: IOHIDDevice, type: HIDReportKind = .feature, _ bytes: [UInt8], tag: String,
+        severity: HIDSetReportSeverity = .required, paced: Bool = false,
+        completion: (@Sendable (IOReturn) -> Void)? = nil
+    ) {
+        outputQueue.send(type, bytes, to: IOKitHIDInterface(target), paced: paced) { ret in
+            if ret != kIOReturnSuccess {
+                let hex = String(format: "0x%08x", ret)
+                switch severity {
+                case .required:
+                    logger.error("hidSetReport \(tag, privacy: .public) failed: \(hex, privacy: .public)")
+                case .bestEffort:
+                    logger.info("hidSetReport \(tag, privacy: .public): \(hex, privacy: .public)")
+                }
+            }
+            completion?(ret)
+        }
     }
 }

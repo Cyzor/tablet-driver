@@ -942,8 +942,10 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     var lastDisplayGamma: Int = -1
     /// Last color-mode index sent, to suppress redundant writes.
     var lastColorMode: Int = -1
-    /// Uptime of the most recent Xencelabs vendor write, for pacing.
-    var lastXencelabsWriteUptime: UInt64 = 0
+    /// Control writes, sent in order off the input thread. Xencelabs writes
+    /// are paced 3 ms apart: firmware busy repainting drops a write and
+    /// still reports success.
+    let outputQueue = HIDOutputQueue(label: "com.cyzor.mocktab.output", minimumGap: 0.003)
 
 
     /// Enable or disable capacitive finger touch on the hardware.
@@ -986,6 +988,22 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     private func onPenThread(_ body: @escaping () -> Void) {
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue, body)
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
+    }
+
+    private func relinkWriteFinished(_ ret: IOReturn) {
+        ThreadContract.expectPenThread()
+        logger.info("\(self.deviceSpec.name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
+        // The puck can answer polls before its screen accepts text, so wait
+        // for it to settle before pushing the display; an immediate push is
+        // lost and leaves "Please connect" up.
+        guard let generation = xencelabsRelink.relinkSent(succeeded: ret == kIOReturnSuccess) else { return }
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 1.0, 0, 0, 0
+        ) { [weak self] _ in
+            guard let self, self.xencelabsRelink.relinkGeneration == generation else { return }
+            self.resyncXencelabsOutputsAfterRelink()
+        }
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
     }
 
     /// Re-runs the device's init sequence on demand — see the `TabletDevice`
@@ -1328,21 +1346,11 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 break
             }
             if let identity = relink.relinkIdentity {
-                let ret = sendXencelabsRelink(identity: identity)
-                logger.info("\(name, privacy: .public): dongle relink sent, result=0x\(String(ret, radix: 16), privacy: .public)")
                 startXencelabsBatteryPolling()
-                // The puck can answer polls before its screen accepts text,
-                // so wait for it to settle before pushing the display; an
-                // immediate push is lost and leaves "Please connect" up.
-                if let generation = xencelabsRelink.relinkSent(succeeded: ret == kIOReturnSuccess) {
-                    // On HIDThread, like every other display write.
-                    let timer = CFRunLoopTimerCreateWithHandler(
-                        kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 1.0, 0, 0, 0
-                    ) { [weak self] _ in
-                        guard let self, self.xencelabsRelink.relinkGeneration == generation else { return }
-                        self.resyncXencelabsOutputsAfterRelink()
-                    }
-                    CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+                // The write runs on the output queue; its result belongs to
+                // the relink state, which lives here.
+                sendXencelabsRelink(identity: identity) { [weak self] ret in
+                    self?.onPenThread { self?.relinkWriteFinished(ret) }
                 }
             }
         }
