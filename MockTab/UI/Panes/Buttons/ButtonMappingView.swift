@@ -83,6 +83,8 @@ struct ButtonMappingView: View {
     /// declares `buttonCount: 8` while filling all sixteen slots — the
     /// dual-sided layout has never respected that field for anyone.
     private var hasSplitPadLayout: Bool { Self.hasSplitPadLayout(spec) }
+    /// What each ring or dial's modes do, for jump-to-mode labels.
+    private var ringModeNames: [[String]] { settings.rotaryModeNames }
     private var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
     /// ExpressKey Remote: keys and a ring, no pen. Its firmware owns the
     /// ring's mode button, so that row is omitted.
@@ -323,7 +325,7 @@ struct ButtonMappingView: View {
                     String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"),
                     isActive: lb.tipDown,
                     binding: tipBinding,
-                    isMechanicalDialHardware: hasMechanicalDial,
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[0])
             }
 
@@ -334,7 +336,7 @@ struct ButtonMappingView: View {
                     isActive: lb.eraserDown,
                     binding: eraserBinding,
                     offersEraser: true,
-                    isMechanicalDialHardware: hasMechanicalDial,
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[1])
             }
 
@@ -345,7 +347,7 @@ struct ButtonMappingView: View {
                     isActive: lb.button1Down,
                     binding: pen1Binding,
                     offersEraser: !isMouse,
-                    isMechanicalDialHardware: hasMechanicalDial,
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[2])
             }
             // Button 2
@@ -355,7 +357,7 @@ struct ButtonMappingView: View {
                     isActive: lb.button2Down,
                     binding: pen2Binding,
                     offersEraser: !isMouse,
-                    isMechanicalDialHardware: hasMechanicalDial,
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[3])
             }
             // Button 3
@@ -365,7 +367,7 @@ struct ButtonMappingView: View {
                     isActive: lb.button3Down,
                     binding: pen3Binding,
                     offersEraser: !isMouse,
-                    isMechanicalDialHardware: hasMechanicalDial,
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[4])
             }
             // Button 4
@@ -374,7 +376,7 @@ struct ButtonMappingView: View {
                     Self.penButtonLabel(4, count: btnCount, isMouse: isMouse),
                     isActive: lb.button4Down,
                     binding: pen4Binding,
-                    isMechanicalDialHardware: hasMechanicalDial)
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
             }
             // Button 5
             if btnCount >= 5 {
@@ -382,12 +384,12 @@ struct ButtonMappingView: View {
                     Self.penButtonLabel(5, count: btnCount, isMouse: isMouse),
                     isActive: lb.button5Down,
                     binding: pen5Binding,
-                    isMechanicalDialHardware: hasMechanicalDial)
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
             }
 
             // Wheel row — airbrush fingerwheel or scroll wheel
             if hasWheel {
-                buttonRow(Self.wheelLabel(tool: toolSpec), isActive: false, binding: wheelBinding, isMechanicalDialHardware: hasMechanicalDial)
+                buttonRow(Self.wheelLabel(tool: toolSpec), isActive: false, binding: wheelBinding, modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
             }
 
             // Diagram row: no label column; transparent so the section
@@ -538,6 +540,7 @@ struct ButtonMappingView: View {
                     get: { settings.touchRingButtonBinding },
                     set: { settings.touchRingButtonBinding = $0 }),
                 ringSlotCount: spec?.ringSlotCount ?? 4,
+                modeNames: ringModeNames,
                 isMechanicalDialHardware: true,
                 dialToggleControl: .first,
                 recordRequestToken: centerRecordToken)
@@ -550,6 +553,7 @@ struct ButtonMappingView: View {
                     get: { settings.touchRingButtonBinding },
                     set: { settings.touchRingButtonBinding = $0 }),
                 ringSlotCount: spec?.ringSlotCount ?? 4,
+                modeNames: ringModeNames,
                 recordRequestToken: centerRecordToken)
         }
         touchRingSlotsSection(
@@ -808,7 +812,8 @@ struct ButtonMappingView: View {
                     updated[index] = newValue
                     settings.bezelButtonBindings = updated
                 }
-            )
+            ),
+            modeNames: ringModeNames
         )
     }
 
@@ -830,7 +835,7 @@ struct ButtonMappingView: View {
             ),
             ringSlotCount: spec?.ringSlotCount ?? 4,
             offersSecondDial: hasDualRings,
-            isMechanicalDialHardware: hasMechanicalDial
+            modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial
         )
     }
 

@@ -742,6 +742,13 @@ final class TabletSettings: ObservableObject {
         if index == .first { touchRingActiveSlotIndex = newIndex } else { touchRingActiveSlotIndex2 = newIndex }
     }
 
+    /// What each rotary's modes do, one list per independent control.
+    var rotaryModeNames: [[String]] {
+        let controls: [RotaryIndex] = rotaries.controlsAreIndependent && rotaries.controls.count > 1
+            ? [.first, .second] : [.first]
+        return controls.map { rotary($0).slots.map(\.functionName) }
+    }
+
     /// One control's mode definitions, written to whichever storage it uses.
     func setSlots(_ newSlots: [ControlSlot], for index: RotaryIndex) {
         guard rotaries.controlsAreIndependent else {

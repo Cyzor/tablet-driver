@@ -20,6 +20,9 @@ struct ButtonBindingControl: View, Equatable {
     /// Offer Eraser. Only the eraser end and side buttons can act as the
     /// eraser; anywhere else it would click.
     var offersEraser: Bool = false
+    /// What each rotary's modes do, so a jump-to-mode binding can name the
+    /// function ("Right Ring: Zoom") instead of the slot.
+    var modeNames: [[String]] = []
     /// The hardware has a mechanical dial, not a touch ring. Picks "Dial"
     /// or "Ring" wording. See `ButtonMappingView.hasMechanicalDial`.
     var isMechanicalDialHardware: Bool = false
@@ -46,6 +49,7 @@ struct ButtonBindingControl: View, Equatable {
                 && lhs.ringSlotCount == rhs.ringSlotCount
                 && lhs.offersSecondDial == rhs.offersSecondDial
                 && lhs.offersEraser == rhs.offersEraser
+                && lhs.modeNames == rhs.modeNames
                 && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
                 && lhs.dialToggleControl == rhs.dialToggleControl
                 && lhs.recordRequestToken == rhs.recordRequestToken
@@ -212,6 +216,10 @@ struct ButtonBindingControl: View, Equatable {
     /// right instead of first and second.
     private var hasTwoRings: Bool { offersSecondDial && !isMechanicalDialHardware }
 
+    private var modeFunctionText: String? {
+        binding.modeFunctionLabel(modeNames: modeNames, isMechanicalDial: isMechanicalDialHardware)
+    }
+
     // MARK: - Visual state
 
     private var fieldText: String {
@@ -227,6 +235,7 @@ struct ButtonBindingControl: View, Equatable {
                 localized: "Record Shortcut",
                 comment: "Placeholder in shortcut recorder field when empty")
         }
+        if let text = modeFunctionText { return text }
         // Say "Dial" on dial hardware. Display-only: `displayLabel` stays
         // device-unaware because presets and undo text share it.
         if dialToggleControl == .second, binding.kind == .ringCycle2 {

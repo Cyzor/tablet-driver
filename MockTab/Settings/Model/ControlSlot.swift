@@ -180,6 +180,15 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         ControlSlot(label: String(localized: "Off",    comment: "Default ring slot label"), action: .off),
     ]
 
+    /// What this mode does, in a word or two: its action, or its keys for a
+    /// key mode.
+    var functionName: String {
+        guard action == .keyPress, cwBinding.kind != .none || ccwBinding.kind != .none else {
+            return action.displayLabel
+        }
+        return "\(cwBinding.displayLabel) / \(ccwBinding.displayLabel)"
+    }
+
     /// Cintiq 24HD rings: three modes, each with its own key beside the ring.
     static let splitPadDefaults: [ControlSlot] = [
         ControlSlot(label: String(localized: "Scroll", comment: "Default ring slot label"), action: .scroll),

@@ -447,3 +447,32 @@ struct RequireContactActions: OptionSet, Equatable {
         Self.choices.filter { contains($0.action) }.map(\.kind.rawValue)
     }
 }
+
+extension ButtonBinding {
+    /// A jump-to-mode binding named by what the mode does ("Right Ring:
+    /// Zoom"), or `nil` for any other binding or an unknown mode.
+    /// `modeNames` holds one list per independent ring or dial.
+    func modeFunctionLabel(modeNames: [[String]], isMechanicalDial: Bool) -> String? {
+        let control: Int
+        switch kind {
+        case .ringSelectSlot: control = 0
+        case .ringSelectSlot2: control = 1
+        default: return nil
+        }
+        let slot = Int(keyCode)
+        guard modeNames.indices.contains(control), modeNames[control].indices.contains(slot) else { return nil }
+        let name = modeNames[control][slot]
+        switch (isMechanicalDial, modeNames.count > 1, control) {
+        case (true, _, 0):
+            return String(localized: "Dial: \(name)", comment: "Button action: switch a dial to the named mode, e.g. 'Dial: Zoom'")
+        case (true, _, _):
+            return String(localized: "Dial 2: \(name)", comment: "Button action: switch the second dial to the named mode")
+        case (false, true, 0):
+            return String(localized: "Left Ring: \(name)", comment: "Button action: switch the left touch ring to the named mode, e.g. 'Left Ring: Zoom'")
+        case (false, true, _):
+            return String(localized: "Right Ring: \(name)", comment: "Button action: switch the right touch ring to the named mode")
+        default:
+            return String(localized: "Ring: \(name)", comment: "Button action: switch the touch ring to the named mode, e.g. 'Ring: Zoom'")
+        }
+    }
+}

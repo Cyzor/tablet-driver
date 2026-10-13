@@ -475,7 +475,12 @@ final class DeviceContext: ObservableObject, Identifiable {
                     b: UInt8(Int(c.b) * Int(c.a) / 255))
             }
         }
-        let keyLabels = settings.expressKeyBindings.map { $0.displayLabel }
+        let modeNames = settings.rotaryModeNames
+        let isMechanicalDial = (WacomDeviceRegistry.spec(for: productID)
+            ?? TabletManager.vendorDeviceSpec(forVendorID: vendorID, productID: productID))?.hasMechanicalDial ?? false
+        let keyLabels = settings.expressKeyBindings.map {
+            $0.modeFunctionLabel(modeNames: modeNames, isMechanicalDial: isMechanicalDial) ?? $0.displayLabel
+        }
         let keyOLEDsRotated = settings.tabletOrientation == .landscapeFlipped
         // See `onHIDThread`'s header comment: every TabletDevice write is
         // confined to HIDThread, so this hops rather than calling inline.

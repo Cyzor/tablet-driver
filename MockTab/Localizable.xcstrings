@@ -6095,6 +6095,29 @@
         }
       }
     },
+    "Dial 2: %@" : {
+      "comment" : "Button action: switch the second dial to the named mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad 2: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dial 2: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル2：%@"
+          }
+        }
+      }
+    },
     "Dial 2: Cycle" : {
       "comment" : "Button action: cycle the second dial's mode",
       "localizations" : {
@@ -6297,6 +6320,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ダイヤル切り替え"
+          }
+        }
+      }
+    },
+    "Dial: %@" : {
+      "comment" : "Button action: switch a dial to the named mode, e.g. 'Dial: Zoom'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellrad: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dial: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダイヤル：%@"
           }
         }
       }
@@ -10706,6 +10752,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "左クリック"
+          }
+        }
+      }
+    },
+    "Left Ring: %@" : {
+      "comment" : "Button action: switch the left touch ring to the named mode, e.g. 'Left Ring: Zoom'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linker Ring: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anillo izquierdo: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左リング：%@"
           }
         }
       }
@@ -16330,6 +16399,29 @@
         }
       }
     },
+    "Right Ring: %@" : {
+      "comment" : "Button action: switch the right touch ring to the named mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechter Ring: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anillo derecho: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右リング：%@"
+          }
+        }
+      }
+    },
     "Right Ring: Cycle" : {
       "comment" : "Button action: cycle the right touch ring's mode",
       "localizations" : {
@@ -16907,6 +16999,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "リングスロット：速度"
+          }
+        }
+      }
+    },
+    "Ring: %@" : {
+      "comment" : "Button action: switch the touch ring to the named mode, e.g. 'Ring: Zoom'",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ring: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ring: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リング：%@"
           }
         }
       }
