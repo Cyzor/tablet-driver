@@ -77,6 +77,8 @@ final class Tablet {
     let bezelNames: [String]
     let ringNames: [String]
     let hasLEDs: Bool
+    /// Two touch rings with their own modes and lights (Cintiq 24HD).
+    let hasTwoTouchRings: Bool
     var decoder: DeviceDecoder
     var touchDecoder: DeviceDecoder?
     /// Uses per control, and what happened on the Mac meanwhile.
@@ -95,6 +97,8 @@ final class Tablet {
     var foreignWhileTouch = 0
     var foreignSources: Set<String> = []
     var lightsAnswer: Bool?
+    /// Per side, whether only that side's light moved when its mode changed.
+    var lightAloneAnswers: [String: Bool] = [:]
     var linkLost = false
     var penReportsSinceRelink = 0
     /// Optional, since nobody can be sure of making the link drop: "worked"
@@ -139,6 +143,7 @@ final class Tablet {
         if spec.hasFingerTouch { c.append("touch") }
         controls = c
         hasLEDs = spec.ledCompanionPID != nil
+        hasTwoTouchRings = spec.hasDualRings && !spec.hasMechanicalDial
         if let sensor = spec.touchCompanionPID, separateTouchSensors.contains(sensor) {
             touchDecoder = DeviceDecoder(Wacom24HDTDecoder(), digitizer: spec.digitizerSpec, family: spec.family)
         }
@@ -514,6 +519,7 @@ struct TabletResult: Codable {
     var cursorEventsFromElsewhereWhilePen: Int
     var cursorEventsFromElsewhereWhileTouch: Int
     var ringLightsFollowed: Bool?
+    var ringLightMovedAlone: [String: Bool]?
     var reconnect: String?
     var receiverStatus: [String: Int]?
 }
@@ -535,6 +541,9 @@ struct Result: Codable {
         p.append("\(t.foreignWhileTouch) cursor events came from \(t.foreignSources.sorted().joined(separator: ", ")) while a finger was down, so MockTab doesn't hold touch alone")
     }
     if t.lightsAnswer == false { p.append("the ring lights didn't follow the mode buttons") }
+    for (side, alone) in t.lightAloneAnswers.sorted(by: { $0.key < $1.key }) where !alone {
+        p.append("changing the \(side) ring's mode didn't move its light alone")
+    }
     if t.reconnect == "dropped, not back yet" { p.append("the tablet didn't come back after the link dropped") }
     return p
 }
@@ -548,6 +557,14 @@ func finish() -> Never {
         print("  \(t.name): did the ring lights move with the ring mode buttons? [y/n] ", terminator: "")
         fflush(stdout)
         t.lightsAnswer = (readLine() ?? "").lowercased().hasPrefix("y")
+    }
+    // Each ring has its own modes; bind a key per side to cycle that ring.
+    for t in used where t.hasLEDs && t.hasTwoTouchRings {
+        for side in ["left", "right"] {
+            print("  \(t.name): when the \(side) ring's mode changed, did only the \(side) light move? [y/n] ", terminator: "")
+            fflush(stdout)
+            t.lightAloneAnswers[side] = (readLine() ?? "").lowercased().hasPrefix("y")
+        }
     }
 
     let enc = JSONEncoder()
@@ -565,6 +582,7 @@ func finish() -> Never {
                 cursorEventsFromElsewhereWhilePen: t.foreignWhilePen,
                 cursorEventsFromElsewhereWhileTouch: t.foreignWhileTouch,
                 ringLightsFollowed: t.lightsAnswer,
+                ringLightMovedAlone: t.lightAloneAnswers.isEmpty ? nil : t.lightAloneAnswers,
                 reconnect: t.receiver == nil ? nil : (t.reconnect ?? "not tried"),
                 receiverStatus: t.receiver == nil ? nil : t.receiverStatus),
             leaks: leaks, mocktabErrors: mocktabErrors)

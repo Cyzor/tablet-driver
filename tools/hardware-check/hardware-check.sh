@@ -15,10 +15,11 @@
 #              Quick Keys. Runs only when asked for with --only strain, since
 #              you draw for it.
 #
-# A is origin/main (what's pushed) and B is HEAD, unless given.
+# A is origin/main (what's pushed) and B is HEAD, unless given. With
+# --working, B is the working tree, uncommitted changes included.
 #
 # Usage:
-#   tools/hardware-check/hardware-check.sh [--again] [--only wacom|switch|xencelabs|strain] [A] [B]
+#   tools/hardware-check/hardware-check.sh [--again] [--working] [--only wacom|switch|xencelabs|strain] [A] [B]
 #
 # --again discards earlier results of the checks chosen. The terminal needs
 # Accessibility and Input Monitoring. Quits and relaunches MockTab as needed,
@@ -30,20 +31,25 @@ HERE="$ROOT/tools/hardware-check"
 WORK=/tmp/mocktab-hwcheck
 RESULTS="$WORK/results"
 
-again="" only=""
+again="" only="" working=""
 while [[ "${1:-}" == --* ]]; do
     case $1 in
         --again) again=1 ;;
+        --working) working=1 ;;
         --only) only=$2; shift ;;
         *) echo "hardware-check: unknown option $1"; exit 64 ;;
     esac
     shift
 done
 A=$(git -C "$ROOT" rev-parse --short "${1:-origin/main}")
-B=$(git -C "$ROOT" rev-parse --short "${2:-HEAD}")
-[[ "$A" == "$B" ]] && { echo "hardware-check: A and B are the same commit ($A)"; exit 1; }
-if [[ -n $(git -C "$ROOT" status --porcelain --untracked-files=no) ]]; then
-    echo "hardware-check: note: uncommitted changes aren't in either build"
+if [[ -n "$working" ]]; then
+    B=working
+else
+    B=$(git -C "$ROOT" rev-parse --short "${2:-HEAD}")
+    [[ "$A" == "$B" ]] && { echo "hardware-check: A and B are the same commit ($A); use --working for uncommitted changes"; exit 1; }
+    if [[ -n $(git -C "$ROOT" status --porcelain --untracked-files=no) ]]; then
+        echo "hardware-check: note: uncommitted changes aren't in either build; --working includes them"
+    fi
 fi
 
 mkdir -p "$WORK/bin" "$RESULTS" "$WORK/tabletkit"
@@ -79,6 +85,14 @@ build() {
     local c=$1 config=${2:-Debug} src="$WORK/src-$1"
     local dd="$WORK/dd-$c"
     [[ "$config" == Release ]] && dd="$WORK/ddr-$c"
+    if [[ "$c" == working ]]; then
+        # Rebuilt every run; xcodebuild only redoes what changed.
+        echo "hardware-check: building the working tree ($config)"
+        xcodebuild -project "$ROOT/MockTab.xcodeproj" -scheme MockTab -configuration "$config" \
+            -derivedDataPath "$dd" build >"$WORK/build-$c-$config.log" 2>&1 \
+            || { echo "hardware-check: build of the working tree failed, see $WORK/build-$c-$config.log"; exit 1; }
+        return
+    fi
     [[ -d "$(app_for "$c" "$config")" ]] && return
     echo "hardware-check: building $c ($config), which takes a few minutes"
     if [[ ! -d "$src" ]]; then
