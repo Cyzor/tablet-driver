@@ -442,8 +442,8 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
 
         // ── BLE HOGP pad report (Report ID 0x03, ≥3 bytes) ──────────────
         if id == 0x03 && length >= 3 {
-            if let aux = decodeBLEPadReport(report: HIDReport(pointer: report, count: length)) {
-                onAux?(PadState(aux))
+            if let pad = decodeBLEPadReport(report: HIDReport(pointer: report, count: length)) {
+                onAux?(pad)
             } else {
                 // Fall back to IntuosV1 express key decode (0x03 also used by PTZ-631W).
                 handleExpressKeys(id: id, report: report, length: length)
