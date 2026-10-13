@@ -348,6 +348,15 @@ final class DeviceContext: ObservableObject, Identifiable {
                 self.pushDeviceDisplayState(activeSlotIndex: index)
             }
             .store(in: &cancellables)
+        // Intuos4 key OLEDs turn with the tablet.
+        settings.$tabletOrientation
+            .dropFirst()
+            .sink { [weak self] _ in
+                guard let self else { return }
+                // `@Published` fires before the stored value changes.
+                DispatchQueue.main.async { self.pushDeviceDisplayState() }
+            }
+            .store(in: &cancellables)
         // Panel brightness (Xencelabs pen displays). Fires once on subscribe,
         // which replays the saved value to the hardware on (re)connect; -1
         // means the user has never touched the slider, so the panel keeps
@@ -458,11 +467,13 @@ final class DeviceContext: ObservableObject, Identifiable {
             }
         }
         let keyLabels = settings.expressKeyBindings.map { $0.displayLabel }
+        let keyOLEDsRotated = settings.tabletOrientation == .landscapeFlipped
         // See `onHIDThread`'s header comment: every TabletDevice write is
         // confined to HIDThread, so this hops rather than calling inline.
         onHIDThread {
             if let ringModeLabel { device.controls.labels?.setRingModeLabel(ringModeLabel) }
             device.controls.ringLED?.setRingLEDColors(ringColors)
+            (device as? WacomKnownDevice)?.setKeyOLEDsRotated180(keyOLEDsRotated)
             device.controls.labels?.setAuxKeyLabels(keyLabels)
         }
     }

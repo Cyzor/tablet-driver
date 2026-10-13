@@ -174,11 +174,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// returned. See [[project_ptk870_bt_tool_identity_lost_on_pen_swap]].
     private var lastRealToolIdentity: ToolIdentity?
 
-    /// USB counterpart to the BLE drought recovery above — PTK-870 can come
-    /// up over USB still parked in the pre-DATAMODE idle report (`0x06`)
-    /// after a preceding BT session, even though `open()` already sends the
-    /// DATAMODE feature report on connect. Same "detect no real data,
-    /// re-send DATAMODE" shape.
+    /// Over USB, notices a tablet whose init didn't take (`usbIdleReport`)
+    /// and sends init again.
     private lazy var idleWatcher = deviceSpec.quirks.usbIdleReport.map(IdleReportWatcher.init)
     /// The paired tablet a wireless receiver names in its status report.
     private var pairingWatcher = DonglePairingWatcher()
@@ -359,22 +356,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// hardware.
     var xencelabsBatteryPollTimer: CFRunLoopTimer?
 
-    /// `.intuosV1` devices whose wired LED report packs the ring slot and both
-    /// luminances into one byte, rather than the older Intuos4 layout of a
-    /// slot-shifted-left byte plus a separate hlv byte. See the two wired
-    /// branches in `setRingLED`.
-    ///
-    /// These are exactly the models the kernel's `wacom_led_control()` handles
-    /// under `type >= INTUOS5S && type <= INTUOSPL` — Intuos5 S/M/L, their
-    /// non-touch PTK twins, and Intuos Pro 1st gen S/M/L. Generation confirmed
-    /// per-PID against libwacom 2026-09-10 rather than inferred from the model
-    /// name: PTK-450/650 read as Intuos4-era model numbers but libwacom names
-    /// them "Wacom Intuos5 S/M", so a name-based split would have put them on
-    /// the wrong side.
-    ///
-    /// Kept as an explicit PID set because `TabletSpec.family` derives
-    /// this family by sniffing the name string, which mis-sorts several of
-    /// these rows (see the `.intuosV1` case in that property).
+    /// `.intuosV1` models whose wired LED report packs the slot and both
+    /// luminances into one byte: the kernel's INTUOS5S through INTUOSPL.
     static let intuos5PackedLEDProductIDs: Set<Int> = [
         0x0026,  // Intuos5 touch S (PTH-450)
         0x0027,  // Intuos5 touch M (PTH-650)
@@ -386,14 +369,14 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         0x0317,  // Intuos Pro L (PTH-851)
     ]
 
-    /// Ring and crop-mark luminance for `intuos5PackedLEDProductIDs`, in that
-    /// report's 2-bit encoding: 0=Low, 1=Medium, 2=High, 3=Off.
-    ///
-    /// Both match the kernel, which initialises this family at llv=32 (mapping
-    /// to ring luminance Low) and hardcodes crop luminance to 0, exposing no
-    /// control for either.
+    /// Ring and crop-mark luminance for `intuos5PackedLEDProductIDs`, 2-bit:
+    /// 0 Low, 1 Medium, 2 High, 3 Off. The kernel's defaults.
     static let intuos5RingLuminance: UInt8 = 0
     static let intuos5CropLuminance: UInt8 = 0
+    /// Intuos4 LED report luminances, 0–127: the kernel's defaults.
+    static let intuos4RingLuminance: UInt8 = 10
+    static let intuos4PressedLuminance: UInt8 = 20
+    static let intuos4OLEDBrightness: UInt8 = 10
 
     init(
         device: IOHIDDevice,
@@ -912,10 +895,9 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// cleared so a relink can always put the labels back.
     var xencelabsRequestedText: [String: String] = [:]
     /// Last label pushed per Intuos4 key index, to suppress redundant writes.
-    /// Kept separate from `xencelabsSentText`: a full key-OLED image sync is
-    /// ~1KB per key (versus a short text-protocol write for Xencelabs), so
-    /// dedup matters more here.
     var intuos4SentKeyLabels: [String] = []
+    /// Whether the key OLED images are turned 180°.
+    var keyOLEDsRotated180 = false
     /// Last Quick Keys OLED orientation sent, to suppress redundant writes.
     var lastQuickKeysOrientation: Int = -1
     /// Last Quick Keys sleep timer sent, to suppress redundant writes.
@@ -1043,8 +1025,17 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         let name = deviceSpec.name
         let logger = logger
         let usagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
-        InitStepRunner.run(steps, on: IOKitHIDInterface(device), from: index) { outcome in
+        let interface = IOKitHIDInterface(device)
+        // The tablet's own sequence only; a companion's steps aren't its mode switch.
+        let readBack = steps == deviceSpec.initSteps && !isBluetooth ? deviceSpec.quirks.usbModeReadBack : nil
+        let lastIndex = steps.count - 1
+        InitStepRunner.run(steps, on: interface, from: index) { outcome in
             let index = outcome.index
+            defer {
+                if index == lastIndex, let readBack {
+                    Self.confirmMode(readBack, on: interface, name: name, usagePage: usagePage)
+                }
+            }
             switch outcome.step {
             case .featureReport(let bytes):
                 let ret = outcome.result ?? kIOReturnSuccess
@@ -1079,6 +1070,27 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 logger.info("\(name, privacy: .public): initStep[\(index, privacy: .public)] string descriptor \(descriptorIndex, privacy: .public) → \(outcome.reply.map { "\($0.count) bytes" } ?? "no answer", privacy: .public)")
             case .delay:
                 break
+            }
+        }
+    }
+
+    /// Reads back the mode switch init just sent and resends it until it takes.
+    private static func confirmMode(
+        _ rule: TabletQuirks.ModeReadBack, on interface: IOKitHIDInterface, name: String, usagePage: Int
+    ) {
+        InitStepRunner.confirmMode(rule, on: interface) { o in
+            let reply = o.reply.map { String(format: "%02X", $0) }.joined(separator: " ")
+            if let written = o.writeResult {
+                CaptureEngine.recordAutoInitReport(
+                    reportID: Int(rule.report[0]), value: Int(rule.report[1]),
+                    ioReturn: written, usagePage: usagePage)
+            }
+            if o.matched {
+                logger.info("\(name, privacy: .public): mode read back as \(reply, privacy: .public) after \(o.attempt, privacy: .public) resends")
+            } else if o.isLast {
+                logger.error("\(name, privacy: .public): mode didn't take after \(o.attempt, privacy: .public) resends; read back \(reply.isEmpty ? "nothing" : reply, privacy: .public) (0x\(String(o.readResult, radix: 16), privacy: .public))")
+            } else {
+                logger.info("\(name, privacy: .public): mode read back as \(reply.isEmpty ? "nothing" : reply, privacy: .public); resending")
             }
         }
     }
@@ -1250,10 +1262,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         }
     }
 
-    /// Re-sends DATAMODE when an IntuosV3 tablet sits on its USB idle report.
+    /// Re-sends init when a tablet sits on its USB idle report.
     private func recoverFromUSBIdleReport(_ report: UnsafePointer<UInt8>, length: CFIndex, name: String) {
-        // USB idle-report recovery — see `idleWatcher`'s doc comment. The
-        // Wacom One S/M rows turn this off: their 0x06 is real pen data.
         guard !isBluetooth, var watcher = idleWatcher else { return }
         let stuck = watcher.observe(
             HIDReport(pointer: report, count: length), now: ProcessInfo.processInfo.systemUptime)
@@ -1262,7 +1272,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         let rule = watcher.rule
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            logger.info("\(name, privacy: .public): USB stuck on idle report 0x\(String(rule.reportID, radix: 16), privacy: .public) for over \(rule.timeout, privacy: .public)s — re-sending DATAMODE to recover")
+            logger.info("\(name, privacy: .public): USB stuck on idle report 0x\(String(rule.reportID, radix: 16), privacy: .public) for over \(rule.timeout, privacy: .public)s; sending init again")
             self.reawaken()
         }
     }

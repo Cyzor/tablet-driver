@@ -59,13 +59,18 @@ extension WacomKnownDevice {
         }
     }
 
-    /// Render each label to a bitmap and push it to the Intuos4's per-key
-    /// OLED, USB transport only (see `WacomOutputProtocol`'s header for
-    /// provenance — kernel-sourced, not hardware-verified).
-    ///
-    /// Deduped per key against `intuos4SentKeyLabels`, since a full image
-    /// sync is ~1KB of feature-report traffic per key versus a short text
-    /// write for Xencelabs.
+    /// Turns the key OLED images 180° for a tablet used upside down, and
+    /// resends the labels already shown.
+    func setKeyOLEDsRotated180(_ rotated: Bool) {
+        guard deviceSpec.hasKeyOLEDs, rotated != keyOLEDsRotated180 else { return }
+        keyOLEDsRotated180 = rotated
+        let shown = intuos4SentKeyLabels
+        intuos4SentKeyLabels = []
+        setIntuos4KeyOLEDLabels(shown)
+    }
+
+    /// Renders each label and sends it to its key's OLED, USB only. Deduped
+    /// per key: an image is about 1 KB of feature reports.
     private func setIntuos4KeyOLEDLabels(_ labels: [String]) {
         for (index, label) in labels.enumerated() where index < 8 {
             let previous = index < intuos4SentKeyLabels.count ? intuos4SentKeyLabels[index] : nil
@@ -76,7 +81,8 @@ extension WacomKnownDevice {
             intuos4SentKeyLabels[index] = label
 
             let bitmap = IntuosOLEDImageEncoder.renderTextLabel(label)
-            guard let packed = IntuosOLEDImageEncoder.interleaveRows(bitmap) else { continue }
+            guard let packed = IntuosOLEDImageEncoder.interleaveRows(bitmap, rotated180: keyOLEDsRotated180)
+            else { continue }
 
             sendIntuos4Feature(WacomOutputProtocol.imageStartPayload(), tag: "Intuos4 OLED key\(index) start")
             for chunk in WacomOutputProtocol.keyImagePayloadsUSB(image: packed, buttonID: index) {
@@ -86,10 +92,7 @@ extension WacomKnownDevice {
         }
     }
 
-    /// Send one Intuos4 OLED feature-report payload. Best-effort: a garbled
-    /// write shows a garbled label on the key's own OLED and nothing else —
-    /// there's no persistent device state at risk, so failures are logged
-    /// rather than treated as fatal.
+    /// Best effort: a bad write garbles one key's image and nothing else.
     private func sendIntuos4Feature(_ payload: [UInt8], tag: String) {
         queueSetReport(device, payload, tag: tag, severity: .bestEffort)
     }
