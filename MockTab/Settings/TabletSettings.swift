@@ -683,17 +683,14 @@ final class TabletSettings: ObservableObject {
     @Published var touchRingActiveSlotIndex: Int = 0 {
         didSet { persist("touchRingActiveSlotIndex", touchRingActiveSlotIndex) }
     }
-    /// Active mode slot for the second, independent dial (PTK-670/870's right
-    /// dial). Unused on every other device — those only ever read/write
-    /// `touchRingActiveSlotIndex`. Superseded by `rotaries` on independent
-    /// hardware; write through that.
+    /// The second ring or dial's active slot. On independent hardware
+    /// `rotaries` holds it and this follows, for the ring LED.
     @Published var touchRingActiveSlotIndex2: Int = 0 {
         didSet { persist("touchRingActiveSlotIndex2", touchRingActiveSlotIndex2) }
     }
 
-    /// Per-control mode state. Used only by independent hardware (the PTK
-    /// series); everything else still reads `touchRingSlots`, which has
-    /// stored settings in the field.
+    /// Per-control mode state on two-rotary hardware (PTK-670/870, Cintiq
+    /// 24HD). Everything else reads `touchRingSlots`.
     @Published var rotaries: RotarySet = RotarySet() {
         didSet { saveRotaries() }
     }
@@ -713,6 +710,12 @@ final class TabletSettings: ObservableObject {
 
     /// True only while `controlsAreIndependent`'s setter runs — see its comment.
     var isApplyingRotaryCapability = false
+
+    /// Set from the device spec like `controlsAreIndependent`; see
+    /// `loadRotaries`.
+    var rotariesSeedFromSharedModes = false
+    /// The modes a fresh or reset rotary starts with on this tablet.
+    var defaultRingSlots = ControlSlot.defaults
 
     /// One rotary control's mode state, from whichever storage this tablet
     /// uses. See `RotarySet.resolving`.
@@ -735,8 +738,8 @@ final class TabletSettings: ObservableObject {
             return
         }
         rotaries[index].activeSlotIndex = newIndex
-        // Kept in step for the ring LED observer.
-        if index == .first { touchRingActiveSlotIndex = newIndex }
+        // Kept in step for the ring LED observers.
+        if index == .first { touchRingActiveSlotIndex = newIndex } else { touchRingActiveSlotIndex2 = newIndex }
     }
 
     /// One control's mode definitions, written to whichever storage it uses.

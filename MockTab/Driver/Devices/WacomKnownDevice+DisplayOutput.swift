@@ -19,6 +19,15 @@ extension WacomKnownDevice {
 
     // MARK: - LED control
 
+    /// Sets the second ring's LED slot on two-ring Cintiqs; they take both
+    /// rings in one report.
+    func setRingLED2(index: Int) {
+        ThreadContract.expectPenThread()
+        guard deviceSpec.format == .cintiqV1, deviceSpec.hasDualRings else { return }
+        pendingLEDIndex2 = index
+        setRingLED(index: pendingLEDIndex)
+    }
+
     /// Shows the active slot on the ring LED.
     func setRingLED(index: Int) {
         ThreadContract.expectPenThread()
@@ -59,32 +68,18 @@ extension WacomKnownDevice {
                            tag: "\(name) BT LED ring slot=\(index)")
 
         case .cintiqV1:
-            // LED control via WAC_CMD_LED_CONTROL (0x20), 9-byte feature report.
-            //
-            // Format confirmed by USB capture against official Wacom driver (6.3.46-2):
-            //   buf[0] = 0x20
-            //   buf[1] = 0x44 | (rightRingSlot & 0x03) | ((leftRingSlot & 0x03) << 4)
-            //     bit2 (0x04) = right ring enabled
-            //     bit6 (0x40) = left  ring enabled
-            //     bits[1:0]   = right ring LED slot (0–2)  ← confirmed by live hardware test
-            //     bits[5:4]   = left  ring LED slot (0–2)
-            //   buf[2..8] = 0x00  (official driver sends no brightness bytes)
-            //
-            // On DTK-2400 (0x00F4) the report descriptor declares 0x20 on the single
-            // digitizer interface — ledCompanionPID 0x0056 does not appear on the bus.
-            // Fall back to the primary device when ledDevice is absent.
-            //
-            // Both rings currently share touchRingActiveSlotIndex (single settings slot).
-            // Mirror the same slot to both rings so both LEDs track mode changes.
-            // TODO: independent left/right ring tracking requires touchRing2ActiveSlotIndex,
-            // new .ring2SelectSlot action type, and a second DeviceContext observer.
+            // WAC_CMD_LED_CONTROL (0x20), 9 bytes, no luminance bytes:
+            // buf[1] = 0x04 | right ring's slot, 0x40 | left ring's slot << 4.
+            // Ring 1 is the left; checked on a DTK-2400. There 0x20 lives on
+            // the digitizer interface; the companion PID 0x0056 never appears.
             let ledTarget = ledDevice ?? device
-            let slot = UInt8(index & 0x03)
+            let slot1 = UInt8(index & 0x03)
+            let slot2 = UInt8(pendingLEDIndex2 & 0x03)
             var buf = [UInt8](repeating: 0, count: 9)
-            buf[0] = 0x20  // WAC_CMD_LED_CONTROL
-            buf[1] = 0x44 | slot | (slot << 4)  // mirror: both rings track same slot
+            buf[0] = 0x20
+            buf[1] = 0x44 | slot2 | (slot1 << 4)
             queueSetReport(ledTarget, buf,
-                           tag: "\(name) CintiqV1 LED slot=\(slot) (both rings)")
+                           tag: "\(name) CintiqV1 LED slots=\(slot1),\(slot2)")
 
         case .intuosV1:
             if isWireless && pairedPID > 0 {

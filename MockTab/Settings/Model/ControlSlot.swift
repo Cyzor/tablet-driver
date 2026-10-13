@@ -180,6 +180,14 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         ControlSlot(label: String(localized: "Off",    comment: "Default ring slot label"), action: .off),
     ]
 
+    /// Cintiq 24HD rings: three modes, each with its own key beside the ring.
+    static let splitPadDefaults: [ControlSlot] = [
+        ControlSlot(label: String(localized: "Scroll", comment: "Default ring slot label"), action: .scroll),
+        ControlSlot(label: String(localized: "Zoom", comment: "Ring/strip action: analog pinch-zoom"), action: .zoom),
+        ControlSlot(label: String(localized: "Rotate", comment: "Ring/strip action: analog rotate"), action: .rotate),
+        ControlSlot(label: String(localized: "Off", comment: "Default ring slot label"), action: .off),
+    ]
+
     /// Declaration order is the Action picker's display order (via
     /// `allCases`) — Scroll, Zoom, Rotate, Key, Off, Skip. Raw-value coding
     /// means reordering these cases doesn't affect persisted data.

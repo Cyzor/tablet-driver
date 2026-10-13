@@ -53,10 +53,8 @@ struct RotaryConfig: Codable, Equatable {
 
 // MARK: - RotarySet
 
-/// Every rotary control on one device. Storage is per-control, but on
-/// hardware whose controls aren't independent every lookup resolves to
-/// control 0. Only the PTK series is independent today; the 24HD's rings
-/// mirror until verified otherwise.
+/// Every rotary control on one device. Where the controls aren't
+/// independent (single-control hardware), every lookup resolves to control 0.
 struct RotarySet: Codable, Equatable {
     /// One entry per physical control. Always non-empty.
     private(set) var controls: [RotaryConfig]
@@ -92,9 +90,6 @@ struct RotarySet: Codable, Equatable {
     }
 
     /// Grows or shrinks to `count` controls; new ones copy control 0.
-    ///
-    /// No migration from `touchRingSlots`: only the PTK series reads this, and
-    /// it has never shipped outside snapshot builds.
     mutating func resize(to count: Int) {
         let target = max(1, count)
         if controls.count > target {
@@ -104,11 +99,11 @@ struct RotarySet: Codable, Equatable {
         }
     }
 
-    /// Every control back to default modes, keeping the control count and
-    /// the hardware capability flag.
-    func resetToDefaults() -> RotarySet {
+    /// Every control back to `slots`, keeping the control count and the
+    /// hardware capability flag.
+    func resetToDefaults(slots: [ControlSlot] = ControlSlot.defaults) -> RotarySet {
         RotarySet(
-            controls: Array(repeating: RotaryConfig(), count: controls.count),
+            controls: Array(repeating: RotaryConfig(slots: slots), count: controls.count),
             controlsAreIndependent: controlsAreIndependent)
     }
 

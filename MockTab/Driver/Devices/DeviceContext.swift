@@ -100,15 +100,16 @@ final class DeviceContext: ObservableObject, Identifiable {
         applyRotaryHardware()
     }
 
-    /// Tells the settings how many rotary controls this tablet has and
-    /// whether they're independent. Independence is `hasMechanicalDial` for
-    /// now: the 24HD still reads `touchRingSlots`.
+    /// Tells the settings how many rotary controls this tablet has. Two are
+    /// always independent.
     private func applyRotaryHardware() {
         // Registry, not `tabletDevice.spec`: `DigitizerSpec` lacks these flags.
         guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
         settings.applyRotaryHardware(
             controlCount: spec.hasDualRings ? 2 : 1,
-            independent: spec.hasMechanicalDial)
+            independent: spec.hasDualRings,
+            seedFromSharedModes: !spec.hasMechanicalDial,
+            defaultSlots: ButtonMappingView.hasSplitPadLayout(spec) ? ControlSlot.splitPadDefaults : ControlSlot.defaults)
     }
 
     /// Removes and returns the driver for a departing transport, if any.
@@ -128,6 +129,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     func resyncActiveDriverDisplayState() {
         guard let device = tabletDevice else { return }
         let activeSlotIndex = settings.touchRingActiveSlotIndex
+        let activeSlotIndex2 = settings.touchRingActiveSlotIndex2
         let displayBrightness = settings.displayBrightness
         let displayColorMode = settings.displayColorMode
         let customColorMode = isCustomColorMode
@@ -141,6 +143,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         // see the header comment on `onHIDThread`. Values are snapshotted
         // above on the main actor since `device` isn't Sendable.
         onHIDThread {
+            (device as? WacomKnownDevice)?.pendingLEDIndex2 = activeSlotIndex2
             device.controls.ringLED?.setRingLED(index: activeSlotIndex)
             if displayBrightness >= 0 {
                 device.controls.displayPanel?.setDisplayBrightness(displayBrightness)
@@ -346,6 +349,12 @@ final class DeviceContext: ObservableObject, Identifiable {
                 guard let self, let device = self.tabletDevice else { return }
                 self.onHIDThread { device.controls.ringLED?.setRingLED(index: index) }
                 self.pushDeviceDisplayState(activeSlotIndex: index)
+            }
+            .store(in: &cancellables)
+        settings.$touchRingActiveSlotIndex2
+            .sink { [weak self] index in
+                guard let self, let device = self.tabletDevice as? WacomKnownDevice else { return }
+                self.onHIDThread { device.setRingLED2(index: index) }
             }
             .store(in: &cancellables)
         // Intuos4 key OLEDs turn with the tablet.

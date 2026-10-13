@@ -284,6 +284,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// Last index requested via setRingLED. Applied immediately when ledDevice
     /// is registered so the LED syncs even if the companion connects after init.
     var pendingLEDIndex: Int = 0
+    /// The second ring's slot, on two-ring Cintiqs.
+    var pendingLEDIndex2: Int = 0
     /// Per-slot custom dial colors pushed from settings via setRingLEDColors
     /// (Xencelabs Quick Keys only). nil entries fall back to the factory palette.
     var dialSlotColors: [(r: UInt8, g: UInt8, b: UInt8)?] = []

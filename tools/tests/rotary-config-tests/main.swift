@@ -149,6 +149,16 @@ private func testResetKeepsShapeAndRestoresDefaults() {
     expectEqual(set.controls.count, 2, "reset keeps the control count")
 }
 
+private func testResetToTabletDefaults() {
+    let set = RotarySet(
+        controls: [RotaryConfig(slots: slots([.off]), activeSlotIndex: 0), RotaryConfig()],
+        controlsAreIndependent: true).resetToDefaults(slots: ControlSlot.splitPadDefaults)
+    let actions = ControlSlot.splitPadDefaults.map(\.action)
+    expectEqual(actions, [.scroll, .zoom, .rotate, .off], "24HD modes are scroll, zoom, rotate")
+    expectEqual(set[.first].slots.map(\.action), actions, "reset gives control 1 the tablet's defaults")
+    expectEqual(set[.second].slots.map(\.action), actions, "reset gives control 2 the tablet's defaults")
+}
+
 // MARK: - The storage seam
 //
 // `resolving` is what both TabletSettings.rotary and
@@ -312,6 +322,7 @@ testEmptyControlsIsNeverStored()
 testResizeSeedsFromFirstControl()
 testResizeDown()
 testResetKeepsShapeAndRestoresDefaults()
+testResetToTabletDefaults()
 testLegacyHardwareReadsSharedSlots()
 testLegacyHardwareKeepsPerControlActiveIndex()
 testIndependentHardwareIgnoresLegacyStorage()

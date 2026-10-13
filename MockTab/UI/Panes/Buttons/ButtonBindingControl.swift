@@ -14,8 +14,8 @@ struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
     var compact: Bool = false
     var ringSlotCount: Int = 4
-    /// Offer the second dial's actions in the mode submenu. Only for
-    /// ExpressKeys on two-dial hardware (PTK-670/870), not pen or bezel buttons.
+    /// Offer the second dial or ring's actions in the mode submenu. Only for
+    /// ExpressKeys on two-rotary hardware, not pen or bezel buttons.
     var offersSecondDial: Bool = false
     /// Offer Eraser. Only the eraser end and side buttons can act as the
     /// eraser; anywhere else it would click.
@@ -24,8 +24,7 @@ struct ButtonBindingControl: View, Equatable {
     /// or "Ring" wording. See `ButtonMappingView.hasMechanicalDial`.
     var isMechanicalDialHardware: Bool = false
     /// Set on a PTK dial's own toggle key. The mode submenu then collapses to
-    /// one flat Cycle item aimed at this dial — jumping to a mode was carried
-    /// over from the Cintiq 24HD, which has no such key.
+    /// one flat Cycle item aimed at this dial.
     var dialToggleControl: RotaryIndex? = nil
     /// Incremented by an external control (the ring diagram's center button)
     /// to begin recording in this field, exactly as if it had been clicked.
@@ -142,27 +141,41 @@ struct ButtonBindingControl: View, Equatable {
                 .help("Cycle through dial modes")
             } else {
                 Menu(isMechanicalDialHardware ? "Dial Mode" : "Touch Ring Mode") {
-                    Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
-                        .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
+                    if hasTwoRings {
+                        Button("Cycle (Left Ring)") { binding = ButtonBinding(kind: .ringCycle) }
+                            .help("Cycle through the left ring's modes")
+                    } else {
+                        Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
+                            .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
+                    }
                     Divider()
                     ForEach(0..<ringSlotCount, id: \.self) { i in
-                        Button("Jump to Mode \(i + 1)") {
+                        Button(hasTwoRings ? "Jump Left Ring to Mode \(i + 1)" : "Jump to Mode \(i + 1)") {
                             binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
                         }
                         .help(isMechanicalDialHardware
                             ? "Switch the dial directly to mode \(i + 1)"
-                            : "Switch ring directly to mode \(i + 1)")
+                            : hasTwoRings
+                                ? "Switch the left ring directly to mode \(i + 1)"
+                                : "Switch ring directly to mode \(i + 1)")
                     }
                     if offersSecondDial {
                         Divider()
-                        Button("Cycle (Second Dial)") { binding = ButtonBinding(kind: .ringCycle2) }
-                            .help("Cycle through the second dial's modes")
+                        if hasTwoRings {
+                            Button("Cycle (Right Ring)") { binding = ButtonBinding(kind: .ringCycle2) }
+                                .help("Cycle through the right ring's modes")
+                        } else {
+                            Button("Cycle (Second Dial)") { binding = ButtonBinding(kind: .ringCycle2) }
+                                .help("Cycle through the second dial's modes")
+                        }
                         Divider()
                         ForEach(0..<ringSlotCount, id: \.self) { i in
-                            Button("Jump Second Dial to Mode \(i + 1)") {
+                            Button(hasTwoRings ? "Jump Right Ring to Mode \(i + 1)" : "Jump Second Dial to Mode \(i + 1)") {
                                 binding = ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i))
                             }
-                            .help("Switch the second dial directly to mode \(i + 1)")
+                            .help(hasTwoRings
+                                ? "Switch the right ring directly to mode \(i + 1)"
+                                : "Switch the second dial directly to mode \(i + 1)")
                         }
                     }
                 }
@@ -195,6 +208,10 @@ struct ButtonBindingControl: View, Equatable {
         .accessibilityLabel("Click action menu")
     }
 
+    /// Two touch rings, as on the Cintiq 24HD: menus and labels say left and
+    /// right instead of first and second.
+    private var hasTwoRings: Bool { offersSecondDial && !isMechanicalDialHardware }
+
     // MARK: - Visual state
 
     private var fieldText: String {
@@ -214,6 +231,23 @@ struct ButtonBindingControl: View, Equatable {
         // device-unaware because presets and undo text share it.
         if dialToggleControl == .second, binding.kind == .ringCycle2 {
             return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
+        }
+        if hasTwoRings {
+            switch binding.kind {
+            case .ringCycle:
+                return String(localized: "Left Ring: Cycle", comment: "Button action: cycle the left touch ring's mode")
+            case .ringSelectSlot:
+                return String(
+                    localized: "Left Ring: Mode \(binding.keyCode + 1)",
+                    comment: "Button action: jump the left touch ring to a mode slot")
+            case .ringCycle2:
+                return String(localized: "Right Ring: Cycle", comment: "Button action: cycle the right touch ring's mode")
+            case .ringSelectSlot2:
+                return String(
+                    localized: "Right Ring: Mode \(binding.keyCode + 1)",
+                    comment: "Button action: jump the right touch ring to a mode slot")
+            default: break
+            }
         }
         if isMechanicalDialHardware {
             switch binding.kind {

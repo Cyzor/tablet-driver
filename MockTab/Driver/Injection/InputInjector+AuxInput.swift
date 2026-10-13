@@ -131,10 +131,9 @@ extension InputInjector {
 
         let ringPos = ring1?.position.map { UInt8($0) } ?? 0x7F
         let now = CFAbsoluteTimeGetCurrent()
-        // A slow finger can read as lifted for a frame mid-turn and come back
-        // several steps on (PTH-660 capture, 2026-09-27: 41 → no contact →
-        // 36 after 320 ms). Treat a quick, nearby re-touch as the same touch
-        // so that distance isn't dropped.
+        // A slow finger can read as lifted mid-turn and land a few steps on.
+        // Treat a quick, nearby re-touch as the same touch so that distance
+        // isn't dropped.
         var fromPos = lastRingPos
         if touchRingActive, lastRingPos == 0x7F, ringLiftPos != 0x7F,
            now - ringLiftTime < Self.ringDropoutBridge {
@@ -163,9 +162,8 @@ extension InputInjector {
         if !touchRingActive { ringAccum = 0 }
         lastRingPos = touchRingActive ? ringPos : 0x7F
 
-        // ── Touch ring 2 (DTK-2400 right bezel) ──────────────────────────
-        // Reads control 1: the 24HD's rings mirror each other.
-        let ring2Slot = activeSlot
+        // ── Touch ring 2 (Cintiq 24HD right side), with its own modes ─────
+        let ring2Slot = snap.rotary(.second).activeSlot
         if !hasMechanicalDial, let slot = ring2Slot, slot.action == .zoom || slot.action == .rotate {
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
             if touchRing2Active, !ring2GestureOpen {
@@ -195,8 +193,7 @@ extension InputInjector {
         if !touchRing2Active { ring2Accum = 0 }
         lastRing2Pos = touchRing2Active ? ring2Pos : 0x7F
 
-        // ── Touch strips (Intuos3 WS) — share touchRingSlots ───────────────────
-        // Strips are linear (no wrap); each zone step maps 1:1 to a scroll event.
+        // ── Touch strips (Intuos3 WS): ring 1's modes, no wrap ─────────────────
 
         // Strip 1 (left).
         let s1pos = pad.strips.first?.position.map { UInt8($0) } ?? 0xFF

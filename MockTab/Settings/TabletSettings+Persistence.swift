@@ -375,21 +375,32 @@ extension TabletSettings {
         }
     }
 
-    /// Loads `rotaries`, or defaults when nothing is stored. No migration —
-    /// see `RotarySet.resize`.
+    /// Loads `rotaries` from the most specific level that stores ring modes,
+    /// or defaults. Where that level has only the shared `touchRingSlots`
+    /// (a touch-ring tablet set up before its rings went independent), every
+    /// control starts as a copy of it. Nothing is written until an edit.
     func loadRotaries(controlCount: Int) {
+        let key = "rotariesJSON", sharedKey = "touchRingSlotsJSON"
+        let seeds = rotariesSeedFromSharedModes
         var data: Data?
-        if let override = effectiveOverride, override.overriddenKeys.contains("rotariesJSON") {
-            data = ud.data(forKey: appOverrideKeyPrefix(override) + "rotariesJSON")
-        } else if let preset = activeProfile, preset.overriddenKeys.contains("rotariesJSON") {
-            data = ud.data(forKey: profileKeyPrefix(preset) + "rotariesJSON")
+        var seedFromShared = false
+        if let override = effectiveOverride,
+           override.overriddenKeys.contains(key) || (seeds && override.overriddenKeys.contains(sharedKey)) {
+            data = ud.data(forKey: appOverrideKeyPrefix(override) + key)
+            seedFromShared = data == nil
+        } else if let preset = activeProfile,
+                  preset.overriddenKeys.contains(key) || (seeds && preset.overriddenKeys.contains(sharedKey)) {
+            data = ud.data(forKey: profileKeyPrefix(preset) + key)
+            seedFromShared = data == nil
         } else {
-            data = ud.data(forKey: devicePrefix + "rotariesJSON")
+            data = ud.data(forKey: devicePrefix + key)
+            seedFromShared = data == nil && seeds && ud.data(forKey: devicePrefix + sharedKey) != nil
         }
 
         let wasIndependent = rotaries.controlsAreIndependent
+        var loaded: RotarySet
         if let data {
-            guard var stored = try? JSONDecoder().decode(RotarySet.self, from: data) else {
+            guard let stored = try? JSONDecoder().decode(RotarySet.self, from: data) else {
                 rotariesLoadFailed = true
                 settingsLogger.error("rotariesJSON data exists but failed to decode; blocking overwrite")
                 isApplyingRotaryCapability = true
@@ -397,27 +408,33 @@ extension TabletSettings {
                 isApplyingRotaryCapability = false
                 return
             }
-            rotariesLoadFailed = false
-            stored.controlsAreIndependent = wasIndependent
-            stored.resize(to: controlCount)
-            isApplyingRotaryCapability = true
-            rotaries = stored
-            isApplyingRotaryCapability = false
-            return
+            loaded = stored
+        } else if seedFromShared {
+            loaded = RotarySet(controls: [
+                RotaryConfig(slots: touchRingSlots, activeSlotIndex: touchRingActiveSlotIndex),
+            ])
+        } else {
+            loaded = RotarySet(controls: [RotaryConfig(slots: defaultRingSlots)])
         }
-
         rotariesLoadFailed = false
-        var fresh = RotarySet(controls: [RotaryConfig()], controlsAreIndependent: wasIndependent)
-        fresh.resize(to: controlCount)
+        loaded.controlsAreIndependent = wasIndependent
+        loaded.resize(to: controlCount)
         isApplyingRotaryCapability = true
-        rotaries = fresh
+        rotaries = loaded
         isApplyingRotaryCapability = false
     }
 
     /// Applies the tablet's rotary layout at connect time and reloads under
     /// it; the stored blob's device prefix isn't known any earlier.
-    func applyRotaryHardware(controlCount: Int, independent: Bool) {
+    /// `seedFromSharedModes` is for touch-ring tablets, whose modes used to
+    /// live in `touchRingSlots`.
+    func applyRotaryHardware(
+        controlCount: Int, independent: Bool, seedFromSharedModes: Bool,
+        defaultSlots: [ControlSlot] = ControlSlot.defaults
+    ) {
         controlsAreIndependent = independent
+        rotariesSeedFromSharedModes = seedFromSharedModes
+        defaultRingSlots = defaultSlots
         loadRotaries(controlCount: max(1, controlCount))
     }
 
@@ -491,46 +508,33 @@ extension TabletSettings {
         touchRingSlots = ControlSlot.defaults
         touchRingActiveSlotIndex = 0
         touchRingActiveSlotIndex2 = 0
-        rotaries = rotaries.resetToDefaults()
+        rotaries = rotaries.resetToDefaults(slots: defaultRingSlots)
     }
 
     // MARK: - First-run defaults
 
-    /// Writes sensible express key defaults for this device if the user has never
-    /// configured them (i.e. no stored value exists in UserDefaults).
-    ///
-    /// Physical key order for PTH-660/860 (8-key Intuos Pro layout, bits 0–7):
-    ///   The bitmask assignment vs. physical position is confirmed by live
-    ///   capture.  Defaults chosen for cross-app utility in digital art:
-    ///     0  ⌘Z    Undo          (universal)
-    ///     1  ⌘⇧Z   Redo          (universal)
-    ///     2  Space  Pan/scroll    (Photoshop, Krita, Illustrator, Affinity)
-    ///     3  ⌥      Eyedropper   (all major painting apps; hold for sample)
-    ///     4  ⌃      Control      (brush-size modifier in Krita / Blender)
-    ///     5–7  —    None          (leave open for user assignment)
-    func applyExpressKeyDefaults(vendorID: Int = 0x056A) {
+    /// Writes the default ExpressKey bindings if this device has none stored.
+    func applyExpressKeyDefaults(vendorID: Int = 0x056A, splitPad: Bool = false) {
         guard ud.string(forKey: devicePrefix + "expressKeyBindings") == nil else { return }
-        expressKeyBindings = Self.defaultExpressKeyBindings(vendorID: vendorID)
+        expressKeyBindings = Self.defaultExpressKeyBindings(vendorID: vendorID, splitPad: splitPad)
     }
 
-    /// Default express key bindings: keys 1-4 are modifier keys (⌘ ⌥ ⌃ ⇧).
-    /// Rest are unbound (.none).
-    /// 16-entry layout for dual-ring Cintiq devices (indices 0–15).
-    /// Indices 0–2  = left  toggle buttons (near ring), 3–7  = left  express keys.
-    /// Indices 8–10 = right toggle buttons (near ring), 11–15 = right express keys.
-    /// Devices with only 8 buttons use indices 0–7; the upper 8 entries are ignored.
+    /// Default ExpressKey bindings, 16 entries; 8-key tablets use the first
+    /// eight. Keys 1–4 hold ⌘ ⌥ ⌃ ⇧, and 9–12 repeat them for the right
+    /// side of a two-sided pad. On the Cintiq 24HD (`splitPad`), each side's
+    /// first three keys pick that ring's modes instead. A Quick Keys' index 8
+    /// is its mode button, so it stays unbound there.
     ///
-    /// Xencelabs Quick Keys is the one exception: its index 8 isn't a mirrored
-    /// express key at all — XencelabsDecoder.decodeAux maps it to the puck's
-    /// physical mode button (see that file's header comment), which this driver
-    /// treats as "Ring: Cycle". Defaulting it to ⌘ like the Cintiq mirror slot
-    /// meant every mode-button press quietly asserted Command, which then rode
-    /// along with whichever express key the user pressed next and wouldn't let go.
-    ///
-    /// Shared by `applyExpressKeyDefaults` (first-run) and the Buttons pane's
-    /// "Reset Pane to Defaults" action, so the two can't drift apart again.
-    static func defaultExpressKeyBindings(vendorID: Int = 0x056A) -> [ButtonBinding] {
-        [
+    /// Shared by first-run defaults and the Buttons pane's reset.
+    static func defaultExpressKeyBindings(vendorID: Int = 0x056A, splitPad: Bool = false) -> [ButtonBinding] {
+        if splitPad {
+            // Cintiq 24HD: each side's first three keys pick that ring's modes.
+            let left = (0..<3).map { ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16($0)) }
+            let right = (0..<3).map { ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16($0)) }
+            let rest = [ButtonBinding](repeating: .none, count: 5)
+            return left + rest + right + rest
+        }
+        return [
             ButtonBinding(modifierOnly: .command),  // 0  left key 1 → ⌘
             ButtonBinding(modifierOnly: .option),  // 1  left key 2 → ⌥
             ButtonBinding(modifierOnly: .control),  // 2  left key 3 → ⌃

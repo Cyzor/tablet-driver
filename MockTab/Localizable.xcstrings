@@ -5399,6 +5399,50 @@
         }
       }
     },
+    "Cycle (Left Ring)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln (linker Ring)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo (anillo izquierdo)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り替え（左リング）"
+          }
+        }
+      }
+    },
+    "Cycle (Right Ring)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln (rechter Ring)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo (anillo derecho)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り替え（右リング）"
+          }
+        }
+      }
+    },
     "Cycle (Second Dial)" : {
       "localizations" : {
         "de" : {
@@ -5491,6 +5535,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "リングモードを切り替える"
+          }
+        }
+      }
+    },
+    "Cycle through the left ring's modes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modi des linken Rings durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos del anillo izquierdo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左リングのモードを切り替える"
+          }
+        }
+      }
+    },
+    "Cycle through the right ring's modes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modi des rechten Rings durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos del anillo derecho"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右リングのモードを切り替える"
           }
         }
       }
@@ -10129,6 +10217,50 @@
         }
       }
     },
+    "Jump Left Ring to Mode %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linken Ring auf Modus %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saltar el anillo izquierdo al modo %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左リングをモード %lld へ"
+          }
+        }
+      }
+    },
+    "Jump Right Ring to Mode %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechten Ring auf Modus %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saltar el anillo derecho al modo %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右リングをモード %lld へ"
+          }
+        }
+      }
+    },
     "Jump Second Dial to Mode %lld" : {
       "localizations" : {
         "de" : {
@@ -10574,6 +10706,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "左クリック"
+          }
+        }
+      }
+    },
+    "Left Ring: Cycle" : {
+      "comment" : "Button action: cycle the left touch ring's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linker Ring: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anillo izquierdo: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左リング：切り替え"
+          }
+        }
+      }
+    },
+    "Left Ring: Mode %u" : {
+      "comment" : "Button action: jump the left touch ring to a mode slot",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linker Ring: Modus %u"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anillo izquierdo: modo %u"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左リング：モード %u"
           }
         }
       }
@@ -16152,6 +16330,52 @@
         }
       }
     },
+    "Right Ring: Cycle" : {
+      "comment" : "Button action: cycle the right touch ring's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechter Ring: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anillo derecho: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右リング：切り替え"
+          }
+        }
+      }
+    },
+    "Right Ring: Mode %u" : {
+      "comment" : "Button action: jump the right touch ring to a mode slot",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechter Ring: Modus %u"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anillo derecho: modo %u"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右リング：モード %u"
+          }
+        }
+      }
+    },
     "Ring — Left" : {
       "comment" : "Live Input table row label — left touch ring on dual-ring tablets",
       "localizations" : {
@@ -18766,6 +18990,50 @@
         }
       }
     },
+    "Switch the left ring directly to mode %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linken Ring direkt zu Modus %lld wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar el anillo izquierdo directamente al modo %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左リングを直接モード %lld に切り替える"
+          }
+        }
+      }
+    },
+    "Switch the right ring directly to mode %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechten Ring direkt zu Modus %lld wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar el anillo derecho directamente al modo %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右リングを直接モード %lld に切り替える"
+          }
+        }
+      }
+    },
     "Switch the second dial directly to mode %lld" : {
       "localizations" : {
         "de" : {
@@ -19614,7 +19882,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Umschalt-Tasten — Links"
+            "value" : "Umschalttasten — Links"
           }
         },
         "en" : {

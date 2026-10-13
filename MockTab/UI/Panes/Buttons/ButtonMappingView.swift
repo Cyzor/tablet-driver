@@ -237,9 +237,9 @@ struct ButtonMappingView: View {
         let toolDefaults: ButtonToolState = (.leftClick, .eraser, .rightClick, isMouse ? .rightClick : .middleClick)
         let vendorID = tabletManager.context(forKey: instanceKey)?.vendorID ?? 0x056A
         let settingsDefaults: ButtonSettingsState = (
-            TabletSettings.defaultExpressKeyBindings(vendorID: vendorID),
+            TabletSettings.defaultExpressKeyBindings(vendorID: vendorID, splitPad: hasSplitPadLayout),
             ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2),
-            ControlSlot.defaults, 0, 0, settings.rotaries.resetToDefaults(), false
+            ControlSlot.defaults, 0, 0, settings.rotaries.resetToDefaults(slots: settings.defaultRingSlots), false
         )
 
         settings.undoManager?.beginUndoGrouping()
@@ -446,19 +446,10 @@ struct ButtonMappingView: View {
             }
         }
 
-        // Dual-ring hardware without the Cintiq's split pad (the gen-3 Intuos
-        // Pro's two dials) still needs both rings shown, so borrow the
-        // dual-sided layout's Left/Right headers. Both rings drive one shared
-        // mode setting — mirrored, exactly as on the Cintiq — so the right
-        // section is a second live view of the same slots, not its own
-        // storage. A per-ring binding would need the work listed in
-        // WacomKnownDevice.swift's ring2 TODO.
-        // The direction toggle is device-wide, so it belongs to whichever of
-        // these sections comes last rather than repeating in each.
-        //
-        // Mechanical-dial devices (PTK-470/670/870) get "Dial" instead of
-        // "Touch Ring" in every label here — confirmed hardware, not a
-        // capacitive ring — see `hasMechanicalDial`'s doc comment.
+        // Two rotaries (Cintiq 24HD rings, PTK-670/870 dials) get a Left and
+        // a Right section, each with its own modes. The direction toggle is
+        // device-wide, so it goes after the last section. Mechanical dials
+        // say "Dial" instead of "Touch Ring".
         let ringSectionLabel = hasMechanicalDial
             ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
             : String(localized: "Touch Ring", comment: "Section header / row label for touch ring")
@@ -529,22 +520,16 @@ struct ButtonMappingView: View {
         }
     }
 
-    /// Center-click row plus the ring's mode list — the body of the primary
-    /// ring's section, shared by the single-ring and dual-ring headers above.
+    /// Center row plus the ring's mode list, for the primary ring's section.
     ///
-    /// Mechanical-dial hardware (PTK-470/670/870) has no center-click action
-    /// at all — confirmed on real hardware 2026-09-16 — so the Center row and
-    /// the diagram's clickable center are both omitted for it. That
-    /// hardware's real mode-cycle trigger is an ExpressKey ("Dial toggle"),
-    /// not a ring/dial button; see `IntuosV3Decoder.decodeAuxReport`'s doc
-    /// comment for the unwired `touchRing2ButtonDown` bit this would need.
+    /// PTK dials have no center press; their mode key is the middle
+    /// ExpressKey of the dial's cluster, shown as "Dial Toggle". The 24HD's
+    /// rings have no center either; three keys beside each ring pick its
+    /// modes. The remote's center button belongs to its firmware.
     @ViewBuilder
     private func touchRingBlock(lb: LiveButtonState) -> some View {
+        let hasCenterButton = !hasMechanicalDial && !isRemote && !hasSplitPadLayout
         if hasMechanicalDial {
-            // Real hardware control: the center ExpressKey of this dial's
-            // own 5-key cluster (not a ring/dial press — those don't exist
-            // on this hardware). Defaults to cycling this dial's modes,
-            // matching Wacom's own stock "Dial toggle" assignment.
             buttonRow(
                 String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes"),
                 isActive: lb.touchRingButtonDown,
@@ -556,7 +541,7 @@ struct ButtonMappingView: View {
                 isMechanicalDialHardware: true,
                 dialToggleControl: .first,
                 recordRequestToken: centerRecordToken)
-        } else if !isRemote {
+        } else if hasCenterButton {
             buttonRow(
                 String(localized: "Center", comment: "Touch ring center button row label"),
                 isActive: lb.touchRingButtonDown,
@@ -573,8 +558,8 @@ struct ButtonMappingView: View {
                 : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
             isActive: lb.touchRingActive, showsDiagram: !hasMechanicalDial,
             showsModeBadge: hasMechanicalDial,
-            onCenterTap: hasMechanicalDial || isRemote ? nil : { centerRecordToken += 1 },
-            centerBinding: hasMechanicalDial || isRemote ? nil : settings.recordingBinding(
+            onCenterTap: hasCenterButton ? { centerRecordToken += 1 } : nil,
+            centerBinding: !hasCenterButton ? nil : settings.recordingBinding(
                 String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
                 get: { settings.touchRingButtonBinding },
                 set: { settings.touchRingButtonBinding = $0 }))
@@ -844,28 +829,18 @@ struct ButtonMappingView: View {
                 }
             ),
             ringSlotCount: spec?.ringSlotCount ?? 4,
-            // Only PTK-670/870-class hardware has a second, independent dial
-            // that needs its own toggle-key actions offered — see
-            // `hasMechanicalDial`'s doc comment.
-            offersSecondDial: hasDualRings && hasMechanicalDial,
+            offersSecondDial: hasDualRings,
             isMechanicalDialHardware: hasMechanicalDial
         )
     }
 
     // MARK: - Touch ring / strip slots section
 
-    /// The mode block for a ring or strip: label row, then the summary-list/
-    /// detail-editor component (which carries the clickable ring diagram when
-    /// `showsDiagram` is set — rings only, strips have no round schematic).
+    /// The mode block for a ring or strip: label row, then the mode list,
+    /// with the clickable ring diagram when `showsDiagram` is set.
     ///
-    /// `ring` selects which dial's live active-slot index this block reads —
-    /// `.primary` for the single ring, the left dial, or a strip; `.secondary`
-    /// for PTK-670/870's independent right dial. The underlying slot
-    /// *definitions* (`settings.touchRingSlots` — what each of the 3-4 modes
-    /// does) are still shared between both dials; only which slot is
-    /// currently active differs. Splitting slot definitions themselves per
-    /// dial is deferred, unstarted work — see
-    /// `project_ptk870_dial_ui_mislabeling_fix.md`.
+    /// `ring` picks the control: `.primary` for a single ring, a strip, or
+    /// the left ring or dial; `.secondary` for the right one.
     private enum RingIdentity { case primary, secondary }
 
     @ViewBuilder
