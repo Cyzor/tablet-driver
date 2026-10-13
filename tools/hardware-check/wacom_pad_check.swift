@@ -145,7 +145,8 @@ final class Tablet {
         hasLEDs = spec.ledCompanionPID != nil
         hasTwoTouchRings = spec.hasDualRings && !spec.hasMechanicalDial
         if let sensor = spec.touchCompanionPID, separateTouchSensors.contains(sensor) {
-            touchDecoder = DeviceDecoder(Wacom24HDTDecoder(), digitizer: spec.digitizerSpec, family: spec.family)
+            touchDecoder = DeviceDecoder.fixedLayoutTouch(
+                productID: sensor, digitizer: spec.digitizerSpec, family: spec.family)?.decoder
         }
     }
 

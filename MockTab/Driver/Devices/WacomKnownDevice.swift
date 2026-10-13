@@ -115,11 +115,8 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// applies to — see the coordinate provenance comments on each
     /// `touchMaxX`/`touchMaxY` this feeds in `WacomDeviceRegistry`.
     private var touchDecoders: [UInt8: PrecisionTouchDecoder] = [:]
-    /// Hand-written fixed-layout touch decoders (`Wacom24HDTDecoder`/
-    /// `Wacom27QHDTDecoder`), keyed by report ID, for the five product IDs
-    /// with no standard HID Digitizer descriptor to derive a
-    /// `PrecisionTouchDecoder` from. See `deriveFixedTouchDecoder` below —
-    /// NOT hardware-verified for any device it currently applies to.
+    /// Fixed-layout touch decoders, keyed by report ID. See
+    /// `deriveFixedTouchDecoder`.
     private var fixedTouchDecoders: [UInt8: DeviceDecoder] = [:]
     /// Called when the hardware serial is successfully queried from a WACOM_REPORT_USB
     /// (Report ID 0x03) feature report on USB/dongle connections. Serial is 0 if the
@@ -563,48 +560,16 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         }
     }
 
-    // Unverified on hardware: we have no capture from any of the four product
-    // IDs below. The byte layouts come from the Linux kernel
-    // (`wacom_24hdt_irq()`, `WACOM_24HDT` branch), and only synthetic test
-    // fixtures in TabletKit check them, so the registry keeps them at
-    // `.experimental`. Do not raise confidence, add another PID, or assume this
-    // is correct on a specific unit without a real capture confirming it first.
-    //
-    // Unlike `deriveTouchDecoders` above (which reads whatever descriptor an
-    // interface declares, generically), these decoders are hand-written for
-    // fixed vendor byte layouts keyed to specific product IDs — there is no
-    // descriptor to derive them from.
-    //
-    // 0x032C (Cintiq 27QHD Touch, DTH-2700) previously had an entry here
-    // routing it to `Wacom27QHDTDecoder` (report 0x05) — removed 2026-09-17
-    // after a capture showed the device actually emits report 0x88 on a
-    // standard HID Digitizer Touch Screen collection, which that decoder
-    // never matched and so silently discarded every real frame. That shape
-    // is exactly what `deriveTouchDecoders`'s generic path already handles;
-    // `Wacom27QHDTDecoder` is kept for any other WACOM_27QHDT device that
-    // might genuinely emit report 0x05, just not this one.
-    private static let fixedTouchDecoderPIDs: [Int: (reportID: UInt8, decoder: any TabletReportDecoder)] = [
-        0x0335: (0x01, Wacom24HDTDecoder()),  // Cintiq 13HD Touch (DTH-1300)
-        0x00F6: (0x01, Wacom24HDTDecoder()),  // Cintiq 24HD Touch (DTH-2400)
-        0x005E: (0x01, Wacom24HDTDecoder()),  // Cintiq 22HD Touch
-        0x005D: (0x01, Wacom24HDTDecoder()),  // Cintiq 22 / DTH2242 Touch
-    ]
-
-    /// Registers a hand-written fixed-layout touch decoder for `device` if
-    /// its own product ID is one of the five above — separate from
-    /// `deriveTouchDecoders`'s generic descriptor-reading path, since these
-    /// decoders have no descriptor to derive from. Checked before
-    /// `deriveTouchDecoders` runs its own report-ID reservation logic;
-    /// `touchDecoders`'s existing report ID space (0x21, 0x0C, etc.) never
-    /// overlaps these five products' 0x01/0x05, so there is no collision to
-    /// guard against today.
+    /// Registers the fixed-layout touch decoder for `device` when its own
+    /// product ID has one. These sensors' finger reports don't follow their
+    /// descriptor, so `deriveTouchDecoders` can't read them.
     private func deriveFixedTouchDecoder(from device: IOHIDDevice) {
         let pid = hidIntProperty(device, kIOHIDProductIDKey)
-        guard let entry = Self.fixedTouchDecoderPIDs[pid],
+        guard let entry = DeviceDecoder.fixedLayoutTouch(
+                productID: pid, digitizer: spec, family: deviceSpec.family),
             fixedTouchDecoders[entry.reportID] == nil
         else { return }
-        fixedTouchDecoders[entry.reportID] = DeviceDecoder(
-            entry.decoder, digitizer: spec, family: deviceSpec.family)
+        fixedTouchDecoders[entry.reportID] = entry.decoder
 
         // Vendor-format reports, but the descriptor still names the finger
         // X/Y range, the same place Linux reads it for these sensors.
