@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-"""Rebuild TabletKit's routing corpus.json from local captures (Notes/Scratch, untracked) and
-public recordings cloned under Notes/Scratch/upstream: bentiss/hid-devices
-and the kernel's HID selftests. Descriptors from linuxwacom/wacom-hid-descriptors
-go to corpus-linuxwacom.json, which keeps that database's ODbL license.
+"""Rebuild TabletKit's routing corpus.json from a folder of local captures and
+clones of public recordings: bentiss/hid-devices and the kernel's HID
+selftests. Descriptors from linuxwacom/wacom-hid-descriptors go to
+corpus-linuxwacom.json, which keeps that database's ODbL license.
 
 Keeps only what routing reads: each interface's top-level collections, per
 product ID and transport. No reports, serials, or submitter details.
 
-Usage (from the repo root): tools/build-interface-routing-corpus.py
+Usage (from the repo root):
+    tools/build-interface-routing-corpus.py <captures-dir> <upstream-dir>
+
+<upstream-dir> holds the clones, named hid-devices, linux-hid-selftests, and
+wacom-hid-descriptors. It may sit inside <captures-dir>; it's skipped there.
 """
-import json, os, zipfile
+import json, os, sys, zipfile
 from pathlib import Path
 
+if len(sys.argv) != 3:
+    sys.exit("usage: tools/build-interface-routing-corpus.py <captures-dir> <upstream-dir>")
 ROOT = Path(__file__).resolve().parents[1]
-SCRATCH = ROOT / "Notes" / "Scratch"
+CAPTURES = Path(sys.argv[1]).resolve()
+UPSTREAM = Path(sys.argv[2]).resolve()
 OUT = ROOT / "TabletKit" / "Tests" / "Fixtures" / "InterfaceRouting" / "corpus.json"
 WACOM_VIDS = {"0x056A", "0x0531"}
 REGISTRY = ROOT / "TabletKit" / "registry.json"
@@ -63,8 +70,8 @@ def top_level_collections(raw):
 
 
 def captures():
-    for dirpath, _, files in os.walk(SCRATCH):
-        if "upstream" in dirpath:
+    for dirpath, _, files in os.walk(CAPTURES):
+        if Path(dirpath).resolve().is_relative_to(UPSTREAM):
             continue
         for f in files:
             p = Path(dirpath) / f
@@ -102,7 +109,7 @@ for d in captures():
 
 # hid-recorder files: "D:n" starts a device, "I: bus vid pid", "R: len bytes".
 BUS = {"3": "USB", "5": "Bluetooth"}
-for p in (SCRATCH / "upstream" / "hid-devices").rglob("*.hid"):
+for p in (UPSTREAM / "hid-devices").rglob("*.hid"):
     dev = {}
     for line in p.read_text(errors="replace").splitlines():
         if line.startswith("D:"):
@@ -119,7 +126,7 @@ for p in (SCRATCH / "upstream" / "hid-devices").rglob("*.hid"):
                 devices.setdefault((dev["pid"], dev["transport"]), set()).add(json.dumps(tops))
 
 # Kernel selftests: {"rdesc": name, "info": (bus, vid, pid)} plus rdesc strings.
-selftest = SCRATCH / "upstream" / "linux-hid-selftests" / "test_wacom_generic.py"
+selftest = UPSTREAM / "linux-hid-selftests" / "test_wacom_generic.py"
 if selftest.exists():
     import re
     src = selftest.read_text()
@@ -145,7 +152,7 @@ write(devices, OUT)
 
 # linuxwacom sysinfo dumps: one "bus:vid:pid.instance.hid.bin" per interface.
 import re
-LW = SCRATCH / "upstream" / "wacom-hid-descriptors"
+LW = UPSTREAM / "wacom-hid-descriptors"
 lw = {}
 for p in LW.rglob("*.hid.bin"):
     m = re.fullmatch(r"([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4})\.[0-9A-Fa-f]+\.hid\.bin", p.name)

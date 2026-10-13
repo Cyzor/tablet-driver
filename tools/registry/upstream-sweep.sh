@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # Periodic upstream sweep: fetch libwacom, input-wacom, OTD and diff each
-# from the pin recorded in Notes/Scratch/upstream-pins.md to current HEAD.
+# from the pin recorded in <dir>/upstream-pins.md to current HEAD.
 #
-# Output is a single markdown report under Notes/Scratch/upstream-sweep-<date>.md.
-# Bump the SHAs in upstream-pins.md by hand after reviewing the report.
+# <dir> holds the clones under upstream/ and the pins file. The markdown
+# report is written there as upstream-sweep-<date>.md. Bump the SHAs in
+# upstream-pins.md by hand after reviewing the report.
 #
-# Usage: tools/registry/upstream-sweep.sh
+# Usage: tools/registry/upstream-sweep.sh <dir>
 
 set -euo pipefail
 
-# Repo root is two levels up: this script lives in tools/registry/.
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-UPSTREAM="$REPO_ROOT/Notes/Scratch/upstream"
-PINS="$REPO_ROOT/Notes/Scratch/upstream-pins.md"
-OUT="$REPO_ROOT/Notes/Scratch/upstream-sweep-$(date +%Y-%m-%d).md"
+DIR="${1:?usage: tools/registry/upstream-sweep.sh <dir>}"
+UPSTREAM="$DIR/upstream"
+PINS="$DIR/upstream-pins.md"
+OUT="$DIR/upstream-sweep-$(date +%Y-%m-%d).md"
 
 if [[ ! -f "$PINS" ]]; then
   echo "missing $PINS" >&2
