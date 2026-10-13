@@ -1126,7 +1126,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             device, kIOHIDReportTypeFeature, reportID, &buf, &bufSize)
         // Bytes 4–7 are the serial; the firmware version before them stays.
         var redacted = result == kIOReturnSuccess ? Array(buf.prefix(max(0, bufSize))) : []
-        for i in 4..<min(8, redacted.count) { redacted[i] = 0 }
+        for i in redacted.indices where (4..<8).contains(i) { redacted[i] = 0 }
         CaptureEngine.recordAutoInitRead(
             purpose: "hardware serial", reportID: Int(reportID), ioReturn: result,
             reply: redacted, usagePage: hidIntProperty(device, kIOHIDPrimaryUsagePageKey))
