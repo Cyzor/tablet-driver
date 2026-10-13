@@ -144,7 +144,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// Last accepted pen point, for the wireless outlier check below. Reset
     /// on proximity re-entry so a new stroke isn't compared to a stale point.
     private var wirelessLastAcceptedPoint: TabletPoint?
-    /// Stage 1 (log-only) outlier detection for ACK-40401 cursor chatter: a
+    /// Log-only outlier detection for ACK-40401 cursor chatter: a
     /// corrupted byte over RF tends to jump one axis while the other stays
     /// put, unlike a real fast stroke, which moves both together.
     private static let wirelessOutlierFraction = 0.2

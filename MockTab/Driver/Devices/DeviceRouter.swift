@@ -33,9 +33,7 @@ enum DeviceRouter {
         let onBattery: (Int, Bool) -> Void
         let onHardwareSerial: (UInt32) -> Void
         let onWheel: (Int, Int) -> Void
-        /// Per-frame finger-touch contact set.  Empty array signals all
-        /// fingers lifted.  No shipping decoder emits this yet; reserved
-        /// for the DTH-* touch-capable devices (Phase 1 plumbing).
+        /// Per-frame finger contacts; an empty array means every finger lifted.
         let onTouch: ([TouchContact]) -> Void
         /// Called once when a wireless dongle (ACK-40401) identifies the
         /// paired tablet's PID from the 0x80 status report.

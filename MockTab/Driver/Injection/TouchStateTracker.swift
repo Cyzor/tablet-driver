@@ -218,10 +218,9 @@ struct TouchStateTracker {
 
     private(set) var mode: Mode = .idle
 
-    /// Per-contact last screen-space position, keyed by contact id.  Used to
-    /// compute the per-frame delta.  In `.scroll` mode the centroid of the
-    /// contacts is what drives the delta — two-finger spread/rotate is
-    /// deliberately ignored (Phase 2 territory).
+    /// Last screen-space position per contact id, for the per-frame delta.
+    /// In `.scroll` mode the contacts' centroid drives the delta, and spread
+    /// and rotate are ignored.
     private var lastPositions: [Int: CGPoint] = [:]
 
     /// Smoothed screen-space speed (points/sec) for `.pointer` mode, feeding

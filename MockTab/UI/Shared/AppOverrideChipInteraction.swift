@@ -276,9 +276,9 @@ struct ChipCollapsedDragSource: ViewModifier {
 /// chip-reorder drags. Hit-tests the pointer against the chips' *current*
 /// frames (reported per layout pass via `ChipFramesKey`) to drive the
 /// gap-opening indicator, and commits the reorder exactly once on drop.
-/// Being an NSView rather than a SwiftUI `.dropDestination` sibling inside
-/// the ScrollView's content is also what will let Stage 5 accept drops past
-/// the last chip without hitting the ScrollView intrinsic-sizing trap.
+/// An NSView rather than a SwiftUI `.dropDestination` inside the
+/// ScrollView's content, so it can accept drops past the last chip without
+/// the ScrollView's intrinsic-sizing trap.
 struct ChipRowDropZone: NSViewRepresentable {
     /// Current chip frames in the row's coordinate space, keyed by bundle ID.
     var chipFrames: [String: CGRect]

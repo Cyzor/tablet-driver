@@ -282,7 +282,7 @@ extension WacomKnownDevice {
             kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 60, 60, 0, 0
         ) { [weak self] _ in
             guard let self, let identity = self.xencelabsDongleIdentity else { return }
-            // Stage 1 staleness watchdog (log-only): silence past 2 poll
+            // Log-only staleness watchdog: silence past 2 poll
             // intervals may mean the link dropped without an explicit
             // `.wireless(.lost)`. Logged once per silence, on the first poll
             // past the threshold: a sleeping puck is silent for hours.
