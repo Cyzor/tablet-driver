@@ -163,12 +163,10 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     private static let toolAnnouncementRecoveryCooldown: TimeInterval = 8.0
     private var lastAnnouncementRecoveryAttemptAt = Date.distantPast
 
-    /// Last real (non-synthesized) `.toolEnter` identity, kept across
-    /// proximity exits — unlike `DecoderState.lastToolCode`/`lastSerial`,
-    /// which the decoder zeroes on every exit for its own change-detection.
-    /// Used as the missed-announcement fallback instead of a generic name:
-    /// most sessions use one pen, so a miss usually means the same pen
-    /// returned. See [[project_ptk870_bt_tool_identity_lost_on_pen_swap]].
+    /// Last real (not synthesized) tool identity, kept across proximity
+    /// exits, unlike the decoder's own, which it clears on every exit. The
+    /// fallback when an announcement is missed: most sessions use one pen,
+    /// so a miss usually means the same pen came back.
     private var lastRealToolIdentity: ToolIdentity?
 
     /// Over USB, notices a tablet whose init didn't take (`usbIdleReport`)
