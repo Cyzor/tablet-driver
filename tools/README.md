@@ -41,6 +41,10 @@ Small tools for watching what a tablet sends and what the system does with it. M
 
 Older capture files may contain a device serial number. `triage_discovery.py` flags it. Remove the serial before committing, since captures end up in public issues.
 
+## hardware-check/
+
+`hardware-check.sh` runs short checks against the tablets that are connected and skips what's already passed: every key, ring, strip, pen, and touch surface on a Wacom tablet, every Quick Keys and Pen Display control, a Bluetooth-to-USB switch compared across two builds, and, when asked for, pen latency while the Quick Keys updates its display. It builds the commits it needs and relaunches MockTab as it goes. The header lists the checks and options.
+
 ## latency/ and event-probe/
 
 `latency/` measures the time from a tablet report to the cursor moving. `latency_ab.sh` compares MockTab with another driver, and `strain-bench.sh` measures MockTab with the CPU, GPU, or memory under load. `event-probe/` records the events a driver posts so you can find fields MockTab leaves out.
