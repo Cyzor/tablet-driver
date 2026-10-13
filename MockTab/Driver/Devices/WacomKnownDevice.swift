@@ -961,14 +961,6 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         executeInitSteps()
     }
 
-    /// See the `TabletDevice` protocol doc. `spec` is a plain `var`, already
-    /// reassigned at runtime elsewhere (the wireless-dongle paired-PID
-    /// update in `handleReport`) — this follows the same pattern, just for
-    /// one field instead of the whole struct.
-    func setDebugButton2Source(_ source: DigitizerSpec.DebugBitSource?) {
-        spec.debugButton2Source = source
-    }
-
     /// Execute the device's init sequence (`deviceSpec.initSteps`) from `index` onward.
     ///
     /// Runs synchronously until a `.delay` step is encountered; at that point the
