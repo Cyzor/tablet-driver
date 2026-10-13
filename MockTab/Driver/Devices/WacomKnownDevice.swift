@@ -824,6 +824,10 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
             var size = CFIndex(current.count)
             let ret = IOHIDDeviceGetReport(
                 device, kIOHIDReportTypeFeature, CFIndex(bytes[0]), &current, &size)
+            CaptureEngine.recordAutoInitRead(
+                purpose: "touch mode", reportID: Int(bytes[0]), ioReturn: ret,
+                reply: ret == kIOReturnSuccess ? Array(current.prefix(max(0, size))) : [],
+                usagePage: hidIntProperty(device, kIOHIDPrimaryUsagePageKey))
             guard ret == kIOReturnSuccess, size == current.count, current[0] == bytes[0],
                 current != bytes
             else { continue }
@@ -1082,6 +1086,9 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     ) {
         InitStepRunner.confirmMode(rule, on: interface) { o in
             let reply = o.reply.map { String(format: "%02X", $0) }.joined(separator: " ")
+            CaptureEngine.recordAutoInitRead(
+                purpose: "mode read-back", reportID: Int(rule.report[0]),
+                ioReturn: o.readResult, reply: o.reply, usagePage: usagePage)
             if let written = o.writeResult {
                 CaptureEngine.recordAutoInitReport(
                     reportID: Int(rule.report[0]), value: Int(rule.report[1]),
@@ -1117,6 +1124,12 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
         let result = IOHIDDeviceGetReport(
             device, kIOHIDReportTypeFeature, reportID, &buf, &bufSize)
+        // Bytes 4–7 are the serial; the firmware version before them stays.
+        var redacted = result == kIOReturnSuccess ? Array(buf.prefix(max(0, bufSize))) : []
+        for i in 4..<min(8, redacted.count) { redacted[i] = 0 }
+        CaptureEngine.recordAutoInitRead(
+            purpose: "hardware serial", reportID: Int(reportID), ioReturn: result,
+            reply: redacted, usagePage: hidIntProperty(device, kIOHIDPrimaryUsagePageKey))
 
         guard result == kIOReturnSuccess && bufSize >= 8 else {
             // Device does not support or failed to respond to Report ID 0x03.

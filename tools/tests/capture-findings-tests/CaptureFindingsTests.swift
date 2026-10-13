@@ -75,6 +75,27 @@ func makeResult(
 // MARK: - Checks
 
 func runChecks() {
+// MARK: Setup reads
+
+// `initReads` round-trips, and a file from before it still decodes.
+do {
+    var result = makeResult()
+    result.initReads = [CaptureInitRead(
+        purpose: "mode read-back", reportID: 2, reply: "0202", interfaceUsagePage: "0xFF0D")]
+    let encoder = JSONEncoder()
+    encoder.dateEncodingStrategy = .iso8601
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    let data = try! encoder.encode(result)
+    let back = try? decoder.decode(DiscoveryResult.self, from: data)
+    check(back?.initReads?.first?.reply == "0202", "initReads round-trips")
+    var json = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+    json["initReads"] = nil
+    let older = try? decoder.decode(
+        DiscoveryResult.self, from: try! JSONSerialization.data(withJSONObject: json))
+    check(older != nil && older?.initReads == nil, "a file without initReads still decodes")
+}
+
 // MARK: Hardware survey wiring
 
 // Issue #19's shape: only the Cintiq Pro 16's touch sensor reached USB.

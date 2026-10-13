@@ -45,6 +45,23 @@ struct CaptureInitReport: Codable, Identifiable {
     var valueHex: String { String(format: "0x%02X", value) }
 }
 
+/// One read the driver made while setting a tablet up, and the reply.
+///
+/// With the descriptor, these are what a replay needs to stand in for the
+/// tablet at connect.
+struct CaptureInitRead: Codable {
+    /// "mode read-back", "hardware serial", or "touch mode".
+    let purpose: String
+    let reportID: Int
+    /// `IOReturn` as hex when the read failed; nil on success.
+    var ioReturn: String?
+    /// The reply as hex, empty when nothing came back. A hardware serial's
+    /// serial bytes are zeroed.
+    let reply: String
+    /// Primary usage page of the interface read, hex.
+    var interfaceUsagePage: String?
+}
+
 // MARK: - Discovery Result
 
 /// Output of a discovery session. Records every report ID seen and, for each,
@@ -196,7 +213,10 @@ struct DiscoveryResult: Codable {
     ///
     /// v26 adds `coverage`, and `bluetoothLink` loses the tablet's address.
     /// Optional, so v25 readers and files still decode.
-    var captureVersion: Int = 26
+    ///
+    /// v27 adds `initReads`: the replies to the driver's setup reads.
+    /// Optional, so v26 readers and files still decode.
+    var captureVersion: Int = 27
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -226,6 +246,9 @@ struct DiscoveryResult: Codable {
     /// the automatic `initSteps` sent at open and any the tester triggered by
     /// hand — `automatic` tells them apart. Empty only when neither happened.
     var initReports: [CaptureInitReport]?
+    /// Setup reads the driver made since launch, oldest first. Nil when
+    /// there were none.
+    var initReads: [CaptureInitRead]?
     /// Wacom tool codes observed while collecting, as hex (e.g. `0x0802` pen,
     /// `0x080A` eraser). The clearest evidence of which tools a device reports
     /// distinctly, which no amount of byte-level analysis recovers on its own.

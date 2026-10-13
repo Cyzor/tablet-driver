@@ -129,6 +129,33 @@ final class CaptureEngine: ObservableObject {
         autoInitReports.withLock { $0 }
     }
 
+    /// Setup reads and their replies, newest last, kept like
+    /// `autoInitReports` and with the same limit.
+    private nonisolated static let autoInitReads =
+        OSAllocatedUnfairLock<[CaptureInitRead]>(initialState: [])
+
+    /// Record one setup read. `reply` is what the device returned, already
+    /// stripped of anything identifying.
+    nonisolated static func recordAutoInitRead(
+        purpose: String, reportID: Int, ioReturn: IOReturn, reply: [UInt8], usagePage: Int
+    ) {
+        let ok = ioReturn == kIOReturnSuccess
+        let read = CaptureInitRead(
+            purpose: purpose,
+            reportID: reportID,
+            ioReturn: ok ? nil : String(format: "0x%08X", ioReturn),
+            reply: reply.map { String(format: "%02x", $0) }.joined(),
+            interfaceUsagePage: String(format: "0x%04X", usagePage))
+        autoInitReads.withLock { list in
+            list.append(read)
+            if list.count > autoInitReportLimit { list.removeFirst(list.count - autoInitReportLimit) }
+        }
+    }
+
+    nonisolated static func autoInitReadsSnapshot() -> [CaptureInitRead] {
+        autoInitReads.withLock { $0 }
+    }
+
     /// One device a sweep refused to open, identified only by its numbers.
     struct ExcludedDevice: Hashable {
         let vendorID: Int
@@ -924,6 +951,10 @@ final class CaptureEngine: ObservableObject {
             // reduced mode, so they shouldn't sit below a manual retry.
             initReports: {
                 let all = Self.autoInitReportsSnapshot() + initReportsSent
+                return all.isEmpty ? nil : all
+            }(),
+            initReads: {
+                let all = Self.autoInitReadsSnapshot()
                 return all.isEmpty ? nil : all
             }(),
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
