@@ -34,7 +34,7 @@ if [ ! -f "$LIB" ] || [ -n "$(find "$SRC_DIR" -name '*.swift' -newer "$LIB" 2>/d
     # compile can't leave a truncated archive that later runs treat as current.
     STAGE="$(mktemp -d)"
     trap 'rm -rf "$STAGE"' EXIT
-    swiftc -O -emit-module -emit-library -static -module-name TabletKit \
+    swiftc -O -emit-module -emit-library -static -module-name TabletKit -package-name TabletKit \
         -emit-module-path "$STAGE/TabletKit.swiftmodule" -o "$STAGE/libTabletKit.a" $KIT_SRCS
     mv "$STAGE/TabletKit.swiftmodule" "$CACHE/TabletKit.swiftmodule"
     mv "$STAGE/libTabletKit.a" "$LIB"

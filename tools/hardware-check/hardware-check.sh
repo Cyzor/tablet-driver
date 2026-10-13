@@ -57,7 +57,7 @@ mkdir -p "$WORK/bin" "$RESULTS" "$WORK/tabletkit"
 KIT="$WORK/tabletkit"
 if [[ ! -f "$KIT/libTabletKit.a" || -n $(find "$ROOT/TabletKit/Sources/TabletKit" -name '*.swift' -newer "$KIT/libTabletKit.a") ]]; then
     echo "hardware-check: building TabletKit for the checker"
-    swiftc -O -parse-as-library -module-name TabletKit -emit-module \
+    swiftc -O -parse-as-library -module-name TabletKit -package-name TabletKit -emit-module \
         -emit-module-path "$KIT/TabletKit.swiftmodule" -emit-library -static -o "$KIT/libTabletKit.a" \
         $(find "$ROOT/TabletKit/Sources/TabletKit" -name '*.swift')
     rm -f "$WORK/bin/wacom_pad_check"
