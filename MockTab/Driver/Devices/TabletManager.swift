@@ -422,6 +422,7 @@ final class TabletManager: ObservableObject {
 
     func start() {
         IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+        ReportTrace.start()
 
         // Matched by vendor (see `knownVendorIDs`). Only Wacom is actually
         // decoded; the rest are recognition-only — deviceConnected logs them
@@ -762,6 +763,7 @@ final class TabletManager: ObservableObject {
     }
 
     private func deviceConnected(_ device: IOHIDDevice, holdTouchCompanion: Bool = true) {
+        ReportTrace.attached(device)
         // Connect-phase work (handshakes, paced writes) stalls report
         // delivery; keep those episodes out of the steady-state latency stats.
         // The probe belongs to the pen thread.
@@ -1653,6 +1655,7 @@ final class TabletManager: ObservableObject {
     }
 
     private func deviceDisconnected(_ device: IOHIDDevice) {
+        ReportTrace.detached(device)
         pendingTouchCompanions.drop(device)
         // Drop deferred interfaces that leave before their driver exists, or
         // the next connect registers them dead.

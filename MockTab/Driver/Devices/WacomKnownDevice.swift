@@ -1176,6 +1176,10 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
         let results = decodeReport(
             report, length: length, synthesizeIntuosV3ToolEnter: synthesizeIntuosV3ToolEnter)
+        if ReportTrace.isOn {
+            ReportTrace.report(
+                report, length: length, from: captureInterface, ns: reportTimestampNs, events: results)
+        }
         // Suffix the capture tag by interface when more than one is
         // registered — otherwise two interfaces' independent report streams
         // land under one tag and read as duplicates. Matches
@@ -1274,6 +1278,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                     deriveTouchDecoders(from: interface)
                 }
                 pairedPID = pairedTabletPID
+                ReportTrace.note("pairedTablet", ["productID": pairedTabletPID])
                 onPairedPID?(pairedTabletPID)
                 logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
             }
