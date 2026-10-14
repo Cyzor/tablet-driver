@@ -26,15 +26,6 @@ enum DeviceRouter {
         let onTouch: ([TouchContact]) -> Void
     }
 
-    /// The interface's top-level collections, as IOKit reports them.
-    static func usagePairs(_ device: IOHIDDevice) -> [InterfaceRouting.UsagePair] {
-        let pairs = IOHIDDeviceGetProperty(device, kIOHIDDeviceUsagePairsKey as CFString)
-            as? [[String: Any]] ?? []
-        return pairs.map {
-            (page: $0[kIOHIDDeviceUsagePageKey] as? Int ?? 0, usage: $0[kIOHIDDeviceUsageKey] as? Int ?? 0)
-        }
-    }
-
     /// The driver for an interface the session doesn't drive itself.
     static func fallbackDriver(
         _ kind: UnclaimedKind, device: IOHIDDevice, callbacks: Callbacks
