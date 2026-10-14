@@ -290,6 +290,42 @@ extension InputInjector {
         e.setIntegerValueField(.mouseEventNumber, value: clickEventNumber)
     }
 
+    /// Static so it doesn't inherit the installer's main-actor isolation: the
+    /// tap runs on HIDThread, where Swift 6 would trap. A listen-only tap
+    /// ignores the returned event, so returning it retained would leak every
+    /// keystroke.
+    private static let flagsChangedTapCallback: CGEventTapCallBack = { _, type, event, userInfo -> Unmanaged<CGEvent>? in
+        guard let userInfo else { return Unmanaged.passUnretained(event) }
+        let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
+        // macOS can switch a tap off, on a timeout or for user input.
+        // If it stays off, the modifier cache and the typing hold-off
+        // go stale for the rest of the session.
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap = injector.flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: true) }
+            return Unmanaged.passUnretained(event)
+        }
+        // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
+        // use a private state and would corrupt the cache with phantom keys.
+        let stateID = Int32(truncatingIfNeeded:
+            event.getIntegerValueField(.eventSourceStateID))
+        guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
+            return Unmanaged.passUnretained(event)
+        }
+        // A real keystroke, for touch's typing hold-off.
+        if event.type == .keyDown {
+            injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
+            return Unmanaged.passUnretained(event)
+        }
+        injector.tapLastPhysicalFlags =
+            event.flags.rawValue & ModifierMath.managedMask
+        // The event's own stamp, on the same kernel clock as
+        // `currentReportTimestampNs`, so comparing them measures event order.
+        // Wall clock carried tap latency and ratcheted on duplicate deliveries
+        // (Cyzor/tablet-driver#18).
+        injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
+        return Unmanaged.passUnretained(event)
+    }
+
     @MainActor
     func installFlagsChangedTap() {
         // Listen-only tap at the session level for modifier changes and key
@@ -301,39 +337,7 @@ extension InputInjector {
             options: .listenOnly,
             eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue)
                 | CGEventMask(1 << CGEventType.keyDown.rawValue),
-            // A listen-only tap ignores the returned event, so returning it
-            // retained would leak every keystroke.
-            callback: { _, type, event, userInfo -> Unmanaged<CGEvent>? in
-                guard let userInfo else { return Unmanaged.passUnretained(event) }
-                let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
-                // macOS can switch a tap off, on a timeout or for user input.
-                // If it stays off, the modifier cache and the typing hold-off
-                // go stale for the rest of the session.
-                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    if let tap = injector.flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: true) }
-                    return Unmanaged.passUnretained(event)
-                }
-                // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
-                // use a private state and would corrupt the cache with phantom keys.
-                let stateID = Int32(truncatingIfNeeded:
-                    event.getIntegerValueField(.eventSourceStateID))
-                guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
-                    return Unmanaged.passUnretained(event)
-                }
-                // A real keystroke, for touch's typing hold-off.
-                if event.type == .keyDown {
-                    injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
-                    return Unmanaged.passUnretained(event)
-                }
-                injector.tapLastPhysicalFlags =
-                    event.flags.rawValue & ModifierMath.managedMask
-                // The event's own stamp, on the same kernel clock as
-                // `currentReportTimestampNs`, so comparing them measures event order.
-                // Wall clock carried tap latency and ratcheted on duplicate deliveries
-                // (Cyzor/tablet-driver#18).
-                injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
-                return Unmanaged.passUnretained(event)
-            },
+            callback: Self.flagsChangedTapCallback,
             userInfo: selfPtr.toOpaque()
         )
         guard let tap else {

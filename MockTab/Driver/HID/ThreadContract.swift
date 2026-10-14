@@ -56,11 +56,19 @@ enum ThreadContract {
 
 extension HIDThread {
 
+    /// Runs `body` on the pen thread soon. Main-actor code hops here rather
+    /// than calling `CFRunLoopPerformBlock` itself: a closure written there
+    /// inherits main's isolation, and Swift 6 traps when it runs elsewhere.
+    func perform(_ body: @escaping @Sendable () -> Void) {
+        CFRunLoopPerformBlock(runLoop, CFRunLoopMode.commonModes.rawValue, body)
+        CFRunLoopWakeUp(runLoop)
+    }
+
     /// Runs `body` on the pen thread and returns its result, for main-thread
     /// readers of pen-thread state, such as the diagnostics text. Waits about
     /// as long as one report takes to handle. The pen thread never waits on
     /// main, so this can't deadlock; from the pen thread itself it runs inline.
-    func performAndWait<T>(_ body: @escaping () -> T) -> T {
+    func performAndWait<T>(_ body: @escaping @Sendable () -> T) -> T {
         if CFRunLoopGetCurrent() === runLoop { return body() }
         var result: T?
         let done = DispatchSemaphore(value: 0)

@@ -16,14 +16,14 @@ enum DeviceRouter {
 
     /// Per-device closures, called on HIDThread.
     struct Callbacks {
-        let onTablet: (TabletPoint) -> Void
-        let onAux: (PadState) -> Void
-        let onToolEnter: (ToolIdentity) -> Void
-        let onMouseButton: (UInt8) -> Void
-        let onBattery: (Int, Bool) -> Void
-        let onWheel: (Int, Int) -> Void
+        let onTablet: @Sendable (TabletPoint) -> Void
+        let onAux: @Sendable (PadState) -> Void
+        let onToolEnter: @Sendable (ToolIdentity) -> Void
+        let onMouseButton: @Sendable (UInt8) -> Void
+        let onBattery: @Sendable (Int, Bool) -> Void
+        let onWheel: @Sendable (Int, Int) -> Void
         /// Per-frame finger contacts; an empty array means every finger lifted.
-        let onTouch: ([TouchContact]) -> Void
+        let onTouch: @Sendable ([TouchContact]) -> Void
     }
 
     /// The driver for an interface the session doesn't drive itself.

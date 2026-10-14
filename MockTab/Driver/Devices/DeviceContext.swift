@@ -141,8 +141,8 @@ final class DeviceContext: ObservableObject, Identifiable {
         let quickKeysOledBrightness = settings.quickKeysOledBrightness
         // Every TabletDevice control-surface write is confined to HIDThread —
         // see the header comment on `onHIDThread`. Values are snapshotted
-        // above on the main actor since `device` isn't Sendable.
-        onHIDThread {
+        // above on the main actor.
+        onHIDThread(device) { device in
             device.controls.ringLED?.setRingLED2(index: activeSlotIndex2)
             device.controls.ringLED?.setRingLED(index: activeSlotIndex)
             if displayBrightness >= 0 {
@@ -336,9 +336,14 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Settings sinks that called the driver from main raced those writes, so
     /// every write here and in `pushDeviceDisplayState`/
     /// `resyncActiveDriverDisplayState` hops first.
-    private func onHIDThread(_ body: @escaping () -> Void) {
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue, body)
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+    ///
+    /// `body` takes the device rather than capturing it, since `TabletDevice`
+    /// isn't Sendable.
+    private func onHIDThread(
+        _ device: any TabletDevice, _ body: @escaping @Sendable (any TabletDevice) -> Void
+    ) {
+        nonisolated(unsafe) let device = device  // used only on HIDThread from here
+        HIDThread.shared.perform { body(device) }
     }
 
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
@@ -347,14 +352,14 @@ final class DeviceContext: ObservableObject, Identifiable {
         settings.$touchRingActiveSlotIndex
             .sink { [weak self] index in
                 guard let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.ringLED?.setRingLED(index: index) }
+                self.onHIDThread(device) { device in device.controls.ringLED?.setRingLED(index: index) }
                 self.pushDeviceDisplayState(activeSlotIndex: index)
             }
             .store(in: &cancellables)
         settings.$touchRingActiveSlotIndex2
             .sink { [weak self] index in
                 guard let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.ringLED?.setRingLED2(index: index) }
+                self.onHIDThread(device) { device in device.controls.ringLED?.setRingLED2(index: index) }
             }
             .store(in: &cancellables)
         // Intuos4 key OLEDs turn with the tablet.
@@ -373,7 +378,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         settings.$displayBrightness
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.displayPanel?.setDisplayBrightness(value) }
+                self.onHIDThread(device) { device in device.controls.displayPanel?.setDisplayBrightness(value) }
             }
             .store(in: &cancellables)
         // Panel contrast and gamma ride the same 0xB5 control family and
@@ -387,7 +392,7 @@ final class DeviceContext: ObservableObject, Identifiable {
                 guard value >= 0, let self, self.isCustomColorMode,
                     let device = self.tabletDevice
                 else { return }
-                self.onHIDThread { device.controls.displayPanel?.setDisplayContrast(value) }
+                self.onHIDThread(device) { device in device.controls.displayPanel?.setDisplayContrast(value) }
             }
             .store(in: &cancellables)
         settings.$displayGamma
@@ -395,7 +400,7 @@ final class DeviceContext: ObservableObject, Identifiable {
                 guard value >= 0, let self, self.isCustomColorMode,
                     let device = self.tabletDevice
                 else { return }
-                self.onHIDThread { device.controls.displayPanel?.setDisplayGamma(value) }
+                self.onHIDThread(device) { device in device.controls.displayPanel?.setDisplayGamma(value) }
             }
             .store(in: &cancellables)
         // Bezel-button backlight LED (Xencelabs pen displays). Same wire
@@ -408,7 +413,7 @@ final class DeviceContext: ObservableObject, Identifiable {
                 guard let self, let device = self.tabletDevice,
                     let c = TabletSettings.bezelLEDColor(from: value)
                 else { return }
-                self.onHIDThread {
+                self.onHIDThread(device) { device in
                     device.controls.displayPanel?.setBezelLEDColor(LEDColor(
                         r: UInt8(Int(c.r) * Int(c.a) / 255),
                         g: UInt8(Int(c.g) * Int(c.a) / 255),
@@ -424,7 +429,7 @@ final class DeviceContext: ObservableObject, Identifiable {
                 let customMode = self.isCustomColorMode
                 let contrast = self.settings.displayContrast
                 let gamma = self.settings.displayGamma
-                self.onHIDThread {
+                self.onHIDThread(device) { device in
                     device.controls.displayPanel?.setColorMode(value)
                     guard customMode else { return }
                     if contrast >= 0 { device.controls.displayPanel?.setDisplayContrast(contrast) }
@@ -438,19 +443,19 @@ final class DeviceContext: ObservableObject, Identifiable {
         settings.$quickKeysOrientation
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.quickKeys?.setQuickKeysOrientation(steps: value) }
+                self.onHIDThread(device) { device in device.controls.quickKeys?.setQuickKeysOrientation(steps: value) }
             }
             .store(in: &cancellables)
         settings.$quickKeysSleepMinutes
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.quickKeys?.setQuickKeysSleepMinutes(value) }
+                self.onHIDThread(device) { device in device.controls.quickKeys?.setQuickKeysSleepMinutes(value) }
             }
             .store(in: &cancellables)
         settings.$quickKeysOledBrightness
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.quickKeys?.setQuickKeysOledBrightness(value) }
+                self.onHIDThread(device) { device in device.controls.quickKeys?.setQuickKeysOledBrightness(value) }
             }
             .store(in: &cancellables)
     }
@@ -484,7 +489,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         let keyOLEDsRotated = settings.tabletOrientation == .landscapeFlipped
         // See `onHIDThread`'s header comment: every TabletDevice write is
         // confined to HIDThread, so this hops rather than calling inline.
-        onHIDThread {
+        onHIDThread(device) { device in
             if let ringModeLabel { device.controls.labels?.setRingModeLabel(ringModeLabel) }
             device.controls.ringLED?.setRingLEDColors(ringColors)
             device.controls.labels?.setKeyOLEDsRotated180(keyOLEDsRotated)
@@ -496,7 +501,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     ///
     /// `objectWillChange` fires *before* the new value is published, so we hop through
     /// `RunLoop.main` and debounce so the rebuild reads the post-update state. Each
-    /// rebuild is published onto HIDThread via `CFRunLoopPerformBlock`, so inject()
+    /// rebuild is published onto HIDThread, so inject()
     /// reads the snapshot from the same thread that wrote it (HIDThread is a serial
     /// run-loop thread). The inner ToolSettings subscription is replaced whenever
     /// `activeTool` swaps, so per-tool field edits (pressure curve, smoothing,
@@ -510,17 +515,16 @@ final class DeviceContext: ObservableObject, Identifiable {
         // and a write from main could tear the snapshot mid-read.
         let initial = settings.makeInjectionSnapshot(pairedProductID: pairedProductID)
         let injectorRef = injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             injectorRef.injectionSnapshot = initial
             injectorRef.displayMapper.invalidateCalibrationCache()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
 
         let rebuild: () -> Void = { [weak self] in
             guard let self else { return }
             let snap = self.settings.makeInjectionSnapshot(pairedProductID: self.pairedProductID)
             let injectorRef = self.injector
-            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            HIDThread.shared.perform {
                 injectorRef.injectionSnapshot = snap
                 // Drop the mapper's cached calibration in the same block that
                 // installs the snapshot it was read from. Invalidating from the
@@ -528,7 +532,6 @@ final class DeviceContext: ObservableObject, Identifiable {
                 // arrives, letting an inject() in the gap re-cache the old entry.
                 injectorRef.displayMapper.invalidateCalibrationCache()
             }
-            CFRunLoopWakeUp(HIDThread.shared.runLoop)
             // Binding/slot renames should reach devices with their own display
             // (Quick Keys OLED); deduped downstream, cheap when nothing changed.
             self.pushDeviceDisplayState()

@@ -18,7 +18,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 /// on its own visibility — when the scratchpad tab is hidden or the app
 /// resigns active, the HID-thread closure skips both the throttle bookkeeping
 /// and the main-thread dispatch entirely.
-final class LiveTouchPublisher: ObservableObject {
+final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // split as each property notes
     @MainActor @Published var contacts: [TouchContact] = []
 
     /// HID-thread reads, main-thread writes, behind a lock.
@@ -222,7 +222,7 @@ final class TabletManager: ObservableObject {
     /// not every settings pane that observes `TabletManager`.  Broadcasting
     /// touch updates through `TabletManager` collapsed every pane's body
     /// at touch-frame rate, which was the dominant CPU cost under a palm.
-    let liveTouch = LiveTouchPublisher()
+    nonisolated let liveTouch = LiveTouchPublisher()
 
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
     /// Raw (transport-specific) PID each registered interface belongs to —
@@ -333,7 +333,7 @@ final class TabletManager: ObservableObject {
     /// A contact alive this many frames or fewer when it disappears counts
     /// as "short-lived" for `DiscoveryTouchPipeline.shortLivedContacts` — at
     /// ~100 Hz touch reporting, roughly 30 ms, well under any deliberate tap.
-    private static let shortLivedContactFrames = 3
+    private nonisolated static let shortLivedContactFrames = 3
 
     // MARK: - Device name helpers
 
@@ -663,10 +663,9 @@ final class TabletManager: ObservableObject {
         ReportTrace.attached(device)
         // Connect-phase work stalls report delivery; keep those episodes out
         // of the steady-state latency stats. The probe belongs to the pen thread.
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             LatencyProbe.shared.noteDeviceConnected()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
         Self.lastSeenVendorID[rawProductID] = vendorID
@@ -848,9 +847,12 @@ final class TabletManager: ObservableObject {
         context: DeviceContext, contextHandle: DriverContextHandle, device: IOHIDDevice,
         productID: Int, instanceKey: DeviceInstanceKey
     ) -> DeviceRouter.Callbacks {
+        // Only handed back to main.
+        nonisolated(unsafe) let device = device
+
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         // Called on HIDThread — hop to main before touching @Published properties.
-        let onToolEnter: (ToolIdentity) -> Void = { [weak self, contextHandle] identity in
+        let onToolEnter: @Sendable (ToolIdentity) -> Void = { [weak self, contextHandle] identity in
             let context = contextHandle.context
             // Set synchronously: pen points inject inline on this thread, so
             // the main-actor Task below loses the race by ~6 ms.
@@ -895,12 +897,9 @@ final class TabletManager: ObservableObject {
             // like "same tool" and strand the outgoing tool's held buttons.
             if identity.toolCode != previousToolCode {
                 let injector = context.injector
-                CFRunLoopPerformBlock(
-                    HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue
-                ) {
+                HIDThread.shared.perform {
                     injector.releaseHeldStateForToolChange()
                 }
-                CFRunLoopWakeUp(HIDThread.shared.runLoop)
             }
             context.activeToolSerial = identity.serial
             context.activeToolIsMouse = identity.isMouse
@@ -924,26 +923,25 @@ final class TabletManager: ObservableObject {
             // above always sets them, and a late copy could overwrite a newer
             // pen's.
             let injector = context.injector
-            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            HIDThread.shared.perform {
                 injector.activeToolSettings = toolSets
             }
-            CFRunLoopWakeUp(HIDThread.shared.runLoop)
             context.activeToolID = toolID
             } // end Task @MainActor
         }
 
         // ── Tablet point closure ─────────────────────────────────────────────
-        // Called on HIDThread (the dedicated CFRunLoop thread that drives IOHIDManager).
+        // Called on HIDThread.
         //
         // Fast path: when this device's injector is the active one, inject() runs
         // inline on HIDThread — no Task @MainActor hop, no scheduler wait. Inject
         // reads everything it needs from `injectionSnapshot`, which the main side
-        // pushes via CFRunLoopPerformBlock whenever settings change.
+        // pushes onto HIDThread whenever settings change.
         //
         // Slow path: active-context switching (proximity-enter from a non-active
         // device) and per-report UI updates still hop to main. Throughput-critical
         // CGEvent posting never waits on either.
-        let onTablet: (TabletPoint) -> Void = { [weak self, contextHandle] point in
+        let onTablet: @Sendable (TabletPoint) -> Void = { [weak self, contextHandle] point in
             guard let context = contextHandle.context else { return }
             let injector = context.injector
 
@@ -995,7 +993,7 @@ final class TabletManager: ObservableObject {
                 let outgoingInjector = outgoing?.injector
                 let outgoingSettings = outgoing?.settings
                 let settings = context.settings
-                CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                HIDThread.shared.perform {
                     if let outgoingInjector, outgoingInjector.lastProximity {
                         let exitPoint = TabletPoint(
                             x: 0, y: 0, maxX: 1, maxY: 1,
@@ -1011,7 +1009,6 @@ final class TabletManager: ObservableObject {
                         injector.inject(point: point, settings: settings)
                     }
                 }
-                CFRunLoopWakeUp(HIDThread.shared.runLoop)
             }
 
             // Only the active context updates UI.
@@ -1090,7 +1087,7 @@ final class TabletManager: ObservableObject {
         // ── Express key closure ──────────────────────────────────────────────
         // Called on HIDThread. injectAux runs inline (it reads from injectionSnapshot
         // and posts CGEvents — both thread-safe). UI state mutations hop to main.
-        let onAux: (PadState) -> Void = { [weak self, contextHandle] aux in
+        let onAux: @Sendable (PadState) -> Void = { [weak self, contextHandle] aux in
             guard let context = contextHandle.context else { return }
             context.injector.injectAux(pad: aux, settings: context.settings)
             // HID-thread gate: skip the Task hop entirely when no UI is watching.
@@ -1142,7 +1139,7 @@ final class TabletManager: ObservableObject {
         // Called when a BT device reports its battery state (INTUOSP2_BT family).
         // Only fires when the raw battery byte changes — not on every pen report.
         // Called on HIDThread — hop to main.
-        let onBattery: (Int, Bool) -> Void = { [weak self, contextHandle] percent, charging in
+        let onBattery: @Sendable (Int, Bool) -> Void = { [weak self, contextHandle] percent, charging in
             let context = contextHandle.context
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
@@ -1157,7 +1154,7 @@ final class TabletManager: ObservableObject {
         // (usagePage=0x01, seized).  Routes directly to the injector so buttons
         // fire at the current screen cursor position without a position remap.
         // Called on HIDThread; injectMouseButtons runs inline.
-        let onMouseButton: (UInt8) -> Void = { [contextHandle] mask in
+        let onMouseButton: @Sendable (UInt8) -> Void = { [contextHandle] mask in
             guard let context = contextHandle.context else { return }
             context.injector.injectMouseButtons(mask: mask, settings: context.settings)
         }
@@ -1165,7 +1162,7 @@ final class TabletManager: ObservableObject {
         // ── Relative wheel closure (IntuosV3 PTK-x70 scroll wheels) ────────────
         // Called on HIDThread; injectWheel runs inline (same threading contract
         // as injectAux).
-        let onWheel: (Int, Int) -> Void = { [contextHandle] index, delta in
+        let onWheel: @Sendable (Int, Int) -> Void = { [contextHandle] index, delta in
             guard let context = contextHandle.context else { return }
             context.injector.injectWheel(index: index, delta: delta, settings: context.settings)
         }
@@ -1182,7 +1179,7 @@ final class TabletManager: ObservableObject {
         // `shortLivedContacts`/`maxStallBeforeLift`) — not used by
         // injection. Lives for this device connection's lifetime, same as
         // the closures below.
-        var touchContactTrack: [Int: (x: Int, y: Int, area: Int?, framesAlive: Int, stalledFrames: Int)] = [:]
+        nonisolated(unsafe) var touchContactTrack: [Int: (x: Int, y: Int, area: Int?, framesAlive: Int, stalledFrames: Int)] = [:]  // HIDThread-only
 
         // mm per touch unit, for the contact-spacing diagnostic; nil when the
         // registry has no physical size for this tablet.
@@ -1194,7 +1191,7 @@ final class TabletManager: ObservableObject {
                 return (w / Double(spec.touchMaxX), h / Double(spec.touchMaxY))
             }
 
-        let onTouch: ([TouchContact]) -> Void = { [weak self, contextHandle] contacts in
+        let onTouch: @Sendable ([TouchContact]) -> Void = { [weak self, contextHandle] contacts in
             // Erratic-touch diagnostics: a same-id jump far larger than a
             // finger can move in one ~10ms report period, a contact that
             // flickers away again within a couple of frames, or a contact
@@ -1360,10 +1357,9 @@ final class TabletManager: ObservableObject {
         // to release it — there's no more device to send one. Same release call as a tool
         // change; see `releaseHeldStateForToolChange`.
         let injector = context.injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             injector.releaseHeldStateForDisconnect()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         // Drop the sinks with the flag that gates installing them: reconnect
         // re-runs the observers and `.store(in:)` appends.
         context.teardownDriverLifecycleObservers()
@@ -1407,12 +1403,11 @@ final class TabletManager: ObservableObject {
     private func toggleDisplayOnPenTablet(vendorID: Int) {
         guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             if let snap = injector.injectionSnapshot {
                 injector.cycleToggleDisplay(snapshot: snap)
             }
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         target.settings.targetDisplayIndex = TabletSettings.displayModeToggle
     }
 
@@ -1428,10 +1423,9 @@ final class TabletManager: ObservableObject {
     private func toggleRelativeModeOnPenTablet(vendorID: Int) {
         guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             injector.displayMapper.clearRelativeAnchor()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         target.settings.relativeCursorMovement.toggle()
     }
 
@@ -1487,10 +1481,9 @@ final class TabletManager: ObservableObject {
         // Retarget on HIDThread, between reports, so none is split across
         // the two contexts.
         let handle = transport.handle
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             handle.context = target
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
 
         for (device, context) in hidDeviceMap
         where context === source && deviceRawProductID[device] == rawPID {
@@ -1765,11 +1758,10 @@ extension TabletManager: TabletSessionDelegate {
             let handler = sessionDrivers[transport.id]?.handler
         else { return }
         ReportTrace.attached(device)
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             LatencyProbe.shared.noteDeviceConnected()
             handler.siblingCount += 1
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         hidDeviceMap[device] = context
         deviceRawProductID[device] = transport.rawProductID
         // A touch sensor is the interface a touch problem needs in the file,
@@ -1878,7 +1870,7 @@ private final class DiscardingSink: TabletInputSink {
 /// The context a driver's HIDThread callbacks deliver into. Retargeted only
 /// on HIDThread, the same thread that reads it, so a report is never decoded
 /// into one context and delivered to another.
-final class DriverContextHandle {
+final class DriverContextHandle: @unchecked Sendable {  // HIDThread-confined after init
     weak var context: DeviceContext?
 
     init(_ context: DeviceContext) {

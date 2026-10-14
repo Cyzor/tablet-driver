@@ -258,11 +258,10 @@ final class InputInjector: @unchecked Sendable {
             // fields are read by inject().
             guard let self else { return }
             MainActor.assumeIsolated { self.recomputeVirtualScreenBounds() }
-            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            HIDThread.shared.perform {
                 self.displayMapper.invalidateDisplayCache()
                 self.touchPanelNeedsResolve = true
             }
-            CFRunLoopWakeUp(HIDThread.shared.runLoop)
         }
         leakWatchdogTimer = Timer.scheduledTimer(
             withTimeInterval: 1.0, repeats: true
@@ -276,28 +275,26 @@ final class InputInjector: @unchecked Sendable {
             object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            HIDThread.shared.perform {
                 if self.panMomentumTail.isRunning || self.touchMomentumTail.isRunning {
                     TouchPipelineProbe.note { $0.momentumTailsStoppedOnSleep += 1 }
                 }
                 self.panMomentumTail.stop()
                 self.touchMomentumTail.stop()
             }
-            CFRunLoopWakeUp(HIDThread.shared.runLoop)
         }
         willTerminateObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            HIDThread.shared.perform {
                 if self.panMomentumTail.isRunning || self.touchMomentumTail.isRunning {
                     TouchPipelineProbe.note { $0.momentumTailsStoppedOnTerminate += 1 }
                 }
                 self.panMomentumTail.stop()
                 self.touchMomentumTail.stop()
             }
-            CFRunLoopWakeUp(HIDThread.shared.runLoop)
         }
     }
 

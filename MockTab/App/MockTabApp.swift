@@ -89,11 +89,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // HIDThread, which owns that state, briefly.
         let injectors = TabletManager.shared.deviceContexts.values.map(\.injector)
         let released = DispatchSemaphore(value: 0)
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             for injector in injectors { injector.releaseHeldStateForQuit() }
             released.signal()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         _ = released.wait(timeout: .now() + .milliseconds(250))
         // Hands touch sensors back in the mode macOS found them in.
         TabletManager.shared.stop()
