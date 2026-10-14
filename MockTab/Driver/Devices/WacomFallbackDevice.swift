@@ -54,6 +54,7 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
     private let onAux: ((PadState) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
     private let maxReportSize: Int
+    private let isBluetooth: Bool
 
     /// Which report family this device uses — the guess `penDecoders` exists
     /// to make unnecessary wherever it can.
@@ -133,6 +134,8 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
     ) {
         self.device = device
         interface = IOKitHIDInterface(device)
+        isBluetooth = (IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? "")
+            .lowercased().contains("bluetooth")
         self.onTablet = onTablet
         self.onAux = onAux
         self.onToolEnter = onToolEnter
@@ -278,16 +281,11 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
     /// protocol doc. Same idempotent write `open()` already sends once;
     /// safe to call again on an already-correctly-initialized device.
     func reawaken() {
-        let transport =
-            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
-        guard !transport.lowercased().contains("bluetooth") else { return }
+        guard !isBluetooth else { return }
         sendFeatureInit()
     }
 
     func open() {
-        let transport =
-            IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
-        let isBluetooth = transport.lowercased().contains("bluetooth")
         let t = tag
 
         probeDeadline = CFAbsoluteTimeGetCurrent() + 30.0
@@ -355,7 +353,9 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
         // absent: the init sent on open is silently discarded by the dongle, so we
         // resend it when the RF link is confirmed established.  Subsequent 0x02
         // reports are ignored until a 0x05 (link lost) closes the session.
-        if id == 0x80 {
+        // Over Bluetooth, 0x80 carries pen data in a format this driver
+        // doesn't know, so it's left undecoded rather than read as status.
+        if id == 0x80 && !isBluetooth {
             if length >= 2 {
                 let t = tag
                 let status = report[1]
