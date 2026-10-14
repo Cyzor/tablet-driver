@@ -15,7 +15,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 /// Call `record(tag:report:length:decoded:)` after the caller's own
 /// `decoder.decode(...)`, passing that result through — this never decodes
 /// on its own. Pass `decoded: nil` when no `TabletReportDecoder` is in
-/// scope (e.g. `GenericHIDDigitizer`'s element-based path); those reports
+/// scope (e.g. a report no decoder reads); those reports
 /// still get a raw hex line, just no annotation.
 ///
 /// Durability: periodically flushed to disk (`flushIfDue()`) and

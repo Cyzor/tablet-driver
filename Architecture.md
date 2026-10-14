@@ -35,10 +35,7 @@ Debug builds check the table. `ThreadContract.expectPenThread()` and `expectMain
 /usr/bin/log stream --predicate 'subsystem == "com.cyzor.mocktab" AND category == "threading"'
 ```
 
-Two known exceptions remain. Debug builds report the first:
-
-- `WacomFallbackDevice` and `GenericHIDDigitizer` still receive reports on main.
-- Messages to a tablet wait for the tablet on the pen thread. A full set of Quick Keys labels can hold up reports from every tablet for tens of milliseconds.
+One known exception remains: messages to a tablet wait for the tablet on the pen thread. A full set of Quick Keys labels can hold up reports from every tablet for tens of milliseconds.
 
 ## Following a Pen Report
 
@@ -67,7 +64,9 @@ macOS presents one tablet as several devices, called interfaces, often one each 
 4. A new tablet gets one of three drivers, which `installRoutedDriver` installs:
    - **`WacomKnownDevice`** for any tablet in the registry, which is almost all of them.
    - **`WacomFallbackDevice`** for Wacom tablets missing from it. It reads the tablet's own description of its reports and makes a best guess.
-   - **`GenericHIDDigitizer`** for standard pen tablets from any maker. macOS decodes the fields.
+   - **`GenericHIDDigitizer`** for standard pen tablets from any maker. It decodes each report from the tablet's own description of it.
+
+   To try a fallback on a tablet the registry knows, run a Debug build after `defaults write com.cyzor.mocktab debugFallbackProductID -int <product ID in decimal>`. Add `debugGenericFallback -bool YES` for `GenericHIDDigitizer`. Both last one launch.
 5. `DeviceRegistry` lists the tablet in the Devices pane, and its settings load.
 
 ## Following a Touch

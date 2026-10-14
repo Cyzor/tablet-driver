@@ -9,32 +9,22 @@ import TabletKit
 
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 
-/// Vendor-agnostic "universal floor" driver for any standards-compliant HID pen
+/// The universal floor: a driver for any standards-compliant HID pen
 /// digitizer (top-level usage Digitizer/Pen, `0x0D`/`0x02`).
 ///
-/// Unlike TabletKit's session and `WacomFallbackDevice`, this reads no
-/// vendor-specific report layout. It uses **element value callbacks**
-/// (`IOHIDDeviceRegisterInputValueCallback`): the OS HID parser hands back each
-/// field already decoded and keyed by (usagePage, usage), so there are no bit
-/// offsets to compute. We filter for the standard digitizer usages and emit a
-/// `TabletPoint` — the same contract every other driver produces, so
-/// `InputInjector` consumes it unchanged.
+/// It reads no vendor layout. Each pen report the device's own descriptor
+/// declares gets a `GenericPenDecoder`, and reports arrive on HIDThread.
 ///
-/// Provides: absolute X/Y cursor tracking, tip→click, and (when the descriptor
-/// exposes them) tip pressure, barrel buttons, eraser, and tilt. Anything the
-/// descriptor doesn't describe simply does nothing.
-///
-/// Does NOT provide: express keys, touch ring/strip, rotation, vendor mode
-/// switching, or device seizure. Those need a dedicated `*Device.swift` or a
-/// vendor handshake. This is the rudimentary-usability tier, not full fidelity.
-final class GenericHIDDigitizer: TabletDevice {
+/// Provides: absolute position, tip, and, when the descriptor declares
+/// them, pressure, barrel buttons, eraser, tilt, twist, and hover distance.
+/// Does not provide express keys, rings, vendor mode switching, or seizure.
+final class GenericHIDDigitizer: TabletDevice, @unchecked Sendable {  // fixed after init; reports run on HIDThread
 
     let spec: DigitizerSpec
 
-    /// Brand/category guessed from the USB manufacturer/product strings when
-    /// the VID/PID didn't match any registry entry — nil when nothing in
-    /// those strings hints at a tablet. Drives the "looks like a Huion
-    /// device" wording on the unrecognised-device banner.
+    /// Brand guessed from the USB manufacturer and product strings, or nil
+    /// when nothing in them hints at a tablet. Drives the "looks like a
+    /// Huion device" wording on the unrecognized-device banner.
     let detectedBrand: String?
 
     /// A CTL-x100 Intuos in Android mode, which swaps Wacom's vendor ID for
@@ -45,30 +35,18 @@ final class GenericHIDDigitizer: TabletDevice {
     private static let androidModeProductIDs: Set<Int> = [0x0374, 0x0375, 0x0376, 0x0378, 0x03C5, 0x03C7]
 
     private let device: IOHIDDevice
+    private let interface: IOKitHIDInterface
     private let onTablet: (TabletPoint) -> Void
     private let tag: String
+    private let penDecoders: [UInt8: GenericPenDecoder]
+    /// False when the descriptor declares no report IDs, so reports start
+    /// with data.
+    private let usesReportIDs: Bool
 
-    /// Pure decode state — maps standard HID usages to `TabletPoint`. Lives in
-    /// TabletKit so it is unit-testable without IOKit; this class only does the
-    /// IOKit plumbing (open, value callbacks) and forwards element values to it.
-    private var frame: GenericDigitizerFrame
-
-    /// When true the device is opened and its reports are recorded for
-    /// discovery, but no `TabletPoint` is ever emitted — the cursor is left
-    /// alone.
-    ///
-    /// Used for multitouch-only interfaces (see `DeviceRouter`), where the
-    /// element-value path this class is built on cannot work: a multitouch
-    /// report repeats X/Y once per finger and IOKit gives no way to tell the
-    /// repetitions apart, so driving the cursor from it yanks the pointer
-    /// between contacts. Attaching nothing at all would be worse than it
-    /// sounds — a device with no driver gets no `DeviceContext`, and
-    /// `CaptureGuideView` resolves its capture target through
-    /// `tabletManager.contexts`, so an unsupported touch device would become
-    /// invisible to the discovery flow that exists to onboard it.
+    /// Opens the interface and records its reports for discovery, but never
+    /// moves the cursor. For multitouch-only interfaces: a device with no
+    /// driver gets no `DeviceContext`, which would hide it from capture.
     private let observeOnly: Bool
-
-    // MARK: - Init
 
     init(
         device: IOHIDDevice,
@@ -76,6 +54,7 @@ final class GenericHIDDigitizer: TabletDevice {
         observeOnly: Bool = false
     ) {
         self.device = device
+        interface = IOKitHIDInterface(device)
         self.onTablet = onTablet
         self.observeOnly = observeOnly
 
@@ -90,146 +69,46 @@ final class GenericHIDDigitizer: TabletDevice {
         let probed = queryHIDDigitizerSpec(device)
         spec = DigitizerSpec(maxX: probed.maxX, maxY: probed.maxY, maxPressure: probed.maxPressure)
 
-        let maxReportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
-        reportBufferSize = Swift.max(maxReportSize, 64)
-        reportBuffer = .allocate(capacity: reportBufferSize)
-        reportBuffer.initialize(repeating: 0, count: reportBufferSize)
-
-        // Scan elements once to learn which optional usages exist. This decides
-        // proximity semantics (in-range vs. tip) and whether we synthesize a
-        // click pressure for tip-only pens.
-        var sawInRange = false
-        var sawPressure = false
-        if let elements = IOHIDDeviceCopyMatchingElements(device, nil, 0) {
-            for i in 0..<CFArrayGetCount(elements) {
-                guard let raw = CFArrayGetValueAtIndex(elements, i) else { continue }
-                let elem = Unmanaged<IOHIDElement>.fromOpaque(raw).takeUnretainedValue()
-                guard IOHIDElementGetUsagePage(elem) == GenericDigitizerFrame.Usage.digitizerPage
-                else { continue }
-                switch IOHIDElementGetUsage(elem) {
-                case GenericDigitizerFrame.Usage.inRange: sawInRange = true
-                case GenericDigitizerFrame.Usage.tipPressure: sawPressure = true
-                default: break
-                }
-            }
+        let layout = try? HIDReportDescriptorParser.parse(interface.reportDescriptor)
+        var decoders: [UInt8: GenericPenDecoder] = [:]
+        for penLayout in layout.map(GenericPenLayout.derive(from:)) ?? [] {
+            decoders[penLayout.reportID] = GenericPenDecoder(layout: penLayout)
         }
-        frame = GenericDigitizerFrame(
-            maxX: spec.maxX, maxY: spec.maxY, maxPressure: spec.maxPressure,
-            hasInRange: sawInRange, hasPressure: sawPressure)
+        penDecoders = decoders
+        usesReportIDs = layout?.reports.contains { $0.reportID != 0 } ?? true
     }
 
-    // MARK: - Open / Close
-
-    private var selfRetain: Unmanaged<GenericHIDDigitizer>?
-
-    /// Backing store for the raw input-report callback. Decoding never reads
-    /// it — see `reportCallback` — but IOKit needs somewhere to put reports,
-    /// and the buffer must outlive registration. An array's inout pointer
-    /// lasts only for the call, so the driver owns this one.
-    private let reportBuffer: UnsafeMutablePointer<UInt8>
-    private let reportBufferSize: Int
-
-    deinit { reportBuffer.deallocate() }
-
     func open() {
-        let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        let ret = interface.open(seize: false) { [self] report, _ in handle(report) }
         guard ret == kIOReturnSuccess else {
             logger.error("\(self.tag, privacy: .public): failed to open — \(ret, privacy: .public). Is another driver claiming it?")
             return
         }
-
-        // Only fire callbacks for the two pages we read — keeps unrelated
-        // collections (consumer-control, vendor) off the hot path.
-        let valueMatch: [[String: Any]] = [
-            [kIOHIDElementUsagePageKey: 0x01],
-            [kIOHIDElementUsagePageKey: 0x0D],
-        ]
-        IOHIDDeviceSetInputValueMatchingMultiple(device, valueMatch as CFArray)
-
-        let retain = Unmanaged.passRetained(self)
-        selfRetain = retain
-        IOHIDDeviceRegisterInputValueCallback(device, GenericHIDDigitizer.valueCallback, retain.toOpaque())
-
-        // Raw reports, alongside the value callback above. Decoding doesn't use
-        // these — value callbacks give us pre-parsed fields, which is the whole
-        // point of this class — but device-data collection does, and without
-        // this the *unrecognised, non-Wacom* devices that land here (i.e. the
-        // exact population "Collect Device Data…" exists to serve) recorded
-        // nothing at all. Input-value matching set above does not filter this
-        // path, so vendor reports the decoder ignores still reach the capture.
-        IOHIDDeviceRegisterInputReportCallback(
-            device, reportBuffer, reportBufferSize,
-            GenericHIDDigitizer.reportCallback, retain.toOpaque())
-
-        IOHIDDeviceScheduleWithRunLoop(
-            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
-
         if observeOnly {
             logger.info("\(self.tag, privacy: .public): attached for observation only — reports recorded for discovery, no cursor input")
-            return
+        } else if penDecoders.isEmpty {
+            logger.info("\(self.tag, privacy: .public): descriptor declares no pen report this driver can read — recording reports only")
+        } else {
+            let ids = penDecoders.keys.sorted().map { String(format: "0x%02X", $0) }.joined(separator: ", ")
+            logger.info("\(self.tag, privacy: .public): generic HID digitizer attached (maxX=\(self.spec.maxX, privacy: .public) maxY=\(self.spec.maxY, privacy: .public) pressure=\(self.spec.maxPressure, privacy: .public), pen reports \(ids, privacy: .public))")
         }
-
-        let mx = spec.maxX; let my = spec.maxY; let mp = spec.maxPressure
-        logger.info("\(self.tag, privacy: .public): generic HID digitizer attached (maxX=\(mx, privacy: .public) maxY=\(my, privacy: .public) pressure=\(self.frame.hasPressure ? mp : 0, privacy: .public) inRange=\(self.frame.hasInRange, privacy: .public))")
     }
 
     func close() {
-        IOHIDDeviceUnscheduleFromRunLoop(
-            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
-        IOHIDDeviceRegisterInputValueCallback(device, nil, nil)
-        IOHIDDeviceRegisterInputReportCallback(device, reportBuffer, reportBufferSize, nil, nil)
-        IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
-        selfRetain?.release()
-        selfRetain = nil
+        interface.close()
     }
 
-    func setRingLED(index: Int) {}  // Generic digitizers expose no LED control.
-
-    // MARK: - Value callback
-
-    private static let valueCallback: IOHIDValueCallback = { ctx, _, _, value in
-        guard let ctx else { return }
-        Unmanaged<GenericHIDDigitizer>.fromOpaque(ctx).takeUnretainedValue()
-            .handle(value: value)
-    }
-
-    /// Raw reports, for device-data collection only — never for decoding.
-    ///
-    /// Keys on the callback's `reportID` argument rather than `report[0]`: a
-    /// standards-compliant digitizer with a single top-level collection may
-    /// declare no Report ID at all, in which case reports carry no ID prefix
-    /// and `report[0]` is the first *data* byte.
-    private static let reportCallback: IOHIDReportCallback = {
-        ctx, _, _, _, reportID, report, length in
-        guard let ctx else { return }
-        let me = Unmanaged<GenericHIDDigitizer>.fromOpaque(ctx).takeUnretainedValue()
-        HIDCapture.shared.record(tag: me.tag, report: report, length: length)
-        CaptureEngine.recordRaw(device: me.device, reportID: reportID, pointer: report, length: length)
-        // This class decodes through IOKit elements, not a report decoder —
-        // the report itself is never parsed here.
-        CaptureActivityProbe.noteUndecoded()
-    }
-
-    /// One element changed. Update the decode frame, then emit a fresh point.
-    ///
-    /// We emit on every recognized element update rather than per report: IOKit
-    /// delivers one callback per changed element with no stable frame boundary,
-    /// so a frame may be momentarily one element stale (e.g. X updated, Y not
-    /// yet). At pen rates that is sub-pixel and self-corrects on the next
-    /// callback microseconds later, and `InputInjector`'s delta gate drops the
-    /// redundant duplicates.
-    private func handle(value: IOHIDValue) {
-        // Observation-only interfaces still reach the raw-report callback, which
-        // is what feeds CaptureEngine; only the element→cursor path is cut.
-        guard !observeOnly else { return }
-
-        let elem = IOHIDValueGetElement(value)
-        let page = IOHIDElementGetUsagePage(elem)
-        let usage = IOHIDElementGetUsage(elem)
-        let v = IOHIDValueGetIntegerValue(value)
-
-        if frame.update(usagePage: page, usage: usage, value: v) {
-            onTablet(frame.point())
+    /// On HIDThread, once per report.
+    private func handle(_ report: HIDReport) {
+        let reportID = usesReportIDs ? report.reportID : 0
+        CaptureEngine.recordRaw(device: device, reportID: UInt32(reportID), pointer: report.pointer, length: report.count)
+        guard !observeOnly, let decoder = penDecoders[reportID], let point = decoder.decode(report: report) else {
+            HIDCapture.shared.record(tag: tag, report: report.pointer, length: report.count)
+            CaptureActivityProbe.noteUndecoded()
+            return
         }
+        HIDCapture.shared.record(tag: tag, report: report.pointer, length: report.count, decoded: [.pen(point)])
+        CaptureActivityProbe.note([.pen(point)])
+        onTablet(point)
     }
 }

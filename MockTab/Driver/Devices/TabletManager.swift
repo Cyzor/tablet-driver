@@ -413,6 +413,10 @@ final class TabletManager: ObservableObject {
 
     private init() {}
 
+    #if DEBUG
+    private var debugGenericFallback = false
+    #endif
+
     func start() {
         IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         ReportTrace.start()
@@ -423,6 +427,21 @@ final class TabletManager: ObservableObject {
         // can see the tablet was found even though MockTab can't drive it.
         let session = TabletSession(vendorIDs: Self.knownVendorIDs, anyPenDigitizer: true, delegate: self)
         self.session = session
+        #if DEBUG
+        // Sends one owned tablet to a fallback driver, for testing them:
+        // `defaults write com.cyzor.mocktab debugFallbackProductID -int 855` (0x0357, in decimal).
+        // `debugGenericFallback` picks the universal floor over Wacom's.
+        // Both last one launch, so a relaunch undoes a test that goes wrong.
+        let defaults = UserDefaults.standard
+        let fallbackPID = defaults.integer(forKey: "debugFallbackProductID")
+        debugGenericFallback = defaults.bool(forKey: "debugGenericFallback")
+        defaults.removeObject(forKey: "debugFallbackProductID")
+        defaults.removeObject(forKey: "debugGenericFallback")
+        if fallbackPID != 0 {
+            session.unregisteredProductIDs = [fallbackPID]
+            logger.notice("debug: routing 0x\(String(fallbackPID, radix: 16, uppercase: true), privacy: .public) to a fallback driver")
+        }
+        #endif
         let ret = session.start()
         hidManagerOpen = (ret == kIOReturnSuccess)
         if !hidManagerOpen {
@@ -1813,6 +1832,10 @@ extension TabletManager: TabletSessionDelegate {
 
     func session(_ session: TabletSession, didFindUnclaimed interface: any HIDInterface, as kind: UnclaimedKind) {
         guard kind != .recognizedOnly, let device = (interface as? IOKitHIDInterface)?.device else { return }
+        #if DEBUG
+        let kind: UnclaimedKind =
+            kind == .wacomFallback && debugGenericFallback ? .genericDigitizer : kind
+        #endif
         connectUnclaimed(device, as: kind)
     }
 

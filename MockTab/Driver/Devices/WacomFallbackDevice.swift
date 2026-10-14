@@ -49,13 +49,10 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
     let parsedDescriptor: LiveHIDDescriptorInspector.Parsed
 
     private let device: IOHIDDevice
+    private let interface: IOKitHIDInterface
     private let onTablet: (TabletPoint) -> Void
     private let onAux: ((PadState) -> Void)?
     private let onToolEnter: ((ToolIdentity) -> Void)?
-    /// IOKit keeps writing here after registration, and an array's inout
-    /// pointer lasts only for the call, so the driver owns this buffer.
-    private let reportBuffer: UnsafeMutablePointer<UInt8>
-    private let reportBufferSize: Int
     private let maxReportSize: Int
 
     /// Which report family this device uses — the guess `penDecoders` exists
@@ -135,6 +132,7 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
         onToolEnter: ((ToolIdentity) -> Void)? = nil
     ) {
         self.device = device
+        interface = IOKitHIDInterface(device)
         self.onTablet = onTablet
         self.onAux = onAux
         self.onToolEnter = onToolEnter
@@ -146,9 +144,6 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
         // Detect report family from max input report size.
         maxReportSize = hidIntProperty(device, kIOHIDMaxInputReportSizeKey)
         family = maxReportSize > 64 ? .intuosV2 : .intuosV1
-        reportBufferSize = Swift.max(maxReportSize, 10)
-        reportBuffer = .allocate(capacity: reportBufferSize)
-        reportBuffer.initialize(repeating: 0, count: reportBufferSize)
 
         // Query HID descriptor for coordinate and pressure ranges.
         spec = Self.querySpec(device: device, family: family)
@@ -234,9 +229,6 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
 
     // MARK: - Open / Close
 
-    /// Callback-context retain; created in open(), released in close().
-    private var selfRetain: Unmanaged<WacomFallbackDevice>?
-
     /// Feature and mode inits are USB-only.  Over BLE the GATT digitizer is
     /// always active; writing the InputMode characteristic suppresses pen data.
     private func sendFeatureInit() {
@@ -292,15 +284,16 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
         sendFeatureInit()
     }
 
-    deinit { reportBuffer.deallocate() }
-
     func open() {
         let transport =
             IOHIDDeviceGetProperty(device, kIOHIDTransportKey as CFString) as? String ?? ""
         let isBluetooth = transport.lowercased().contains("bluetooth")
         let t = tag
 
-        let ret = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        probeDeadline = CFAbsoluteTimeGetCurrent() + 30.0
+        let ret = interface.open(seize: false) { [self] report, _ in
+            handleReport(reportID: UInt32(report.reportID), report: report.pointer, length: report.count)
+        }
         guard ret == kIOReturnSuccess else {
             logger.error("\(t, privacy: .public): failed to open — \(ret, privacy: .public). Is another tablet driver running?")
             return
@@ -310,19 +303,6 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
             sendFeatureInit()
         }
 
-        probeDeadline = CFAbsoluteTimeGetCurrent() + 30.0
-
-        // Retain backing the callback context; balanced in close() after the
-        // callback is unregistered. Both run on the scheduling thread, so an
-        // in-flight callback cannot outlive the release. (Previously leaked —
-        // one immortal driver per connect/disconnect cycle.)
-        let retain = Unmanaged.passRetained(self)
-        selfRetain = retain
-        IOHIDDeviceRegisterInputReportCallback(
-            device, reportBuffer, reportBufferSize,
-            WacomFallbackDevice.reportCallback, retain.toOpaque())
-        IOHIDDeviceScheduleWithRunLoop(
-            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
 
         let familyName = family == .intuosV1 ? "IntuosV1" : "IntuosV2"
         let maxX = spec.maxX; let maxY = spec.maxY; let maxP = spec.maxPressure
@@ -333,27 +313,15 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
     }
 
     func close() {
-        IOHIDDeviceUnscheduleFromRunLoop(
-            device, CFRunLoopGetCurrent(), RunLoop.Mode.common.rawValue as CFString)
-        IOHIDDeviceRegisterInputReportCallback(device, reportBuffer, reportBufferSize, nil, nil)
-        IOHIDDeviceClose(device, IOOptionBits(kIOHIDOptionsTypeNone))
-        selfRetain?.release()
-        selfRetain = nil
-
-        if sampleCount > 0 {
-            let t = tag
+        interface.close()
+        // The peaks belong to HIDThread, so read them there, after any
+        // report in flight.
+        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [self] in
+            guard sampleCount > 0 else { return }
             let x = peakX; let y = peakY; let p = peakP; let n = sampleCount
-            logger.info("\(t, privacy: .public): disconnected — observed peaks X=\(x, privacy: .public) Y=\(y, privacy: .public) P=\(p, privacy: .public) (\(n, privacy: .public) samples)")
+            logger.info("\(self.tag, privacy: .public): disconnected — observed peaks X=\(x, privacy: .public) Y=\(y, privacy: .public) P=\(p, privacy: .public) (\(n, privacy: .public) samples)")
         }
-    }
-
-    // MARK: - C callback
-
-    private static let reportCallback: IOHIDReportCallback = {
-        ctx, _, _, _, reportID, report, length in
-        guard let ctx else { return }
-        Unmanaged<WacomFallbackDevice>.fromOpaque(ctx).takeUnretainedValue()
-            .handleReport(reportID: reportID, report: report, length: length)
+        CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
     // MARK: - Report dispatch
