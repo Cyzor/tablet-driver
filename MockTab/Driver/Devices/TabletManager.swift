@@ -1742,7 +1742,7 @@ extension TabletManager: TabletSessionDelegate {
 
     func session(_ session: TabletSession, didAdd interface: any HIDInterface, to transport: TabletTransport) {
         guard let device = (interface as? IOKitHIDInterface)?.device,
-            let context = transportHandles[transport.id]?.context,
+            let context = self.context(of: transport),
             let handler = sessionDrivers[transport.id]?.handler
         else { return }
         ReportTrace.attached(device)
@@ -1764,7 +1764,7 @@ extension TabletManager: TabletSessionDelegate {
 
     func session(_ session: TabletSession, transportDidChangeState transport: TabletTransport) {
         guard case .faulted(let failure) = transport.state,
-            let context = transportHandles[transport.id]?.context
+            let context = self.context(of: transport)
         else { return }
         let ret: IOReturn
         switch failure {
@@ -1792,16 +1792,17 @@ extension TabletManager: TabletSessionDelegate {
     func session(
         _ session: TabletSession, didRegroup transport: TabletTransport, from old: ConnectedTablet, to new: ConnectedTablet
     ) {
-        if tabletContexts[new.id] == nil { tabletContexts[new.id] = transportHandles[transport.id]?.context }
+        if tabletContexts[new.id] == nil { tabletContexts[new.id] = self.context(of: transport) }
         if old.transports.isEmpty { tabletContexts.removeValue(forKey: old.id) }
     }
 
     func session(_ session: TabletSession, didDetach transport: TabletTransport, from tablet: ConnectedTablet) {
-        let handle = transportHandles.removeValue(forKey: transport.id)
+        let context = self.context(of: transport)
+        transportHandles.removeValue(forKey: transport.id)
         sessionDrivers.removeValue(forKey: transport.id)
         transportProbes.removeValue(forKey: transport.id)
         if tablet.transports.isEmpty { tabletContexts.removeValue(forKey: tablet.id) }
-        guard let context = handle?.context else { return }
+        guard let context else { return }
         let rawPID = transport.rawProductID
         for (device, owner) in hidDeviceMap where owner === context && deviceRawProductID[device] == rawPID {
             ReportTrace.detached(device)
@@ -1818,6 +1819,15 @@ extension TabletManager: TabletSessionDelegate {
     func session(_ session: TabletSession, didLoseUnclaimed interface: any HIDInterface) {
         guard let device = (interface as? IOKitHIDInterface)?.device else { return }
         deviceDisconnected(device)
+    }
+
+    /// The context a transport delivers into, as main sees it. A dongle's
+    /// handle is retargeted on HIDThread, so its main-actor view is `home`.
+    private func context(of transport: TabletTransport) -> DeviceContext? {
+        if let key = transportProbes[transport.id]?.instanceKey, let dongle = dongleTransports[key] {
+            return dongle.home
+        }
+        return transportHandles[transport.id]?.context
     }
 
     nonisolated func transport(_ id: TabletTransport.ID, didRun step: ConnectStep) {
