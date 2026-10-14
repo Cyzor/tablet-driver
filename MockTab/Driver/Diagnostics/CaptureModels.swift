@@ -1133,7 +1133,7 @@ struct DiscoveryTouchPipeline: Codable {
     var twoFingerResolvedNone: Int = 0
 
     /// Largest combined pen+touch frame count seen in one Bluetooth-batched
-    /// HID report (`BatchFramePacer`/`WacomKnownDevice.dispatchBatch`), and
+    /// HID report (`BatchFramePacer`/`TransportEventHandler.dispatchBatch`), and
     /// the number of batches at or above `largeBatchThreshold` (6 — bigger
     /// than the 4-5 pure-pen batches this pacer was originally measured
     /// against). `perFrameDelayNs` is the report's real interval divided by
@@ -1498,8 +1498,7 @@ struct DiscoveryRepeatingStructure: Codable {
 /// via whichever one `hidDevice` happens to pin to. `CaptureGuideView` records
 /// every one of these at once.
 ///
-/// Only interfaces the driver actually installed a report callback on are
-/// listed — see `WacomKnownDevice.deliversReports(from:)`. An interface
+/// Only interfaces whose reports reach a driver are listed. An interface
 /// without one can never produce a sample, so including it would put a
 /// permanently empty bucket in every capture file and misrepresent a silent
 /// interface (real evidence) as an unlistened one.

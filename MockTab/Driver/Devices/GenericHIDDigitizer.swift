@@ -12,7 +12,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 /// Vendor-agnostic "universal floor" driver for any standards-compliant HID pen
 /// digitizer (top-level usage Digitizer/Pen, `0x0D`/`0x02`).
 ///
-/// Unlike `WacomKnownDevice` and `WacomFallbackDevice`, this reads no
+/// Unlike TabletKit's session and `WacomFallbackDevice`, this reads no
 /// vendor-specific report layout. It uses **element value callbacks**
 /// (`IOHIDDeviceRegisterInputValueCallback`): the OS HID parser hands back each
 /// field already decoded and keyed by (usagePage, usage), so there are no bit

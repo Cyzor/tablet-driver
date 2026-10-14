@@ -64,7 +64,7 @@ extension InputInjector {
             // rather than collapsing every contact into one corner. The
             // registry still wins where set, since fixed-format decoders on
             // verified tablets don't read the descriptor's coordinate space.
-            let described = WacomKnownDevice.descriptorTouchRanges.withLock { $0[effectiveTouchPID] }
+            let described = DescribedTouchRanges.range(forProductID: effectiveTouchPID)
             if let described, (spec?.touchMaxX ?? 0) == 0 {
                 cachedTouchMaxX = Swift.max(1, described.x)
                 cachedTouchMaxY = Swift.max(1, described.y)

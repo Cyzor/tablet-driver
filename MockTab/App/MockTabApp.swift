@@ -95,10 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
         _ = released.wait(timeout: .now() + .milliseconds(250))
-        for ctx in TabletManager.shared.deviceContexts.values {
-            // Hand touch sensors back in the mode macOS found them in.
-            (ctx.tabletDevice as? WacomKnownDevice)?.restoreTouchModes()
-        }
+        // Hands touch sensors back in the mode macOS found them in.
+        TabletManager.shared.stop()
         HelpWindowController.shared.saveState()
     }
 

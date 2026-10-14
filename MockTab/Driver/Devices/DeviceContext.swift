@@ -143,7 +143,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         // see the header comment on `onHIDThread`. Values are snapshotted
         // above on the main actor since `device` isn't Sendable.
         onHIDThread {
-            (device as? WacomKnownDevice)?.pendingLEDIndex2 = activeSlotIndex2
+            device.controls.ringLED?.setRingLED2(index: activeSlotIndex2)
             device.controls.ringLED?.setRingLED(index: activeSlotIndex)
             if displayBrightness >= 0 {
                 device.controls.displayPanel?.setDisplayBrightness(displayBrightness)
@@ -181,7 +181,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// the pen interface) enumerates one `IOHIDDevice` per interface, all
     /// mapped to this same context, but only one of them is the interface the
     /// driver actually reads pen reports from and passes to
-    /// `CaptureEngine.recordRaw`. `TabletManager.deviceConnected` sets this
+    /// `CaptureEngine.recordRaw`. `TabletManager.beginConnecting` sets this
     /// only the first time a `.driver`-routed interface attaches for this raw
     /// product ID (see `firstDriverInterfaceClaimed`) — never overwritten by a
     /// sibling interface that attaches later. Before that guard existed, an
@@ -353,8 +353,8 @@ final class DeviceContext: ObservableObject, Identifiable {
             .store(in: &cancellables)
         settings.$touchRingActiveSlotIndex2
             .sink { [weak self] index in
-                guard let self, let device = self.tabletDevice as? WacomKnownDevice else { return }
-                self.onHIDThread { device.setRingLED2(index: index) }
+                guard let self, let device = self.tabletDevice else { return }
+                self.onHIDThread { device.controls.ringLED?.setRingLED2(index: index) }
             }
             .store(in: &cancellables)
         // Intuos4 key OLEDs turn with the tablet.
@@ -487,7 +487,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         onHIDThread {
             if let ringModeLabel { device.controls.labels?.setRingModeLabel(ringModeLabel) }
             device.controls.ringLED?.setRingLEDColors(ringColors)
-            (device as? WacomKnownDevice)?.setKeyOLEDsRotated180(keyOLEDsRotated)
+            device.controls.labels?.setKeyOLEDsRotated180(keyOLEDsRotated)
             device.controls.labels?.setAuxKeyLabels(keyLabels)
         }
     }

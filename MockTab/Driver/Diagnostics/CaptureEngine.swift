@@ -1022,8 +1022,7 @@ final class CaptureEngine: ObservableObject {
     ///   the device's primary one. `descriptorReadable` below is a claim about
     ///   whether this report's fields are declared, and checking a touch
     ///   interface's reports against a pen interface's descriptor marks every
-    ///   one of them opaque — the same mis-attribution across sibling
-    ///   interfaces that `WacomKnownDevice`'s `sender`-based routing fixed.
+    ///   one of them opaque.
     private static func reportSummaries(
         _ reports: [UInt8: DiscoveryAccumulator.ReportStats],
         descriptor: LiveHIDDescriptorInspector.Parsed?,

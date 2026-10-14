@@ -106,9 +106,8 @@ final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split b
     /// one reset decoder state and resent feature init, and a rejected write
     /// logs at `.error` — a level the unified log persists to disk, so a
     /// dongle that keeps refusing the write produced unbounded disk writes.
-    /// Mirrors `wirelessLinkConfirmed` in `WacomKnownDevice`, whose comment
-    /// notes that resending init on every status report also disrupts the
-    /// link. Cleared on 0x05 (link lost).
+    /// Resending init on every status report also disrupts the link.
+    /// Cleared on 0x05 (link lost).
     private var wirelessLinkConfirmed: Bool = false
 
     // ── IntuosV2 tool tracking ────────────────────────────────────────────

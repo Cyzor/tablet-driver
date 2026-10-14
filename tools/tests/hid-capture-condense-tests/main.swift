@@ -160,7 +160,7 @@ do {
 }
 
 // Two different tags reporting the same report ID (a device with more than
-// one registered HID interface — see WacomKnownDevice's captureTag) must
+// one registered HID interface; see TransportEventHandler's tag) must
 // get independent runs, not merge into one just because the report ID
 // matches. This is the interleaved-interface case: real, simultaneous,
 // unrelated traffic, not a duplicate.

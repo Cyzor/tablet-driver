@@ -11,7 +11,7 @@ import TabletKit
 /// `InputInjector.injectTouch` arbitrates touch against the pen's live
 /// proximity state, so a touch frame delivered out of order relative to a
 /// still-queued pen frame can read stale proximity — see
-/// `WacomKnownDevice.dispatchBatch`'s flush-first requirement.
+/// `TransportEventHandler.dispatchBatch`'s flush-first requirement.
 enum BatchedFrame {
     case pen(TabletPoint)
     case touch([TouchContact])
@@ -37,7 +37,7 @@ enum BatchedFrame {
 /// This only ever activates for a report that decoded to more than one
 /// pen+touch sample combined — USB and single-sample BT reports are
 /// untouched and pay zero cost (no timer, no allocation; see
-/// `WacomKnownDevice.dispatchBatch`).
+/// `TransportEventHandler.dispatchBatch`).
 ///
 /// HIDThread-confined, like every other injection-adjacent timer in this
 /// codebase (`MomentumTail`, `RingScrollGlide`) — scheduled on
@@ -45,7 +45,7 @@ enum BatchedFrame {
 /// from calls already on that thread.
 final class BatchFramePacer {
 
-    /// Delivers one paced frame. Supplied by the owner (`WacomKnownDevice`)
+    /// Delivers one paced frame. Supplied by the owner (`TransportEventHandler`)
     /// so this type has no knowledge of `InputInjector` or event
     /// construction — its only job is timing. The owner is responsible for
     /// setting `InputInjector.currentReportTimestampNs` to `timestampNs`

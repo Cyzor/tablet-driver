@@ -705,7 +705,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// Runs are keyed on (tag, report ID), not report ID alone: a device
     /// with more than one registered HID interface can deliver the same
     /// report ID from two interfaces as real, simultaneous, independent
-    /// traffic (`WacomKnownDevice`'s `captureTag` disambiguates this).
+    /// traffic (`TransportEventHandler`'s per-interface tag tells them apart).
     ///
     /// `feed(_:)` never releases a line newer than the oldest still-open
     /// run's start — this watermark, not per-batch sorting, is what keeps

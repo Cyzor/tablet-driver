@@ -731,7 +731,7 @@ final class SettingsWindowManager: ObservableObject {
             let tm = TabletManager.shared
             // Pre-create the DeviceContext if the device hasn't connected yet
             // so the window and driver share the same TabletSettings instance.
-            // deviceConnected() adopts a pre-existing context for the same
+            // beginConnecting() adopts a pre-existing context for the same
             // instance (or, for an empty-instance stub, re-keys it on the
             // model's first connect), ensuring writes from the UI are
             // immediately visible to the driver.
@@ -744,7 +744,7 @@ final class SettingsWindowManager: ObservableObject {
             }
             // Use the last-known vendor for this product (persisted from a
             // prior live connect) so the stub doesn't default to Wacom for
-            // a non-Wacom device — TabletManager.deviceConnected() reuses
+            // a non-Wacom device — TabletManager.beginConnecting() reuses
             // whatever context already occupies this key, so a wrong
             // vendorID here would stick (it's a `let`) for the rest of
             // this launch, breaking vendor-specific spec lookups.
