@@ -38,6 +38,8 @@ struct DevicesView: View {
     /// this keeps stored names tidy.
     static let maxNicknameLength = 60
     @FocusState private var editFieldFocused: Bool
+    /// The tablet row holding keyboard focus. Focus selects, as in a list.
+    @FocusState private var focusedTabletID: String?
 
     @State private var pendingForgetTool: DeviceRegistry.KnownTool? = nil
     @State private var pendingForgetDeviceID: String? = nil
@@ -114,6 +116,10 @@ struct DevicesView: View {
             commitToolRename()
         }
         .onAppear { syncTools() }
+        .onChange(of: focusedTabletID) { id in
+            guard let tablet = registry.knownTablets.first(where: { $0.id == id }) else { return }
+            selectTablet(tablet)
+        }
         .onChange(of: tabletManager.connectedProductIDs) { _ in
             // Watch the whole connected set, not just the `connectedProductID`
             // scalar — a USB blip that changes which devices are present must
@@ -251,9 +257,15 @@ struct DevicesView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // The green checkmark is hidden, so the connection is spoken here.
+            .accessibilityElement(children: .combine)
+            .accessibilityValue(isActive ? Text("Connected", comment: "VoiceOver value for a connected tablet in the Devices list") : Text(verbatim: ""))
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityAction { selectTablet(tablet) }
+            // After the grouping, or each child's copy of it reads too.
             .help("\(tablet.modelName) · \(shownID(tablet.displayID))")
 
-            RowActionsMenu(accessibilityLabel: "Device actions") {
+            RowActionsMenu(accessibilityLabel: "Device actions", subject: tablet.nickname) {
                 tabletMenuEntries(tablet, isActive: isActive)
             }
         }
@@ -294,19 +306,7 @@ struct DevicesView: View {
                         // below); swallow it here so it doesn't also reselect
                         // the row.
                         if NSEvent.modifierFlags.contains([.option, .shift]) { return }
-                        commitTabletRename()
-                        commitToolRename()
-                        // Skip the reload when this row is already selected:
-                        // `loadTools` publishes unconditionally, so on an
-                        // already-selected row both taps of a double-click
-                        // would each trigger a body re-render — the second
-                        // one landing right as the rename field requests
-                        // focus, restarting its identity and losing the
-                        // focus/select-all race. A fresh selection still
-                        // needs the reload to pick up that tablet's tools.
-                        guard selectedTabletID != tablet.id else { return }
-                        selectedTabletID = tablet.id
-                        registry.loadTools(forDevice: tablet.id)
+                        selectTablet(tablet)
                     }, including: mask
                 )
                 // Hidden screenshot aid: Option+Shift-click any row to swap all
@@ -320,6 +320,24 @@ struct DevicesView: View {
                 )
         }
         .contextMenu { tabletMenuEntries(tablet, isActive: isActive) }
+        // A Tab stop only with keyboard navigation on, so clicks draw no ring.
+        .focusable(NSApp.isFullKeyboardAccessEnabled && editingTabletID != tablet.id)
+        .focused($focusedTabletID, equals: tablet.id)
+    }
+
+    /// Shows `tablet`'s tools below, ending any rename in progress.
+    private func selectTablet(_ tablet: DeviceRegistry.KnownTablet) {
+        commitTabletRename()
+        commitToolRename()
+        // Skip the reload when this row is already selected: `loadTools`
+        // publishes unconditionally, so on an already-selected row both taps
+        // of a double-click would each trigger a body re-render — the second
+        // one landing right as the rename field requests focus, restarting
+        // its identity and losing the focus/select-all race. A fresh
+        // selection still needs the reload to pick up that tablet's tools.
+        guard selectedTabletID != tablet.id else { return }
+        selectedTabletID = tablet.id
+        registry.loadTools(forDevice: tablet.id)
     }
 
     /// Shared entries for the row's "…" flyout and right-click context menu.
@@ -487,7 +505,7 @@ struct DevicesView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .help("\(tool.kind) · \(shownID(tool.displayID))")
 
-            RowActionsMenu(accessibilityLabel: "Tool actions") {
+            RowActionsMenu(accessibilityLabel: "Tool actions", subject: tool.nickname) {
                 toolMenuEntries(tool, deviceID: deviceID, inAllSection: inAllSection)
             }
         }
