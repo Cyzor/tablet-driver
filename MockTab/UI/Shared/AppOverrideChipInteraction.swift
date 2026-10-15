@@ -318,6 +318,10 @@ struct ChipRowDropZone: NSViewRepresentable {
         /// range 0…count, where `count` means "past the last chip."
         private var hoveredIndex: Int?
 
+        // Top-down, like the SwiftUI chip frames. Bottom-up only matched
+        // while the chips sat centered; a visible scroll bar shifted them.
+        override var isFlipped: Bool { true }
+
         override func hitTest(_ point: NSPoint) -> NSView? {
             // Never intercept clicks — this overlay exists only for drags.
             nil

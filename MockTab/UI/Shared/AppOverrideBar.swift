@@ -380,6 +380,10 @@ struct AppOverrideBar: View {
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: canScrollTrailing)
             }
         }
+        // Outside the ScrollView, so chip frames move with the scroll offset
+        // and share an origin with the drop zone. Declared on the row, they
+        // went stale once a narrow bar scrolled, and drops found no chip.
+        .coordinateSpace(name: ChipRowCoordinateSpace.name)
     }
 
     // MARK: - Chip row
@@ -424,7 +428,6 @@ struct AppOverrideBar: View {
                 )
             }
         }
-        .coordinateSpace(name: ChipRowCoordinateSpace.name)
         .onPreferenceChange(ChipFramesKey.self) { chipFrames = $0 }
         // Animated on the combined hover state: crossing from the last chip
         // to the end-of-row zone keeps the same target ID and only flips
