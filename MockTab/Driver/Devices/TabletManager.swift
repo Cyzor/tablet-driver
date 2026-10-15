@@ -184,6 +184,21 @@ final class TabletManager: ObservableObject {
         return Double(x) / Double(y)
     }
 
+    /// The active surface in millimeters, unrotated, or nil when no
+    /// registry knows it. The vendor profile comes first, as in
+    /// `surfaceAspectRatio(for:)`.
+    func surfaceSizeMM(for key: DeviceInstanceKey?) -> CGSize? {
+        guard let pid = key?.productID else { return nil }
+        if let profile = VendorDeviceRegistry.profile(forProductID: pid),
+            let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+        {
+            return CGSize(width: w, height: h)
+        }
+        let spec = WacomDeviceRegistry.spec(for: pid)
+        guard let w = spec?.activeWidthMM, w > 0, let h = spec?.activeHeightMM, h > 0 else { return nil }
+        return CGSize(width: w, height: h)
+    }
+
     func context(forKey key: DeviceInstanceKey?) -> DeviceContext? {
         guard let key else { return nil }
         if !key.instance.isEmpty {
@@ -1615,10 +1630,10 @@ final class TabletManager: ObservableObject {
             ) {
                 if let n = (prop as? NSNumber)?.intValue {
                     switch n {
-                    case 0: return ("USB", "Low Speed (1.5 Mb/s)")
-                    case 1: return ("USB", "Full Speed (12 Mb/s)")
-                    case 2: return ("USB", "High Speed (480 Mb/s)")
-                    case 3: return ("USB", "SuperSpeed (5 Gb/s)")
+                    case 0: return ("USB", String(localized: "Low Speed (1.5 Mb/s)", comment: "USB speed on the Info tab"))
+                    case 1: return ("USB", String(localized: "Full Speed (12 Mb/s)", comment: "USB speed on the Info tab"))
+                    case 2: return ("USB", String(localized: "High Speed (480 Mb/s)", comment: "USB speed on the Info tab"))
+                    case 3: return ("USB", String(localized: "SuperSpeed (5 Gb/s)", comment: "USB speed on the Info tab"))
                     default: break
                     }
                 }

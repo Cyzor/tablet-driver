@@ -13,6 +13,8 @@ import SwiftUI
 /// rect while it's dragged.
 struct ScreenAreaOverlayView: View {
     let aspectRatio: Double
+    /// The display's size in points, for VoiceOver.
+    let screenSize: CGSize
     let initialRect: NormalizedRect
     let snapAspect: Double?
     let snapLabel: String
@@ -22,11 +24,12 @@ struct ScreenAreaOverlayView: View {
     @State private var rect: NormalizedRect
 
     init(
-        aspectRatio: Double, initialRect: NormalizedRect,
+        aspectRatio: Double, screenSize: CGSize, initialRect: NormalizedRect,
         snapAspect: Double?, snapLabel: String,
         onDone: @escaping (NormalizedRect) -> Void, onCancel: @escaping () -> Void
     ) {
         self.aspectRatio = aspectRatio
+        self.screenSize = screenSize
         self.initialRect = initialRect
         self.snapAspect = snapAspect
         self.snapLabel = snapLabel
@@ -49,6 +52,7 @@ struct ScreenAreaOverlayView: View {
                     }
                 )
                 .snapping(to: snapAspect, label: snapLabel)
+                .speaking(as: String(localized: "Screen Area"), size: .points(screenSize))
                 .frame(width: geo.size.width, height: geo.size.height)
 
                 // Anchored near the top rather than the bottom — the Dock

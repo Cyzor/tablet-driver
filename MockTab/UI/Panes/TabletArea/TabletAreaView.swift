@@ -174,11 +174,15 @@ struct TabletAreaView: View {
                     .snapping(
                         to: screenAreaAspect,
                         label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
+                    .speaking(
+                        as: String(localized: "Tablet Area"),
+                        size: .tablet(tabletManager.surfaceSizeMM(for: boundKey), orientation: settings.tabletOrientation))
                     .editMappingMenu(enabled: screenAreaAspect != nil) {
                         MappingSheetPresenter.present(
                             from: windowRef.window, settings: settings,
                             tabletAspect: orientedAspectRatio,
                             tabletCaption: deviceLabel,
+                            tabletSizeMM: tabletManager.surfaceSizeMM(for: boundKey),
                             destination: MappingDestination.current(for: settings))
                     }
                     .background(WindowReader(ref: windowRef))

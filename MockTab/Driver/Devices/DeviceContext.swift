@@ -468,7 +468,9 @@ final class DeviceContext: ObservableObject, Identifiable {
         guard let device = tabletDevice else { return }
         let index = activeSlotIndex ?? settings.touchRingActiveSlotIndex
         let ringModeLabel = settings.touchRingSlots.indices.contains(index)
-            ? settings.touchRingSlots[index].label : nil
+            // From the action, not the stored label, which keeps the
+            // language the mode was made in.
+            ? settings.touchRingSlots[index].action.displayLabel : nil
         // Brightness (the panel's opacity) is premultiplied into the RGB
         // here — the dial LED has no brightness register, the vendor stack
         // scales the color bytes the same way.

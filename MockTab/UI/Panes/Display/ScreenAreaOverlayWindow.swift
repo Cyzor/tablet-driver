@@ -40,6 +40,7 @@ final class ScreenAreaOverlayWindow: NSWindow {
 
         let overlayView = ScreenAreaOverlayView(
             aspectRatio: displayBounds.width / max(displayBounds.height, 1),
+            screenSize: displayBounds.size,
             initialRect: Self.withEdgeMargin(initialRect, displayBounds: displayBounds),
             snapAspect: snapAspect, snapLabel: snapLabel,
             onDone: { [weak self] rect in self?.finish(with: rect) },
