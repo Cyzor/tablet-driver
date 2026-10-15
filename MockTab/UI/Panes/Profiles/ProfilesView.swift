@@ -574,7 +574,7 @@ private struct PresetListView: View {
                 appBindingsForPreset(preset)
             }
 
-            RowActionsMenu(accessibilityLabel: "Profile actions") {
+            RowActionsMenu(accessibilityLabel: "Profile actions", subject: preset.name) {
                 menuEntries(preset)
             }
         }

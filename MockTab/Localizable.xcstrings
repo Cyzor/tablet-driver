@@ -295,6 +295,29 @@
         }
       }
     },
+    "Connected" : {
+      "comment" : "VoiceOver value for a connected tablet in the Devices list",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続中"
+          }
+        }
+      }
+    },
     "Full Speed (12 Mb/s)" : {
       "comment" : "USB speed on the Info tab",
       "localizations" : {

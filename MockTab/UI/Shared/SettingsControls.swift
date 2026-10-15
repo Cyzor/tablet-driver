@@ -321,22 +321,29 @@ extension View {
 /// panes look and hit-test identically.
 struct RowActionsMenu<Content: View>: View {
     let accessibilityLabel: LocalizedStringKey
+    /// The row's name, so VoiceOver can tell one row's menu from the next.
+    var subject: String? = nil
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         Menu {
             content()
         } label: {
-            Image(systemName: "ellipsis")
-                .appFont(.settingsBadge)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
-                .accessibilityHidden(true)
+            // Titled, or the menu takes the symbol's own description
+            // ("More") as its name.
+            Label {
+                Text(accessibilityLabel) + Text(verbatim: subject.map { ", \($0)" } ?? "")
+            } icon: {
+                Image(systemName: "ellipsis")
+            }
+            .labelStyle(.iconOnly)
+            .appFont(.settingsBadge)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 4)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .frame(width: 24)
-        .accessibilityLabel(accessibilityLabel)
     }
 }
 
