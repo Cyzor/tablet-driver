@@ -108,11 +108,10 @@ struct TouchView: View {
                     String(localized: "Tap to Click", comment: "Undo action name: tap-to-click toggle in the Touch pane"),
                     get: { settings.tapToClick },
                     set: { settings.tapToClick = $0 }),
-                description: "Briefly touch the tablet's surface to click."
-            )
+                description: "Briefly touch the tablet's surface to click.",
+                help: "A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
-            .help("A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
 
             DescribedToggle(
                 "Two-Finger Right-Click",
@@ -120,11 +119,10 @@ struct TouchView: View {
                     String(localized: "Two-Finger Right-Click", comment: "Undo action name: two-finger right-click toggle in the Touch pane"),
                     get: { settings.twoFingerRightClick },
                     set: { settings.twoFingerRightClick = $0 }),
-                description: "Briefly touch with two fingers to right-click."
-            )
+                description: "Briefly touch with two fingers to right-click.",
+                help: "Two fingers landing together, a fingertip's width apart, and lifting without moving post a right click. Fingers that move scroll, zoom, or rotate instead.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
-            .help("Two fingers landing together, a fingertip's width apart, and lifting without moving post a right click. Fingers that move scroll, zoom, or rotate instead.")
 
             DescribedToggle(
                 "Three-Finger Drag",
@@ -132,11 +130,10 @@ struct TouchView: View {
                     String(localized: "Three-Finger Drag", comment: "Undo action name: three-finger drag toggle in the Touch pane"),
                     get: { settings.threeFingerDrag },
                     set: { settings.threeFingerDrag = $0 }),
-                description: "Move three fingers together to drag."
-            )
+                description: "Move three fingers together to drag.",
+                help: "Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
-            .help("Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go.")
 
             SettingSliderRow(
                 "Cursor Speed",
@@ -164,11 +161,10 @@ struct TouchView: View {
                     String(localized: "Two-Finger Scroll", comment: "Undo action name: two-finger scroll toggle in the Touch pane"),
                     get: { settings.twoFingerScroll },
                     set: { settings.twoFingerScroll = $0 }),
-                description: "Use a two-finger gesture to scroll."
-            )
+                description: "Use a two-finger gesture to scroll.",
+                help: "Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
-            .help("Two fingers moving together post smooth scroll events that apps treat as trackpad scrolling, including rubber-banding in Safari and Preview.")
 
             DescribedToggle(
                 "Pinch to Zoom",
@@ -176,11 +172,10 @@ struct TouchView: View {
                     String(localized: "Pinch to Zoom", comment: "Undo action name: pinch-to-zoom toggle in the Touch pane"),
                     get: { settings.pinchZoomEnabled },
                     set: { settings.pinchZoomEnabled = $0 }),
-                description: "Use two fingers to pinch and zoom in or out."
-            )
+                description: "Use two fingers to pinch and zoom in or out.",
+                help: "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
-            .help("Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own.")
 
             DescribedToggle(
                 "Rotate",
@@ -188,27 +183,23 @@ struct TouchView: View {
                     String(localized: "Rotate", comment: "Undo action name: two-finger rotate toggle in the Touch pane"),
                     get: { settings.rotateEnabled },
                     set: { settings.rotateEnabled = $0 }),
-                description: "Swivel two fingers apart to rotate."
-            )
+                description: "Swivel two fingers apart to rotate.",
+                help: "Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
-            .help("Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own.")
 
             DescribedToggle(
                 "Reverse Direction",
                 isOn: settings.recordingBinding(
                     String(localized: "Scroll Direction", comment: "Undo action name: touch scroll-direction toggle in the Touch pane"),
                     get: { settings.reverseScrollDirection },
-                    set: { settings.reverseScrollDirection = $0 })
-            ) {
-                Text(
-                    settings.reverseScrollDirection
-                        ? "Content moves opposite your fingers."
-                        : "Content follows your fingers.")
-            }
+                    set: { settings.reverseScrollDirection = $0 }),
+                description: settings.reverseScrollDirection
+                    ? "Content moves opposite your fingers."
+                    : "Content follows your fingers.",
+                help: "On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.")
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .opacity(gestureRowOpacity)
-            .help("On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.")
 
             DescribedToggle(
                 "Momentum Scrolling",
@@ -216,11 +207,10 @@ struct TouchView: View {
                     String(localized: "Touch Momentum Scrolling", comment: "Undo action name: two-finger scroll momentum toggle in the Touch pane"),
                     get: { settings.twoFingerScrollMomentum },
                     set: { settings.twoFingerScrollMomentum = $0 }),
-                description: "Inertia scrolling. Compatibility varies by app."
-            )
+                description: "Inertia scrolling. Compatibility varies by app.",
+                help: "On: two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off (default): a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia.")
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .opacity(gestureRowOpacity)
-            .help("On: two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off (default): a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia.")
         }
     }
 
