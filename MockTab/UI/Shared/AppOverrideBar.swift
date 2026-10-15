@@ -40,6 +40,8 @@ import UniformTypeIdentifiers
 ///   chip height and `chipAreaHeight` together, keeping the addMenu panel sized.
 /// - Right-click provides Rename / Reveal in Finder / Remove.
 struct AppOverrideBar: View {
+    private var accent: Color { .windowAccent(controlActiveState) }
+
 
     // MARK: - Domain key sets
 
@@ -632,7 +634,7 @@ struct AppOverrideBar: View {
 
             if domainKeyCount > 0 && !isSelected {
                 Circle()
-                    .fill(Color.accentColor)
+                    .fill(accent)
                     .frame(width: 5, height: 5)
             }
         }

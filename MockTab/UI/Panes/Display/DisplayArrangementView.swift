@@ -22,6 +22,9 @@ struct DisplayArrangementView: View {
     @AppStorage(AppearancePrefs.storageKey) private var textSizeIndex: Int = AppearancePrefs.defaultIndex
     private var textScale: CGFloat { AppearancePrefs.scale(forIndex: textSizeIndex) }
 
+    @Environment(\.controlActiveState) private var controlActiveState
+    private var accent: Color { .windowAccent(controlActiveState) }
+
     var body: some View {
         GeometryReader { geo in
             let scale = layoutScale(in: geo.size)
@@ -61,7 +64,7 @@ struct DisplayArrangementView: View {
                         }
                         let scrim: Color =
                             selected
-                            ? Color.accentColor.opacity(0.30)
+                            ? accent.opacity(0.30)
                             : Color.black.opacity(0.15)
                         ctx.fill(path, with: .color(scrim))
                     } else {
@@ -69,7 +72,7 @@ struct DisplayArrangementView: View {
                             path,
                             with: .color(
                                 selected
-                                    ? Color.accentColor.opacity(0.18)
+                                    ? accent.opacity(0.18)
                                     : Color.secondary.opacity(0.1)
                             ))
                     }
@@ -77,7 +80,7 @@ struct DisplayArrangementView: View {
                     ctx.stroke(
                         path,
                         with: .color(
-                            selected ? Color.accentColor : Color.secondary.opacity(0.45)
+                            selected ? accent : Color.secondary.opacity(0.45)
                         ), style: StrokeStyle(lineWidth: selected ? 2 : 1))
 
                     let hPad: CGFloat = 6

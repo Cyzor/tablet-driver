@@ -31,6 +31,19 @@ struct TouchRingDiagramView: View, Equatable {
     /// True while the mouse is pressed on the center button.
     var centerPressed: Bool = false
 
+    @Environment(\.controlActiveState) private var controlActiveState
+
+    // Environment changes refresh the view on their own, so equality
+    // compares only the drawn state.
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        // SwiftUI compares views on the main actor.
+        MainActor.assumeIsolated {
+            a.activeSlotIndex == b.activeSlotIndex && a.centerDown == b.centerDown
+                && a.slotCount == b.slotCount && a.selectedIndex == b.selectedIndex
+                && a.pressedIndex == b.pressedIndex && a.centerPressed == b.centerPressed
+        }
+    }
+
     // SVG viewBox is 0 0 137.63 137.63 for both quarters and thirds variants.
     private static let svgSize = 137.63
 
@@ -91,7 +104,7 @@ struct TouchRingDiagramView: View, Equatable {
             // Light mode gets a softer body so the highlighted part leads.
             let bodyFill = Color.primary.opacity(context.environment.colorScheme == .dark ? 0.80 : 0.35)
             let strokeDim = Color.secondary
-            let accent = Color.accentColor
+            let accent = Color.windowAccent(controlActiveState)
 
             let useThirds = slotCount == 3
             let slotPaths = useThirds ? Self.slotsT : Self.slotsQ

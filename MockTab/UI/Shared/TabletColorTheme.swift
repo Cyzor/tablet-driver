@@ -31,3 +31,11 @@ struct TabletColorTheme {
         return Color(nsColor)
     }
 }
+
+extension Color {
+    /// Accent color in the key window and a quiet gray elsewhere, the way
+    /// system controls fade when their window goes to the back.
+    static func windowAccent(_ state: ControlActiveState) -> Color {
+        state == .key ? .accentColor : Color(nsColor: .tertiaryLabelColor)
+    }
+}
