@@ -673,7 +673,12 @@ extension InputInjector {
             panScroll.suspend()
             schedulePanScrollSafetyNet(snap: snap)
         }
-        lastAuxButtons = [Bool](repeating: false, count: 19)
+        // A held Pan View key keeps its state, so its release ends the pan.
+        let panActive = panScroll.isActive
+        lastAuxButtons = lastAuxButtons.indices.map { i in
+            let binding = i < 16 ? snap.expressKeyBindings[i] : snap.bezelButtonBindings[i - 16]
+            return panActive && lastAuxButtons[i] && binding.kind == .scrollDrag
+        }
         lastRingButtonDown = false
         hasPostedPoint = false
         displayMapper.clearRelativeAnchor()
