@@ -133,7 +133,7 @@ struct CalibrationOverlayView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                .controlSize(.small)
+                .appControlSize(.small)
                 .padding(.top, 4)
             } else if session.state != .cancelled {
                 // After a successful fit the overlay is just showing a result, so
@@ -145,7 +145,7 @@ struct CalibrationOverlayView: View {
                 Button(label) { onDismiss() }
                     .keyboardShortcut(.cancelAction)
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .appControlSize(.small)
                     .padding(.top, 4)
             }
         }

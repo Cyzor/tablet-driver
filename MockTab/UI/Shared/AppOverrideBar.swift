@@ -897,7 +897,7 @@ struct AppOverrideBar: View {
                 }
             }
             .appFont(.settingsLabel)
-            .controlSize(.small)
+            .appControlSize(.small)
             .help(
                 optionKeyDown
                     ? String(

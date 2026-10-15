@@ -162,7 +162,7 @@ struct ProfilesView: View {
 
                     Button("Create") { commitCreate() }
                         .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
+                        .appControlSize(.small)
                         .fixedSize()
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
                         .help("Save this new profile with the current settings")
@@ -171,7 +171,7 @@ struct ProfilesView: View {
                         isCreating = false
                         newName = ""
                     }
-                    .controlSize(.small)
+                    .appControlSize(.small)
                     .keyboardShortcut(.cancelAction)
                     .fixedSize()
                     .help("Cancel creating a new profile")
@@ -255,12 +255,12 @@ struct ProfilesView: View {
                     HStack(spacing: 8) {
                         Button("Export as JSON…") { saveExportToFile() }
                             .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .appControlSize(.small)
                             .help("Save all profiles and settings to a JSON backup file")
 
                         Button("Import from File…") { openImportPanel() }
                             .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .appControlSize(.small)
                             .help("Restore settings from a previously saved JSON backup")
                     }
 
@@ -562,7 +562,7 @@ private struct PresetListView: View {
 
             if !isActive {
                 Button("Activate") { onActivate(preset) }
-                    .controlSize(.small)
+                    .appControlSize(.small)
                     .help("Switch to this profile immediately")
             } else {
                 Text(String(localized: "Active", comment: "Badge label when profile is active"))

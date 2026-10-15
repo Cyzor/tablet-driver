@@ -341,7 +341,7 @@ struct CaptureGuideView: View {
 
                     if showSendingIndicator {
                         ProgressView()
-                            .controlSize(.small)
+                            .appControlSize(.small)
                     }
                 }
 
@@ -587,11 +587,11 @@ struct CaptureGuideView: View {
                     Label(String(localized: "Open GitHub Issue…", comment: "Button label: open a pre-filled GitHub issue for device support"), systemImage: "arrow.up.right.square")
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .appControlSize(.small)
 
                 emailButton(url: url)
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .appControlSize(.small)
 
                 Button {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -599,7 +599,7 @@ struct CaptureGuideView: View {
                     Label(String(localized: "Show in Finder", comment: "Button label: open data collection file in Finder"), systemImage: "doc.badge.arrow.up")
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .appControlSize(.small)
             }
 
             Text(String(localized: "On GitHub, drag the file into the form.", comment: "Caption on the data-collection completion screen"))

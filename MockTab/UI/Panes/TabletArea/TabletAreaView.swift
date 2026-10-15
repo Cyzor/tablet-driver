@@ -202,7 +202,7 @@ struct TabletAreaView: View {
 
                         Button("Fit to Screen Area") { fitActiveAreaToScreen() }
                             .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .appControlSize(.small)
                             .disabled(screenAreaAspect == nil)
                             .help("Make the active area the screen area's shape, as large as the tablet allows, so the cursor isn't stretched.")
 
@@ -215,7 +215,7 @@ struct TabletAreaView: View {
                             settings.recordAreaDrag(before: snap)
                         }
                         .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .appControlSize(.small)
                         .help("Reset the active area to the full tablet surface (undoable).")
 
                     }

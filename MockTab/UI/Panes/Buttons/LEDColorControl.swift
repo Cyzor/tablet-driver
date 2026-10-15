@@ -184,7 +184,7 @@ struct LEDColorControl: View, Equatable {
                     EmptyView()
                 }
                 .labelsHidden()
-                .controlSize(.small)
+                .appControlSize(.small)
                 .frame(maxWidth: .infinity)
                     .help("Brightness of the light.")
                     .accessibilityLabel("LED brightness")

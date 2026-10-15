@@ -65,6 +65,31 @@ final class ResizableTabViewController: NSTabViewController {
 
     private var defaultTabSizes: [String: NSSize] = [:]
 
+    /// The minimum width the toolbar needs. The visible pane may raise it.
+    var toolbarFloorWidth: CGFloat = minimumPaneWidth {
+        didSet { applyMinimumWidth() }
+    }
+
+    /// The visible pane's own minimum width, as its content reports it.
+    private var paneMinimumWidth: CGFloat = 0
+
+    func paneNeeds(width: CGFloat) {
+        guard abs(paneMinimumWidth - width) > 0.5 else { return }
+        paneMinimumWidth = width
+        applyMinimumWidth()
+    }
+
+    private func applyMinimumWidth() {
+        guard let window = view.window else { return }
+        let width = max(toolbarFloorWidth, paneMinimumWidth.rounded(.up))
+        guard abs(window.minSize.width - width) > 0.5 else { return }
+        window.minSize = NSSize(width: width, height: 500)
+        // setFrame and setContentSize don't enforce minSize on their own.
+        isProgrammaticResize = true
+        window.clampToMinSize()
+        isProgrammaticResize = false
+    }
+
     /// Set to true the first time the user manually resizes the window.
     /// Once set, tab switches no longer resize the window — the user's
     /// chosen size is used for all tabs.
@@ -136,14 +161,7 @@ final class ResizableTabViewController: NSTabViewController {
             hasAppliedMinSize = true
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self, let window else { return }
-                let minWidth = max(self.toolbarMinWidth(in: window), Self.minimumPaneWidth)
-                window.minSize = NSSize(width: minWidth, height: 500)
-                // The measurement above is authoritative for this window's toolbar
-                // layout — widen an already-narrower restored/last-known frame now,
-                // since setFrame/setContentSize don't enforce minSize on their own.
-                self.isProgrammaticResize = true
-                window.clampToMinSize()
-                self.isProgrammaticResize = false
+                self.toolbarFloorWidth = max(self.toolbarMinWidth(in: window), Self.minimumPaneWidth)
             }
         }
     }
@@ -283,8 +301,28 @@ private final class LazyHostingViewController: NSViewController {
         }
     }
 
+    /// The width this pane's content needs, from
+    /// `keepsWindowWideEnough()`. Zero when nothing in the pane reports one.
+    var contentMinimumWidth: CGFloat = 0 {
+        didSet { reportMinimumWidth() }
+    }
+
     override func loadView() {
         view = NSView()
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        reportMinimumWidth()
+    }
+
+    /// Hands this pane's minimum width to the tab controller while it's the
+    /// visible tab, so the window can't get narrower than the pane.
+    private func reportMinimumWidth() {
+        guard let tabs = parent as? ResizableTabViewController,
+            tabs.tabViewItems[safe: tabs.selectedTabViewItemIndex]?.viewController === self
+        else { return }
+        tabs.paneNeeds(width: contentMinimumWidth)
     }
 
     override func viewWillAppear() {
@@ -820,11 +858,8 @@ final class SettingsWindowController: NSWindowController {
         }
         // Recomputed off the live tab count rather than duplicating init's
         // aux-only and hasTouchTab logic.
-        guard let window else { return }
-        window.minSize = NSSize(
-            width: ResizableTabViewController.minimumWidth(forTabCount: tabVC.tabViewItems.count),
-            height: 500)
-        window.clampToMinSize()
+        tabVC.toolbarFloorWidth = ResizableTabViewController.minimumWidth(
+            forTabCount: tabVC.tabViewItems.count)
     }
 
     /// Set unconditionally rather than diffed: connect/disconnect is a rare
@@ -876,16 +911,18 @@ final class SettingsWindowController: NSWindowController {
         let lazy = LazyHostingViewController {
             let aligned = content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            let hosting = NSHostingController(rootView: aligned.withAppearance())
+            let rooted = aligned.withAppearance()
+                .environment(\.reportPaneMinimumWidth) { [weak lazyRef] width in
+                    lazyRef?.contentMinimumWidth = width
+                }
+            let hosting = NSHostingController(rootView: rooted)
             // Read back through the tab rather than capturing `title`: a rename
             // before this tab is first shown updates the tab, not the constant.
             // Weak because the tab owns this closure for its whole life; a strong
             // capture here would keep every tab (and unbuilt pane) alive forever.
             hosting.title = lazyRef?.title ?? title
             hosting.preferredContentSize = NSSize(width: width, height: 0)
-            if #available(macOS 13.0, *) {
-                hosting.sizingOptions = []
-            }
+            hosting.sizingOptions = []
             return hosting
         }
         lazyRef = lazy

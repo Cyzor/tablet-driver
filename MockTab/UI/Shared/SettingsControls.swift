@@ -396,3 +396,46 @@ private func selectAllInRenameField(attemptsRemaining: Int, previousField: AnyOb
     }
     responder.tryToPerform(#selector(NSText.selectAll(_:)), with: nil)
 }
+
+// MARK: - Window minimum width
+
+private struct ReportPaneMinimumWidthKey: EnvironmentKey {
+    static let defaultValue: @MainActor @Sendable (CGFloat) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    /// Raises the settings window's minimum width. Each tab sets its own.
+    var reportPaneMinimumWidth: @MainActor @Sendable (CGFloat) -> Void {
+        get { self[ReportPaneMinimumWidthKey.self] }
+        set { self[ReportPaneMinimumWidthKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Keeps the settings window at least wide enough for this view at its
+    /// ideal width. A grouped Form lets wide rows overflow and clip rather
+    /// than passing their minimum width on to the window.
+    func keepsWindowWideEnough() -> some View { modifier(WindowWidthFloor()) }
+}
+
+private struct WindowWidthFloor: ViewModifier {
+    @Environment(\.reportPaneMinimumWidth) private var report
+
+    /// A grouped Form's inset on each side. Read from the layout, it drops
+    /// to zero once the content overflows, so it's fixed here.
+    private static let formMargin: CGFloat = 30
+
+    func body(content: Content) -> some View {
+        // Held at its ideal width and measured in place; the window's
+        // minimum then keeps that width on screen.
+        content
+            .fixedSize(horizontal: true, vertical: false)
+            .background(GeometryReader { geometry in
+                let needed = geometry.size.width + 2 * Self.formMargin
+                Color.clear
+                    .onAppear { report(needed) }
+                    .onChange(of: needed) { report($0) }
+            })
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
