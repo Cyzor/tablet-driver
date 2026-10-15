@@ -577,6 +577,9 @@ extension InputInjector {
         entering: Bool, at location: CGPoint,
         eraser: Bool
     ) {
+        // Pan View holds the pointer still while the pen moves, so a pen
+        // leaving or returning mid-pan mustn't pull the pointer to the pen.
+        let location = panScroll.isActive ? currentCursorPosition() : location
         guard let e = CGEvent(source: sessionSource) else {
             injectLog.error("postProximityEvent: CGEvent creation failed — entering=\(entering) eraser=\(eraser)")
             return
