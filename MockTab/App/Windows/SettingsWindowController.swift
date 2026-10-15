@@ -52,6 +52,17 @@ final class ResizableWindow: NSWindow {
 
 final class ResizableTabViewController: NSTabViewController {
 
+    /// The narrowest window the panes lay out in. A full tablet's toolbar
+    /// already forces this, but a three-tab window (Quick Keys, ExpressKey
+    /// Remote) would otherwise clip Info's status table.
+    static let minimumPaneWidth: CGFloat = 640
+
+    /// The window's minimum width for `tabCount` toolbar tabs: about 70 pt per
+    /// tab plus 80 pt of chrome, and never narrower than the panes need.
+    static func minimumWidth(forTabCount tabCount: Int) -> CGFloat {
+        max(CGFloat(tabCount) * 70 + 80, minimumPaneWidth)
+    }
+
     private var defaultTabSizes: [String: NSSize] = [:]
 
     /// Set to true the first time the user manually resizes the window.
@@ -125,7 +136,7 @@ final class ResizableTabViewController: NSTabViewController {
             hasAppliedMinSize = true
             DispatchQueue.main.async { [weak self, weak window] in
                 guard let self, let window else { return }
-                let minWidth = self.toolbarMinWidth(in: window)
+                let minWidth = max(self.toolbarMinWidth(in: window), Self.minimumPaneWidth)
                 window.minSize = NSSize(width: minWidth, height: 500)
                 // The measurement above is authoritative for this window's toolbar
                 // layout — widen an already-narrower restored/last-known frame now,
@@ -153,6 +164,7 @@ final class ResizableTabViewController: NSTabViewController {
         {
             isProgrammaticResize = true
             window.setContentSize(size)
+            window.clampToMinSize()
             isProgrammaticResize = false
         }
     }
@@ -400,8 +412,7 @@ final class SettingsWindowController: NSWindowController {
 
         // Set a conservative minimum width before autosave frame restoration so a
         // previously-saved narrow frame cannot be applied. Tab count is computable
-        // from the registry at this point; formula: ~70 pt per tab + ~80 pt chrome.
-        // The deferred measurement in viewDidAppear will refine this once the
+        // from the registry at this point. The deferred measurement in viewDidAppear will refine this once the
         // toolbar is fully laid out.
         // staticSpec resolves non-Wacom devices too (the Wacom registry alone
         // returns nil for them). An aux-only device — the Quick Keys puck:
@@ -415,7 +426,8 @@ final class SettingsWindowController: NSWindowController {
         let isAuxOnly = staticSpec?.isAuxOnly == true
         let hasTouchTab = staticSpec?.hasFingerTouch == true
         let tabCount = isAuxOnly ? 3 : (hasTouchTab ? 9 : 8)
-        window.minSize = NSSize(width: CGFloat(tabCount) * 70 + 80, height: 500)
+        window.minSize = NSSize(
+            width: ResizableTabViewController.minimumWidth(forTabCount: tabCount), height: 500)
 
         // Don't auto-save frame for device-specific windows — SettingsWindowManager
         // handles manual persistence to support per-device window positions.
@@ -806,10 +818,12 @@ final class SettingsWindowController: NSWindowController {
             (item.viewController as? LazyHostingViewController)?.teardown()
             tabVC.removeTabViewItem(item)
         }
-        // Same formula as init's tabCount-based minSize — recomputed off the
-        // live tab count rather than duplicating aux-only/hasTouchTab logic.
+        // Recomputed off the live tab count rather than duplicating init's
+        // aux-only and hasTouchTab logic.
         guard let window else { return }
-        window.minSize = NSSize(width: CGFloat(tabVC.tabViewItems.count) * 70 + 80, height: 500)
+        window.minSize = NSSize(
+            width: ResizableTabViewController.minimumWidth(forTabCount: tabVC.tabViewItems.count),
+            height: 500)
         window.clampToMinSize()
     }
 
