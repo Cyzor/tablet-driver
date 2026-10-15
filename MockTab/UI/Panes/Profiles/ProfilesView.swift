@@ -328,7 +328,7 @@ struct ProfilesView: View {
                     .padding(10)
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("JSON backup tile — drag out to export, drop a JSON file in to import")
+                .accessibilityLabel("Backup file")
                 .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .onHover { hovering in
                     isHovering = hovering

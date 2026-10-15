@@ -205,7 +205,7 @@ struct QuickKeysSectionView: View {
                     .labelsHidden()
                     .fixedSize()
                 }
-                .help("Brightness of the Quick Keys OLED. Off blanks it — the keys and dial keep working.")
+                .help("Brightness of the Quick Keys OLED. Off blanks the screen, but the keys and dial keep working.")
 
                 HStack {
                     Image(systemName: "moon.zzz")

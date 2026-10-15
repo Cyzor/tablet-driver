@@ -580,6 +580,8 @@ struct DisplayMappingView: View {
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .help("Click a thumbnail to toggle that display in or out of the rotation. ⌘-click to add individual displays; ⇧-click to select a range.")
+                // After `.help`, so VoiceOver hears key names, not symbols.
+                .accessibilityHint("Click a thumbnail to toggle that display in or out of the rotation. Command-click to add individual displays, or Shift-click to select a range.")
 
             HStack(spacing: 8) {
                 ForEach(Array(displays.enumerated()), id: \.element.id) { index, info in
@@ -988,6 +990,7 @@ struct DisplayMappingView: View {
         .background(WindowReader(ref: windowRef))
         .frame(height: 180)
         .help(canvasHelpText)
+        .accessibilityHint(canvasSpokenHint)
     }
 
     /// The canvas for VoiceOver: which displays the tablet maps to. The
@@ -1021,6 +1024,14 @@ struct DisplayMappingView: View {
             return String(localized: "⌘+click to add or remove a display from the selection. ⇧+click to select a range.", comment: "Help text for the display canvas while in Toggle or Span mode")
         }
         return String(localized: "Click a display to map the tablet to it. ⌘+click to add it to the toggle rotation. ⇧+click to span all displays.", comment: "Help text for the display canvas in single-display modes")
+    }
+
+    /// `canvasHelpText` with key names in place of symbols, for VoiceOver.
+    private var canvasSpokenHint: String {
+        if settings.targetDisplayIndex == modeToggle || settings.targetDisplayIndex == modeSpan {
+            return String(localized: "Command-click to add or remove a display from the selection. Shift-click to select a range.", comment: "VoiceOver hint for the display canvas while in Toggle or Span mode")
+        }
+        return String(localized: "Click a display to map the tablet to it. Command-click to add it to the toggle rotation. Shift-click to span all displays.", comment: "VoiceOver hint for the display canvas in single-display modes")
     }
 
 }

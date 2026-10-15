@@ -99,9 +99,9 @@ extension TabletOrientation {
     /// Tooltip shown on hover.
     var helpText: LocalizedStringKey {
         switch self {
-        case .landscape:        return "Standard orientation — tablet's long edge is horizontal."
+        case .landscape:        return "Standard orientation, with the tablet's long edge horizontal."
         case .portrait:         return "Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation."
-        case .landscapeFlipped: return "Flip 180° — useful for left-handed use or reversed cable routing."
+        case .landscapeFlipped: return "Flip 180° for left-handed use or reversed cable routing."
         case .portraitFlipped:  return "Rotate the active surface 90° counter-clockwise."
         }
     }

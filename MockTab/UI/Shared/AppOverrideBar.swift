@@ -713,7 +713,7 @@ struct AppOverrideBar: View {
         // The menu draws its label in the full label color, ignoring
         // foregroundStyle; dim it to scroll-bar tone instead.
         .opacity(0.5)
-        .help("Add per-app override — or drag an app here from Finder or the Dock")
+        .help("Add a per-app override, or drag an app here from Finder or the Dock")
     }
 
     // MARK: - Drop handling

@@ -8,7 +8,7 @@ import SwiftUI
 /// A Bloom-style shortcut recorder control.
 /// • Click the field to start recording — press any key combo to bind it.
 /// • ESC cancels; Delete alone clears the binding.
-/// • Use the ▾ menu to assign click actions instead of a key combo.
+/// • Use the menu beside the field to assign click actions instead of a key combo.
 /// • The ✕ button clears any existing assignment.
 struct ButtonBindingControl: View, Equatable {
     @Binding var binding: ButtonBinding
@@ -78,7 +78,7 @@ struct ButtonBindingControl: View, Equatable {
             .buttonStyle(.plain)
             .background(fieldBackground)
             .help(
-                "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the ▾ menu to assign a click action.")
+                "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the menu next to it to assign a click action.")
 
             // Clear button
             if binding.kind != .none && !isRecording {
@@ -116,7 +116,7 @@ struct ButtonBindingControl: View, Equatable {
             Button("Middle Click") { binding = ButtonBinding(kind: .middleClick) }
                 .help("Middle mouse button (panning in many apps)")
             Button("Pan View") { binding = ButtonBinding(kind: .scrollDrag) }
-                .help("Hold to pan/scroll with pen motion (Hand-tool style)")
+                .help("Hold to pan or scroll by moving the pen, like a hand tool")
             Button("Double Click") { binding = ButtonBinding(kind: .doubleClick) }
                 .help("Two rapid clicks in succession")
             Button("Click Lock") { binding = ButtonBinding(kind: .clickLock) }
@@ -186,13 +186,13 @@ struct ButtonBindingControl: View, Equatable {
             }
             Divider()
             Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
-                .help("Hold Command modifier (⌘)")
+                .help("Hold Command while the button is down")
             Button("⌥ Option") { binding = ButtonBinding(modifierOnly: .option) }
-                .help("Hold Option modifier (⌥)")
+                .help("Hold Option while the button is down")
             Button("⇧ Shift") { binding = ButtonBinding(modifierOnly: .shift) }
-                .help("Hold Shift modifier (⇧)")
+                .help("Hold Shift while the button is down")
             Button("⌃ Control") { binding = ButtonBinding(modifierOnly: .control) }
-                .help("Hold Control modifier (⌃)")
+                .help("Hold Control while the button is down")
             Divider()
             Button("None") { binding = .none }
                 .help("Disable this button")
@@ -207,7 +207,7 @@ struct ButtonBindingControl: View, Equatable {
         .menuIndicator(.hidden)
         .frame(width: 20)
         .help(
-            "Assign a click action: left-click, right-click, middle-click, modifier keys, or display toggle."
+            "Assign a click, modifier key, display switch, or other action instead of a shortcut."
         )
         .accessibilityLabel("Click action menu")
     }

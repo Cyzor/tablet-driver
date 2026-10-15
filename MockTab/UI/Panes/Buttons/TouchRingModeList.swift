@@ -319,29 +319,42 @@ private struct TouchRingModeListCore: View, Equatable {
         }
         .buttonStyle(.plain)
         .padding(.vertical, 3)
-        .accessibilityLabel("Mode \(idx + 1): \(summaryText(idx))")
+        .accessibilityLabel(String(
+            localized: "Mode \(idx + 1), \(summaryText(idx, spoken: true))",
+            comment: "VoiceOver label for a ring mode row: mode number, then its summary"))
         .accessibilityHint("Opens the settings for this mode.")
     }
 
-    /// One readable line per mode: the action, then only what qualifies it —
-    /// key bindings for key modes, the speed for anything that turns.
-    private func summaryText(_ idx: Int) -> String {
+    /// One readable line per mode: the action, then only what qualifies it,
+    /// meaning key bindings for key modes and the speed for anything that
+    /// turns. `spoken` swaps the separators and "×" for words VoiceOver reads.
+    private func summaryText(_ idx: Int, spoken: Bool = false) -> String {
         let slot = slots[idx]
         switch slot.action {
         case .off, .skip:
             return slot.action.displayLabel
         case .scroll, .zoom, .rotate:
-            return "\(slot.action.displayLabel) · \(speedLabel(slot.speed, for: slot.action))"
+            let speed = speedLabel(slot.speed, for: slot.action, spoken: spoken)
+            return spoken
+                ? String(
+                    localized: "\(slot.action.displayLabel), speed \(speed)",
+                    comment: "VoiceOver ring mode summary: action, then speed")
+                : "\(slot.action.displayLabel) · \(speed)"
         case .keyPress:
             let cw = slot.cwBinding.displayLabel
             let ccw = slot.ccwBinding.displayLabel
-            return String(
-                localized: "Keys \(cw) / \(ccw) · \(speedLabel(slot.speed, for: slot.action))",
-                comment: "Ring mode summary: clockwise / counter-clockwise key bindings, then speed")
+            let speed = speedLabel(slot.speed, for: slot.action, spoken: spoken)
+            return spoken
+                ? String(
+                    localized: "Keys \(cw) clockwise and \(ccw) counter-clockwise, speed \(speed)",
+                    comment: "VoiceOver ring mode summary: clockwise and counter-clockwise key bindings, then speed")
+                : String(
+                    localized: "Keys \(cw) / \(ccw) · \(speed)",
+                    comment: "Ring mode summary: clockwise / counter-clockwise key bindings, then speed")
         }
     }
 
-    private func speedLabel(_ speed: Double, for action: ControlSlot.Action) -> String {
+    private func speedLabel(_ speed: Double, for action: ControlSlot.Action, spoken: Bool = false) -> String {
         switch action {
         case .zoom, .rotate:
             return bucketedSpeedLabel(
@@ -353,7 +366,9 @@ private struct TouchRingModeListCore: View, Equatable {
                 ? String(
                     localized: "Off",
                     comment: "Ring speed at minimum — rotation disabled")
-                : String(format: "%.2g×", speed)
+                : spoken
+                    ? speed.formatted(.number.precision(.fractionLength(0...2)))
+                    : String(format: "%.2g×", speed)
         }
     }
 
