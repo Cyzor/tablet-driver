@@ -32,6 +32,7 @@ struct LiveInputSectionContent: View {
     @State private var livePointTick = 0
 
     var body: some View {
+        let _ = BodyCounter.note("LiveInputSection")
         // Establishes livePointTick as a read dependency of this body —
         // without a read, bumping it doesn't reliably trigger a re-render.
         let _ = livePointTick
@@ -110,6 +111,7 @@ private struct LiveInputView: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("LiveInput")
         VStack(alignment: .leading, spacing: 8) {
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                 let tool: DeviceRegistry.KnownTool? = {

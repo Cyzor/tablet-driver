@@ -65,6 +65,7 @@ struct InfoView: View {
     @ObservedObject private var collectionRequest = DeviceDataCollectionRequest.shared
 
     var body: some View {
+        let _ = BodyCounter.note("Info")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
             instanceKey: instanceKey

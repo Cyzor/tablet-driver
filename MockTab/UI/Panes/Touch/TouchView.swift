@@ -59,6 +59,7 @@ struct TouchView: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("Touch")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.touchKeys,

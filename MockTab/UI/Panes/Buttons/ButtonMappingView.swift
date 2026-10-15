@@ -152,6 +152,7 @@ struct ButtonMappingView: View {
     // MARK: - Body
 
     var body: some View {
+        let _ = BodyCounter.note("Buttons")
         Group {
             if isEmbeddedRemote {
                 singleSidedSection(lb: liveButtons)

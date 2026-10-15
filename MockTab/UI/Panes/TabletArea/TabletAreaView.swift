@@ -136,6 +136,7 @@ struct TabletAreaView: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("TabletArea")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: boundKey, overrideKeys: AppOverrideBar.areaKeys,

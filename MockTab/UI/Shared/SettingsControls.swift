@@ -110,6 +110,7 @@ struct SettingsPane<Content: View>: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("SettingsPane")
         VStack(spacing: 0) {
             if let overrideKeys {
                 AppOverrideBar(

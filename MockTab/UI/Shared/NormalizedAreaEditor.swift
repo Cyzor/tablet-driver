@@ -34,6 +34,9 @@ enum AreaEditorStyle {
 }
 
 struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
+    @Environment(\.controlActiveState) private var controlActiveState
+    private var accent: Color { .windowAccent(controlActiveState) }
+
     let aspectRatio: Double
     @Binding var rect: NormalizedRect
     /// Smallest dimension (width or height) the user can drag the rect to,
@@ -113,7 +116,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                     let r = draftRect ?? rect
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(accent)
                         .accessibilityLabel(label)
                         .transition(.opacity)
                         .position(x: (r.x + r.w) * cs.width - 14, y: r.y * cs.height + 14)
@@ -271,7 +274,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 .allowsHitTesting(false)
 
             Rectangle()
-                .fill(Color.accentColor.opacity(style == .fullScreen ? 0.01 : 0.12))
+                .fill(accent.opacity(style == .fullScreen ? 0.01 : 0.12))
                 .frame(width: w, height: h)
                 .offset(x: x, y: y)
                 .gesture(cropGesture(.body, cs: cs))
@@ -288,7 +291,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 } else {
                     Rectangle()
                         .strokeBorder(
-                            Color.accentColor,
+                            accent,
                             lineWidth: isFocused ? Self.focusedStrokeWidth : Self.strokeWidth)
                 }
             }
@@ -297,7 +300,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .allowsHitTesting(false)
 
             Rectangle()
-                .strokeBorder(Color.accentColor, lineWidth: 5)
+                .strokeBorder(accent, lineWidth: 5)
                 .opacity(snapPulse ? 0.9 : 0)
                 .frame(width: w, height: h)
                 .offset(x: x, y: y)
@@ -411,11 +414,11 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     private func handleDot() -> some View {
         if style == .fullScreen {
             Circle()
-                .fill(Color.accentColor)
+                .fill(accent)
                 .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.5))
         } else {
             Circle()
-                .fill(Color.accentColor)
+                .fill(accent)
         }
     }
 

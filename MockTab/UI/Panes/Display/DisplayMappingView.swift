@@ -9,6 +9,9 @@ import SwiftUI
 import TabletKit
 
 struct DisplayMappingView: View {
+    @Environment(\.controlActiveState) private var controlActiveState
+    private var accent: Color { .windowAccent(controlActiveState) }
+
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
@@ -44,6 +47,7 @@ struct DisplayMappingView: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("Display")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.areaKeys,
@@ -760,7 +764,7 @@ struct DisplayMappingView: View {
                     Rectangle()
                         .fill(
                             included
-                                ? Color.accentColor.opacity(0.15)
+                                ? accent.opacity(0.15)
                                 : Color.secondary.opacity(0.07))
                 }
 
@@ -791,7 +795,7 @@ struct DisplayMappingView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .stroke(
-                        included ? Color.accentColor : Color.secondary.opacity(0.35),
+                        included ? accent : Color.secondary.opacity(0.35),
                         lineWidth: included ? 1.5 : 1
                     )
             )

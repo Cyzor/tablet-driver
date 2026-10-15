@@ -4,44 +4,26 @@
 
 import SwiftUI
 
-/// A full-width disclosure header that shows/hides `content` when tapped.
-/// Chevron sits on the right; clicking anywhere on the header row toggles expansion.
+/// A collapsible section on the system disclosure control. Clicking the
+/// title toggles it too, not just the triangle.
 struct DisclosureRow<Content: View>: View {
     let label: String
     @Binding var isExpanded: Bool
     @ViewBuilder let content: () -> Content
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            content()
+                .padding(.top, 8)
+        } label: {
             Button { isExpanded.toggle() } label: {
-                HStack {
-                    Image(systemName: "chevron.down")
-                        .rotationEffect(.degrees(isExpanded ? -180 : 0))
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isExpanded)
-                        .appFont(.settingsLabel)
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
-                    Text(label)
-                        .appFont(.headline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .contentShape(Rectangle())
+                Text(label)
+                    .appFont(.headline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityValue(
-                isExpanded
-                    ? Text("Expanded")
-                    : Text("Collapsed")
-            )
-
-            if isExpanded {
-                content()
-                    .transition(.opacity)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isExpanded)
-            }
         }
     }
 }

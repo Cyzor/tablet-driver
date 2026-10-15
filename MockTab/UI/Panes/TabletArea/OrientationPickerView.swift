@@ -51,7 +51,8 @@ struct OrientationPickerView: View {
 
 // MARK: - Native radio button indicator
 
-/// Display-only native macOS radio circle drawn via NSButtonCell.
+/// Display-only native macOS radio button. A real `NSButton`, so it fades
+/// with its window like any system control.
 /// Position (circle left, label right) is controlled by the enclosing HStack.
 /// Interaction is handled by the parent — this view ignores hit-testing.
 struct NativeRadioIndicator: NSViewRepresentable {
@@ -60,26 +61,27 @@ struct NativeRadioIndicator: NSViewRepresentable {
     func makeNSView(context: Context) -> RadioIndicatorView { RadioIndicatorView() }
 
     func updateNSView(_ view: RadioIndicatorView, context: Context) {
-        view.isSelected = isSelected
+        view.button.state = isSelected ? .on : .off
     }
 
     final class RadioIndicatorView: NSView {
-        var isSelected = false { didSet { needsDisplay = true } }
+        let button = NSButton(radioButtonWithTitle: "", target: nil, action: nil)
 
-        private let cell: NSButtonCell = {
-            let c = NSButtonCell()
-            c.setButtonType(.radio)
-            c.title = ""
-            c.imagePosition = .imageOnly
-            c.isBordered = false
-            return c
-        }()
-
-        override func draw(_ dirtyRect: NSRect) {
-            cell.isEnabled = true
-            cell.state = isSelected ? .on : .off
-            cell.draw(withFrame: bounds, in: self)
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            button.imagePosition = .imageOnly
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.setAccessibilityElement(false)
+            addSubview(button)
+            NSLayoutConstraint.activate([
+                button.centerXAnchor.constraint(equalTo: centerXAnchor),
+                button.centerYAnchor.constraint(equalTo: centerYAnchor),
+            ])
         }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
 

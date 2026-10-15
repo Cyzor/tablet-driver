@@ -56,6 +56,7 @@ struct ScratchpadView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let _ = BodyCounter.note("Scratchpad")
         VStack(spacing: 0) {
             mainContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -291,6 +292,7 @@ struct TiltVisualizerCanvas: View {
     @State private var livePointTick = 0
 
     var body: some View {
+        let _ = BodyCounter.note("TiltCanvas")
         // Establishes livePointTick as a read dependency of this body so each
         // livePoint publish forces a re-evaluation.
         let _ = livePointTick

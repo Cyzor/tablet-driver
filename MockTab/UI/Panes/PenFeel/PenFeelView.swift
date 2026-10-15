@@ -19,6 +19,7 @@ struct PenFeelView: View {
     // MARK: - Body
 
     var body: some View {
+        let _ = BodyCounter.note("PenFeel")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.pressureKeys,
@@ -456,6 +457,9 @@ struct PenFeelView: View {
 private enum PressureCurvePoint { case p1, p2 }
 
 private struct PressureCurveCanvas: View {
+    @Environment(\.controlActiveState) private var controlActiveState
+    private var accent: Color { .windowAccent(controlActiveState) }
+
     @ObservedObject var tool: ToolSettings
 
     @State private var draggingP1 = false
@@ -639,7 +643,7 @@ private struct PressureCurveCanvas: View {
             path.addLine(to: toCanvas(x: t + s * (1 - t), y: curve.evaluate(s), size: size))
         }
         ctx.stroke(
-            path, with: .color(.accentColor), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            path, with: .color(accent), style: StrokeStyle(lineWidth: 2, lineCap: .round))
     }
 
     private func drawHandles(ctx: GraphicsContext, size: CGSize) {
@@ -662,7 +666,7 @@ private struct PressureCurveCanvas: View {
             let r: CGFloat = 6
             let rect = CGRect(x: pt.x - r, y: pt.y - r, width: r * 2, height: r * 2)
             ctx.fill(Path(ellipseIn: rect), with: .color(.white))
-            ctx.stroke(Path(ellipseIn: rect), with: .color(.accentColor), lineWidth: 1.5)
+            ctx.stroke(Path(ellipseIn: rect), with: .color(accent), lineWidth: 1.5)
         }
     }
 

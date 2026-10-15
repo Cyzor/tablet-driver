@@ -54,6 +54,7 @@ struct DeviceNameLabel: View {
     var instanceKey: DeviceInstanceKey?
 
     var body: some View {
+        let _ = BodyCounter.note("DeviceName")
         StatusCaptionLabel(name: displayName, isLive: isConnected)
     }
 
@@ -85,6 +86,7 @@ struct ToolNameLabel: View {
     var instanceKey: DeviceInstanceKey?
 
     var body: some View {
+        let _ = BodyCounter.note("ToolName")
         StatusCaptionLabel(name: displayName, isLive: context?.activeToolID != nil)
     }
 
@@ -113,6 +115,7 @@ struct DeviceStatusBar: View {
     let instanceKey: DeviceInstanceKey?
 
     var body: some View {
+        let _ = BodyCounter.note("StatusBar")
         VStack(spacing: 0) {
             Divider()
             if let message = context?.connectionErrorMessage {

@@ -105,6 +105,9 @@ extension LEDSwatch {
 /// and the RGB bytes are wire values for swatches or raw sRGB for custom
 /// picks. Undo is coalesced internally — callers pass a plain binding.
 struct LEDColorControl: View, Equatable {
+    @Environment(\.controlActiveState) private var controlActiveState
+    private var accent: Color { .windowAccent(controlActiveState) }
+
     enum Style { case inline, well }
 
     /// Equatable over the displayed values so `.equatable()` call sites skip
@@ -242,7 +245,7 @@ struct LEDColorControl: View, Equatable {
         .padding(2)
         .overlay(
             Circle()
-                .strokeBorder(Color.accentColor, lineWidth: 2)
+                .strokeBorder(accent, lineWidth: 2)
                 .opacity(selected ? 1 : 0)
         )
         .contentShape(Circle())

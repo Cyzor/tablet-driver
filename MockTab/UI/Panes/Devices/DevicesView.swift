@@ -19,6 +19,9 @@ import TabletKit
 /// object, one row, matching how vendors present it.  Renaming or
 /// removing the row applies to both ends.
 struct DevicesView: View {
+    @Environment(\.controlActiveState) private var controlActiveState
+    private var accent: Color { .windowAccent(controlActiveState) }
+
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
@@ -92,6 +95,7 @@ struct DevicesView: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("Devices")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey
@@ -279,7 +283,7 @@ struct DevicesView: View {
         // wash rather than a tight box around the content.
         .background(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
+                .fill(isSelected ? accent.opacity(0.10) : Color.clear)
                 .padding(.horizontal, -8)
         )
         // Row-wide click handling, masked off while this row is being renamed.
@@ -513,7 +517,7 @@ struct DevicesView: View {
             }
         }
         .padding(.vertical, 2)
-        .listRowBackground(isInProximity ? Color.accentColor.opacity(0.08) : nil)
+        .listRowBackground(isInProximity ? accent.opacity(0.08) : nil)
         // Masked off while editing — see the tablet row for why.
         .rowTapHandling(active: !isEditing) { row, mask in
             row.gesture(
