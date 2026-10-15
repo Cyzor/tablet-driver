@@ -109,6 +109,8 @@
 		AA0001F5 /* DiagnosticPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F5 /* DiagnosticPackage.swift */; };
 		AA002100 /* BluetoothLinkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002100 /* BluetoothLinkMonitor.swift */; };
 		AA000103 /* CaptureGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000103 /* CaptureGuideView.swift */; };
+		AA00F602 /* CaptureGuideCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F602 /* CaptureGuideCompletion.swift */; };
+		AA00F601 /* CaptureGuideDeviceInit.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F601 /* CaptureGuideDeviceInit.swift */; };
 		AA000154 /* TouchRingDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000154 /* TouchRingDiagramView.swift */; };
 		AA000200 /* NormalizedAreaEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000200 /* NormalizedAreaEditor.swift */; };
 		AA00DK01 /* DeviceInstanceClaims.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DK01 /* DeviceInstanceClaims.swift */; };
@@ -250,6 +252,8 @@
 		AB0001F5 /* DiagnosticPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticPackage.swift; sourceTree = "<group>"; };
 		AB002100 /* BluetoothLinkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothLinkMonitor.swift; sourceTree = "<group>"; };
 		AB000103 /* CaptureGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideView.swift; sourceTree = "<group>"; };
+		AB00F602 /* CaptureGuideCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideCompletion.swift; sourceTree = "<group>"; };
+		AB00F601 /* CaptureGuideDeviceInit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureGuideDeviceInit.swift; sourceTree = "<group>"; };
 		AB000154 /* TouchRingDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchRingDiagramView.swift; sourceTree = "<group>"; };
 		AB000200 /* NormalizedAreaEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NormalizedAreaEditor.swift; sourceTree = "<group>"; };
 		AB001000 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -573,6 +577,8 @@
 			isa = PBXGroup;
 			children = (
 				AB000103 /* CaptureGuideView.swift */,
+				AB00F602 /* CaptureGuideCompletion.swift */,
+				AB00F601 /* CaptureGuideDeviceInit.swift */,
 				AB000033 /* InfoView.swift */,
 				AB00F402 /* InfoDiagnostics.swift */,
 				AB00F401 /* InfoStatusTable.swift */,
@@ -882,6 +888,8 @@
 				AA000073 /* OrientationPickerView.swift in Sources */,
 				AA000200 /* NormalizedAreaEditor.swift in Sources */,
 				AA000103 /* CaptureGuideView.swift in Sources */,
+				AA00F602 /* CaptureGuideCompletion.swift in Sources */,
+				AA00F601 /* CaptureGuideDeviceInit.swift in Sources */,
 				AA000013 /* PenFeelView.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
