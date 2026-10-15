@@ -47,6 +47,8 @@
 		AA0000B0 /* ScreenAreaOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000B0 /* ScreenAreaOverlayView.swift */; };
 		AA000902 /* MappingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000902 /* MappingSheet.swift */; };
 		AA000016 /* ScratchpadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000016 /* ScratchpadView.swift */; };
+		AA00F502 /* ScratchpadCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F502 /* ScratchpadCanvas.swift */; };
+		AA00F501 /* ScratchpadVisualizers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F501 /* ScratchpadVisualizers.swift */; };
 		AA000017 /* SettingsWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* SettingsWindowManager.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
 		AA000033 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* InfoView.swift */; };
@@ -183,6 +185,8 @@
 		AB0000B0 /* ScreenAreaOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenAreaOverlayView.swift; sourceTree = "<group>"; };
 		AB000902 /* MappingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MappingSheet.swift; sourceTree = "<group>"; };
 		AB000016 /* ScratchpadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadView.swift; sourceTree = "<group>"; };
+		AB00F502 /* ScratchpadCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadCanvas.swift; sourceTree = "<group>"; };
+		AB00F501 /* ScratchpadVisualizers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScratchpadVisualizers.swift; sourceTree = "<group>"; };
 		AB000017 /* SettingsWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowManager.swift; sourceTree = "<group>"; };
 		AB000020 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
@@ -598,6 +602,8 @@
 			isa = PBXGroup;
 			children = (
 				AB000016 /* ScratchpadView.swift */,
+				AB00F502 /* ScratchpadCanvas.swift */,
+				AB00F501 /* ScratchpadVisualizers.swift */,
 			);
 			path = Scratchpad;
 			sourceTree = "<group>";
@@ -888,6 +894,8 @@
 				AA0000B0 /* ScreenAreaOverlayView.swift in Sources */,
 				AA000902 /* MappingSheet.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,
+				AA00F502 /* ScratchpadCanvas.swift in Sources */,
+				AA00F501 /* ScratchpadVisualizers.swift in Sources */,
 				AA000033 /* InfoView.swift in Sources */,
 				AA00F402 /* InfoDiagnostics.swift in Sources */,
 				AA00F401 /* InfoStatusTable.swift in Sources */,
