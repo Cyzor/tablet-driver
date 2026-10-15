@@ -84,6 +84,7 @@ struct InfoView: View {
             }
             Section {
                 statusTable
+                    .keepsWindowWideEnough()
             } header: {
                 Text("Status").appFont(.headline)
             }
@@ -253,7 +254,7 @@ struct InfoView: View {
                     showCaptureGuide = true
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .appControlSize(.small)
                 .padding(.top, 2)
             }
             Spacer()
@@ -467,7 +468,7 @@ struct InfoView: View {
                 if let action, let actionLabel {
                     Button(actionLabel, action: action)
                         .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .appControlSize(.small)
                         .disabled(actionDisabled)
                         .help(actionHelp ?? "")
                         // Sized to its own label — equal widths would stretch
@@ -519,7 +520,7 @@ struct InfoView: View {
                         beginCollection()
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .appControlSize(.small)
                     .disabled(rawCaptureHeldElsewhere)
                     .help(
                         rawCaptureHeldElsewhere

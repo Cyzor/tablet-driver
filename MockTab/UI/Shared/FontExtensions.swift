@@ -182,6 +182,40 @@ extension View {
     }
 }
 
+// MARK: - Scaled control size
+//
+// Buttons, pickers, and other AppKit-backed controls ignore SwiftUI's font
+// and take their label size from `controlSize`: mini is 9 pt, small 11 pt,
+// and regular, large, and extra large all 13 pt. So the only step that
+// grows text is small to regular, taken at Large and Extra Large.
+
+private struct ScaledControlSize: ViewModifier {
+    @Environment(\.textScale) private var scale
+    let size: ControlSize
+
+    func body(content: Content) -> some View {
+        content.controlSize(scale > 1 ? size.steppedUp : size)
+    }
+}
+
+extension ControlSize {
+    fileprivate var steppedUp: ControlSize {
+        switch self {
+        case .mini: return .small
+        case .small: return .regular
+        default: return self
+        }
+    }
+}
+
+extension View {
+    /// `.controlSize(_:)` that grows a mini or small control one step when
+    /// the user's Text Size is above Standard.
+    func appControlSize(_ size: ControlSize) -> some View {
+        modifier(ScaledControlSize(size: size))
+    }
+}
+
 extension Font {
     /// Resolve an `AppFontRole` to a concrete `Font` at a given scale.
     /// Use at Canvas `ctx.resolve(Text(...).font(_))` sites where the

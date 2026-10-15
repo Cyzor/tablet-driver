@@ -265,7 +265,7 @@ struct PenFeelView: View {
                     "Firm response — requires more force to reach full output. Good for precise detail work.")
             }
             .buttonStyle(.bordered)
-            .controlSize(.small)
+            .appControlSize(.small)
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 4, trailing: 8))
 

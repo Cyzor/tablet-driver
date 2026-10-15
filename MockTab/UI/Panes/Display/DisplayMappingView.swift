@@ -420,12 +420,12 @@ struct DisplayMappingView: View {
                         beginScreenAreaPicker(for: display)
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .appControlSize(.small)
                     .help("Drag the region directly over your desktop, like the macOS screenshot tool.")
 
                     Button("Fit to Tablet") { fitScreenAreaToTablet(display) }
                         .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .appControlSize(.small)
                         .help("Make the screen area the tablet's shape, as large as the display allows, so none of the tablet goes unused.")
 
                     Button("Use Whole Screen") {
@@ -437,7 +437,7 @@ struct DisplayMappingView: View {
                         settings.recordDisplayRegionDrag(before: snap)
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .appControlSize(.small)
                     .help("Map the tablet to the entire selected display (undoable).")
                 }
                 .listRowBackground(Color.clear)
@@ -702,7 +702,7 @@ struct DisplayMappingView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .appControlSize(.small)
                 .help("Go to the Buttons tab to assign a button that triggers the display toggle.")
             }
         }

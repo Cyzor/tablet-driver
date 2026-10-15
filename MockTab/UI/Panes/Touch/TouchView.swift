@@ -254,7 +254,7 @@ struct TouchView: View {
                     settings.recordTouchAreaDrag(before: snap)
                 }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
+                .appControlSize(.small)
                 // Gated on `touchEnabled` only — deliberately not also on
                 // "the rect is already full", which the pen pane doesn't do
                 // either. A reset button that greys out at exactly the state

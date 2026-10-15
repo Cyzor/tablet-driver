@@ -72,6 +72,7 @@ private struct LiveInputView: View {
     /// each new raw angle adds the shortest signed delta from the previous one,
     /// so a wrap (358° -> 2°) contributes +4° instead of snapping the hand back
     /// ~356° (confirmed against a ~9-revolution PTK-870 USB capture).
+    @Environment(\.textScale) private var textScale
     @State private var accumAngle: Double = 0
     @State private var lastRawAngle: Double?
 
@@ -86,6 +87,9 @@ private struct LiveInputView: View {
                 .rotationEffect(.radians(-accumAngle * .pi / 180), anchor: .center)
         }
         .frame(width: 36, height: 36)
+        // Drawn at 36 pt and scaled whole, so the hand stays centered.
+        .scaleEffect(textScale)
+        .scaledFrame(width: 36, height: 36)
         .onChange(of: degrees) { newDeg in
             guard let d = newDeg else {
                 accumAngle = 0
@@ -140,7 +144,7 @@ private struct LiveInputView: View {
                         if !lb.tipDown && !lb.eraserDown && !lb.button1Down
                             && !lb.button2Down && !anyExpress
                         {
-                            Text("None").foregroundStyle(.tertiary).appFont(.settingsBadge)
+                            Text("None").foregroundStyle(.tertiary).appFont(.settingsLabel)
                         }
                     }
                 }
@@ -160,7 +164,7 @@ private struct LiveInputView: View {
                                             * CGFloat(point?.normalizedPressure ?? 0))
                             }
                         }
-                        .frame(width: 80, height: 6)
+                        .scaledFrame(width: 80, height: 6)
                     }
                 }
 

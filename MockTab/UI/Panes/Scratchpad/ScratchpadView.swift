@@ -173,7 +173,7 @@ struct ScratchpadView: View {
                         .animation(reduceMotion ? nil : .linear(duration: 0.05), value: currentPressure)
                 }
             }
-            .frame(height: 8)
+            .scaledFrame(height: 8)
 
             Text(String(format: "%.0f%%", currentPressure * 100))
                 .appFont(.monospaced)
@@ -186,14 +186,14 @@ struct ScratchpadView: View {
                 resetViewID += 1
             }
             .help("Undo scrolling, zooming, and rotation of the test canvas")
-            .controlSize(.small)
+            .appControlSize(.small)
             .disabled(!isViewMoved)
 
             Button("Clear") {
                 clearID += 1
             }
             .help("Erase all strokes from the test canvas")
-            .controlSize(.small)
+            .appControlSize(.small)
         }
     }
 
@@ -208,7 +208,7 @@ struct ScratchpadView: View {
                     .lineLimit(1)
 
                 TiltVisualizerCanvas(tabletManager: tabletManager)
-                    .frame(width: 100, height: 100)
+                    .scaledFrame(width: 100, height: 100)
                     .help("Live tilt direction and magnitude from the active pen.")
             }
 
@@ -223,7 +223,7 @@ struct ScratchpadView: View {
                         liveTouch: liveTouch,
                         maxContacts: spec?.maxTouchContacts ?? 10
                     )
-                    .frame(width: 100, height: 100)
+                    .scaledFrame(width: 100, height: 100)
                     .help("Live finger-touch contacts from the active device's touch surface.")
                 }
             }
