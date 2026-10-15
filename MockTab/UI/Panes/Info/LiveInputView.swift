@@ -149,7 +149,10 @@ private struct LiveInputView: View {
                     }
                 }
 
-                liveRow(label: String(localized: "Pressure", comment: "Live Input table row label")) {
+                liveRow(
+                    label: String(localized: "Pressure", comment: "Live Input table row label"),
+                    spokenValue: (point?.normalizedPressure ?? 0).formatted(.percent.precision(.fractionLength(0)))
+                ) {
                     HStack {
                         Text(point != nil ? "\(point!.pressure)" : "0")
                             .monospacedDigit()
@@ -168,7 +171,12 @@ private struct LiveInputView: View {
                     }
                 }
 
-                liveRow(label: String(localized: "Rotation", comment: "Live Input table row label — pen rotation in degrees")) {
+                liveRow(
+                    label: String(localized: "Rotation", comment: "Live Input table row label — pen rotation in degrees"),
+                    spokenValue: point.map {
+                        Measurement(value: $0.rotation.rounded(), unit: UnitAngle.degrees).formatted(.measurement(width: .wide))
+                    } ?? String(localized: "None")
+                ) {
                     rotationGauge(degrees: point?.rotation)
                 }
 
@@ -215,6 +223,7 @@ private struct LiveInputView: View {
                         )
                         .foregroundStyle(lb.touchRingActive ? Color.green : Color.secondary)
                         .imageScale(.small)
+                        .accessibilityHidden(true)
                         Text(verbatim: lb.touchRingActive
                             ? String(localized: "Active", comment: "Touch ring active state in Live Input")
                             : String(localized: "Idle", comment: "Touch ring idle state in Live Input"))
@@ -231,6 +240,7 @@ private struct LiveInputView: View {
                             )
                             .foregroundStyle(lb.touchRing2Active ? Color.green : Color.secondary)
                             .imageScale(.small)
+                            .accessibilityHidden(true)
                             Text(verbatim: lb.touchRing2Active
                                 ? String(localized: "Active", comment: "Touch ring active state in Live Input")
                                 : String(localized: "Idle", comment: "Touch ring idle state in Live Input"))
@@ -264,9 +274,12 @@ private struct LiveInputView: View {
         }
     }
 
+    /// `spokenValue` makes the row one VoiceOver element, for values drawn
+    /// rather than written.
     @ViewBuilder
     private func liveRow(
         label: String,
+        spokenValue: String? = nil,
         @ViewBuilder value: () -> some View
     ) -> some View {
         GridRow {
@@ -274,9 +287,20 @@ private struct LiveInputView: View {
                 .foregroundStyle(.secondary)
                 .scaledFrame(minWidth: 90, alignment: .trailing)
                 .gridColumnAlignment(.trailing)
-            value()
-                .monospacedDigit()
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityHidden(spokenValue != nil)
+            if let spokenValue {
+                value()
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityAddTraits(.isStaticText)
+                    .accessibilityLabel(label)
+                    .accessibilityValue(spokenValue)
+            } else {
+                value()
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 

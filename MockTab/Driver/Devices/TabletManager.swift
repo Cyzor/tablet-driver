@@ -183,6 +183,21 @@ final class TabletManager: ObservableObject {
         return Double(x) / Double(y)
     }
 
+    /// The active surface in millimeters, unrotated, or nil when no
+    /// registry knows it. The vendor profile comes first, as in
+    /// `surfaceAspectRatio(for:)`.
+    func surfaceSizeMM(for key: DeviceInstanceKey?) -> CGSize? {
+        guard let pid = key?.productID else { return nil }
+        if let profile = VendorDeviceRegistry.profile(forProductID: pid),
+            let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+        {
+            return CGSize(width: w, height: h)
+        }
+        let spec = WacomDeviceRegistry.spec(for: pid)
+        guard let w = spec?.activeWidthMM, w > 0, let h = spec?.activeHeightMM, h > 0 else { return nil }
+        return CGSize(width: w, height: h)
+    }
+
     func context(forKey key: DeviceInstanceKey?) -> DeviceContext? {
         guard let key else { return nil }
         if !key.instance.isEmpty {

@@ -18,6 +18,8 @@ struct MappingSheet: View {
     /// Full tablet surface, width ÷ height, after rotation.
     let tabletAspect: Double
     let tabletCaption: DeviceRegistry.Caption
+    /// Full tablet surface in millimeters, unrotated, for VoiceOver.
+    let tabletSizeMM: CGSize?
     let destination: MappingDestination
     /// Ends the sheet; it's presented from AppKit, which owns the window.
     var onClose: () -> Void = {}
@@ -31,12 +33,13 @@ struct MappingSheet: View {
 
     init(
         settings: TabletSettings, tabletAspect: Double,
-        tabletCaption: DeviceRegistry.Caption, destination: MappingDestination,
-        onClose: @escaping () -> Void
+        tabletCaption: DeviceRegistry.Caption, tabletSizeMM: CGSize?,
+        destination: MappingDestination, onClose: @escaping () -> Void
     ) {
         self.settings = settings
         self.tabletAspect = tabletAspect
         self.tabletCaption = tabletCaption
+        self.tabletSizeMM = tabletSizeMM
         self.destination = destination
         self.onClose = onClose
         _tabletRect = State(initialValue: NormalizedRect(
@@ -117,6 +120,7 @@ struct MappingSheet: View {
                             }
                         )
                         .snapping(to: tabletShape, label: String(localized: "Matches tablet area"))
+                        .speaking(as: String(localized: "Screen Area"), size: .points(display.bounds.size))
                     } else {
                         DisplayArrangementView(
                             displays: destination.displays,
@@ -149,6 +153,9 @@ struct MappingSheet: View {
                     .frame(width: cs.width, height: cs.height)
                 }
                 .snapping(to: screenShape, label: String(localized: "Matches screen area"))
+                .speaking(
+                    as: String(localized: "Tablet Area"),
+                    size: .tablet(tabletSizeMM, orientation: settings.tabletOrientation))
                 .frame(height: flexible * (1 - Self.displayShare))
 
                 fitButtons(
@@ -310,7 +317,9 @@ extension View {
     /// `.contextMenu` sometimes misses the first right-click on views with
     /// their own tap and drag gestures, which every mapping canvas has.
     func editMappingMenu(enabled: Bool = true, action: @escaping () -> Void) -> some View {
-        overlay(RightClickMenuHost { _ in
+        // VoiceOver can't open a right-click menu, so it gets the item as an action.
+        accessibilityAction(named: Text("Edit Mapping…")) { if enabled { action() } }
+        .overlay(RightClickMenuHost { _ in
             let menu = NSMenu()
             menu.autoenablesItems = false
             let item = NSMenuItem(
@@ -385,7 +394,8 @@ enum MappingSheetPresenter {
     /// inactive window doesn't make it key.
     static func present(
         from parent: NSWindow?, settings: TabletSettings, tabletAspect: Double,
-        tabletCaption: DeviceRegistry.Caption, destination: MappingDestination
+        tabletCaption: DeviceRegistry.Caption, tabletSizeMM: CGSize?,
+        destination: MappingDestination
     ) {
         guard let parent, parent.attachedSheet == nil else { return }
         parent.makeKeyAndOrderFront(nil)
@@ -405,8 +415,8 @@ enum MappingSheetPresenter {
             maxWidth: max(MappingSheet.maxWidth, minWidth), contentSize: size)
         let host = NSHostingController(rootView: MappingSheet(
             settings: settings, tabletAspect: tabletAspect,
-            tabletCaption: tabletCaption, destination: destination,
-            onClose: { [weak parent, weak sheet] in
+            tabletCaption: tabletCaption, tabletSizeMM: tabletSizeMM,
+            destination: destination, onClose: { [weak parent, weak sheet] in
                 if let sheet { parent?.endSheet(sheet) }
             }))
         host.sizingOptions = []

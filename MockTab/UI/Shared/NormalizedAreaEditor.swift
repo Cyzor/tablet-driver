@@ -64,6 +64,10 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     /// matched by eye. Command drags freely. Set via `snapping(to:label:)`.
     var snapAspect: Double? = nil
     var snapLabel: String? = nil
+    /// What VoiceOver calls the area and measures it in. Set via
+    /// `speaking(as:size:)`.
+    var spokenName: String? = nil
+    var spokenSize: AreaSpokenSize? = nil
 
     @State private var dragOrigin = NormalizedRect(x: 0, y: 0, w: 0, h: 0)
     @State private var draftRect: NormalizedRect?
@@ -130,34 +134,38 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
 
     // MARK: - Accessibility (VoiceOver)
 
-    /// Parallel control tree exposed to VoiceOver via
-    /// `.accessibilityRepresentation`. The visual Canvas remains the
-    /// authoritative surface for sighted-mouse users; this tree never
-    /// renders, so its layout doesn't matter — only the labels, values, and
-    /// adjustability matter.
+    /// Four sliders VoiceOver uses in place of the canvas. They never draw,
+    /// so only their labels, values, and ranges matter.
     private var accessibilityControls: some View {
         VStack {
             Slider(value: bindingFor(.x), in: 0...1) {
-                Text(String(
-                    localized: "Active area horizontal position",
-                    comment: "Accessibility label: VoiceOver slider for the active area's X origin (0%–100%)"))
+                Text("Horizontal position", comment: "VoiceOver label: slider for an area's distance from the left edge")
             }
+            .accessibilityValue(spokenValue(rect.x, horizontal: true))
             Slider(value: bindingFor(.y), in: 0...1) {
-                Text(String(
-                    localized: "Active area vertical position",
-                    comment: "Accessibility label: VoiceOver slider for the active area's Y origin (0%–100%)"))
+                Text("Vertical position", comment: "VoiceOver label: slider for an area's distance from the top edge")
             }
+            .accessibilityValue(spokenValue(rect.y, horizontal: false))
             Slider(value: bindingFor(.w), in: minDimension...1) {
-                Text(String(
-                    localized: "Active area width",
-                    comment: "Accessibility label: VoiceOver slider for the active area's width (clamped above minimum)"))
+                Text("Width")
             }
+            .accessibilityValue(spokenValue(rect.w, horizontal: true))
             Slider(value: bindingFor(.h), in: minDimension...1) {
-                Text(String(
-                    localized: "Active area height",
-                    comment: "Accessibility label: VoiceOver slider for the active area's height (clamped above minimum)"))
+                Text("Height")
             }
+            .accessibilityValue(spokenValue(rect.h, horizontal: false))
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(spokenName ?? "")
+    }
+
+    /// A fraction of the canvas as VoiceOver reads it: the length first when
+    /// the size is known, then the percentage.
+    private func spokenValue(_ fraction: Double, horizontal: Bool) -> String {
+        let percent = fraction.formatted(.percent.precision(.fractionLength(0)))
+        guard let spokenSize else { return percent }
+        let length = spokenSize.length(of: fraction, horizontal: horizontal)
+        return String(localized: "\(length), \(percent)", comment: "VoiceOver value of an area slider: a length, then a percentage, e.g. \"152 millimeters, 70%\"")
     }
 
     private enum RectField { case x, y, w, h }
@@ -792,6 +800,48 @@ extension NormalizedAreaEditor {
         copy.snapAspect = aspect
         copy.snapLabel = label
         return copy
+    }
+
+    /// Names the area for VoiceOver and gives the canvas's real size, so its
+    /// sliders read lengths as well as percentages.
+    func speaking(as name: String, size: AreaSpokenSize?) -> Self {
+        var copy = self
+        copy.spokenName = name
+        copy.spokenSize = size
+        return copy
+    }
+}
+
+/// A canvas's real size, for VoiceOver.
+enum AreaSpokenSize {
+    /// A tablet surface. Read in the Mac's measurement system.
+    case millimeters(CGSize)
+    /// A screen.
+    case points(CGSize)
+
+    /// A tablet surface as it sits once turned to `orientation`.
+    static func tablet(_ sizeMM: CGSize?, orientation: TabletOrientation) -> Self? {
+        guard let sizeMM else { return nil }
+        return .millimeters(orientation.swapsAxes
+            ? CGSize(width: sizeMM.height, height: sizeMM.width) : sizeMM)
+    }
+
+    func length(of fraction: Double, horizontal: Bool) -> String {
+        switch self {
+        case .millimeters(let size):
+            let mm = fraction * (horizontal ? size.width : size.height)
+            if Locale.current.measurementSystem == .us {
+                return Measurement(value: mm / 25.4, unit: UnitLength.inches).formatted(
+                    .measurement(width: .wide, usage: .asProvided,
+                        numberFormatStyle: .number.precision(.fractionLength(1))))
+            }
+            return Measurement(value: mm, unit: UnitLength.millimeters).formatted(
+                .measurement(width: .wide, usage: .asProvided,
+                    numberFormatStyle: .number.precision(.fractionLength(0))))
+        case .points(let size):
+            let points = Int((fraction * (horizontal ? size.width : size.height)).rounded())
+            return String(localized: "\(points) points", comment: "VoiceOver: a length on screen, in points")
+        }
     }
 }
 

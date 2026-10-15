@@ -161,6 +161,7 @@ struct ScratchpadView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
+                .accessibilityHidden(true)
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -174,11 +175,15 @@ struct ScratchpadView: View {
                 }
             }
             .scaledFrame(height: 8)
+            .accessibilityHidden(true)
 
             Text(String(format: "%.0f%%", currentPressure * 100))
                 .appFont(.monospaced)
                 .foregroundStyle(.secondary)
                 .scaledFrame(width: 44, alignment: .trailing)
+                // The label, bar, and figure read as one element.
+                .accessibilityLabel(Text("Pressure"))
+                .accessibilityValue(currentPressure.formatted(.percent.precision(.fractionLength(0))))
 
             Spacer()
 
@@ -206,6 +211,7 @@ struct ScratchpadView: View {
                     .appFont(.settingsLabel)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .accessibilityHidden(true)
 
                 TiltVisualizerCanvas(tabletManager: tabletManager)
                     .scaledFrame(width: 100, height: 100)
@@ -218,6 +224,7 @@ struct ScratchpadView: View {
                         .appFont(.settingsLabel)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .accessibilityHidden(true)
 
                     TouchVisualizer(
                         liveTouch: liveTouch,
@@ -249,6 +256,10 @@ private struct TouchVisualizer: View {
 
     var body: some View {
         TouchContactsCanvas(contacts: liveTouch.contacts, maxContacts: maxContacts)
+            .accessibilityElement()
+            .accessibilityAddTraits(.isStaticText)
+            .accessibilityLabel(Text("Touch contacts", comment: "VoiceOver label for the Scratchpad touch visualizer"))
+            .accessibilityValue(Text(liveTouch.contacts.count, format: .number))
     }
 }
 
@@ -290,6 +301,12 @@ struct TiltVisualizerCanvas: View {
         let tx: Double = inProximity ? quantize(raw!.tiltX) : 0.0
         let ty: Double = inProximity ? quantize(raw!.tiltY) : 0.0
         return TiltDisc(tiltX: tx, tiltY: ty).equatable()
+            .accessibilityElement()
+            .accessibilityAddTraits(.isStaticText)
+            .accessibilityLabel(Text("Tilt"))
+            .accessibilityValue(Text(
+                "X \(tx.formatted(.number.precision(.fractionLength(1)).sign(strategy: .always()))), Y \(ty.formatted(.number.precision(.fractionLength(1)).sign(strategy: .always())))",
+                comment: "VoiceOver value of the tilt visualizer, matching the Live Input readout"))
             .onReceive(
                 tabletManager.activeContext?.livePointPublisher.eraseToAnyPublisher()
                     ?? Empty().eraseToAnyPublisher()
@@ -447,6 +464,9 @@ private struct ScratchpadCanvas: NSViewRepresentable {
 
     func makeNSView(context: Context) -> ScratchpadNSView {
         let view = ScratchpadNSView()
+        view.setAccessibilityElement(true)
+        view.setAccessibilityRole(.group)
+        view.setAccessibilityLabel(String(localized: "Test canvas", comment: "VoiceOver label for the Scratchpad drawing canvas"))
         view.onPressureChange = { pressure in
             currentPressure = pressure
         }

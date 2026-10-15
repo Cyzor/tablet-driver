@@ -173,6 +173,7 @@ struct DisplayMappingView: View {
                             get: { Double(settings.displayBrightness >= 0 ? settings.displayBrightness : 75) },
                             set: { settings.displayBrightness = Int($0.rounded()) }),
                         in: 0...100)
+                    .accessibilityLabel(Text("Brightness"))
                     Text(settings.displayBrightness >= 0 ? "\(settings.displayBrightness)%" : "—")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -408,6 +409,7 @@ struct DisplayMappingView: View {
                     }
                 )
                 .snapping(to: tabletAreaAspect, label: Self.matchesTabletLabel)
+                .speaking(as: String(localized: "Screen Area"), size: .points(display.bounds.size))
                 .editMappingMenu { presentMappingSheet() }
                 .background(WindowReader(ref: windowRef))
                 .frame(height: 130)
@@ -567,6 +569,8 @@ struct DisplayMappingView: View {
         }
         .buttonStyle(.plain)
         .disabled(disabled)
+        // The drawn radio indicator says which is chosen; VoiceOver needs it too.
+        .accessibilityAddTraits(settings.displayIndex == tag ? .isSelected : [])
     }
 
     // MARK: - Toggle section
@@ -791,11 +795,11 @@ struct DisplayMappingView: View {
         .help(tier == .full ? "" : info.name)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(included ? [.isButton, .isSelected] : .isButton)
-        .accessibilityLabel(Text(String(
-            localized: "Display \(info.name), \(included ? "included" : "excluded")",
-            comment: "Accessibility label for a display thumbnail in the toggle-display picker"
-        )))
-        .accessibilityHint("Double tap to toggle inclusion in the display rotation")
+        // The selected trait carries included or not.
+        .accessibilityLabel(info.name)
+        .accessibilityHint(Text("Adds or removes this display from the rotation.", comment: "VoiceOver hint for a display thumbnail in the toggle-display picker"))
+        // A tap gesture gives VoiceOver nothing to press.
+        .accessibilityAction { toggleIncluded(info) }
         .onTapGesture {
             let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
 
@@ -974,10 +978,30 @@ struct DisplayMappingView: View {
                     settings.recordToggle(String(localized: "Display Mapping"), from: old, to: settings.displayTarget) { self.settings.displayTarget = $0 }
                 }
             })
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isImage)
+        .accessibilityLabel(Text("Mapped displays", comment: "VoiceOver label for the display arrangement canvas"))
+        .accessibilityValue(mappedDisplaysSummary)
         .editMappingMenu { presentMappingSheet() }
         .background(WindowReader(ref: windowRef))
         .frame(height: 180)
         .help(canvasHelpText)
+    }
+
+    /// The canvas for VoiceOver: which displays the tablet maps to. The
+    /// display list above does the choosing.
+    private var mappedDisplaysSummary: String {
+        let idx = settings.displayIndex
+        let ids = settings.toggleDisplayIDSet
+        let names: [String]
+        if idx == modeAll || ((idx == modeToggle || idx == modeSpan) && ids.isEmpty) {
+            names = displays.map(\.name)
+        } else if idx == modeToggle || idx == modeSpan {
+            names = displays.filter { ids.contains($0.id) }.map(\.name)
+        } else {
+            names = displays.filter { $0.listIndex == idx }.map(\.name)
+        }
+        return names.formatted(.list(type: .and))
     }
 
     private func presentMappingSheet() {
@@ -986,6 +1010,7 @@ struct DisplayMappingView: View {
             tabletAspect: settings.tabletOrientation.applying(
                 toAspectRatio: tabletManager.surfaceAspectRatio(for: instanceKey)),
             tabletCaption: registry.caption(forProductID: productID, tabletManager: tabletManager),
+            tabletSizeMM: tabletManager.surfaceSizeMM(for: instanceKey),
             destination: MappingDestination.current(for: settings, displays: displays))
     }
 
@@ -1084,6 +1109,7 @@ private struct CintiqPanelSection: View {
                             set: { set(Int($0.rounded())) }),
                         in: 0...Double(max(value?.max ?? 100, 1)))
                     .labelsHidden()
+                    .accessibilityLabel(title)
                 }
             }
             .scaledFrame(width: 200)

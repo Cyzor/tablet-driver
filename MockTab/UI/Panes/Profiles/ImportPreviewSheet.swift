@@ -77,7 +77,8 @@ struct ImportPreviewSheet: View {
                         .accessibilityElement(children: .combine)
                         .accessibilityAddTraits(.isButton)
                         .accessibilityLabel(rowAccessibilityLabel(for: entry))
-                        .accessibilityHint("Double tap to toggle whether this profile is imported")
+                        .accessibilityHint(Text("Includes or skips this profile in the import.", comment: "VoiceOver hint for a row in the import sheet"))
+                        .accessibilityAction { toggleExclusion(entry.productID) }
                         .accessibilityAction {
                             toggleExclusion(entry.productID)
                         }

@@ -457,6 +457,9 @@ struct InfoView: View {
                 Text(value)
                     .lineLimit(1)
             }
+            .accessibilityElement(children: .combine)
+            // A checkmark symbol reads as selected; here it only means OK.
+            .accessibilityRemoveTraits(.isSelected)
             .gridColumnAlignment(.leading)
 
             // Own grid column so buttons share one left edge down the table;

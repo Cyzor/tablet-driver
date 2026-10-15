@@ -301,6 +301,18 @@ struct TouchView: View {
             return Double(mx) / Double(my)
         }
 
+        /// The surface in millimeters, from the same sources as `aspectRatio`.
+        private var sizeMM: CGSize? {
+            if let pid = productID,
+                let profile = VendorDeviceRegistry.profile(forProductID: pid),
+                let w = profile.activeWidthMM, w > 0, let h = profile.activeHeightMM, h > 0
+            {
+                return CGSize(width: w, height: h)
+            }
+            guard let w = spec?.activeWidthMM, w > 0, let h = spec?.activeHeightMM, h > 0 else { return nil }
+            return CGSize(width: w, height: h)
+        }
+
         /// Aspect ratio adjusted for the tablet orientation set in the Tablet
         /// Area pane — same swap `TabletAreaView.orientedAspectRatio` applies,
         /// so this tool's box rotates in step with the pen active-area box.
@@ -347,6 +359,9 @@ struct TouchView: View {
                     settings.recordTouchAreaDrag(before: TabletSettings.AreaSnapshot(
                         x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
                 })
+                .speaking(
+                    as: String(localized: "Touch Area"),
+                    size: .tablet(sizeMM, orientation: settings.tabletOrientation))
         }
     }
 

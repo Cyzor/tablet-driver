@@ -700,11 +700,13 @@ struct AppOverrideBar: View {
                 Label("Other…", systemImage: "folder")
             }
         } label: {
-            Image(systemName: "plus.app.fill")
+            // Titled, or the menu takes the symbol's own description
+            // ("Add to Home Screen") as its name.
+            Label("Add app override", systemImage: "plus.app.fill")
+                .labelStyle(.iconOnly)
                 .appFont(size: 36, weight: .semibold)
                 .foregroundStyle(Color.accentColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityHidden(true)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -712,7 +714,6 @@ struct AppOverrideBar: View {
         // foregroundStyle; dim it to scroll-bar tone instead.
         .opacity(0.5)
         .help("Add per-app override — or drag an app here from Finder or the Dock")
-        .accessibilityLabel("Add app override")
     }
 
     // MARK: - Drop handling
