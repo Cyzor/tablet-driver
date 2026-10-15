@@ -109,7 +109,7 @@ struct TouchView: View {
                     get: { settings.tapToClick },
                     set: { settings.tapToClick = $0 }),
                 description: "Briefly touch the tablet's surface to click.",
-                help: "A brief touch with no significant motion posts a left mouse click. Off by default — most users find it produces phantom clicks.")
+                help: "A brief touch with no significant motion posts a left mouse click. Off by default, because most people find it causes phantom clicks.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
 
@@ -144,12 +144,13 @@ struct TouchView: View {
                 in: 0.25...4.0,
                 step: 0.25,
                 valueText: String(format: "%.2f×", settings.touchSensitivity),
+                spokenValue: settings.touchSensitivity.formatted(.number.precision(.fractionLength(0...2))),
                 caption: "Multiplier for cursor motion from finger drag."
             )
             // A pen display's touch puts the cursor under the finger, so speed has no effect.
             .disabled(!settings.touchEnabled || spec?.isPenDisplay == true)
             .opacity(settings.touchEnabled && spec?.isPenDisplay != true ? 1 : 0.5)
-            .help("Multiplier for cursor motion from finger drag. 1.00× is the natural mapping through the touch area; raise to move faster across the screen, lower for finer control.")
+            .help("Multiplier for cursor motion from finger drag. At 1.00, the cursor follows the natural mapping through the touch area. Raise it to move faster across the screen, or lower it for finer control.")
         }
     }
 
@@ -173,7 +174,7 @@ struct TouchView: View {
                     get: { settings.pinchZoomEnabled },
                     set: { settings.pinchZoomEnabled = $0 }),
                 description: "Use two fingers to pinch and zoom in or out.",
-                help: "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch — works anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own.")
+                help: "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch, and work anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Scroll, pinch, and rotate each read the same two-finger gesture, so each can be on or off on its own.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
 
@@ -184,7 +185,7 @@ struct TouchView: View {
                     get: { settings.rotateEnabled },
                     set: { settings.rotateEnabled = $0 }),
                 description: "Swivel two fingers apart to rotate.",
-                help: "Two fingers held well apart, swiveling about their center, rotate — the same as a trackpad rotate gesture. Independent of Two-Finger Scroll: scroll, pinch, and rotate are alternate readings of the same two-finger gesture, so each can be on or off on its own.")
+                help: "Two fingers held well apart rotate as they swivel about their center, the same as a trackpad rotate gesture. Scroll, pinch, and rotate each read the same two-finger gesture, so each can be on or off on its own.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
 
@@ -197,7 +198,7 @@ struct TouchView: View {
                 description: settings.reverseScrollDirection
                     ? "Content moves opposite your fingers."
                     : "Content follows your fingers.",
-                help: "On: scroll content moves opposite to finger motion, like a classic mouse wheel. Off (default): content follows your fingers.")
+                help: "When on, content moves opposite to your fingers, like a classic mouse wheel. When off, which is the default, content follows your fingers.")
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .opacity(gestureRowOpacity)
 
@@ -208,7 +209,7 @@ struct TouchView: View {
                     get: { settings.twoFingerScrollMomentum },
                     set: { settings.twoFingerScrollMomentum = $0 }),
                 description: "Inertia scrolling. Compatibility varies by app.",
-                help: "On: two fingers post a phased trackpad-style stream, so scroll-view apps coast after you lift. Off (default): a simpler stream that scrolls in far more apps (including Calendar's Month/Year view), but without inertia.")
+                help: "When on, two-finger scrolling keeps coasting after you lift in apps with scroll views. When off, which is the default, it scrolls in far more apps, including Calendar's month and year views, but without inertia.")
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .opacity(gestureRowOpacity)
         }

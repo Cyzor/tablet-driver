@@ -264,6 +264,8 @@ struct DevicesView: View {
             .accessibilityAction { selectTablet(tablet) }
             // After the grouping, or each child's copy of it reads too.
             .help("\(tablet.modelName) · \(shownID(tablet.displayID))")
+            // After `.help`, so VoiceOver hears a comma, not the dot.
+            .accessibilityHint(Text("\(tablet.modelName), \(shownID(tablet.displayID))"))
 
             RowActionsMenu(accessibilityLabel: "Device actions", subject: tablet.nickname) {
                 tabletMenuEntries(tablet, isActive: isActive)
@@ -504,6 +506,7 @@ struct DevicesView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .help("\(tool.kind) · \(shownID(tool.displayID))")
+            .accessibilityHint(Text("\(tool.kind), \(shownID(tool.displayID))"))
 
             RowActionsMenu(accessibilityLabel: "Tool actions", subject: tool.nickname) {
                 toolMenuEntries(tool, deviceID: deviceID, inAllSection: inAllSection)

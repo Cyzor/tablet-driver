@@ -213,6 +213,8 @@ struct SettingSliderRow: View {
     let range: ClosedRange<Double>
     var step: Double?
     let valueText: String
+    /// The value as VoiceOver reads it, for readouts with symbols like "×".
+    var spokenValue: String?
     var caption: LocalizedStringKey?
 
     init(_ label: LocalizedStringKey,
@@ -220,12 +222,14 @@ struct SettingSliderRow: View {
          in range: ClosedRange<Double>,
          step: Double? = nil,
          valueText: String,
+         spokenValue: String? = nil,
          caption: LocalizedStringKey? = nil) {
         self.label = label
         self._value = value
         self.range = range
         self.step = step
         self.valueText = valueText
+        self.spokenValue = spokenValue
         self.caption = caption
     }
 
@@ -239,6 +243,8 @@ struct SettingSliderRow: View {
                     .appFont(.settingsLabel)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    // The slider already speaks the value in words.
+                    .accessibilityHidden(spokenValue != nil)
             }
             Group {
                 if let step {
@@ -249,7 +255,7 @@ struct SettingSliderRow: View {
             }
             .labelsHidden()
             .accessibilityLabel(Text(label))
-            .accessibilityValue(valueText)
+            .accessibilityValue(spokenValue ?? valueText)
             if let caption {
                 Text(caption)
                     .appFont(.settingsLabel)

@@ -35,7 +35,7 @@ struct PenFeelView: View {
                     caption: "Reduces line-width variation from sensor noise at light pressure."
                 )
                 .help(
-                    "Damps pressure noise near the low end of the sensor's range — most noticeable as uneven line width on slow, light strokes. Firm pressure is left alone.")
+                    "Damps pressure noise near the low end of the sensor's range, which shows most as uneven line width on slow, light strokes. Firm pressure passes through unchanged.")
             }
 
             Section("Steadiness") {
@@ -69,7 +69,7 @@ struct PenFeelView: View {
                     isOn: invertRotationBinding,
                     currentIcon: settings.invertRotation ? "arrow.counterclockwise" : "arrow.clockwise",
                     current: settings.invertRotation ? " Counter-clockwise." : " Clockwise.",
-                    help: "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
+                    help: "Reverses the pen's twist direction. Turn it on per app for apps that read rotation backwards, such as Krita.")
 
                 DescribedToggle(
                     "Relative Cursor Movement",
@@ -87,17 +87,18 @@ struct PenFeelView: View {
                     in: 0.25...3.0,
                     step: 0.25,
                     valueText: String(format: "%.2f×", tool.panScrollSpeed),
+                    spokenValue: tool.panScrollSpeed.formatted(.number.precision(.fractionLength(0...2))),
                     caption:
                         "How fast content pans while pressing a Pan View button."
                 )
                 .help(
-                    "Multiplier applied to pen motion while Pan View is held. 1× pans one screen point per point of pen travel; higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping.")
+                    "Multiplies pen motion while you hold Pan View. At 1.00, content pans one screen point for each point of pen travel, and higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping.")
 
                 DescribedToggle(
                     "Momentum Scrolling",
                     isOn: panScrollMomentumBinding,
                     description: "Inertia scrolling. Compatibility varies by app.",
-                    help: "On: Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off (default): a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if you want momentum only where it works.")
+                    help: "When on, Pan View keeps coasting after you let go in apps with scroll views. When off, which is the default, it pans in far more apps, but without inertia. Turn it on per app with the override bar above to get momentum only where it works.")
             }
 
             Section("Click Behavior") {
@@ -231,21 +232,21 @@ struct PenFeelView: View {
                     tool.recordToggle(String(localized: "Linear Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .linear) { tool.pressureCurve = $0 }
                 }
                 .help(
-                    "Linear response — equal pen force produces equal pressure output. Best for general use.")
+                    "Linear response. Equal pen force produces equal pressure output. Best for general use.")
                 Button("Soft") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
                     tool.recordToggle(String(localized: "Soft Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .soft) { tool.pressureCurve = $0 }
                 }
                 .help(
-                    "Soft response — light pressure reaches full output quickly. Good for loose, expressive work.")
+                    "Soft response. Light pressure reaches full output quickly. Good for loose, expressive work.")
                 Button("Firm") {
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
                     tool.recordToggle(String(localized: "Firm Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .firm) { tool.pressureCurve = $0 }
                 }
                 .help(
-                    "Firm response — requires more force to reach full output. Good for precise detail work.")
+                    "Firm response. It takes more force to reach full output. Good for precise detail work.")
             }
             .buttonStyle(.bordered)
             .appControlSize(.small)
@@ -260,7 +261,7 @@ struct PenFeelView: View {
                 caption: "Minimum force required before the tip registers pressure or a click."
             )
             .help(
-                "Sets how much pressure the tip needs before it counts as contact — the same idea as sensitivity, but for the on/off point rather than the response curve. Raise it for a firmer, more deliberate click feel; lower it for the lightest possible touch. Off (default) starts registering at the sensor's own floor.")
+                "Sets how much pressure the tip needs before it counts as contact. It works like sensitivity, but for the point where contact starts rather than the response curve. Raise it for a firmer, more deliberate click, or lower it for the lightest possible touch. At Off, which is the default, the tip registers from the sensor's own floor.")
         } header: {
             PaneSectionHeader("Pressure Curve") {
                 ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
