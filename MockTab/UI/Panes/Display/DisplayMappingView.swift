@@ -743,93 +743,96 @@ struct DisplayMappingView: View {
             }
         }()
 
-        return ZStack {
-            // Wallpaper or flat fill
-            if let wp = info.wallpaper {
-                Image(nsImage: wp)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 76, height: 48)
-                    .clipped()
-                    .opacity(included ? 0.65 : 0.20)
-            } else {
-                Rectangle()
-                    .fill(
-                        included
-                            ? Color.accentColor.opacity(0.15)
-                            : Color.secondary.opacity(0.07))
-            }
+        // A real button, so Tab reaches it and Space toggles it.
+        return Button { thumbnailClicked(at: index, info: info) } label: {
+            ZStack {
+                // Wallpaper or flat fill
+                if let wp = info.wallpaper {
+                    Image(nsImage: wp)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 76, height: 48)
+                        .clipped()
+                        .opacity(included ? 0.65 : 0.20)
+                } else {
+                    Rectangle()
+                        .fill(
+                            included
+                                ? Color.accentColor.opacity(0.15)
+                                : Color.secondary.opacity(0.07))
+                }
 
-            // Include / exclude icon
-            Image(systemName: included ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .appFont(size: 18)
-                .foregroundStyle(included ? Color.green : Color.secondary)
-                .shadow(color: .black.opacity(0.4), radius: 1)
-                .accessibilityHidden(true)
+                // Include / exclude icon
+                Image(systemName: included ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .appFont(size: 18)
+                    .foregroundStyle(included ? Color.green : Color.secondary)
+                    .shadow(color: .black.opacity(0.4), radius: 1)
+                    .accessibilityHidden(true)
 
-            // Display name badge
-            VStack(spacing: 0) {
-                Spacer()
-                Text(chipLabel)
-                    .appFont(.badgeTitle)
-                    .bold()
-                    .lineLimit(1)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 2)
-                    .background(Color.black.opacity(0.45))
-                    .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
-                    .padding(.bottom, 3)
+                // Display name badge
+                VStack(spacing: 0) {
+                    Spacer()
+                    Text(chipLabel)
+                        .appFont(.badgeTitle)
+                        .bold()
+                        .lineLimit(1)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color.black.opacity(0.45))
+                        .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+                        .padding(.bottom, 3)
+                }
             }
+            .frame(minWidth: 76, minHeight: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(
+                        included ? Color.accentColor : Color.secondary.opacity(0.35),
+                        lineWidth: included ? 1.5 : 1
+                    )
+            )
         }
-        .frame(minWidth: 76, minHeight: 48)
-        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .stroke(
-                    included ? Color.accentColor : Color.secondary.opacity(0.35),
-                    lineWidth: included ? 1.5 : 1
-                )
-        )
+        .buttonStyle(.plain)
         .help(tier == .full ? "" : info.name)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(included ? [.isButton, .isSelected] : .isButton)
         // The selected trait carries included or not.
+        .accessibilityAddTraits(included ? .isSelected : [])
         .accessibilityLabel(info.name)
         .accessibilityHint(Text("Adds or removes this display from the rotation.", comment: "VoiceOver hint for a display thumbnail in the toggle-display picker"))
-        // A tap gesture gives VoiceOver nothing to press.
-        .accessibilityAction { toggleIncluded(info) }
-        .onTapGesture {
-            let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
+    }
 
-            if flags.contains(.shift) {
-                // Shift+click: range selection from rangeStart to current index
-                if rangeStart < 0 {
-                    rangeStart = index
-                } else {
-                    let start = min(rangeStart, index)
-                    let end = max(rangeStart, index)
-                    var ids = settings.toggleDisplayIDSet
-                    if ids.isEmpty { ids = Set(displays.map(\.id)) }
-                    // Include all displays in the range
-                    for i in start...end {
-                        ids.insert(displays[i].id)
-                    }
-                    // Simplify back to empty (= all) when every display is included
-                    let oldIDs = settings.toggleDisplayIDSet
-                    let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
-                    settings.toggleDisplayIDSet = newIDs
-                    settings.recordToggle(String(localized: "Toggle Display Set", comment: "Undo action name: display calibration/mapping control in the Displays pane"), from: oldIDs, to: newIDs) { settings.toggleDisplayIDSet = $0 }
-                    rangeStart = -1
-                }
-            } else if flags.contains(.command) {
-                // Cmd+click: toggle individual display
-                toggleIncluded(info)
+    /// Shift extends a range; Command or a plain click toggles one display.
+    private func thumbnailClicked(at index: Int, info: DisplayInfo) {
+        let flags = NSApplication.shared.currentEvent?.modifierFlags ?? []
+
+        if flags.contains(.shift) {
+            // Shift+click: range selection from rangeStart to current index
+            if rangeStart < 0 {
+                rangeStart = index
             } else {
-                // Regular click: toggle individual display
-                toggleIncluded(info)
+                let start = min(rangeStart, index)
+                let end = max(rangeStart, index)
+                var ids = settings.toggleDisplayIDSet
+                if ids.isEmpty { ids = Set(displays.map(\.id)) }
+                // Include all displays in the range
+                for i in start...end {
+                    ids.insert(displays[i].id)
+                }
+                // Simplify back to empty (= all) when every display is included
+                let oldIDs = settings.toggleDisplayIDSet
+                let newIDs = (ids == Set(displays.map(\.id))) ? [] : ids
+                settings.toggleDisplayIDSet = newIDs
+                settings.recordToggle(String(localized: "Toggle Display Set", comment: "Undo action name: display calibration/mapping control in the Displays pane"), from: oldIDs, to: newIDs) { settings.toggleDisplayIDSet = $0 }
                 rangeStart = -1
             }
+        } else if flags.contains(.command) {
+            // Cmd+click: toggle individual display
+            toggleIncluded(info)
+        } else {
+            // Regular click: toggle individual display
+            toggleIncluded(info)
+            rangeStart = -1
         }
     }
 

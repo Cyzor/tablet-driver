@@ -180,6 +180,8 @@ struct DescribedToggle<Description: View>: View {
                     .foregroundStyle(.secondary)
             }
         }
+        // A stacked label leaves the switch unnamed for VoiceOver.
+        .accessibilityLabel(Text(title))
     }
 }
 
@@ -226,13 +228,16 @@ struct SettingSliderRow: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            if let step {
-                Slider(value: $value, in: range, step: step)
-                    .labelsHidden()
-            } else {
-                Slider(value: $value, in: range)
-                    .labelsHidden()
+            Group {
+                if let step {
+                    Slider(value: $value, in: range, step: step)
+                } else {
+                    Slider(value: $value, in: range)
+                }
             }
+            .labelsHidden()
+            .accessibilityLabel(Text(label))
+            .accessibilityValue(valueText)
             if let caption {
                 Text(caption)
                     .appFont(.settingsLabel)

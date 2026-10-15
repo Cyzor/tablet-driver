@@ -431,8 +431,15 @@ struct ChipKeyboardProxy: NSViewRepresentable {
         var onLeft: (() -> Void)?
         var onRight: (() -> Void)?
         override var acceptsFirstResponder: Bool { true }
-        override func drawFocusRingMask() {}
-        override var focusRingMaskBounds: NSRect { .zero }
+        // Tab reaches the bar, and its ring shows, only with keyboard
+        // navigation on, as for any other control.
+        override var canBecomeKeyView: Bool { NSApp.isFullKeyboardAccessEnabled }
+        override func drawFocusRingMask() {
+            if NSApp.isFullKeyboardAccessEnabled { bounds.fill() }
+        }
+        override var focusRingMaskBounds: NSRect {
+            NSApp.isFullKeyboardAccessEnabled ? bounds : .zero
+        }
         override func keyDown(with event: NSEvent) {
             switch event.keyCode {
             case 123: onLeft?()
