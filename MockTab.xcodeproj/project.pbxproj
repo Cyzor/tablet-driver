@@ -55,6 +55,7 @@
 		AA000039 /* DeviceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000039 /* DeviceRegistry.swift */; };
 		AA000040 /* DevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000040 /* DevicesView.swift */; };
 		AA000041 /* DeviceStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000041 /* DeviceStatusBar.swift */; };
+		AA00F201 /* BodyCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F201 /* BodyCounter.swift */; };
 		AA000042 /* DeviceContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* DeviceContext.swift */; };
 		AA000043 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsWindowController.swift */; };
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
@@ -187,6 +188,7 @@
 		AB000039 /* DeviceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistry.swift; sourceTree = "<group>"; };
 		AB000040 /* DevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesView.swift; sourceTree = "<group>"; };
 		AB000041 /* DeviceStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatusBar.swift; sourceTree = "<group>"; };
+		AB00F201 /* BodyCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyCounter.swift; sourceTree = "<group>"; };
 		AB000042 /* DeviceContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceContext.swift; sourceTree = "<group>"; };
 		AB000043 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
@@ -625,6 +627,7 @@
 				AB00F104 /* AppOverrideChipInteraction.swift */,
 				AB0000A0 /* ConflictDetection.swift */,
 				AB000041 /* DeviceStatusBar.swift */,
+				AB00F201 /* BodyCounter.swift */,
 				AB000055 /* DisclosureRow.swift */,
 				AB000053 /* FontExtensions.swift */,
 				AB000200 /* NormalizedAreaEditor.swift */,
@@ -885,6 +888,7 @@
 				AA000056 /* SettingsControls.swift in Sources */,
 				AA000040 /* DevicesView.swift in Sources */,
 				AA000041 /* DeviceStatusBar.swift in Sources */,
+				AA00F201 /* BodyCounter.swift in Sources */,
 				AAAAAA02 /* PresetExporter.swift in Sources */,
 				AAAAAA04 /* PresetImporter.swift in Sources */,
 				AAAAAA06 /* ImportPlan.swift in Sources */,

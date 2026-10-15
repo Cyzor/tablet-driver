@@ -37,6 +37,7 @@ struct ProfilesView: View {
     @State private var importError: String?
 
     var body: some View {
+        let _ = BodyCounter.note("Profiles")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey

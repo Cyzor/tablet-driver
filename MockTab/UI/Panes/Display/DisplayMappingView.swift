@@ -44,6 +44,7 @@ struct DisplayMappingView: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("Display")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.areaKeys,

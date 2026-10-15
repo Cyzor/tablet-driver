@@ -19,6 +19,7 @@ struct PenFeelView: View {
     // MARK: - Body
 
     var body: some View {
+        let _ = BodyCounter.note("PenFeel")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.pressureKeys,

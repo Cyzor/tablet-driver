@@ -79,6 +79,7 @@ struct CaptureGuideView: View {
     // MARK: - Body
 
     var body: some View {
+        let _ = BodyCounter.note("CaptureGuide")
         VStack(spacing: 0) {
             header
             Divider()

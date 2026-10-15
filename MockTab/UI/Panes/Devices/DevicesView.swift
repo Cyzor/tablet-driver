@@ -92,6 +92,7 @@ struct DevicesView: View {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("Devices")
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey

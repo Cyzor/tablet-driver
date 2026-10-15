@@ -174,6 +174,7 @@ struct AppOverrideBar: View {
     // MARK: - Body
 
     var body: some View {
+        let _ = BodyCounter.note("AppOverrideBar")
         VStack(spacing: 0) {
             chipBarRow
                 .background(TabletColorTheme.barBackgroundColor(for: productID))
