@@ -50,6 +50,8 @@
 		AA000017 /* SettingsWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* SettingsWindowManager.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB000030 /* Assets.xcassets */; };
 		AA000033 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000033 /* InfoView.swift */; };
+		AA00F402 /* InfoDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F402 /* InfoDiagnostics.swift */; };
+		AA00F401 /* InfoStatusTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F401 /* InfoStatusTable.swift */; };
 		AA00F103 /* LiveInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F103 /* LiveInputView.swift */; };
 		AA0000A0 /* ConflictDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000A0 /* ConflictDetection.swift */; };
 		AA000034 /* ProfilesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000034 /* ProfilesView.swift */; };
@@ -186,6 +188,8 @@
 		AB000021 /* MockTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MockTab.entitlements; sourceTree = "<group>"; };
 		AB000030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB000033 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
+		AB00F402 /* InfoDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoDiagnostics.swift; sourceTree = "<group>"; };
+		AB00F401 /* InfoStatusTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoStatusTable.swift; sourceTree = "<group>"; };
 		AB00F103 /* LiveInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveInputView.swift; sourceTree = "<group>"; };
 		AB0000A0 /* ConflictDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictDetection.swift; sourceTree = "<group>"; };
 		AB000034 /* ProfilesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilesView.swift; sourceTree = "<group>"; };
@@ -566,6 +570,8 @@
 			children = (
 				AB000103 /* CaptureGuideView.swift */,
 				AB000033 /* InfoView.swift */,
+				AB00F402 /* InfoDiagnostics.swift */,
+				AB00F401 /* InfoStatusTable.swift */,
 				AB00F103 /* LiveInputView.swift */,
 			);
 			path = Info;
@@ -883,6 +889,8 @@
 				AA000902 /* MappingSheet.swift in Sources */,
 				AA000016 /* ScratchpadView.swift in Sources */,
 				AA000033 /* InfoView.swift in Sources */,
+				AA00F402 /* InfoDiagnostics.swift in Sources */,
+				AA00F401 /* InfoStatusTable.swift in Sources */,
 				AA00F103 /* LiveInputView.swift in Sources */,
 				AA0000A0 /* ConflictDetection.swift in Sources */,
 				AA000034 /* ProfilesView.swift in Sources */,
