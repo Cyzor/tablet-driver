@@ -155,19 +155,23 @@ struct PaneSectionHeader<Subtitle: View>: View {
 
 /// Settings row: toggle whose label is a title with a secondary
 /// description line beneath — the standard MockTab toggle shape.
-/// The description builder allows composed Text (icons, dynamic state);
-/// use the convenience initializer for a plain string.
-struct DescribedToggle<Description: View>: View {
+/// The description is Text, composed if needed (icons, dynamic state), so
+/// VoiceOver can speak it; use the string initializer for plain text.
+struct DescribedToggle: View {
     let title: LocalizedStringKey
     @Binding var isOn: Bool
-    @ViewBuilder let description: () -> Description
+    let description: () -> Text
 
     init(_ title: LocalizedStringKey,
          isOn: Binding<Bool>,
-         @ViewBuilder description: @escaping () -> Description) {
+         description: @escaping () -> Text) {
         self.title = title
         self._isOn = isOn
         self.description = description
+    }
+
+    init(_ title: LocalizedStringKey, isOn: Binding<Bool>, description: LocalizedStringKey) {
+        self.init(title, isOn: isOn) { Text(description) }
     }
 
     var body: some View {
@@ -180,14 +184,10 @@ struct DescribedToggle<Description: View>: View {
                     .foregroundStyle(.secondary)
             }
         }
-        // A stacked label leaves the switch unnamed for VoiceOver.
+        // A stacked label leaves the switch unnamed for VoiceOver, so the
+        // title names it and the description follows as its hint.
         .accessibilityLabel(Text(title))
-    }
-}
-
-extension DescribedToggle where Description == Text {
-    init(_ title: LocalizedStringKey, isOn: Binding<Bool>, description: LocalizedStringKey) {
-        self.init(title, isOn: isOn) { Text(description) }
+        .accessibilityHint(description())
     }
 }
 

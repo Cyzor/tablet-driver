@@ -626,7 +626,7 @@ struct ButtonMappingView: View {
                 set: { settings.reverseRingDirection = $0 })
         ) {
             if hasTouchStrips {
-                Text("Current: ")
+                return Text("Current: ")
                     + Text(
                         Image(
                             systemName: settings.reverseRingDirection
@@ -636,18 +636,17 @@ struct ButtonMappingView: View {
                         settings.reverseRingDirection
                             ? " Reversed."
                             : " Forward.")
-            } else {
-                Text("Current: ")
-                    + Text(
-                        Image(
-                            systemName: settings.reverseRingDirection
-                                ? "arrow.counterclockwise"
-                                : "arrow.clockwise"))
-                    + Text(
-                        settings.reverseRingDirection
-                            ? " Counter-clockwise."
-                            : " Clockwise.")
             }
+            return Text("Current: ")
+                + Text(
+                    Image(
+                        systemName: settings.reverseRingDirection
+                            ? "arrow.counterclockwise"
+                            : "arrow.clockwise"))
+                + Text(
+                    settings.reverseRingDirection
+                        ? " Counter-clockwise."
+                        : " Clockwise.")
         }
         .help("Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
     }
