@@ -226,351 +226,6 @@
         }
       }
     },
-    "%@, %@" : {
-      "comment" : "VoiceOver value of an area slider: a length, then a percentage, e.g. \"152 millimeters, 70%\"",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@, %2$@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@, %2$@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@、%2$@"
-          }
-        }
-      }
-    },
-    "%lld points" : {
-      "comment" : "VoiceOver: a length on screen, in points",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Punkte"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld puntos"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldポイント"
-          }
-        }
-      }
-    },
-    "Adds or removes this display from the rotation." : {
-      "comment" : "VoiceOver hint for a display thumbnail in the toggle-display picker",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nimmt dieses Display in die Displayrotation auf oder heraus."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Añade o quita esta pantalla de la rotación de pantallas."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このディスプレイを切り替え対象に追加、または対象から外します。"
-          }
-        }
-      }
-    },
-    "Connected" : {
-      "comment" : "VoiceOver value for a connected tablet in the Devices list",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Conectado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "接続中"
-          }
-        }
-      }
-    },
-    "Full Speed (12 Mb/s)" : {
-      "comment" : "USB speed on the Info tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bis zu 12 Mbit/s"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hasta 12 Mb/s"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最大12 Mb/s"
-          }
-        }
-      }
-    },
-    "High Speed (480 Mb/s)" : {
-      "comment" : "USB speed on the Info tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bis zu 480 Mbit/s"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hasta 480 Mb/s"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最大480 Mb/s"
-          }
-        }
-      }
-    },
-    "Horizontal position" : {
-      "comment" : "VoiceOver label: slider for an area's distance from the left edge",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Horizontale Position"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Posición horizontal"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "水平位置"
-          }
-        }
-      }
-    },
-    "Includes or skips this profile in the import." : {
-      "comment" : "VoiceOver hint for a row in the import sheet",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importiert dieses Profil oder überspringt es."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Incluye u omite este perfil al importar."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このプロファイルを読み込むかどうかを切り替えます。"
-          }
-        }
-      }
-    },
-    "Low Speed (1.5 Mb/s)" : {
-      "comment" : "USB speed on the Info tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bis zu 1,5 Mbit/s"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hasta 1,5 Mb/s"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最大1.5 Mb/s"
-          }
-        }
-      }
-    },
-    "Mapped displays" : {
-      "comment" : "VoiceOver label for the display arrangement canvas",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zugeordnete Displays"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pantallas asignadas"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マッピング先のディスプレイ"
-          }
-        }
-      }
-    },
-    "SuperSpeed (5 Gb/s)" : {
-      "comment" : "USB speed on the Info tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bis zu 5 Gbit/s"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hasta 5 Gb/s"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "最大5 Gb/s"
-          }
-        }
-      }
-    },
-    "Test canvas" : {
-      "comment" : "VoiceOver label for the Scratchpad drawing canvas",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Testfläche"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lienzo de prueba"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "テスト用キャンバス"
-          }
-        }
-      }
-    },
-    "Touch contacts" : {
-      "comment" : "VoiceOver label for the Scratchpad touch visualizer",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Berührungspunkte"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Puntos de contacto"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチポイント"
-          }
-        }
-      }
-    },
-    "Vertical position" : {
-      "comment" : "VoiceOver label: slider for an area's distance from the top edge",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vertikale Position"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Posición vertical"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "垂直位置"
-          }
-        }
-      }
-    },
-    "X %@, Y %@" : {
-      "comment" : "VoiceOver value of the tilt visualizer, matching the Live Input readout",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X %1$@, Y %2$@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X %1$@, Y %2$@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X %1$@、Y %2$@"
-          }
-        }
-      }
-    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -1006,6 +661,29 @@
         }
       }
     },
+    "%@, %@" : {
+      "comment" : "VoiceOver value of an area slider: a length, then a percentage, e.g. \"152 millimeters, 70%\"",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@、%2$@"
+          }
+        }
+      }
+    },
     "%@, speed %@" : {
       "comment" : "VoiceOver ring mode summary: action, then speed",
       "localizations" : {
@@ -1357,6 +1035,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld points" : {
+      "comment" : "VoiceOver: a length on screen, in points",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Punkte"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld puntos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldポイント"
           }
         }
       }
@@ -2486,6 +2187,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "複数のAppを追加しますか？"
+          }
+        }
+      }
+    },
+    "Adds or removes this display from the rotation." : {
+      "comment" : "VoiceOver hint for a display thumbnail in the toggle-display picker",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nimmt dieses Display in die Displayrotation auf oder heraus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade o quita esta pantalla de la rotación de pantallas."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このディスプレイを切り替え対象に追加、または対象から外します。"
           }
         }
       }
@@ -5051,6 +4775,29 @@
         }
       }
     },
+    "Connected" : {
+      "comment" : "VoiceOver value for a connected tablet in the Devices list",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続中"
+          }
+        }
+      }
+    },
     "Connection" : {
       "comment" : "Row label in Info tab status table",
       "localizations" : {
@@ -7572,35 +7319,6 @@
         }
       }
     },
-    "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately." : {
-      "comment" : "Import sheet: footer explaining that profiles are inert until activated, but app overrides and tool settings take effect right away",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Basiseinstellungen und benannten Presets jedes Grafiktabletts werden als neue Profile hinzugefügt — deine aktuellen Einstellungen ändern sich erst, wenn du eines aktivierst. App-Overrides und Werkzeug-Einstellungen gelten sofort."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La configuración base y los preajustes con nombre de cada tableta se añaden como nuevos perfiles — su configuración actual no cambia hasta que active uno. Las excepciones de app y la configuración por herramienta se aplican de inmediato."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "各タブレットのベース設定と名前付きプリセットは新しいプロファイルとして追加されます — 現在の設定は、プロファイルを有効にするまで変更されません。アプリ別設定とツール設定はすぐに反映されます。"
-          }
-        }
-      }
-    },
     "Edit" : {
       "comment" : "Menu header: edit actions",
       "localizations" : {
@@ -8896,6 +8614,29 @@
         }
       }
     },
+    "Full Speed (12 Mb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 12 Mbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 12 Mb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大12 Mb/s"
+          }
+        }
+      }
+    },
     "Full support needs a recording." : {
       "comment" : "Body of the unknown-device banner",
       "localizations" : {
@@ -9481,6 +9222,29 @@
         }
       }
     },
+    "High Speed (480 Mb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 480 Mbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 480 Mb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大480 Mb/s"
+          }
+        }
+      }
+    },
     "Higher values add lag and reduce precision during fast motion." : {
       "localizations" : {
         "de" : {
@@ -9747,6 +9511,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "水平 %@、垂直 %@"
+          }
+        }
+      }
+    },
+    "Horizontal position" : {
+      "comment" : "VoiceOver label: slider for an area's distance from the left edge",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontale Position"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición horizontal"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "水平位置"
           }
         }
       }
@@ -10116,6 +9903,35 @@
         }
       }
     },
+    "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately." : {
+      "comment" : "Import sheet: footer explaining that profiles are inert until activated, but app overrides and tool settings take effect right away",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Basiseinstellungen und benannten Presets jedes Grafiktabletts werden als neue Profile hinzugefügt — deine aktuellen Einstellungen ändern sich erst, wenn du eines aktivierst. App-Overrides und Werkzeug-Einstellungen gelten sofort."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La configuración base y los preajustes con nombre de cada tableta se añaden como nuevos perfiles — su configuración actual no cambia hasta que active uno. Las excepciones de app y la configuración por herramienta se aplican de inmediato."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "各タブレットのベース設定と名前付きプリセットは新しいプロファイルとして追加されます — 現在の設定は、プロファイルを有効にするまで変更されません。アプリ別設定とツール設定はすぐに反映されます。"
+          }
+        }
+      }
+    },
     "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse." : {
       "comment" : "A description of the \"Relative Cursor Movement\" setting, explaining how it affects cursor movement.",
       "isCommentAutoGenerated" : true,
@@ -10195,6 +10011,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "有効なディスプレイ"
+          }
+        }
+      }
+    },
+    "Includes or skips this profile in the import." : {
+      "comment" : "VoiceOver hint for a row in the import sheet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importiert dieses Profil oder überspringt es."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluye u omite este perfil al importar."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このプロファイルを読み込むかどうかを切り替えます。"
           }
         }
       }
@@ -11359,6 +11198,29 @@
         }
       }
     },
+    "Low Speed (1.5 Mb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 1,5 Mbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 1,5 Mb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大1.5 Mb/s"
+          }
+        }
+      }
+    },
     "macOS     : %lld.%lld.%lld" : {
       "comment" : "Diagnostic: macOS version",
       "localizations" : {
@@ -11610,6 +11472,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タブレットをメイン ディスプレイにマップ。"
+          }
+        }
+      }
+    },
+    "Mapped displays" : {
+      "comment" : "VoiceOver label for the display arrangement canvas",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zugeordnete Displays"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pantallas asignadas"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マッピング先のディスプレイ"
           }
         }
       }
@@ -12427,29 +12312,6 @@
         }
       }
     },
-    "Multiplies pen motion while you hold Pan View. At 1.00, content pans one screen point for each point of pen travel, and higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping." : {
-      "comment" : "Tooltip on the Pan View speed slider",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vervielfacht die Stiftbewegung, solange du „Ansicht schwenken“ hältst. Bei 1,00 schwenkt der Inhalt einen Bildschirmpunkt pro Punkt Stiftweg, höhere Werte schwenken weiter. Weise „Ansicht schwenken“ in der Tastenzuordnung einem Barrel-Knopf, einer Express-Taste oder einer Puck-Taste zu."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multiplica el movimiento del lápiz mientras mantienes Desplazar vista. Con 1,00, el contenido se desplaza un punto de pantalla por cada punto de recorrido del lápiz, y los valores más altos desplazan más. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del puck en Asignación de botones."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「ビューをパン」を押している間、ペンの動きに掛ける倍率です。1.00 では、ペンの移動量1ポイントにつき画面上で1ポイントパンし、値を上げるほど大きくパンします。「ビューをパン」アクションは、ボタン割り当て画面でペンのバレルボタン、エクスプレスキー、パックのボタンのいずれにも割り当てられます。"
-          }
-        }
-      }
-    },
     "Multiplier for cursor motion from finger drag. At 1.00, the cursor follows the natural mapping through the touch area. Raise it to move faster across the screen, or lower it for finer control." : {
       "comment" : "Tooltip on the touch Cursor Speed slider",
       "localizations" : {
@@ -12469,6 +12331,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "指でドラッグしたときのカーソル移動の倍率です。1.00 では、タッチエリアに自然に対応して動きます。上げると画面上を速く移動し、下げるとより細かく操作できます。"
+          }
+        }
+      }
+    },
+    "Multiplies pen motion while you hold Pan View. At 1.00, content pans one screen point for each point of pen travel, and higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping." : {
+      "comment" : "Tooltip on the Pan View speed slider",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vervielfacht die Stiftbewegung, solange du „Ansicht schwenken“ hältst. Bei 1,00 schwenkt der Inhalt einen Bildschirmpunkt pro Punkt Stiftweg, höhere Werte schwenken weiter. Weise „Ansicht schwenken“ in der Tastenzuordnung einem Barrel-Knopf, einer Express-Taste oder einer Puck-Taste zu."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Multiplica el movimiento del lápiz mientras mantienes Desplazar vista. Con 1,00, el contenido se desplaza un punto de pantalla por cada punto de recorrido del lápiz, y los valores más altos desplazan más. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del puck en Asignación de botones."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「ビューをパン」を押している間、ペンの動きに掛ける倍率です。1.00 では、ペンの移動量1ポイントにつき画面上で1ポイントパンし、値を上げるほど大きくパンします。「ビューをパン」アクションは、ボタン割り当て画面でペンのバレルボタン、エクスプレスキー、パックのボタンのいずれにも割り当てられます。"
           }
         }
       }
@@ -19183,6 +19068,29 @@
         }
       }
     },
+    "SuperSpeed (5 Gb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 5 Gbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 5 Gb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大5 Gb/s"
+          }
+        }
+      }
+    },
     "Switch between absolute (stylus) and relative (mouse) cursor movement" : {
       "comment" : "Help text for the Toggle Relative Mode button action",
       "localizations" : {
@@ -19668,6 +19576,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "テスト領域"
+          }
+        }
+      }
+    },
+    "Test canvas" : {
+      "comment" : "VoiceOver label for the Scratchpad drawing canvas",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testfläche"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lienzo de prueba"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "テスト用キャンバス"
           }
         }
       }
@@ -20575,6 +20506,29 @@
         }
       }
     },
+    "Touch contacts" : {
+      "comment" : "VoiceOver label for the Scratchpad touch visualizer",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Berührungspunkte"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puntos de contacto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチポイント"
+          }
+        }
+      }
+    },
     "Touch Momentum Scrolling" : {
       "comment" : "Undo action name: two-finger scroll momentum toggle in the Touch pane",
       "localizations" : {
@@ -21359,6 +21313,29 @@
         }
       }
     },
+    "Vertical position" : {
+      "comment" : "VoiceOver label: slider for an area's distance from the top edge",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertikale Position"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición vertical"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "垂直位置"
+          }
+        }
+      }
+    },
     "View" : {
       "comment" : "Menu header: view/navigate tabs",
       "localizations" : {
@@ -21492,29 +21469,6 @@
         }
       }
     },
-    "When on, Pan View keeps coasting after you let go in apps with scroll views. When off, which is the default, it pans in far more apps, but without inertia. Turn it on per app with the override bar above to get momentum only where it works." : {
-      "comment" : "Tooltip on the Pan View Momentum Scrolling switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ist es an, läuft „Ansicht schwenken“ in Apps mit Scroll-Ansicht nach dem Loslassen weiter. Ist es aus, wie standardmäßig, schwenkt es in deutlich mehr Apps, aber ohne Trägheit. Schalte es pro App über die Leiste oben ein, um Trägheit nur dort zu nutzen, wo sie funktioniert."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si está activado, Desplazar vista sigue deslizándose al soltar en las apps con vistas de desplazamiento. Si está desactivado, como viene por defecto, desplaza en muchas más apps, pero sin inercia. Actívalo por app con la barra de excepciones de arriba para tener inercia solo donde funcione."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オンにすると、スクロールビューを持つアプリでは、離した後も「ビューをパン」の動きが続きます。既定のオフでは慣性はありませんが、はるかに多くのアプリでパンできます。慣性が効くアプリだけで使うには、上のアプリ別設定バーでアプリごとにオンにしてください。"
-          }
-        }
-      }
-    },
     "When on, content moves opposite to your fingers, like a classic mouse wheel. When off, which is the default, content follows your fingers." : {
       "comment" : "Tooltip on the touch Reverse Direction switch",
       "localizations" : {
@@ -21534,6 +21488,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "オンにすると、従来のマウスホイールのように、コンテンツが指と逆方向に動きます。既定のオフでは、コンテンツが指の動きに追従します。"
+          }
+        }
+      }
+    },
+    "When on, Pan View keeps coasting after you let go in apps with scroll views. When off, which is the default, it pans in far more apps, but without inertia. Turn it on per app with the override bar above to get momentum only where it works." : {
+      "comment" : "Tooltip on the Pan View Momentum Scrolling switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ist es an, läuft „Ansicht schwenken“ in Apps mit Scroll-Ansicht nach dem Loslassen weiter. Ist es aus, wie standardmäßig, schwenkt es in deutlich mehr Apps, aber ohne Trägheit. Schalte es pro App über die Leiste oben ein, um Trägheit nur dort zu nutzen, wo sie funktioniert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si está activado, Desplazar vista sigue deslizándose al soltar en las apps con vistas de desplazamiento. Si está desactivado, como viene por defecto, desplaza en muchas más apps, pero sin inercia. Actívalo por app con la barra de excepciones de arriba para tener inercia solo donde funcione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オンにすると、スクロールビューを持つアプリでは、離した後も「ビューをパン」の動きが続きます。既定のオフでは慣性はありませんが、はるかに多くのアプリでパンできます。慣性が効くアプリだけで使うには、上のアプリ別設定バーでアプリごとにオンにしてください。"
           }
         }
       }
@@ -21660,6 +21637,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ウインドウ"
+          }
+        }
+      }
+    },
+    "X %@, Y %@" : {
+      "comment" : "VoiceOver value of the tilt visualizer, matching the Live Input readout",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %1$@, Y %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %1$@, Y %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %1$@、Y %2$@"
           }
         }
       }
