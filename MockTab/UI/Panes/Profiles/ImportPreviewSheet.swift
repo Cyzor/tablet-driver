@@ -69,12 +69,10 @@ struct ImportPreviewSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(plan.entries, id: \.productID) { entry in
-                    // A real button, so Tab reaches it and Space toggles it.
-                    Button { toggleExclusion(entry.productID) } label: {
+                    Toggle(isOn: inclusionBinding(entry.productID)) {
                         entryRow(entry)
-                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .toggleStyle(.checkbox)
                     .accessibilityLabel(rowAccessibilityLabel(for: entry))
                     .accessibilityHint(Text("Includes or skips this profile in the import.", comment: "VoiceOver hint for a row in the import sheet"))
                 }
@@ -84,19 +82,18 @@ struct ImportPreviewSheet: View {
         .frame(minHeight: 80, maxHeight: 300)
     }
 
-    private func toggleExclusion(_ productID: Int) {
-        if excluded.contains(productID) {
-            excluded.remove(productID)
-        } else {
-            excluded.insert(productID)
-        }
+    private func inclusionBinding(_ productID: Int) -> Binding<Bool> {
+        Binding(
+            get: { !excluded.contains(productID) },
+            set: { included in
+                if included { excluded.remove(productID) } else { excluded.insert(productID) }
+            })
     }
 
     private func rowAccessibilityLabel(for entry: ImportPlan.TabletEntry) -> String {
+        // The checkbox speaks its own checked state.
         let state: String
-        if excluded.contains(entry.productID) {
-            state = String(localized: "Excluded", comment: "Accessibility state for an import entry the user has chosen to skip")
-        } else if entry.isKnown {
+        if entry.isKnown {
             state = String(localized: "Known tablet", comment: "Accessibility state for a registered tablet entry in the import sheet")
         } else {
             state = String(localized: "Unknown tablet", comment: "Accessibility state for an unregistered tablet entry in the import sheet")
@@ -106,8 +103,8 @@ struct ImportPreviewSheet: View {
 
     private var note: some View {
         Text(
-            String(localized: "Each tablet's base settings and named presets are added as new profiles — your current settings aren't changed until you activate one. App overrides and per-tool settings apply immediately.",
-                   comment: "Import sheet: footer explaining that profiles are inert until activated, but app overrides and tool settings take effect right away")
+            String(localized: "Imported as new profiles. App overrides and tool settings apply right away.",
+                   comment: "Import sheet: footer; imported profiles wait until activated, but app overrides and tool settings take effect right away")
         )
         .appFont(.settingsLabel).foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
@@ -141,12 +138,6 @@ struct ImportPreviewSheet: View {
         let renamed = finalName != entry.resolvedProfileName
 
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: isExcluded ? "circle" : (entry.isKnown ? "checkmark.circle.fill" : "questionmark.circle"))
-                .foregroundStyle(isExcluded ? Color.secondary : (entry.isKnown ? Color.green : Color.orange))
-                .frame(width: 16)
-                .padding(.top, 1)
-                .accessibilityHidden(true)
-
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(entry.nickname).fontWeight(.medium)
