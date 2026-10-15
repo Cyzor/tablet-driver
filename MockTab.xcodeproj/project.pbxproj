@@ -37,6 +37,8 @@
 		AA000012 /* TabletAreaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* TabletAreaView.swift */; };
 		AA000013 /* PenFeelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PenFeelView.swift */; };
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
+		AA00F702 /* ButtonMappingExpressKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F702 /* ButtonMappingExpressKeys.swift */; };
+		AA00F701 /* ButtonMappingPen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F701 /* ButtonMappingPen.swift */; };
 		AA000015 /* DisplayMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000015 /* DisplayMappingView.swift */; };
 		AA00F303 /* CintiqPanelSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F303 /* CintiqPanelSection.swift */; };
 		AA00F302 /* DisplayMappingToggles.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F302 /* DisplayMappingToggles.swift */; };
@@ -177,6 +179,8 @@
 		AB000012 /* TabletAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletAreaView.swift; sourceTree = "<group>"; };
 		AB000013 /* PenFeelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenFeelView.swift; sourceTree = "<group>"; };
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
+		AB00F702 /* ButtonMappingExpressKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingExpressKeys.swift; sourceTree = "<group>"; };
+		AB00F701 /* ButtonMappingPen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingPen.swift; sourceTree = "<group>"; };
 		AB000015 /* DisplayMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMappingView.swift; sourceTree = "<group>"; };
 		AB00F303 /* CintiqPanelSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CintiqPanelSection.swift; sourceTree = "<group>"; };
 		AB00F302 /* DisplayMappingToggles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMappingToggles.swift; sourceTree = "<group>"; };
@@ -539,6 +543,8 @@
 				AB000080 /* ButtonMappingBindings.swift */,
 				AB000079 /* ButtonMappingQuickKeys.swift */,
 				AB000014 /* ButtonMappingView.swift */,
+				AB00F702 /* ButtonMappingExpressKeys.swift */,
+				AB00F701 /* ButtonMappingPen.swift */,
 				AB000078 /* ButtonRow.swift */,
 				AB000207 /* LEDColorControl.swift */,
 				AB000077 /* LiveResizeDetector.swift */,
@@ -892,6 +898,8 @@
 				AA00F601 /* CaptureGuideDeviceInit.swift in Sources */,
 				AA000013 /* PenFeelView.swift in Sources */,
 				AA000014 /* ButtonMappingView.swift in Sources */,
+				AA00F702 /* ButtonMappingExpressKeys.swift in Sources */,
+				AA00F701 /* ButtonMappingPen.swift in Sources */,
 				AA000015 /* DisplayMappingView.swift in Sources */,
 				AA00F303 /* CintiqPanelSection.swift in Sources */,
 				AA00F302 /* DisplayMappingToggles.swift in Sources */,

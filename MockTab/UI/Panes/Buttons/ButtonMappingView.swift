@@ -16,15 +16,15 @@ struct ButtonMappingView: View {
     /// Sections only, for an ExpressKey Remote folded into its tablet's pane.
     var isEmbeddedRemote = false
     /// Model axis of the bound unit — spec/catalog lookups key on this.
-    private var productID: Int? { instanceKey?.productID }
+    var productID: Int? { instanceKey?.productID }
 
     @Environment(\.controlActiveState) private var controlActiveState
     @State private var isLiveResizing = false
     /// Bumped when the ring diagram's center is clicked, starting recording
     /// in the Center row's binding field — direct manipulation on the diagram.
-    @State private var centerRecordToken = 0
+    @State var centerRecordToken = 0
     /// Same for the pen diagram's parts: tip, eraser, buttons 1–3.
-    @State private var penRecordTokens = [0, 0, 0, 0, 0]
+    @State var penRecordTokens = [0, 0, 0, 0, 0]
 
     /// Live button state, zeroed when this window is not key or is live-resizing.
     /// Zeroing during resize stops ~100 Hz tablet events from compounding the
@@ -49,12 +49,12 @@ struct ButtonMappingView: View {
     // ButtonMappingBindings.swift.
     var tool: ToolSettings { settings.activeTool }
 
-    private var spec: TabletSpec? {
+    var spec: TabletSpec? {
         guard let pid = productID else { return nil }
         return Self.layoutSpec(productID: pid, context: tabletManager.context(forKey: instanceKey))
     }
 
-    private var activeToolSpec: ToolSpec? {
+    var activeToolSpec: ToolSpec? {
         guard let ctx = tabletManager.context(forKey: instanceKey) else { return nil }
         // Use the last-known tool, not just the currently-in-proximity one:
         // otherwise the button layout reverts to a generic default every
@@ -63,9 +63,9 @@ struct ButtonMappingView: View {
         return ToolCatalog.spec(forToolCode: ctx.lastKnownToolCode)
     }
 
-    private var hasTouchRing: Bool { spec?.hasTouchRing == true }
-    private var hasDualRings: Bool { spec?.hasDualRings == true }
-    private var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
+    var hasTouchRing: Bool { spec?.hasTouchRing == true }
+    var hasDualRings: Bool { spec?.hasDualRings == true }
+    var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
     /// True for PTK-470/670/870 (Intuos Pro gen 3): mechanical rotate-only
     /// dials rather than a capacitive touch ring. Drives the "Dial" vs.
     /// "Touch Ring" section label and hides the nonexistent center-click row
@@ -73,7 +73,7 @@ struct ButtonMappingView: View {
     /// press action at all; the mode-cycle function Wacom's own driver
     /// exposes lives on an ExpressKey ("Dial toggle"), not a ring center
     /// button. See `TabletSpec.hasMechanicalDial`'s doc comment.
-    private var hasMechanicalDial: Bool { spec?.hasMechanicalDial == true }
+    var hasMechanicalDial: Bool { spec?.hasMechanicalDial == true }
 
     /// Whether to draw the split left/right *pad* layout (three toggle buttons
     /// plus five express keys per side, sixteen fixed slots). That shape is a
@@ -82,13 +82,13 @@ struct ButtonMappingView: View {
     /// Keyed on the family rather than `buttonCount`, since the Cintiq itself
     /// declares `buttonCount: 8` while filling all sixteen slots — the
     /// dual-sided layout has never respected that field for anyone.
-    private var hasSplitPadLayout: Bool { Self.hasSplitPadLayout(spec) }
+    var hasSplitPadLayout: Bool { Self.hasSplitPadLayout(spec) }
     /// What each ring or dial's modes do, for jump-to-mode labels.
-    private var ringModeNames: [[String]] { settings.rotaryModeNames }
-    private var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
+    var ringModeNames: [[String]] { settings.rotaryModeNames }
+    var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
     /// ExpressKey Remote: keys and a ring, no pen. Its firmware owns the
     /// ring's mode button, so that row is omitted.
-    private var isRemote: Bool { spec?.format == .expressKeyRemote }
+    var isRemote: Bool { spec?.format == .expressKeyRemote }
 
     // MARK: - Companion peripheral (e.g. Xencelabs Quick Keys puck/dongle)
 
@@ -99,7 +99,7 @@ struct ButtonMappingView: View {
     /// stays visible — greyed via `companionIsConnected` — instead of
     /// vanishing while the accessory is detached (disable-vs-hide rule:
     /// disconnection is temporary state, not a capability change).
-    private var companionProductID: Int? {
+    var companionProductID: Int? {
         guard let pid = productID else { return nil }
         if let live = DeviceCompanions.connectedCompanion(
             forProductID: pid, connectedProductIDs: tabletManager.connectedProductIDs)
@@ -118,22 +118,22 @@ struct ButtonMappingView: View {
         tabletManager.context(forKey: instanceKey)?.isConnected == true
     }
 
-    private var companionIsConnected: Bool {
+    var companionIsConnected: Bool {
         companionContext?.isConnected == true
     }
 
-    private var companionContext: DeviceContext? {
+    var companionContext: DeviceContext? {
         companionProductID.flatMap { tabletManager.contexts[$0] }
     }
 
-    private var companionSpec: TabletSpec? {
+    var companionSpec: TabletSpec? {
         guard let pid = companionProductID, let ctx = companionContext else { return nil }
         return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
     }
 
     /// Live button state for the companion, zeroed under the same
     /// not-key/live-resizing conditions as the tablet's own `liveButtons`.
-    private var companionLiveButtons: LiveButtonState {
+    var companionLiveButtons: LiveButtonState {
         guard controlActiveState == .key, !isLiveResizing else { return LiveButtonState() }
         return companionContext?.liveButtons ?? LiveButtonState()
     }
@@ -144,7 +144,7 @@ struct ButtonMappingView: View {
     /// itself an ExpressKey function, not a separate control counted here)
     /// and DTU (4 keys) get the right row count instead of a hard-coded 8.
     /// Clamped to the storage limit of `expressKeyBindings` (16) for safety.
-    private var expressKeyCount: Int {
+    var expressKeyCount: Int {
         let count = spec?.buttonCount ?? 8
         return min(max(count, 0), 16)
     }
@@ -310,517 +310,6 @@ struct ButtonMappingView: View {
         }
     }
 
-    // MARK: - Pen buttons section
-
-    @ViewBuilder
-    private func penButtonsSection(lb: LiveButtonState) -> some View {
-        let toolSpec = activeToolSpec
-        let isMouse = toolSpec?.toolType == .mouse
-        let btnCount = Self.penButtonCount(tool: toolSpec, device: spec)
-        let hasWheel = toolSpec?.hasWheel == true
-
-        Section {
-            // Tip — only for non-mouse tools
-            if !isMouse {
-                buttonRow(
-                    String(localized: "Tip", comment: "Pen tip button row label in Buttons tab"),
-                    isActive: lb.tipDown,
-                    binding: tipBinding,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-                    recordRequestToken: penRecordTokens[0])
-            }
-
-            // Eraser — only for non-mouse tools
-            if !isMouse {
-                buttonRow(
-                    String(localized: "Eraser", comment: "Eraser button row label in Buttons tab"),
-                    isActive: lb.eraserDown,
-                    binding: eraserBinding,
-                    offersEraser: true,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-                    recordRequestToken: penRecordTokens[1])
-            }
-
-            // Button 1
-            if btnCount >= 1 {
-                buttonRow(
-                    Self.penButtonLabel(1, count: btnCount, isMouse: isMouse),
-                    isActive: lb.button1Down,
-                    binding: pen1Binding,
-                    offersEraser: !isMouse,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-                    recordRequestToken: penRecordTokens[2])
-            }
-            // Button 2
-            if btnCount >= 2 {
-                buttonRow(
-                    Self.penButtonLabel(2, count: btnCount, isMouse: isMouse),
-                    isActive: lb.button2Down,
-                    binding: pen2Binding,
-                    offersEraser: !isMouse,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-                    recordRequestToken: penRecordTokens[3])
-            }
-            // Button 3
-            if btnCount >= 3 {
-                buttonRow(
-                    Self.penButtonLabel(3, count: btnCount, isMouse: isMouse),
-                    isActive: lb.button3Down,
-                    binding: pen3Binding,
-                    offersEraser: !isMouse,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-                    recordRequestToken: penRecordTokens[4])
-            }
-            // Button 4
-            if btnCount >= 4 {
-                buttonRow(
-                    Self.penButtonLabel(4, count: btnCount, isMouse: isMouse),
-                    isActive: lb.button4Down,
-                    binding: pen4Binding,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
-            }
-            // Button 5
-            if btnCount >= 5 {
-                buttonRow(
-                    Self.penButtonLabel(5, count: btnCount, isMouse: isMouse),
-                    isActive: lb.button5Down,
-                    binding: pen5Binding,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
-            }
-
-            // Wheel row — airbrush fingerwheel or scroll wheel
-            if hasWheel {
-                buttonRow(Self.wheelLabel(tool: toolSpec), isActive: false, binding: wheelBinding, modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
-            }
-
-            // Diagram row: no label column; transparent so the section
-            // background shows through unchanged. Clicking a part starts
-            // recording in its binding row — parts whose row isn't shown
-            // (mouse tools, missing buttons) stay inert.
-            PenDiagramView(liveButtons: lb, onPartTap: { part in
-                switch part {
-                case .tip: if !isMouse { penRecordTokens[0] += 1 }
-                case .eraser: if !isMouse { penRecordTokens[1] += 1 }
-                case .button1: if btnCount >= 1 { penRecordTokens[2] += 1 }
-                case .button2: if btnCount >= 2 { penRecordTokens[3] += 1 }
-                case .button3: if btnCount >= 3 { penRecordTokens[4] += 1 }
-                }
-            }, enabledParts: {
-                var parts: Set<PenDiagramView.Part> = []
-                if !isMouse { parts.insert(.tip); parts.insert(.eraser) }
-                if btnCount >= 1 { parts.insert(.button1) }
-                if btnCount >= 2 { parts.insert(.button2) }
-                if btnCount >= 3 { parts.insert(.button3) }
-                return parts
-            }())
-                .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
-                .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
-                .listRowBackground(Color.clear)
-        } header: {
-            PaneSectionHeader(isMouse ? "Mouse Buttons" : "Pen Buttons") {
-                ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-            }
-        }
-    }
-
-    // MARK: - Single-sided layout (most tablets)
-
-    @ViewBuilder
-    private func singleSidedSection(lb: LiveButtonState) -> some View {
-        // DeviceNameLabel heads this section so it sits between the pen section
-        // and the hardware button rows, matching the original visual intent.
-        // Xencelabs tablets/displays report 0 here — their express keys live
-        // on the puck/dongle companion instead (see quickKeysSection below) —
-        // so skip an empty section rather than showing a header with no rows.
-        if isRemote {
-            remoteKeySections(lb: lb)
-        } else if expressKeyCount > 0 {
-            Section {
-                ForEach(0..<expressKeyCount, id: \.self) { i in
-                    expressKeyRow(
-                        index: i,
-                        label: String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'"),
-                        lb: lb)
-                }
-            } header: {
-                PaneSectionHeader("Express Keys") {
-                    DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-                }
-            }
-        }
-
-        // Two rotaries (Cintiq 24HD rings, PTK-670/870 dials) get a Left and
-        // a Right section, each with its own modes. The direction toggle is
-        // device-wide, so it goes after the last section. Mechanical dials
-        // say "Dial" instead of "Touch Ring".
-        let ringSectionLabel = hasMechanicalDial
-            ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
-            : String(localized: "Touch Ring", comment: "Section header / row label for touch ring")
-        if hasTouchRing {
-            if hasDualRings {
-                Section("\(ringSectionLabel) — Left") {
-                    touchRingBlock(lb: lb)
-                }
-                Section("\(ringSectionLabel) — Right") {
-                    if hasMechanicalDial { dialToggleBlock2(lb: lb) }
-                    touchRingSlotsSection(
-                        ringSectionLabel,
-                        isActive: lb.touchRing2Active, showsDiagram: !hasMechanicalDial,
-                        showsModeBadge: hasMechanicalDial,
-                        ring: .secondary)
-                }
-                if !hasTouchStrips { bothRingsDirectionSection }
-            } else {
-                Section(ringSectionLabel) {
-                    touchRingBlock(lb: lb)
-                    if !hasTouchStrips { reverseRingDirectionToggle }
-                }
-            }
-        }
-
-        if hasTouchStrips {
-            Section("Touch Strips") {
-                touchRingSlotsSection(
-                    String(localized: "Left", comment: "Left touch strip row label"),
-                    isActive: lb.touchStrip1Active)
-                touchRingSlotsSection(
-                    String(localized: "Right", comment: "Right touch strip row label"),
-                    isActive: lb.touchStrip2Active)
-                reverseRingDirectionToggle
-            }
-        }
-
-        quickKeysSection
-    }
-
-    /// ExpressKey Remote keys, grouped and ordered as on the hardware.
-    @ViewBuilder
-    private func remoteKeySections(lb: LiveButtonState) -> some View {
-        Section {
-            ForEach(Self.remoteRingKeySlots, id: \.self) { remoteKeyRow($0, lb: lb) }
-        } header: {
-            PaneSectionHeader("Ring Keys") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-            }
-        }
-        Section("Outer Keys") {
-            ForEach(Self.remoteOuterLeftSlots + Self.remoteOuterRightSlots, id: \.self) { remoteKeyRow($0, lb: lb) }
-        }
-        Section("Inner Keys") {
-            ForEach(Self.remoteInnerSlots, id: \.self) { remoteKeyRow($0, lb: lb) }
-        }
-    }
-
-    /// Key 17 arrives past the 16 express-key slots, where the injector
-    /// reads bezel binding 0; the remote has no bezel.
-    @ViewBuilder
-    private func remoteKeyRow(_ index: Int, lb: LiveButtonState) -> some View {
-        let label = Self.remoteKeyLabel(slot: index)
-        if index < 16 {
-            expressKeyRow(index: index, label: label, lb: lb)
-        } else {
-            bezelButtonRow(index: 0, label: label, lb: lb)
-        }
-    }
-
-    /// Center row plus the ring's mode list, for the primary ring's section.
-    ///
-    /// PTK dials have no center press; their mode key is the middle
-    /// ExpressKey of the dial's cluster, shown as "Dial Toggle". The 24HD's
-    /// rings have no center either; three keys beside each ring pick its
-    /// modes. The remote's center button belongs to its firmware.
-    @ViewBuilder
-    private func touchRingBlock(lb: LiveButtonState) -> some View {
-        let hasCenterButton = !hasMechanicalDial && !isRemote && !hasSplitPadLayout
-        if hasMechanicalDial {
-            buttonRow(
-                String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes"),
-                isActive: lb.touchRingButtonDown,
-                binding: settings.recordingBinding(
-                    String(localized: "Dial Toggle", comment: "Undo action name: dial toggle key binding in the Buttons pane"),
-                    get: { settings.touchRingButtonBinding },
-                    set: { settings.touchRingButtonBinding = $0 }),
-                ringSlotCount: spec?.ringSlotCount ?? 4,
-                modeNames: ringModeNames,
-                isMechanicalDialHardware: true,
-                dialToggleControl: .first,
-                recordRequestToken: centerRecordToken)
-        } else if hasCenterButton {
-            buttonRow(
-                String(localized: "Center", comment: "Touch ring center button row label"),
-                isActive: lb.touchRingButtonDown,
-                binding: settings.recordingBinding(
-                    String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
-                    get: { settings.touchRingButtonBinding },
-                    set: { settings.touchRingButtonBinding = $0 }),
-                ringSlotCount: spec?.ringSlotCount ?? 4,
-                modeNames: ringModeNames,
-                recordRequestToken: centerRecordToken)
-        }
-        touchRingSlotsSection(
-            hasMechanicalDial
-                ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
-                : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-            isActive: lb.touchRingActive, showsDiagram: !hasMechanicalDial,
-            showsModeBadge: hasMechanicalDial,
-            onCenterTap: hasCenterButton ? { centerRecordToken += 1 } : nil,
-            centerBinding: !hasCenterButton ? nil : settings.recordingBinding(
-                String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
-                get: { settings.touchRingButtonBinding },
-                set: { settings.touchRingButtonBinding = $0 }))
-    }
-
-    /// Second dial's own "Dial Toggle" row (PTK-670/870's right cluster
-    /// center key) — the counterpart to `touchRingBlock`'s row, but for
-    /// `touchRingButtonBinding2`. Only ever shown alongside
-    /// `touchRingSlotsSection(ring: .secondary)` for `hasMechanicalDial`
-    /// devices; capacitive dual-ring hardware (Cintiq 24HD) has no
-    /// equivalent second toggle key and never calls this.
-    @ViewBuilder
-    private func dialToggleBlock2(lb: LiveButtonState) -> some View {
-        buttonRow(
-            String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes"),
-            isActive: lb.touchRing2ButtonDown,
-            binding: settings.recordingBinding(
-                String(localized: "Dial 2 Toggle", comment: "Undo action name: second dial toggle key binding in the Buttons pane"),
-                get: { settings.touchRingButtonBinding2 },
-                set: { settings.touchRingButtonBinding2 = $0 }),
-            ringSlotCount: spec?.ringSlotCount ?? 4,
-            isMechanicalDialHardware: true,
-            dialToggleControl: .second)
-    }
-
-    /// Direction preference for every ring/dial/strip on the device — one
-    /// setting, deliberately not per-ring or per-slot: a user reaches for this
-    /// because their muscle memory disagrees with the hardware convention, and
-    /// that disagreement is uniform. The caption follows Pen Feel's "Invert
-    /// Rotation Direction" — naming the current direction with an arrow glyph
-    /// rather than describing what each mode does, which stays short and stays
-    /// true whatever the four slots are set to.
-    ///
-    /// Wording branches on `hasTouchStrips`: a linear strip has no rotational
-    /// sense, so "Clockwise"/"Counter-clockwise" (correct for a ring or dial)
-    /// would be nonsensical there. A device with strips only gets
-    /// direction-neutral "Forward"/"Reversed" wording instead. This toggle is
-    /// never shown for a device with both a ring/dial and strips at once
-    /// today (see the call sites' `if !hasTouchStrips` guards), so branching
-    /// on `hasTouchStrips` alone is sufficient — revisit if that changes.
-    /// The direction toggle on two-ring hardware, in its own section so the
-    /// header states its scope; under either ring it read as that ring's.
-    private var bothRingsDirectionSection: some View {
-        Section(
-            hasMechanicalDial
-                ? String(localized: "Both Dials", comment: "Section header for a setting shared by a tablet's two dials")
-                : String(localized: "Both Touch Rings", comment: "Section header for a setting shared by a tablet's two touch rings")
-        ) {
-            reverseRingDirectionToggle
-        }
-    }
-
-    @ViewBuilder
-    private var reverseRingDirectionToggle: some View {
-        DescribedToggle(
-            "Reverse Direction",
-            isOn: settings.recordingBinding(
-                String(localized: "Ring Direction", comment: "Undo action name: touch ring/dial direction toggle in the Buttons pane"),
-                get: { settings.reverseRingDirection },
-                set: { settings.reverseRingDirection = $0 }),
-            currentIcon: hasTouchStrips
-                ? (settings.reverseRingDirection ? "arrow.up" : "arrow.down")
-                : (settings.reverseRingDirection ? "arrow.counterclockwise" : "arrow.clockwise"),
-            current: hasTouchStrips
-                ? (settings.reverseRingDirection ? " Reversed." : " Forward.")
-                : (settings.reverseRingDirection ? " Counter-clockwise." : " Clockwise."),
-            help: "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
-    }
-
-    /// Express keys + dial for a connected companion puck/dongle, folded
-    /// into the tablet's own Buttons pane instead of the companion getting
-    /// a window (and settings) of its own — see `companionProductID`.
-    /// `QuickKeysSectionView` reads/writes the companion's *own*
-    /// `TabletSettings` instance (its own `DeviceContext`, keyed by its own
-    /// PID), not the tablet's — each physical device keeps its own
-    /// independent binding storage, exactly as if the companion still had
-    /// its own pane; only the window is merged.
-    @ViewBuilder
-    private var quickKeysSection: some View {
-        if companionProductID == DeviceCompanions.expressKeyRemoteProductID,
-           let companion = companionContext {
-            let _ = (companion.settings.undoManager = settings.undoManager)
-            ButtonMappingView(
-                settings: companion.settings, tabletManager: tabletManager, registry: registry,
-                instanceKey: companion.instanceKey, isEmbeddedRemote: true)
-        } else if let companionSettings = companionContext?.settings {
-            // The companion's settings instance never passes through this
-            // window's controller, which wires only its own settings to the
-            // window undo manager — the companion borrows it here or its
-            // edits record no undo actions at all.
-            let _ = (companionSettings.undoManager = settings.undoManager)
-            // Editable regardless of connection, same as the pen/bezel
-            // sections — the companion's capability spec is already known
-            // from its stub, so there's no reason to block edits just
-            // because the puck happens to be detached right now. The
-            // header shows a "Not connected" hint instead of disabling
-            // the section (disable-vs-hide rule: connection is temporary
-            // state, not a capability change).
-            QuickKeysSectionView(
-                settings: companionSettings, spec: companionSpec, liveButtons: companionLiveButtons,
-                isDeviceConnected: companionIsConnected,
-                // Keyed to the companion, not this window's tablet — the
-                // section configures the puck, so its header must name the
-                // puck (or its nickname) and track the puck's connection.
-                nameLabel: DeviceNameLabel(
-                    tabletManager: tabletManager, registry: registry,
-                    instanceKey: companionContext?.instanceKey))
-        }
-    }
-
-    // MARK: - Dual-sided layout (Cintiq 24HD and similar)
-    // Indices  0– 2 = left toggle buttons (near ring)
-    // Indices  3– 7 = left express keys
-    // Indices  8–10 = right toggle buttons (near ring, mirror)
-    // Indices 11–15 = right express keys (mirror)
-    // Both rings share the same mode setting (mirrored behavior).
-
-    @ViewBuilder
-    private func dualSidedSection(lb: LiveButtonState) -> some View {
-        Section {
-            ForEach(0..<3, id: \.self) { i in
-                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
-            }
-        } header: {
-            PaneSectionHeader("Toggle Buttons — Left") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-            }
-        }
-
-        Section("Express Keys — Left") {
-            ForEach(3..<8, id: \.self) { i in
-                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
-            }
-        }
-
-        Section("Touch Ring — Left") {
-            touchRingSlotsSection(
-                String(
-                    localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRingActive, showsDiagram: true)
-        }
-
-        Section("Toggle Buttons — Right") {
-            ForEach(8..<11, id: \.self) { i in
-                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
-            }
-        }
-
-        Section("Express Keys — Right") {
-            ForEach(11..<16, id: \.self) { i in
-                expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
-            }
-        }
-
-        Section("Touch Ring — Right") {
-            touchRingSlotsSection(
-                String(
-                    localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRing2Active, showsDiagram: true)
-        }
-        bothRingsDirectionSection
-    }
-
-    // MARK: - Bezel buttons (device's own onboard capacitive buttons, e.g.
-    // the Cintiq DTK-2400's OSD keys or the Xencelabs display's touch
-    // buttons) — a fixed-size section folded onto the bottom of the pane,
-    // independent of expressKeyBindings since some devices already use all
-    // 16 of those slots.
-
-    @ViewBuilder
-    private func bezelButtonsSection(lb: LiveButtonState) -> some View {
-        Section {
-            ForEach(0..<bezelButtonCount, id: \.self) { i in
-                bezelButtonRow(
-                    index: i,
-                    label: String(
-                        localized: "Bezel Button \(i + 1)",
-                        comment: "Bezel button N label, e.g. 'Bezel Button 1'"), lb: lb)
-            }
-            if hasBezelLED {
-                HStack(alignment: .top) {
-                    Text("Button Backlight")
-                    Spacer()
-                    LEDColorControl(
-                        style: .inline,
-                        color: Binding(
-                            get: { settings.bezelLEDColorValue },
-                            set: { settings.bezelLEDColorValue = $0 }),
-                        defaultWire: (r: 0xF7, g: 0x00, b: 0x00),
-                        undoLabel: "Bezel Button Backlight",
-                        settings: settings)
-                        .equatable()
-                        // Ease off the window edge a touch — flush-trailing
-                        // reads cramped next to the bordered rows above.
-                        .padding(.trailing, 12)
-                }
-                .help("Color and brightness of the light behind the bezel buttons. The hardware keeps its own color until you change it.")
-            }
-        } header: {
-            PaneSectionHeader("Bezel Buttons") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-            }
-        }
-    }
-
-    /// Whether the bezel buttons have a host-controllable backlight LED —
-    /// Xencelabs pen displays only; the Cintiq's OSD keys have no light of
-    /// their own. Static capability, so the well stays put while the
-    /// display is unplugged (writes replay on reconnect).
-    private var hasBezelLED: Bool {
-        guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
-        else { return false }
-        return spec.format == .xencelabs && spec.isPenDisplay
-    }
-
-
-    @ViewBuilder
-    private func bezelButtonRow(index: Int, label: String, lb: LiveButtonState) -> some View {
-        buttonRow(
-            label,
-            isActive: lb.bezelButtons[index],
-            binding: settings.recordingBinding(
-                String(localized: "Bezel Button \(index + 1)"),
-                get: { settings.bezelButtonBindings[index] },
-                set: { newValue in
-                    var updated = settings.bezelButtonBindings
-                    updated[index] = newValue
-                    settings.bezelButtonBindings = updated
-                }
-            ),
-            modeNames: ringModeNames
-        )
-    }
-
-    // MARK: - Express key row helper
-
-    @ViewBuilder
-    private func expressKeyRow(index: Int, label: String, lb: LiveButtonState) -> some View {
-        buttonRow(
-            label,
-            isActive: lb.expressKeys[index],
-            binding: settings.recordingBinding(
-                String(localized: "Express Key \(index + 1)", comment: "Undo action name: express key binding in the Buttons pane"),
-                get: { settings.expressKeyBindings[index] },
-                set: { newValue in
-                    var updated = settings.expressKeyBindings
-                    updated[index] = newValue
-                    settings.expressKeyBindings = updated
-                }
-            ),
-            ringSlotCount: spec?.ringSlotCount ?? 4,
-            offersSecondDial: hasDualRings,
-            modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial
-        )
-    }
-
     // MARK: - Touch ring / strip slots section
 
     /// The mode block for a ring or strip: label row, then the mode list,
@@ -828,10 +317,10 @@ struct ButtonMappingView: View {
     ///
     /// `ring` picks the control: `.primary` for a single ring, a strip, or
     /// the left ring or dial; `.secondary` for the right one.
-    private enum RingIdentity { case primary, secondary }
+    enum RingIdentity { case primary, secondary }
 
     @ViewBuilder
-    private func touchRingSlotsSection(
+    func touchRingSlotsSection(
         _ label: String, isActive: Bool, showsDiagram: Bool = false,
         showsModeBadge: Bool = false,
         ring: RingIdentity = .primary,
