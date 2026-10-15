@@ -1984,10 +1984,10 @@ final class TabletManager: ObservableObject {
             ) {
                 if let n = (prop as? NSNumber)?.intValue {
                     switch n {
-                    case 0: return ("USB", "Low Speed (1.5 Mb/s)")
-                    case 1: return ("USB", "Full Speed (12 Mb/s)")
-                    case 2: return ("USB", "High Speed (480 Mb/s)")
-                    case 3: return ("USB", "SuperSpeed (5 Gb/s)")
+                    case 0: return ("USB", String(localized: "Low Speed (1.5 Mb/s)", comment: "USB speed on the Info tab"))
+                    case 1: return ("USB", String(localized: "Full Speed (12 Mb/s)", comment: "USB speed on the Info tab"))
+                    case 2: return ("USB", String(localized: "High Speed (480 Mb/s)", comment: "USB speed on the Info tab"))
+                    case 3: return ("USB", String(localized: "SuperSpeed (5 Gb/s)", comment: "USB speed on the Info tab"))
                     default: break
                     }
                 }

@@ -295,6 +295,52 @@
         }
       }
     },
+    "Full Speed (12 Mb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 12 Mbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 12 Mb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大12 Mb/s"
+          }
+        }
+      }
+    },
+    "High Speed (480 Mb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 480 Mbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 480 Mb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大480 Mb/s"
+          }
+        }
+      }
+    },
     "Horizontal position" : {
       "comment" : "VoiceOver label: slider for an area's distance from the left edge",
       "localizations" : {
@@ -341,6 +387,29 @@
         }
       }
     },
+    "Low Speed (1.5 Mb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 1,5 Mbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 1,5 Mb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大1.5 Mb/s"
+          }
+        }
+      }
+    },
     "Mapped displays" : {
       "comment" : "VoiceOver label for the display arrangement canvas",
       "localizations" : {
@@ -360,6 +429,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "マッピング先のディスプレイ"
+          }
+        }
+      }
+    },
+    "SuperSpeed (5 Gb/s)" : {
+      "comment" : "USB speed on the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu 5 Gbit/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 5 Gb/s"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最大5 Gb/s"
           }
         }
       }
