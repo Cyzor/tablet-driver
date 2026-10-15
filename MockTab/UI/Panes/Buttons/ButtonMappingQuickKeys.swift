@@ -131,20 +131,10 @@ struct QuickKeysSectionView: View {
                 isOn: settings.recordingBinding(
                     String(localized: "Dial Direction", comment: "Undo action name: Quick Keys dial direction toggle in the Buttons pane"),
                     get: { settings.reverseRingDirection },
-                    set: { settings.reverseRingDirection = $0 })
-            ) {
-                Text("Current: ")
-                    + Text(
-                        Image(
-                            systemName: settings.reverseRingDirection
-                                ? "arrow.counterclockwise"
-                                : "arrow.clockwise"))
-                    + Text(
-                        settings.reverseRingDirection
-                            ? " Counter-clockwise."
-                            : " Clockwise.")
-            }
-            .help("Flips the direction of the dial, whatever its mode is set to. Turn on if the dial runs opposite to your expectation.")
+                    set: { settings.reverseRingDirection = $0 }),
+                currentIcon: settings.reverseRingDirection ? "arrow.counterclockwise" : "arrow.clockwise",
+                current: settings.reverseRingDirection ? " Counter-clockwise." : " Clockwise.",
+                help: "Flips the direction of the dial, whatever its mode is set to. Turn on if the dial runs opposite to your expectation.")
         } header: {
             // The caption's gray dot and "No device connected" name replace
             // the trailing "Not connected" text this header used to carry —

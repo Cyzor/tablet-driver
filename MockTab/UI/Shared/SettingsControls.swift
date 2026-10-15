@@ -155,23 +155,34 @@ struct PaneSectionHeader<Subtitle: View>: View {
 
 /// Settings row: toggle whose label is a title with a secondary
 /// description line beneath — the standard MockTab toggle shape.
-/// The description is Text, composed if needed (icons, dynamic state), so
-/// VoiceOver can speak it; use the string initializer for plain text.
+/// VoiceOver hears the title as the switch's name, then the description in
+/// plain words and the tooltip as its hint.
 struct DescribedToggle: View {
     let title: LocalizedStringKey
     @Binding var isOn: Bool
-    let description: () -> Text
+    let description: Text
+    /// The description without icons, which VoiceOver would name aloud.
+    let spokenDescription: Text
+    let help: LocalizedStringKey?
 
-    init(_ title: LocalizedStringKey,
-         isOn: Binding<Bool>,
-         description: @escaping () -> Text) {
+    init(_ title: LocalizedStringKey, isOn: Binding<Bool>,
+         description: LocalizedStringKey, help: LocalizedStringKey? = nil) {
         self.title = title
         self._isOn = isOn
-        self.description = description
+        self.description = Text(description)
+        self.spokenDescription = Text(description)
+        self.help = help
     }
 
-    init(_ title: LocalizedStringKey, isOn: Binding<Bool>, description: LocalizedStringKey) {
-        self.init(title, isOn: isOn) { Text(description) }
+    /// A "Current: <icon> State." line; VoiceOver hears only the state.
+    init(_ title: LocalizedStringKey, isOn: Binding<Bool>,
+         currentIcon: String, current: LocalizedStringKey,
+         help: LocalizedStringKey? = nil) {
+        self.title = title
+        self._isOn = isOn
+        self.description = Text("Current: ") + Text(Image(systemName: currentIcon)) + Text(current)
+        self.spokenDescription = Text(current)
+        self.help = help
     }
 
     var body: some View {
@@ -179,15 +190,16 @@ struct DescribedToggle: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .appFont(.subheadline)
-                description()
+                description
                     .appFont(.settingsLabel)
                     .foregroundStyle(.secondary)
             }
         }
-        // A stacked label leaves the switch unnamed for VoiceOver, so the
-        // title names it and the description follows as its hint.
+        // A stacked label leaves the switch unnamed for VoiceOver.
         .accessibilityLabel(Text(title))
-        .accessibilityHint(description())
+        .help(help ?? "")
+        // After `.help`, which would otherwise replace the hint.
+        .accessibilityHint(help.map { spokenDescription + Text(verbatim: " ") + Text($0) } ?? spokenDescription)
     }
 }
 

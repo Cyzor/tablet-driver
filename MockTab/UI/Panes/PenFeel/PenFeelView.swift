@@ -64,35 +64,20 @@ struct PenFeelView: View {
             }
 
             Section("Movement") {
-                DescribedToggle("Invert Rotation Direction", isOn: invertRotationBinding) {
-                    Text("Current: ")
-                        + Text(
-                            Image(
-                                systemName: settings.invertRotation
-                                    ? "arrow.counterclockwise"
-                                    : "arrow.clockwise"))
-                        + Text(
-                            settings.invertRotation
-                                ? " Counter-clockwise."
-                                : " Clockwise.")
-                }
-                .help(
-                    "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
+                DescribedToggle(
+                    "Invert Rotation Direction",
+                    isOn: invertRotationBinding,
+                    currentIcon: settings.invertRotation ? "arrow.counterclockwise" : "arrow.clockwise",
+                    current: settings.invertRotation ? " Counter-clockwise." : " Clockwise.",
+                    help: "Reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).")
 
-                DescribedToggle("Relative Cursor Movement", isOn: relativeCursorMovementBinding) {
-                    Text("Current: ")
-                        + Text(
-                            Image(
-                                systemName: settings.relativeCursorMovement
-                                    ? "cursorarrow.motionlines"
-                                    : "pencil.tip"))
-                        + Text(
-                            settings.relativeCursorMovement
-                                ? " Relative, like a mouse."
-                                : " Absolute, like a stylus.")
-                }
-                .help(
-                    "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse.")
+                DescribedToggle(
+                    "Relative Cursor Movement",
+                    isOn: relativeCursorMovementBinding,
+                    currentIcon: settings.relativeCursorMovement ? "cursorarrow.motionlines" : "pencil.tip",
+                    current: settings.relativeCursorMovement
+                        ? " Relative, like a mouse." : " Absolute, like a stylus.",
+                    help: "In absolute mode, each point on the tablet maps to a fixed point on screen. In relative mode, the cursor moves by the distance you move the pen, like a mouse.")
             }
 
             Section("Pan View") {
@@ -111,10 +96,8 @@ struct PenFeelView: View {
                 DescribedToggle(
                     "Momentum Scrolling",
                     isOn: panScrollMomentumBinding,
-                    description: "Inertia scrolling. Compatibility varies by app."
-                )
-                .help(
-                    "On: Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off (default): a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if you want momentum only where it works.")
+                    description: "Inertia scrolling. Compatibility varies by app.",
+                    help: "On: Pan View emits a phased trackpad-style stream with a momentum tail, so scroll-view apps coast after you release. Off (default): a simpler stream that pans in far more apps, but without inertia. Set per-app using the override bar above if you want momentum only where it works.")
             }
 
             Section("Click Behavior") {

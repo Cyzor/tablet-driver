@@ -623,32 +623,14 @@ struct ButtonMappingView: View {
             isOn: settings.recordingBinding(
                 String(localized: "Ring Direction", comment: "Undo action name: touch ring/dial direction toggle in the Buttons pane"),
                 get: { settings.reverseRingDirection },
-                set: { settings.reverseRingDirection = $0 })
-        ) {
-            if hasTouchStrips {
-                return Text("Current: ")
-                    + Text(
-                        Image(
-                            systemName: settings.reverseRingDirection
-                                ? "arrow.up"
-                                : "arrow.down"))
-                    + Text(
-                        settings.reverseRingDirection
-                            ? " Reversed."
-                            : " Forward.")
-            }
-            return Text("Current: ")
-                + Text(
-                    Image(
-                        systemName: settings.reverseRingDirection
-                            ? "arrow.counterclockwise"
-                            : "arrow.clockwise"))
-                + Text(
-                    settings.reverseRingDirection
-                        ? " Counter-clockwise."
-                        : " Clockwise.")
-        }
-        .help("Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
+                set: { settings.reverseRingDirection = $0 }),
+            currentIcon: hasTouchStrips
+                ? (settings.reverseRingDirection ? "arrow.up" : "arrow.down")
+                : (settings.reverseRingDirection ? "arrow.counterclockwise" : "arrow.clockwise"),
+            current: hasTouchStrips
+                ? (settings.reverseRingDirection ? " Reversed." : " Forward.")
+                : (settings.reverseRingDirection ? " Counter-clockwise." : " Clockwise."),
+            help: "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
     }
 
     /// Express keys + dial for a connected companion puck/dongle, folded
