@@ -69,19 +69,14 @@ struct ImportPreviewSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(plan.entries, id: \.productID) { entry in
-                    entryRow(entry)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            toggleExclusion(entry.productID)
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityLabel(rowAccessibilityLabel(for: entry))
-                        .accessibilityHint(Text("Includes or skips this profile in the import.", comment: "VoiceOver hint for a row in the import sheet"))
-                        .accessibilityAction { toggleExclusion(entry.productID) }
-                        .accessibilityAction {
-                            toggleExclusion(entry.productID)
-                        }
+                    // A real button, so Tab reaches it and Space toggles it.
+                    Button { toggleExclusion(entry.productID) } label: {
+                        entryRow(entry)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(rowAccessibilityLabel(for: entry))
+                    .accessibilityHint(Text("Includes or skips this profile in the import.", comment: "VoiceOver hint for a row in the import sheet"))
                 }
             }
             .padding(16)

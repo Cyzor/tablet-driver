@@ -521,27 +521,33 @@ private struct PressureCurveCanvas: View {
     /// `.accessibilityRepresentation`. The visual Canvas remains the
     /// authoritative surface for sighted-mouse users.
     private var accessibilityControls: some View {
-        VStack {
+        // Stacked over the whole canvas, so keyboard focus rings the curve
+        // rather than four strips of it.
+        ZStack {
             Slider(value: bindingFor(.p1, axis: .x), in: 0...1) {
                 Text(String(
                     localized: "Pressure curve point 1 input",
                     comment: "Accessibility label: VoiceOver slider for the X coordinate of the first Bézier control point"))
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             Slider(value: bindingFor(.p1, axis: .y), in: 0...1) {
                 Text(String(
                     localized: "Pressure curve point 1 output",
                     comment: "Accessibility label: VoiceOver slider for the Y coordinate of the first Bézier control point"))
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             Slider(value: bindingFor(.p2, axis: .x), in: 0...1) {
                 Text(String(
                     localized: "Pressure curve point 2 input",
                     comment: "Accessibility label: VoiceOver slider for the X coordinate of the second Bézier control point"))
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             Slider(value: bindingFor(.p2, axis: .y), in: 0...1) {
                 Text(String(
                     localized: "Pressure curve point 2 output",
                     comment: "Accessibility label: VoiceOver slider for the Y coordinate of the second Bézier control point"))
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
