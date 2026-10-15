@@ -793,9 +793,8 @@ struct ButtonMappingView: View {
     /// their own. Static capability, so the well stays put while the
     /// display is unplugged (writes replay on reconnect).
     private var hasBezelLED: Bool {
-        guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
-        else { return false }
-        return spec.format == .xencelabs && spec.isPenDisplay
+        guard let pid = productID else { return false }
+        return TabletManager.staticSpec(forProductID: pid)?.offeredControls.contains(.displayPanel) == true
     }
 
 

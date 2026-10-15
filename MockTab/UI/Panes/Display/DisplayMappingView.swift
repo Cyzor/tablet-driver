@@ -107,9 +107,8 @@ struct DisplayMappingView: View {
     /// live connection, so the section stays visible — disabled — while the
     /// display is unplugged or asleep.
     private var hasBrightnessControl: Bool {
-        guard let pid = productID, let spec = TabletManager.staticSpec(forProductID: pid)
-        else { return false }
-        return spec.format == .xencelabs && spec.isPenDisplay
+        guard let pid = productID else { return false }
+        return TabletManager.staticSpec(forProductID: pid)?.offeredControls.contains(.displayPanel) == true
     }
 
     /// Model name of a Wacom pen display, whose panel may answer DDC/CI
