@@ -452,6 +452,23 @@ final class TabletManager: ObservableObject {
             session.unregisteredProductIDs = [fallbackPID]
             logger.notice("debug: reading 0x\(String(fallbackPID, radix: 16, uppercase: true), privacy: .public) as an unknown tablet")
         }
+        // Switches on other makers' tablets, by brand, until removed:
+        // `defaults write com.cyzor.mocktab enabledTabletBrands -array huion xppen`.
+        // Brands: huion, gaomon, xppen, ugee, and parblo.
+        for name in defaults.stringArray(forKey: "enabledTabletBrands") ?? [] {
+            if let brand = TabletBrand(name: name) {
+                session.experimentalTabletBrands.insert(brand)
+            } else {
+                logger.notice("debug: enabledTabletBrands has \(name, privacy: .public), which isn't a brand MockTab knows")
+            }
+        }
+        if !session.experimentalTabletBrands.isEmpty {
+            logger.notice("debug: switching on \(session.experimentalTabletBrands.map(\.description).sorted().joined(separator: ", "), privacy: .public) tablets")
+        }
+        // Reads a Xencelabs tablet the way an XP-Pen is read, for one launch:
+        // `defaults write com.cyzor.mocktab debugXencelabsAsUGEE -bool YES`.
+        session.readsXencelabsAsUGEE = defaults.bool(forKey: "debugXencelabsAsUGEE")
+        defaults.removeObject(forKey: "debugXencelabsAsUGEE")
         #endif
         let ret = session.start()
         hidManagerOpen = (ret == kIOReturnSuccess)

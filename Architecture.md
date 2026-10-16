@@ -67,6 +67,8 @@ macOS presents one tablet as several devices, called interfaces, often one each 
    - **A touch-only interface** is watched for capture but moves nothing.
 
    To try a guess on a tablet the registry knows, run a Debug build after `defaults write com.cyzor.mocktab debugFallbackProductID -int <product ID in decimal>`. Add `debugGenericFallback -bool YES` to read it as another maker's pen. Both last one launch.
+
+   Huion, Gaomon, XP-Pen, UGEE, and Parblo tablets can describe themselves once switched on. Debug builds switch on the brands listed in `defaults write com.cyzor.mocktab enabledTabletBrands -array huion xppen`, which stays until removed. `debugXencelabsAsUGEE -bool YES` reads a Xencelabs tablet the same way, for one launch.
 5. `DeviceRegistry` lists the tablet in the Devices pane, and its settings load.
 
 ## Following a Touch
