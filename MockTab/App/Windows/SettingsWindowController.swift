@@ -435,8 +435,10 @@ final class SettingsWindowController: NSWindowController {
 
         tabVC.tabStyle = .toolbar
 
+        // Starts at the floor; a pane that needs more widens it (see `paneNeeds`).
         let window = ResizableWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 790),
+            contentRect: NSRect(
+                x: 0, y: 0, width: ResizableTabViewController.minimumPaneWidth, height: 790),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
