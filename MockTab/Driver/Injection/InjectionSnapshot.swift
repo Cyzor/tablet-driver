@@ -41,6 +41,8 @@ struct InjectionSnapshot: Sendable, Equatable {
     // MARK: - Behavior
 
     var invertRotation: Bool
+    /// `TabletSettings.penDeadBand`: counts, or −1 for the tablet's default.
+    var penDeadBand: Int
     var relativeCursorMovement: Bool
     var tipUpAssistDelay: Double
     var dragThreshold: Double
@@ -182,6 +184,7 @@ extension TabletSettings {
             parallaxOffsetX: parallaxOffsetX,
             parallaxOffsetY: parallaxOffsetY,
             invertRotation: invertRotation,
+            penDeadBand: penDeadBand,
             relativeCursorMovement: relativeCursorMovement,
             tipUpAssistDelay: tipUpAssistDelay,
             dragThreshold: dragThreshold,

@@ -27,7 +27,8 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
         spec = transport.digitizer
         self.transport = transport
         handler = TransportEventHandler(
-            spec: transport.spec, isBluetooth: transport.isBluetooth, callbacks: callbacks)
+            spec: transport.spec, isBluetooth: transport.isBluetooth,
+            isWireless: transport.isWireless, callbacks: callbacks)
     }
 
     /// The session opened it already.
@@ -56,6 +57,9 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
 final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     private let spec: TabletSpec
     private let isBluetooth: Bool
+    /// A wireless kit receiver, whose level reads high while its tablet
+    /// charges (96% whatever the charge).
+    private let isWireless: Bool
     private let callbacks: DeviceRouter.Callbacks
     /// Interfaces joined after the primary, for telling their report
     /// streams apart in a capture.
@@ -95,9 +99,10 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     /// 3.8 ms apart, windows at least 13 ms apart.
     private static let penWindowGapNs: UInt64 = 5_000_000
 
-    init(spec: TabletSpec, isBluetooth: Bool, callbacks: DeviceRouter.Callbacks) {
+    init(spec: TabletSpec, isBluetooth: Bool, isWireless: Bool, callbacks: DeviceRouter.Callbacks) {
         self.spec = spec
         self.isBluetooth = isBluetooth
+        self.isWireless = isWireless
         self.callbacks = callbacks
     }
 
@@ -186,7 +191,9 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
             case .device(let device):
                 switch device.kind {
                 case .battery:
-                    if let b = device.battery { callbacks.onBattery(b.percent, b.charging) }
+                    if let b = device.battery {
+                        callbacks.onBattery(isWireless && b.charging ? nil : b.percent, b.charging)
+                    }
                 case .mouseButtons:
                     if let mask = device.mouseButtons { callbacks.onMouseButton(mask) }
                 case .toolSupport:

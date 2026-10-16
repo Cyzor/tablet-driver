@@ -63,6 +63,7 @@ extension TabletSettings {
         reverseRingDirection = loadBool("reverseRingDirection", default: false)
         autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
+        penDeadBand = Swift.max(-1, Swift.min(loadInt("penDeadBand", default: -1), 40))
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
         // Migrate the old on/off toggle: users who had it enabled keep the
         // previous hardcoded 80 ms delay until they touch the new slider.

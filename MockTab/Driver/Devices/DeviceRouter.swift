@@ -20,7 +20,7 @@ enum DeviceRouter {
         let onAux: @Sendable (PadState) -> Void
         let onToolEnter: @Sendable (ToolIdentity) -> Void
         let onMouseButton: @Sendable (UInt8) -> Void
-        let onBattery: @Sendable (Int, Bool) -> Void
+        let onBattery: @Sendable (Int?, Bool) -> Void
         let onWheel: @Sendable (Int, Int) -> Void
         /// Per-frame finger contacts; an empty array means every finger lifted.
         let onTouch: @Sendable ([TouchContact]) -> Void

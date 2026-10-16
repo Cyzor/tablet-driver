@@ -106,7 +106,8 @@ struct ToolNameLabel: View {
 // MARK: - DeviceStatusBar
 
 /// Slim sticky footer showing live device context: tablet name, connection
-/// type, battery (BT only), last-seen tool, and active app override.
+/// type, battery (Bluetooth or wireless kit), last-seen tool, and active app
+/// override.
 /// All data is sourced from the device context bound to this window's unit.
 struct DeviceStatusBar: View {
     @ObservedObject var settings:      TabletSettings
@@ -240,7 +241,15 @@ struct DeviceStatusBar: View {
     }
 
     private var batteryItem: (String, String)? {
-        guard let context = context, let pct = context.batteryPercent else { return nil }
+        guard let context = context else { return nil }
+        guard let pct = context.batteryPercent else {
+            guard context.batteryCharging else { return nil }
+            return (
+                BatteryIndicator.symbolName(pct: 100, charging: true),
+                String(
+                    localized: "Charging",
+                    comment: "Status bar and Info battery value while a tablet charges and doesn't report its level"))
+        }
         // Charging is conveyed by the bolt variant of the battery symbol —
         // no literal glyph in the text label.
         let sym = BatteryIndicator.symbolName(pct: pct, charging: context.batteryCharging)
@@ -256,7 +265,8 @@ struct DeviceStatusBar: View {
     }
 
     private var batteryTint: Color {
-        guard let context = context, let pct = context.batteryPercent else { return .secondary }
+        guard let context = context else { return .secondary }
+        guard let pct = context.batteryPercent else { return context.batteryCharging ? .green : .secondary }
         // Neutral when healthy — the slim footer shouldn't draw the eye.
         return BatteryIndicator.tint(pct: pct, charging: context.batteryCharging, healthy: .secondary)
     }
