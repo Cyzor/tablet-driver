@@ -46,6 +46,9 @@ final class SettingsWindowManager: ObservableObject {
     private var renameObserver: AnyCancellable?
     private var isTerminating = false
     private var skipWindowSave = false
+    /// True while saved windows are still being rebuilt; a save then would
+    /// drop the ones not built yet.
+    private var isRestoring = false
 
     /// Last-known window size per logical window, keyed by the device's
     /// instance-key string or "generic". Captured when a window closes so
@@ -183,8 +186,6 @@ final class SettingsWindowManager: ObservableObject {
         renameObserver = DeviceRegistry.shared.$knownTablets
             .receive(on: RunLoop.main)
             .sink { [weak self] tablets in self?.publishWindowDescriptors(tablets: tablets) }
-
-        restoreWindows()
 
         NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification,
@@ -372,7 +373,7 @@ final class SettingsWindowManager: ObservableObject {
     // MARK: - Persistence
 
     func saveWindowState() {
-        guard !skipWindowSave else { return }
+        guard !skipWindowSave, !isRestoring else { return }
 
         // Assign a stable integer ID to each tab group so windows can be
         // reunited into the same group on restore.
@@ -403,14 +404,17 @@ final class SettingsWindowManager: ObservableObject {
         UserDefaults.standard.set(entries, forKey: Self.restorationKey)
     }
 
-    private func restoreWindows() {
+    /// Rebuilds the windows open at last quit, one per main-queue turn, so
+    /// tablet arrivals queued behind them don't wait for the whole stack,
+    /// then shows them together.
+    /// Call after `TabletManager.start()`.
+    func restoreWindows() {
         guard
             let entries = UserDefaults.standard.array(forKey: Self.restorationKey)
                 as? [[String: Any]],
             !entries.isEmpty
         else { return }
 
-        var created: [(wc: SettingsWindowController, entry: [String: Any])] = []
         // Saved identity: composite "deviceID" string (current format), with
         // pre-instance saves falling back to the bare "productID" Int (read
         // as the legacy empty-instance identity). Either way the PID folds
@@ -440,10 +444,10 @@ final class SettingsWindowManager: ObservableObject {
         // a pre-merge or pre-instance save holding two faces of what is now
         // one identity restores a single window).
         var restoredKeys = Set<DeviceInstanceKey>()
+        var pending: [RestoreEntry] = []
 
         for (index, entry) in entries.enumerated() {
             let instanceKey = savedKey(entry)
-            let tabIndex  = entry["tabIndex"]  as? Int ?? 0
             if let key = instanceKey {
                 let normalized = DeviceRegistry.shared.normalizedKey(key)
                 if restoredKeys.contains(normalized) { continue }
@@ -455,26 +459,56 @@ final class SettingsWindowManager: ObservableObject {
                 }
                 restoredKeys.insert(normalized)
             }
-            let frame: NSRect? = {
-                guard let x = entry["x"] as? CGFloat,
-                      let y = entry["y"] as? CGFloat,
-                      let w = entry["w"] as? CGFloat,
-                      let h = entry["h"] as? CGFloat
-                else { return nil }
-                return NSRect(x: x, y: y, width: w, height: h)
-            }()
-
-            let wc = makeWindow(instanceKey: instanceKey, tabIndex: tabIndex, frame: frame)
-            if index == 0 { defaultWindow = wc }
-            // `orderFront`, not `show`: `show()` makes each window key in
-            // turn, so restoring several of them meant N successive
-            // activations, each stealing key status from the last — the
-            // flicker-and-shuffle a restored stack showed at launch. Ordering
-            // them places the stack in saved order in one pass; the tab-group
-            // pass below picks the one window that ends up key.
-            wc.orderFrontWithTab(at: tabIndex)
-            created.append((wc, entry))
+            pending.append(RestoreEntry(index: index, key: instanceKey, entry: entry))
         }
+        guard !pending.isEmpty else { return }
+        isRestoring = true
+        restoreNext(pending[...], created: [])
+    }
+
+    private struct RestoreEntry {
+        let index: Int
+        let key: DeviceInstanceKey?
+        let entry: [String: Any]
+    }
+
+    private func restoreNext(
+        _ pending: ArraySlice<RestoreEntry>,
+        created: [(wc: SettingsWindowController, entry: [String: Any])]
+    ) {
+        guard let next = pending.first else {
+            isRestoring = false
+            regroupRestoredWindows(created)
+            return
+        }
+        let (index, instanceKey, entry) = (next.index, next.key, next.entry)
+        let tabIndex = entry["tabIndex"] as? Int ?? 0
+        let frame: NSRect? = {
+            guard let x = entry["x"] as? CGFloat,
+                  let y = entry["y"] as? CGFloat,
+                  let w = entry["w"] as? CGFloat,
+                  let h = entry["h"] as? CGFloat
+            else { return nil }
+            return NSRect(x: x, y: y, width: w, height: h)
+        }()
+
+        let wc = makeWindow(instanceKey: instanceKey, tabIndex: tabIndex, frame: frame)
+        // A first-contact window may have opened while restoring.
+        if index == 0, defaultWindow == nil { defaultWindow = wc }
+        // Built hidden; the last step shows the whole stack in one frame.
+        wc.prepareTab(at: tabIndex)
+        DispatchQueue.main.async { [self] in
+            restoreNext(pending.dropFirst(), created: created + [(wc, entry)])
+        }
+    }
+
+    private func regroupRestoredWindows(
+        _ created: [(wc: SettingsWindowController, entry: [String: Any])]
+    ) {
+        // `orderFront`, not `show`: `show()` makes each window key in turn,
+        // each stealing key status from the last. The tab-group pass below
+        // picks the one window that ends up key.
+        for (wc, _) in created { wc.orderFront() }
 
         // Reconstruct tab groups. Collect windows by saved tabGroupID, preserving
         // the order they were saved in (which matches the original tab order).
