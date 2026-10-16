@@ -7869,6 +7869,29 @@
         }
       }
     },
+    "Experimental support" : {
+      "comment" : "Banner title shown when another maker's tablet is read from its own description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimenteller Support"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatibilidad experimental"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "試験的なサポート"
+          }
+        }
+      }
+    },
     "Experimental: switch the tablet into data mode" : {
       "comment" : "Disclosure row label for the advanced device mode init control",
       "localizations" : {
@@ -18526,6 +18549,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ソフト応答。軽い筆圧ですぐに最大出力に達します。ラフで表現豊かな作業に向いています。"
+          }
+        }
+      }
+    },
+    "Some features may not work yet." : {
+      "comment" : "Banner line shown when another maker's tablet is read from its own description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manches funktioniert vielleicht noch nicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puede que algunas funciones aún no vayan."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一部の機能はまだ使えないことがあります。"
           }
         }
       }

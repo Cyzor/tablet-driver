@@ -33,7 +33,7 @@ extension InfoView {
 
     /// The driver for a tablet the registry doesn't know, or nil.
     var unrecognizedDriver: SessionDriver? {
-        (deviceContext?.tabletDevice as? SessionDriver).flatMap { $0.guessedAs != nil ? $0 : nil }
+        (deviceContext?.tabletDevice as? SessionDriver).flatMap { $0.guessedAs != nil || $0.isSelfDescribed ? $0 : nil }
     }
 
     /// Brand guessed from USB strings for another maker's unknown tablet.
@@ -71,8 +71,17 @@ extension InfoView {
                 .foregroundStyle(.orange)
                 .imageScale(.large)
             VStack(alignment: .leading, spacing: 4) {
-                Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when the active tablet isn't in the registry"))
-                    .appFont(.headline)
+                if unrecognizedDriver?.isSelfDescribed == true {
+                    Text(String(localized: "Experimental support", comment: "Banner title shown when another maker's tablet is read from its own description"))
+                        .appFont(.headline)
+                    Text(String(localized: "Some features may not work yet.", comment: "Banner line shown when another maker's tablet is read from its own description"))
+                        .appFont(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when the active tablet isn't in the registry"))
+                        .appFont(.headline)
+                }
                 if let detectedBrand {
                     Text(String(localized: "Looks like \(detectedBrand), but MockTab doesn't know this model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))
                         .appFont(.callout)

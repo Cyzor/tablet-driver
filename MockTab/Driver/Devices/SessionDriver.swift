@@ -22,6 +22,8 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
 
     /// What the session guessed an unknown tablet as; nil for a registry one.
     let guessedAs: UnclaimedKind?
+    /// Another maker's tablet, switched on and sized from its own answer.
+    let isSelfDescribed: Bool
     /// For another maker's unknown tablet, the brand its USB strings suggest.
     let detectedBrand: String?
     /// A CTL-x100 Intuos in Android mode, which swaps Wacom's vendor ID for
@@ -41,6 +43,7 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
         spec = transport.digitizer
         self.transport = transport
         guessedAs = transport.guessedAs
+        isSelfDescribed = transport.spec.format == .ucLogic
         let primary = transport.primary
         let device = (primary as? IOKitHIDInterface)?.device
         if guessedAs == .genericDigitizer {
