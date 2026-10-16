@@ -61,11 +61,12 @@ macOS presents one tablet as several devices, called interfaces, often one each 
 1. When a tablet's first interface connects, `session(_:didAttach:to:)` finds or creates its `DeviceContext`, which holds the tablet's settings, injector, and driver.
 2. `makeCallbacks` sets up the closures that receive this tablet's pen, button, touch, and battery results, and a `SessionDriver` carries them into the context.
 3. Interfaces that join later arrive through `session(_:didAdd:to:)`.
-4. An interface the registry doesn't know arrives through `session(_:didFindUnclaimed:as:)`, and `connectUnclaimed` gives it one of two fallback drivers:
-   - **`WacomFallbackDevice`** for Wacom tablets. It reads the tablet's own description of its reports and makes a best guess.
-   - **`GenericHIDDigitizer`** for standard pen tablets from any maker. It decodes each report from the tablet's own description of it.
+4. A tablet the registry doesn't know connects the same way, with a spec the session guesses from the tablet's own description of its reports. `TabletTransport.guessedAs` says which guess:
+   - **An unknown Wacom** gets a family guessed from its report size, read with that family's decoder. Pen reports its description declares are read from the description first.
+   - **Another maker's standard pen** is read from its description alone.
+   - **A touch-only interface** is watched for capture but moves nothing.
 
-   To try a fallback on a tablet the registry knows, run a Debug build after `defaults write com.cyzor.mocktab debugFallbackProductID -int <product ID in decimal>`. Add `debugGenericFallback -bool YES` for `GenericHIDDigitizer`. Both last one launch.
+   To try a guess on a tablet the registry knows, run a Debug build after `defaults write com.cyzor.mocktab debugFallbackProductID -int <product ID in decimal>`. Add `debugGenericFallback -bool YES` to read it as another maker's pen. Both last one launch.
 5. `DeviceRegistry` lists the tablet in the Devices pane, and its settings load.
 
 ## Following a Touch

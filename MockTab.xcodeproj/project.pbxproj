@@ -68,7 +68,6 @@
 		AA000042 /* DeviceContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000042 /* DeviceContext.swift */; };
 		AA000043 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000043 /* SettingsWindowController.swift */; };
 		AA000044 /* ToolSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000044 /* ToolSettings.swift */; };
-		AA000045 /* WacomFallbackDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000045 /* WacomFallbackDevice.swift */; };
 		AA000049 /* SessionDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000049 /* SessionDriver.swift */; };
 		AA00PBP1 /* BatchFramePacer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00PBP1 /* BatchFramePacer.swift */; };
 		AA000052 /* AppOverrideBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000052 /* AppOverrideBar.swift */; };
@@ -115,7 +114,6 @@
 		AA000200 /* NormalizedAreaEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000200 /* NormalizedAreaEditor.swift */; };
 		AA00DK01 /* DeviceInstanceClaims.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DK01 /* DeviceInstanceClaims.swift */; };
 		AA00DR01 /* DeviceRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00DR01 /* DeviceRouter.swift */; };
-		AA00GD01 /* GenericHIDDigitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00GD01 /* GenericHIDDigitizer.swift */; };
 		AA00HD01 /* LiveHIDDescriptorInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HD01 /* LiveHIDDescriptorInspector.swift */; };
 		AA00TC01 /* ThreadContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00TC01 /* ThreadContract.swift */; };
 		AA00HH01 /* HIDHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00HH01 /* HIDHelpers.swift */; };
@@ -210,7 +208,6 @@
 		AB000042 /* DeviceContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceContext.swift; sourceTree = "<group>"; };
 		AB000043 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		AB000044 /* ToolSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolSettings.swift; sourceTree = "<group>"; };
-		AB000045 /* WacomFallbackDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WacomFallbackDevice.swift; sourceTree = "<group>"; };
 		AB000049 /* SessionDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDriver.swift; sourceTree = "<group>"; };
 		AB00PBP1 /* BatchFramePacer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchFramePacer.swift; sourceTree = "<group>"; };
 		AB000052 /* AppOverrideBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppOverrideBar.swift; sourceTree = "<group>"; };
@@ -268,7 +265,6 @@
 		AB002018 /* ja.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ja.md; sourceTree = "<group>"; };
 		AB00DK01 /* DeviceInstanceClaims.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceInstanceClaims.swift; sourceTree = "<group>"; };
 		AB00DR01 /* DeviceRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRouter.swift; sourceTree = "<group>"; };
-		AB00GD01 /* GenericHIDDigitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericHIDDigitizer.swift; sourceTree = "<group>"; };
 		AB00HD01 /* LiveHIDDescriptorInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveHIDDescriptorInspector.swift; sourceTree = "<group>"; };
 		AB00TC01 /* ThreadContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadContract.swift; sourceTree = "<group>"; };
 		AB00HH01 /* HIDHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDHelpers.swift; sourceTree = "<group>"; };
@@ -385,9 +381,7 @@
 				AB00DK01 /* DeviceInstanceClaims.swift */,
 				AB000039 /* DeviceRegistry.swift */,
 				AB00DR01 /* DeviceRouter.swift */,
-				AB00GD01 /* GenericHIDDigitizer.swift */,
 				053AB9A52F723B910084C0E2 /* TabletManager.swift */,
-				AB000045 /* WacomFallbackDevice.swift */,
 				AB000049 /* SessionDriver.swift */,
 			);
 			path = Devices;
@@ -825,10 +819,8 @@
 				AA000036 /* AppMenuController.swift in Sources */,
 				057B24D82F899E3A0032B29E /* Path+SVGData.swift in Sources */,
 				05D7EB7B2F79E6E30086E03F /* AboutView.swift in Sources */,
-				AA000045 /* WacomFallbackDevice.swift in Sources */,
 				AA00DR01 /* DeviceRouter.swift in Sources */,
 				AA00DK01 /* DeviceInstanceClaims.swift in Sources */,
-				AA00GD01 /* GenericHIDDigitizer.swift in Sources */,
 				AA000070 /* HIDCapture.swift in Sources */,
 				AA000101 /* CaptureModels.swift in Sources */,
 				AA0001F6 /* CaptureSerialRedaction.swift in Sources */,

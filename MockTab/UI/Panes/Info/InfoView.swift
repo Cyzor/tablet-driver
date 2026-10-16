@@ -70,10 +70,10 @@ struct InfoView: View {
             settings: settings, tabletManager: tabletManager, registry: DeviceRegistry.shared,
             instanceKey: instanceKey
         ) {
-            if fallbackDevice != nil || genericDigitizer != nil {
+            if let unrecognizedDriver {
                 Section {
                     Group {
-                        if genericDigitizer?.isWacomAndroidMode == true {
+                        if unrecognizedDriver.isWacomAndroidMode {
                             androidModeBanner
                         } else {
                             unknownDeviceBanner

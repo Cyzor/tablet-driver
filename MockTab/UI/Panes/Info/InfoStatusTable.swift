@@ -31,19 +31,14 @@ extension InfoView {
         return companionPID.flatMap { tabletManager.contexts[$0] }
     }
 
-    var fallbackDevice: WacomFallbackDevice? {
-        deviceContext?.tabletDevice as? WacomFallbackDevice
+    /// The driver for a tablet the registry doesn't know, or nil.
+    var unrecognizedDriver: SessionDriver? {
+        (deviceContext?.tabletDevice as? SessionDriver).flatMap { $0.guessedAs != nil ? $0 : nil }
     }
 
-    var genericDigitizer: GenericHIDDigitizer? {
-        deviceContext?.tabletDevice as? GenericHIDDigitizer
-    }
-
-    /// Brand/category guessed from USB strings for an unrecognized device,
-    /// when available — `WacomFallbackDevice` already knows it's Wacom, so
-    /// only `GenericHIDDigitizer` carries a heuristic guess.
+    /// Brand guessed from USB strings for another maker's unknown tablet.
     var detectedBrand: String? {
-        genericDigitizer?.detectedBrand
+        unrecognizedDriver?.detectedBrand
     }
 
     var androidModeBanner: some View {
@@ -76,7 +71,7 @@ extension InfoView {
                 .foregroundStyle(.orange)
                 .imageScale(.large)
             VStack(alignment: .leading, spacing: 4) {
-                Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
+                Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when the active tablet isn't in the registry"))
                     .appFont(.headline)
                 if let detectedBrand {
                     Text(String(localized: "Looks like \(detectedBrand), but MockTab doesn't know this model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))

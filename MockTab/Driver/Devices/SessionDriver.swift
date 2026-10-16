@@ -20,12 +20,38 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
     var spec: DigitizerSpec
     private weak var transport: TabletTransport?
 
+    /// What the session guessed an unknown tablet as; nil for a registry one.
+    let guessedAs: UnclaimedKind?
+    /// For another maker's unknown tablet, the brand its USB strings suggest.
+    let detectedBrand: String?
+    /// A CTL-x100 Intuos in Android mode, which swaps Wacom's vendor ID for
+    /// 0x2D1F and offers only a basic pen report. Holding the outer
+    /// ExpressKeys switches it back to PC mode.
+    let isWacomAndroidMode: Bool
+    /// An unknown tablet's descriptor, for the diagnostic report.
+    let parsedDescriptor: LiveHIDDescriptorInspector.Parsed?
+
+    private static let androidModeVendorID = 0x2D1F
+    private static let androidModeProductIDs: Set<Int> = [0x0374, 0x0375, 0x0376, 0x0378, 0x03C5, 0x03C7]
+
     @MainActor
     init(_ transport: TabletTransport, callbacks: DeviceRouter.Callbacks) {
         transportID = transport.id
         controls = transport.controls
         spec = transport.digitizer
         self.transport = transport
+        guessedAs = transport.guessedAs
+        let primary = transport.primary
+        let device = (primary as? IOKitHIDInterface)?.device
+        if guessedAs == .genericDigitizer {
+            let manufacturer = device.flatMap { IOHIDDeviceGetProperty($0, kIOHIDManufacturerKey as CFString) as? String }
+            detectedBrand = BrandHeuristic.likelyBrand(manufacturer: manufacturer, product: primary.productName)
+        } else {
+            detectedBrand = nil
+        }
+        isWacomAndroidMode = primary.vendorID == Self.androidModeVendorID
+            && Self.androidModeProductIDs.contains(primary.productID)
+        parsedDescriptor = guessedAs != nil ? device.map(LiveHIDDescriptorInspector.read) : nil
         handler = TransportEventHandler(
             spec: transport.spec, isBluetooth: transport.isBluetooth,
             isWireless: transport.isWireless, callbacks: callbacks)

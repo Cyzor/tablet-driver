@@ -401,11 +401,11 @@ extension InfoView {
             lines += [String(localized: "Memory         : \(current) MB now, \(peak) MB peak", comment: "Diagnostic: process memory footprint, current and lifetime peak, in megabytes")]
         }
 
-        if let fallback = fallbackDevice {
+        if let parsed = unrecognizedDriver?.parsedDescriptor {
             lines += [""]
-            lines += ["─── HID Report Descriptor (fallback driver) ───"]
-            lines += [LiveHIDDescriptorInspector.summarize(fallback.parsedDescriptor)]
-            if let hex = fallback.parsedDescriptor.rawHex {
+            lines += ["─── HID Report Descriptor (unrecognized tablet) ───"]
+            lines += [LiveHIDDescriptorInspector.summarize(parsed)]
+            if let hex = parsed.rawHex {
                 lines += [""]
                 lines += ["Raw bytes:"]
                 lines += [hex]

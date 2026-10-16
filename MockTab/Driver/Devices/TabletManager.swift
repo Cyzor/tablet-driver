@@ -428,10 +428,6 @@ final class TabletManager: ObservableObject {
 
     private init() {}
 
-    #if DEBUG
-    private var debugGenericFallback = false
-    #endif
-
     func start() {
         IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
         ReportTrace.start()
@@ -443,18 +439,18 @@ final class TabletManager: ObservableObject {
         let session = TabletSession(vendorIDs: Self.knownVendorIDs, anyPenDigitizer: true, delegate: self)
         self.session = session
         #if DEBUG
-        // Sends one owned tablet to a fallback driver, for testing them:
+        // Reads one owned tablet as unknown, for testing the guesses:
         // `defaults write com.cyzor.mocktab debugFallbackProductID -int 855` (0x0357, in decimal).
-        // `debugGenericFallback` picks the universal floor over Wacom's.
+        // `debugGenericFallback` reads it as another maker's standard pen.
         // Both last one launch, so a relaunch undoes a test that goes wrong.
         let defaults = UserDefaults.standard
         let fallbackPID = defaults.integer(forKey: "debugFallbackProductID")
-        debugGenericFallback = defaults.bool(forKey: "debugGenericFallback")
+        session.readsUnknownWacomAsGeneric = defaults.bool(forKey: "debugGenericFallback")
         defaults.removeObject(forKey: "debugFallbackProductID")
         defaults.removeObject(forKey: "debugGenericFallback")
         if fallbackPID != 0 {
             session.unregisteredProductIDs = [fallbackPID]
-            logger.notice("debug: routing 0x\(String(fallbackPID, radix: 16, uppercase: true), privacy: .public) to a fallback driver")
+            logger.notice("debug: reading 0x\(String(fallbackPID, radix: 16, uppercase: true), privacy: .public) as an unknown tablet")
         }
         #endif
         let ret = session.start()
@@ -715,19 +711,6 @@ final class TabletManager: ObservableObject {
         // Accessibility here, where the request has context.
         promptForAccessibilityIfNeeded()
         return (context, probe, rawProductID, vendorID)
-    }
-
-    /// An interface the session leaves to the app's fallback drivers.
-    private func connectUnclaimed(_ device: IOHIDDevice, as kind: UnclaimedKind) {
-        let (context, probe, rawProductID, vendorID) = beginConnecting(device)
-        let handle = DriverContextHandle(context)
-        let callbacks = makeCallbacks(
-            context: context, contextHandle: handle, device: device,
-            productID: probe.productID, instanceKey: probe.instanceKey)
-        guard let driver = DeviceRouter.fallbackDriver(kind, device: device, callbacks: callbacks) else { return }
-        installDriver(
-            driver, device: device, context: context, contextHandle: handle, probe: probe,
-            rawProductID: rawProductID, vendorID: vendorID, delivers: true)
     }
 
     /// Installs a driver into its context's slot for its transport and
@@ -1321,15 +1304,6 @@ final class TabletManager: ObservableObject {
             CaptureInterfaceCandidate(device: device, usagePage: usagePage))
     }
 
-    /// An interface a fallback driver held went away.
-    private func deviceDisconnected(_ device: IOHIDDevice) {
-        ReportTrace.detached(device)
-        guard let context = hidDeviceMap[device] else { return }
-        let rawPID = deviceRawProductID[device]
-        forgetInterface(device, of: context)
-        guard let rawPID else { return markFullyDisconnected(context) }
-        releaseSlot(rawPID, of: context)
-    }
 
     /// Drops one interface from the maps and from its context.
     private func forgetInterface(_ device: IOHIDDevice, of context: DeviceContext) {
@@ -1836,20 +1810,6 @@ extension TabletManager: TabletSessionDelegate {
             forgetInterface(device, of: context)
         }
         releaseSlot(rawPID, of: context)
-    }
-
-    func session(_ session: TabletSession, didFindUnclaimed interface: any HIDInterface, as kind: UnclaimedKind) {
-        guard kind != .recognizedOnly, let device = (interface as? IOKitHIDInterface)?.device else { return }
-        #if DEBUG
-        let kind: UnclaimedKind =
-            kind == .wacomFallback && debugGenericFallback ? .genericDigitizer : kind
-        #endif
-        connectUnclaimed(device, as: kind)
-    }
-
-    func session(_ session: TabletSession, didLoseUnclaimed interface: any HIDInterface) {
-        guard let device = (interface as? IOKitHIDInterface)?.device else { return }
-        deviceDisconnected(device)
     }
 
     /// The context a transport delivers into, as main sees it. A dongle's

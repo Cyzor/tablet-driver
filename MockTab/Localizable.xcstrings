@@ -21050,7 +21050,7 @@
       }
     },
     "Unrecognized tablet" : {
-      "comment" : "Banner title shown when active device is on the generic fallback driver",
+      "comment" : "Banner title shown when the active tablet isn't in the registry",
       "localizations" : {
         "de" : {
           "stringUnit" : {

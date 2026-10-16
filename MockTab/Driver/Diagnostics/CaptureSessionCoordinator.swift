@@ -506,8 +506,8 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// ID this specific device actually uses.
     ///
     /// The usage list lives in TabletKit beside the lookup
-    /// (`DescriptorLayout.modeSwitchUsages`) because `WacomFallbackDevice`
-    /// consults the same one when initializing an unrecognized device. A
+    /// (`DescriptorLayout.modeSwitchUsages`) because TabletKit's guess for an
+    /// unknown Wacom consults the same one for its init. A
     /// second copy here would let the tester's pre-filled value and the
     /// driver's actual write drift apart, which is the one discrepancy this
     /// screen must never introduce.
