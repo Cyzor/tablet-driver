@@ -507,6 +507,13 @@ final class TabletSettings: ObservableObject {
     @Published var invertRotation: Bool = false {
         didSet { persist("invertRotation", invertRotation) }
     }
+    /// Tablet counts the pen may move without moving the cursor — see
+    /// `PositionDeadBand`. No UI: −1 (the default) uses the tablet's own
+    /// width from `InputInjector.defaultPenDeadBand`, 0 turns it off.
+    /// Clamped −1…40 in `reloadAll()`.
+    @Published var penDeadBand: Int = -1 {
+        didSet { persist("penDeadBand", penDeadBand) }
+    }
     @Published var relativeCursorMovement: Bool = false {
         didSet { persist("relativeCursorMovement", relativeCursorMovement) }
     }

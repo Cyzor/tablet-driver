@@ -27,6 +27,13 @@ extension InputInjector {
         if snap.invertRotation && point.rotation != 0.0 {
             point.rotation = (360.0 - point.rotation).truncatingRemainder(dividingBy: 360.0)
         }
+        if point.inProximity {
+            positionDeadBand.width = penDeadBandWidth(snap: snap)
+            (point.x, point.y) = positionDeadBand.apply(
+                x: point.x, y: point.y, maxX: point.maxX, maxY: point.maxY)
+        } else {
+            positionDeadBand.reset()
+        }
         guard let rawPoint = resolveRawPoint(point, snap: snap) else { return }
         let rawPressure = InputInjector.curvedPressure(
             point.normalizedPressure, lut: tool.pressureLUT)

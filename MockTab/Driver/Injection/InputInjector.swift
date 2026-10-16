@@ -383,6 +383,34 @@ final class InputInjector: @unchecked Sendable {
 
     var smoother = CursorSmoother()
 
+    /// Holds the pen still through sensor noise, in tablet counts, before
+    /// mapping. Width from `penDeadBandWidth(snap:)`.
+    var positionDeadBand = PositionDeadBand()
+
+    /// Dead band for tablets whose sensors flicker by several counts on every
+    /// report, wide enough to hold a resting pen still. Older Intuos only;
+    /// newer tablets hold still on their own.
+    static func defaultPenDeadBand(productID: Int) -> Int {
+        switch productID {
+        // Intuos5 and Intuos Pro (2013): PTH-450/650/850, PTK-450/650,
+        // PTH-451/651/851.
+        case 0x0026...0x002A, 0x0314, 0x0315, 0x0317: return 10
+        // Intuos4, wired and wireless.
+        case 0x00B8...0x00BD: return 6
+        // Intuos3: 6 still flickers now and then.
+        case 0x00B0...0x00B7: return 8
+        default: return 0
+        }
+    }
+
+    /// The setting, or the tablet's default when unset. A tablet on the
+    /// wireless kit is named by the paired product.
+    func penDeadBandWidth(snap: InjectionSnapshot) -> Int {
+        if snap.penDeadBand >= 0 { return snap.penDeadBand }
+        let productID = snap.pairedProductID != 0 ? snap.pairedProductID : deviceProductID
+        return Self.defaultPenDeadBand(productID: productID)
+    }
+
     /// Mean hover-position delta over the rolling window (points per sample).
     /// Spikes above ~3 pt/sample while hovering suggest RF interference.
     var jitterLevel: CGFloat { smoother.jitterLevel }
