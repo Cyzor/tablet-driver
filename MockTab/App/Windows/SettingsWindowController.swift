@@ -706,6 +706,13 @@ final class SettingsWindowController: NSWindowController {
         selectTab(at: index)
     }
 
+    /// Selects a tab without putting the window on screen, so a restore can
+    /// build several windows and show them together.
+    func prepareTab(at index: Int) {
+        suppressAutoResize()
+        selectTab(at: index)
+    }
+
     private func selectTab(at index: Int) {
         guard index >= 0, index < tabVC.tabViewItems.count else { return }
         tabVC.selectedTabViewItemIndex = index
