@@ -111,9 +111,6 @@ final class CaptureEngine: ObservableObject {
         reportID: Int, value: Int, ioReturn: IOReturn, usagePage: Int
     ) {
         let ok = ioReturn == kIOReturnSuccess
-        ReportTrace.note("initWrite", [
-            "reportID": reportID, "value": value, "ioReturn": Int(ioReturn), "usagePage": usagePage,
-        ])
         let attempt = CaptureInitReport(
             reportID: reportID,
             value: value,
@@ -143,10 +140,6 @@ final class CaptureEngine: ObservableObject {
         purpose: String, reportID: Int, ioReturn: IOReturn, reply: [UInt8], usagePage: Int
     ) {
         let ok = ioReturn == kIOReturnSuccess
-        ReportTrace.note("initRead", [
-            "purpose": purpose, "reportID": reportID, "ioReturn": Int(ioReturn),
-            "reply": reply.map { String(format: "%02x", $0) }.joined(), "usagePage": usagePage,
-        ])
         let read = CaptureInitRead(
             purpose: purpose,
             reportID: reportID,

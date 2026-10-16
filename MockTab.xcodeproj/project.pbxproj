@@ -101,7 +101,6 @@
 		AA000903 /* HardwareSurveyProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000903 /* HardwareSurveyProbe.swift */; };
 		AA0001F1 /* DiscoveryAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F1 /* DiscoveryAccumulator.swift */; };
 		AA000102 /* CaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000102 /* CaptureEngine.swift */; };
-		AA0E000001 /* ReportTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0E000001 /* ReportTrace.swift */; };
 		AA00CSC1 /* CaptureSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00CSC1 /* CaptureSessionCoordinator.swift */; };
 		AA0001F3 /* DiagnosticSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F3 /* DiagnosticSession.swift */; };
 		AA0001F4 /* CaptureActivityProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0001F4 /* CaptureActivityProbe.swift */; };
@@ -242,7 +241,6 @@
 		AB000903 /* HardwareSurveyProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareSurveyProbe.swift; sourceTree = "<group>"; };
 		AB0001F1 /* DiscoveryAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryAccumulator.swift; sourceTree = "<group>"; };
 		AB000102 /* CaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEngine.swift; sourceTree = "<group>"; };
-		AB0E000001 /* ReportTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportTrace.swift; sourceTree = "<group>"; };
 		AB00CSC1 /* CaptureSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureSessionCoordinator.swift; sourceTree = "<group>"; };
 		AB0001F3 /* DiagnosticSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticSession.swift; sourceTree = "<group>"; };
 		AB0001F4 /* CaptureActivityProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureActivityProbe.swift; sourceTree = "<group>"; };
@@ -393,7 +391,6 @@
 				AB002100 /* BluetoothLinkMonitor.swift */,
 				AB0001F4 /* CaptureActivityProbe.swift */,
 				AB000102 /* CaptureEngine.swift */,
-				AB0E000001 /* ReportTrace.swift */,
 				AB00CSC1 /* CaptureSessionCoordinator.swift */,
 				AB000101 /* CaptureModels.swift */,
 				AB0001F6 /* CaptureSerialRedaction.swift */,
@@ -830,7 +827,6 @@
 				AA000904 /* DDCLink.swift in Sources */,
 				AA000905 /* CintiqPanelControl.swift in Sources */,
 				AA000102 /* CaptureEngine.swift in Sources */,
-				AA0E000001 /* ReportTrace.swift in Sources */,
 				AA00CSC1 /* CaptureSessionCoordinator.swift in Sources */,
 				AA0001F3 /* DiagnosticSession.swift in Sources */,
 				AA0001F4 /* CaptureActivityProbe.swift in Sources */,

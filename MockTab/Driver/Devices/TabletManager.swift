@@ -430,7 +430,6 @@ final class TabletManager: ObservableObject {
 
     func start() {
         IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
-        ReportTrace.start()
 
         // Matched by vendor (see `knownVendorIDs`), plus any vendor's
         // standards-compliant pen digitizer, the universal floor. Devices the
@@ -688,7 +687,6 @@ final class TabletManager: ObservableObject {
     private func beginConnecting(
         _ device: IOHIDDevice, joining: DeviceContext? = nil
     ) -> (context: DeviceContext, probe: DeviceIdentityProbe, rawProductID: Int, vendorID: Int) {
-        ReportTrace.attached(device)
         // Connect-phase work stalls report delivery; keep those episodes out
         // of the steady-state latency stats. The probe belongs to the pen thread.
         HIDThread.shared.perform {
@@ -1764,7 +1762,6 @@ extension TabletManager: TabletSessionDelegate {
             let context = self.context(of: transport),
             let handler = sessionDrivers[transport.id]?.handler
         else { return }
-        ReportTrace.attached(device)
         HIDThread.shared.perform {
             LatencyProbe.shared.noteDeviceConnected()
             handler.siblingCount += 1
@@ -1801,7 +1798,6 @@ extension TabletManager: TabletSessionDelegate {
     }
 
     func session(_ session: TabletSession, transport: TabletTransport, didPairWith productID: Int) {
-        ReportTrace.note("pairedTablet", ["productID": productID])
         sessionDrivers[transport.id]?.pairedTabletChanged()
         guard let probe = transportProbes[transport.id] else { return }
         rehomeDongleTransport(dongleKey: probe.instanceKey, pairedProductID: productID)
@@ -1823,7 +1819,6 @@ extension TabletManager: TabletSessionDelegate {
         guard let context else { return }
         let rawPID = transport.rawProductID
         for (device, owner) in hidDeviceMap where owner === context && deviceRawProductID[device] == rawPID {
-            ReportTrace.detached(device)
             forgetInterface(device, of: context)
         }
         releaseSlot(rawPID, of: context)

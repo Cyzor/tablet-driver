@@ -158,9 +158,6 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
         let name = spec.name
         do {
             let pointer = report.pointer
-            if ReportTrace.isOn, let device {
-                ReportTrace.report(pointer, length: report.count, from: device, ns: ns, events: events)
-            }
             let tag = siblingCount > 1 && device != nil
                 ? "\(name) [\(ObjectIdentifier(device!).hashValue & 0xFFFF)]" : name
             HIDCapture.shared.record(
