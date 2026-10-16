@@ -57,7 +57,7 @@ stroke begin as the pen. (observed, PTH-860)
 
 **Leaving range.** The status runs `0x60` → `0x40` → `0x00`. Only `0x00`
 (proximity and range both clear) is a real exit. Frames at `0x40` are weak:
-tool code, tilt and rotation read as zero, so hold the previous values,
+tool code, tilt, and rotation read as zero, so hold the previous values,
 including the eraser state. An Art Pen produces bursts of `0x40` while still
 on the surface. (observed)
 

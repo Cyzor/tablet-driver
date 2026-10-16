@@ -5,6 +5,7 @@
 import AppKit
 import CoreGraphics
 import ImageIO
+import os
 import SwiftUI
 import TabletKit
 
@@ -85,7 +86,7 @@ struct DisplayInfo {
             let h = Int(CGDisplayPixelsHigh(id))
             let wallpaper: NSImage? = screenMap[id].flatMap { screen in
                 NSWorkspace.shared.desktopImageURL(for: screen)
-                    .flatMap { Self.cachedThumbnail(from: $0, maxEdge: 640) }
+                    .flatMap { Self.cachedThumbnail(from: $0) }
             }
             return DisplayInfo(
                 id: id, listIndex: index + 1,
@@ -104,15 +105,34 @@ struct DisplayInfo {
     /// Keyed by desktop-image URL so re-running `all()` skips decoding
     /// thumbnails for displays whose wallpaper hasn't changed.
     nonisolated(unsafe) private static var thumbnailCache: [URL: NSImage] = [:]  // main-only
+    /// Thumbnails decoded by `prewarmThumbnails()`, read by `cachedThumbnail`.
+    private static let decoded = OSAllocatedUnfairLock(initialState: [URL: CGImage]())
+    private static let thumbnailEdge: CGFloat = 640
 
-    private static func cachedThumbnail(from url: URL, maxEdge: CGFloat) -> NSImage? {
+    /// Decodes every display's thumbnail on a background queue, so the first
+    /// settings window doesn't spend about 100 ms decoding on the main thread.
+    @MainActor
+    static func prewarmThumbnails() {
+        let urls = Set(NSScreen.screens.compactMap { NSWorkspace.shared.desktopImageURL(for: $0) })
+        DispatchQueue.global(qos: .userInitiated).async {
+            for url in urls where decoded.withLock({ $0[url] }) == nil {
+                guard let image = loadThumbnail(from: url, maxEdge: thumbnailEdge) else { continue }
+                decoded.withLock { $0[url] = image }
+            }
+        }
+    }
+
+    private static func cachedThumbnail(from url: URL) -> NSImage? {
         if let cached = thumbnailCache[url] { return cached }
-        guard let thumbnail = loadThumbnail(from: url, maxEdge: maxEdge) else { return nil }
+        // Decodes here only when the prewarm hasn't finished or the wallpaper changed.
+        guard let image = decoded.withLock({ $0[url] }) ?? loadThumbnail(from: url, maxEdge: thumbnailEdge)
+        else { return nil }
+        let thumbnail = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
         thumbnailCache[url] = thumbnail
         return thumbnail
     }
 
-    private static func loadThumbnail(from url: URL, maxEdge: CGFloat) -> NSImage? {
+    private static func loadThumbnail(from url: URL, maxEdge: CGFloat) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let opts: [CFString: Any] = [
             kCGImageSourceThumbnailMaxPixelSize: maxEdge,
@@ -121,8 +141,7 @@ struct DisplayInfo {
         ]
         guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, opts as CFDictionary)
         else { return nil }
-        let toned = tonedDown(cg) ?? cg
-        return NSImage(cgImage: toned, size: NSSize(width: cg.width, height: cg.height))
+        return tonedDown(cg) ?? cg
     }
 
     /// Desaturates and flattens contrast so the thumbnail reads as a muted

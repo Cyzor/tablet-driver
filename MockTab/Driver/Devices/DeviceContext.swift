@@ -271,10 +271,33 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Battery percentage (0–100) if this device is wireless; nil if USB or
     /// unknown. Nil while `batteryCharging` means charging at an unknown
     /// level: the wireless kit's level reads high while the tablet charges.
-    @Published var batteryPercent: Int? = nil
+    @Published var batteryPercent: Int? = nil {
+        didSet { if batteryPercent != nil { noteBatteryReported() } }
+    }
 
     /// True if the device is currently charging.
-    @Published var batteryCharging: Bool = false
+    @Published var batteryCharging: Bool = false {
+        didSet { if batteryCharging { noteBatteryReported() } }
+    }
+
+    private static let batteryReportersKey = "MockTab_BatteryReporters"
+
+    /// Per model: a model either has a battery or doesn't.
+    private var batteryReporterID: String { String(instanceKey.productID) }
+
+    /// Whether a model has ever reported its battery, so the Info pane keeps
+    /// the row in place before the first report, including while it connects.
+    static func expectsBatteryReport(for key: DeviceInstanceKey) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: batteryReportersKey) ?? [])
+            .contains(String(key.productID))
+    }
+
+    func noteBatteryReported() {
+        var ids = UserDefaults.standard.stringArray(forKey: Self.batteryReportersKey) ?? []
+        guard !ids.contains(batteryReporterID) else { return }
+        ids.append(batteryReporterID)
+        UserDefaults.standard.set(ids, forKey: Self.batteryReportersKey)
+    }
 
     /// Short string to append to a tablet's menu label when battery data is available.
     /// Returns "" for USB devices or when no battery report has been received yet.

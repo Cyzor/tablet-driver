@@ -18,13 +18,14 @@ struct InfoView: View {
     /// Model axis of the bound unit — spec/catalog lookups key on this.
     var productID: Int? { instanceKey?.productID }
 
-    @State var accessibilityGranted = AXIsProcessTrusted()
+    // Permissions start false; `refresh()` in `onAppear` sets them before the
+    // first frame. Calling the checks here repeated them on every rebuild.
+    @State var accessibilityGranted = false
     /// Gates *reading* the tablet at all; denial also surfaces as "HID
     /// Manager: failed to open" elsewhere, but this row names the actual
     /// cause and carries the fix.
-    @State var inputMonitoringGranted =
-        IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
-    @State var launchAtLogin = false
+    @State var inputMonitoringGranted = false
+    @State var launchAtLogin = InfoView.knownLaunchAtLogin
     @State var diagnosticsExpanded = false
     @State var diagnosticSnapshot = ""
     @State private var diagnosticSnapshotAt = Date()
@@ -178,9 +179,46 @@ struct InfoView: View {
 
     private func refresh() {
         refreshPermissions()
-        launchAtLogin = SMAppService.mainApp.status == .enabled
-        conflicts = detectConflicts()
+        launchAtLogin = Self.knownLaunchAtLogin
+        if let names = Self.knownRunningAppNames { conflicts = detectConflicts(liveNames: names) }
         refreshDiagnosticSnapshot()
+        // Both queries are round trips to system services, about 60 ms
+        // together, so they run off the main thread.
+        Task {
+            async let login = Self.readLaunchAtLogin()
+            async let names = Task.detached { Self.runningAppNames() }.value
+            let (enabled, liveNames) = await (login, names)
+            Self.knownRunningAppNames = liveNames
+            launchAtLogin = enabled
+            conflicts = detectConflicts(liveNames: liveNames)
+            refreshDiagnosticSnapshot()
+        }
+    }
+
+    /// Last login-item state read, so a new window shows it without waiting.
+    static var knownLaunchAtLogin = false
+
+    static func readLaunchAtLogin() async -> Bool {
+        let enabled = await Task.detached { SMAppService.mainApp.status == .enabled }.value
+        knownLaunchAtLogin = enabled
+        return enabled
+    }
+
+    /// Running apps at the last check, so a new window lists conflicts at once.
+    static var knownRunningAppNames: Set<String>?
+
+    /// Reads the login-item state and running apps at launch, before any
+    /// window asks for them.
+    static func prewarmSystemQueries() {
+        Task { _ = await readLaunchAtLogin() }
+        Task { knownRunningAppNames = await Task.detached { runningAppNames() }.value }
+    }
+
+    nonisolated private static func runningAppNames() -> Set<String> {
+        let running = NSWorkspace.shared.runningApplications
+        var names = Set(running.compactMap { $0.localizedName })
+        names.formUnion(running.compactMap { $0.bundleIdentifier })
+        return names
     }
 
     /// Split out so a grant made in System Settings is picked up on app
@@ -250,12 +288,8 @@ struct InfoView: View {
         let remedy: String
     }
 
-    private func detectConflicts() -> [ConflictFinding] {
+    private func detectConflicts(liveNames: Set<String>) -> [ConflictFinding] {
         var found: [ConflictFinding] = []
-
-        let running = NSWorkspace.shared.runningApplications
-        var liveNames = Set(running.compactMap { $0.localizedName })
-        liveNames.formUnion(running.compactMap { $0.bundleIdentifier })
 
         let driverRemedy = String(localized: "Quit or disable it, then restart MockTab. Check System Settings → General → Login Items to stop it launching at startup.", comment: "Remedy line for a conflicting-driver finding in the conflict alert")
         for label in ConflictProcessMatcher.matchedLabels(liveNames: liveNames) {
