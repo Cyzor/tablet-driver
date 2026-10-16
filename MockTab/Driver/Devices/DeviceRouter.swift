@@ -30,7 +30,7 @@ enum DeviceRouter {
         let onAux: (PadState) -> Void
         let onToolEnter: (ToolIdentity) -> Void
         let onMouseButton: (UInt8) -> Void
-        let onBattery: (Int, Bool) -> Void
+        let onBattery: (Int?, Bool) -> Void
         let onHardwareSerial: (UInt32) -> Void
         let onWheel: (Int, Int) -> Void
         /// Per-frame finger contacts; an empty array means every finger lifted.
@@ -155,6 +155,7 @@ enum DeviceRouter {
                 device: device, deviceSpec: dongleSpec, isWireless: true,
                 onTablet: callbacks.onTablet, onAux: callbacks.onAux,
                 onToolEnter: callbacks.onToolEnter,
+                onBattery: callbacks.onBattery,
                 onHardwareSerial: callbacks.onHardwareSerial,
                 onWheel: callbacks.onWheel,
                 onTouch: callbacks.onTouch,

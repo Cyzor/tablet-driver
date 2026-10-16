@@ -320,6 +320,8 @@ extension InfoView {
             if let pct = active?.batteryPercent {
                 let chgStr = (active?.batteryCharging ?? false) ? String(localized: " (charging)", comment: "Battery status indicator") : ""
                 lines += [String(localized: "Battery   : \(pct)%\(chgStr)", comment: "Diagnostic: battery percentage and charging status")]
+            } else if active?.batteryCharging == true {
+                lines += [String(localized: "Battery   : charging", comment: "Diagnostic: charging, level not reported")]
             }
         }
 

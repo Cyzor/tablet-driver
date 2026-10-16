@@ -1446,10 +1446,11 @@ final class TabletManager: ObservableObject {
         }
 
         // ── Battery status closure ───────────────────────────────────────────
-        // Called when a BT device reports its battery state (INTUOSP2_BT family).
-        // Only fires when the raw battery byte changes — not on every pen report.
+        // Called when a Bluetooth tablet or the wireless kit reports its battery.
+        // Fires only when the reading changes, not on every report. A nil
+        // percentage while charging means the level is unknown.
         // Called on HIDThread — hop to main.
-        let onBattery: (Int, Bool) -> Void = { [weak self, contextHandle] percent, charging in
+        let onBattery: (Int?, Bool) -> Void = { [weak self, contextHandle] percent, charging in
             let context = contextHandle.context
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }

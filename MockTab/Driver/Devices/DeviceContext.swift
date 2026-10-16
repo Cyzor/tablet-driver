@@ -268,16 +268,18 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// USB speed label if connected via USB: "Low Speed", "Full Speed", "High Speed", "Super Speed", etc.
     @Published var usbSpeed: String = "—"
 
-    /// Battery percentage (0–100) if this device is BT; nil if USB or unknown.
+    /// Battery percentage (0–100) if this device is wireless; nil if USB or
+    /// unknown. Nil while `batteryCharging` means charging at an unknown
+    /// level: the wireless kit's level reads high while the tablet charges.
     @Published var batteryPercent: Int? = nil
 
-    /// True if the device is currently charging (BT only).
+    /// True if the device is currently charging.
     @Published var batteryCharging: Bool = false
 
     /// Short string to append to a tablet's menu label when battery data is available.
     /// Returns "" for USB devices or when no battery report has been received yet.
     var batteryMenuSuffix: String {
-        guard let pct = batteryPercent else { return "" }
+        guard let pct = batteryPercent else { return batteryCharging ? "  ⚡" : "" }
         return batteryCharging ? "  \(pct)% ⚡" : "  \(pct)%"
     }
 

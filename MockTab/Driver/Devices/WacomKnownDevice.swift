@@ -80,7 +80,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// standard mouse interface (usagePage=0x01).  Carries button bitmask only;
     /// absolute position is routed separately through the digitizer interface.
     private let onMouseButton: ((UInt8) -> Void)?
-    private let onBattery: ((Int, Bool) -> Void)?
+    private let onBattery: ((Int?, Bool) -> Void)?
     private let onWheel: ((Int, Int) -> Void)?
     /// Called once when the wireless dongle's 0x80 status report reveals the
     /// paired tablet's PID (e.g. 0x0315 for PTH-651). Fires once per RF link
@@ -174,6 +174,11 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     private lazy var idleWatcher = deviceSpec.quirks.usbIdleReport.map(IdleReportWatcher.init)
     /// The paired tablet a wireless receiver names in its status report.
     private var pairingWatcher = DonglePairingWatcher()
+    /// The paired tablet's battery, from the same status report.
+    private var batteryWatcher = DongleBatteryWatcher()
+    /// The paired tablet the battery readings belong to. Lags
+    /// `pairingWatcher` by one report; see `noteDongleBattery`.
+    private var batteryPairedPID: Int?
 
     // ── Bluetooth batch pacing ──────────────────────────────────────────────
     // See BatchFramePacer.swift and dispatchBatch(_:reportTimestampNs:) below.
@@ -384,7 +389,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         onAux: ((PadState) -> Void)? = nil,
         onToolEnter: ((ToolIdentity) -> Void)? = nil,
         onMouseButton: ((UInt8) -> Void)? = nil,
-        onBattery: ((Int, Bool) -> Void)? = nil,
+        onBattery: ((Int?, Bool) -> Void)? = nil,
         onHardwareSerial: ((UInt32) -> Void)? = nil,
         onWheel: ((Int, Int) -> Void)? = nil,
         onTouch: (([TouchContact]) -> Void)? = nil,
@@ -1178,6 +1183,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
 
         recoverFromUSBIdleReport(report, length: length, name: name)
         adoptDonglePairedTablet(report, length: length, name: name)
+        noteDongleBattery(report, length: length)
         noteXencelabsRelay(report, length: length, name: name)
         noteRemoteLinks(report, length: length, name: name)
         let (wasInProximity, synthesizeIntuosV3ToolEnter) = advanceToolAnnounceGrace()
@@ -1285,6 +1291,23 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 onPairedPID?(pairedTabletPID)
                 logger.info("\(name, privacy: .public): paired tablet 0x\(String(pairedTabletPID, radix: 16, uppercase: true), privacy: .public) — maxX=\(pairedSpec.maxX, privacy: .public) maxY=\(pairedSpec.maxY, privacy: .public) maxPressure=\(pairedSpec.maxPressure, privacy: .public)")
             }
+        }
+    }
+
+    /// Reports the paired tablet's battery from a wireless receiver's status
+    /// report. Skips the report that names a new tablet, so the receiver's
+    /// transport moves to that tablet's context before the first reading.
+    /// Status reports repeat every half second. While charging, the level
+    /// reads high (96% whatever the charge), so it's reported as unknown.
+    private func noteDongleBattery(_ report: UnsafePointer<UInt8>, length: CFIndex) {
+        guard isWireless, let pid = pairingWatcher.announcedProductID else { return }
+        guard pid == batteryPairedPID else {
+            batteryPairedPID = pid
+            batteryWatcher = DongleBatteryWatcher()
+            return
+        }
+        if let battery = batteryWatcher.observe(HIDReport(pointer: report, count: length)) {
+            onBattery?(battery.charging ? nil : battery.percent, battery.charging)
         }
     }
 

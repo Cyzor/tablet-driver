@@ -136,6 +136,15 @@ extension InfoView {
                         pct: pct,
                         charging: deviceContext?.batteryCharging ?? false,
                         healthy: .green))
+            } else if deviceContext?.batteryCharging == true {
+                row(
+                    String(localized: "Battery", comment: "Row label in Info tab status table"),
+                    value: String(
+                        localized: "Charging",
+                        comment: "Status bar and Info battery value while a tablet charges and doesn't report its level"),
+                    ok: nil,
+                    leadingSymbol: BatteryIndicator.symbolName(pct: 100, charging: true),
+                    symbolColor: .green)
             }
 
             if let pct = companionContext?.batteryPercent {

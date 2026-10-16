@@ -2891,6 +2891,35 @@
         }
       }
     },
+    "Battery   : charging" : {
+      "comment" : "Diagnostic: charging, level not reported",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batterie       : wird geladen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Battery   : charging"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batería   : cargando"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "バッテリー: 充電中"
+          }
+        }
+      }
+    },
     "Best Fit" : {
       "comment" : "VoiceOver label for the mapping sheet's one-click fit button",
       "localizations" : {
@@ -3847,6 +3876,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "映像ケーブル経由でディスプレイ本体の設定を変更します。このディスプレイは設定値を返さないため、スライダーは前回設定した位置から始まります。"
+          }
+        }
+      }
+    },
+    "Charging" : {
+      "comment" : "Status bar and Info battery value while a tablet charges and doesn't report its level",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lädt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Charging"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "充電中"
           }
         }
       }
