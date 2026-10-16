@@ -40,12 +40,12 @@ One known exception remains: messages to a tablet wait for the tablet on the pen
 ## Following a Pen Report
 
 ```
-tablet ─► WacomKnownDevice ─► decoder ─► TabletManager ─► InputInjector ─► macOS
+tablet ─► TabletSession ─► TabletInput ─► TransportEventHandler ─► InputInjector ─► macOS
 ```
 
-1. `WacomKnownDevice.handleReport` receives the bytes for one connected tablet and passes them to the decoder its registry entry names.
-2. The decoder returns a list of results: pen positions, a tool coming into range, button presses, battery level. Bluetooth tablets often pack several positions into one report, and `BatchFramePacer` spreads them out so the cursor glides.
-3. A closure that `TabletManager` set up at connect time hands each position to `InputInjector`, making this tablet the active one first if needed.
+1. TabletKit's `TabletSession` owns every connected tablet's interfaces. Each report arrives on `HIDThread` and goes to the tablet's `TabletInput`, which runs the decoder its registry entry names.
+2. The decoder returns a list of events: pen positions, a tool coming into range, button presses, and battery level. The session hands them to the app's `TransportEventHandler`, which `TabletManager` set up at connect time.
+3. The handler passes each event to its callback, which hands positions to `InputInjector`, making this tablet the active one first if needed. Bluetooth tablets often pack several positions into one report, and `BatchFramePacer` spreads them out so the cursor glides.
 4. `InputInjector+PenInjection.swift` smooths pressure, handles range and the eraser, smooths position, handles panning, then handles the tip and buttons. `InputInjector+CGEvents.swift` posts the events. Each movement posts both a tablet event and a mouse event carrying pressure, because drawing apps read one or the other.
 
 ## Following a Settings Change
@@ -56,14 +56,13 @@ A new setting usually touches four things: the property, how it's saved, the sna
 
 ## Following a Tablet Connecting
 
-macOS presents one tablet as several devices, called interfaces, often one each for the pen, buttons, and touch. `TabletManager.deviceConnected(_:)` runs once for each:
+macOS presents one tablet as several devices, called interfaces, often one each for the pen, buttons, and touch. `TabletSession` groups them by physical tablet and tells `TabletManager`, its delegate:
 
-1. It finds which physical tablet the interface belongs to, and `resolveContext` finds or creates its `DeviceContext`, which holds the tablet's settings, injector, and driver.
-2. `makeCallbacks` sets up the closures that receive this tablet's pen, button, touch, and battery results.
-3. `DeviceRouter.route` decides what the interface is: a new tablet, the touch or light half of a known one, a part that should wait for its sibling, or something to ignore. `applyRoute` acts on that decision.
-4. A new tablet gets one of three drivers, which `installRoutedDriver` installs:
-   - **`WacomKnownDevice`** for any tablet in the registry, which is almost all of them.
-   - **`WacomFallbackDevice`** for Wacom tablets missing from it. It reads the tablet's own description of its reports and makes a best guess.
+1. When a tablet's first interface connects, `session(_:didAttach:to:)` finds or creates its `DeviceContext`, which holds the tablet's settings, injector, and driver.
+2. `makeCallbacks` sets up the closures that receive this tablet's pen, button, touch, and battery results, and a `SessionDriver` carries them into the context.
+3. Interfaces that join later arrive through `session(_:didAdd:to:)`.
+4. An interface the registry doesn't know arrives through `session(_:didFindUnclaimed:as:)`, and `connectUnclaimed` gives it one of two fallback drivers:
+   - **`WacomFallbackDevice`** for Wacom tablets. It reads the tablet's own description of its reports and makes a best guess.
    - **`GenericHIDDigitizer`** for standard pen tablets from any maker. It decodes each report from the tablet's own description of it.
 
    To try a fallback on a tablet the registry knows, run a Debug build after `defaults write com.cyzor.mocktab debugFallbackProductID -int <product ID in decimal>`. Add `debugGenericFallback -bool YES` for `GenericHIDDigitizer`. Both last one launch.
@@ -110,7 +109,7 @@ MockTab/
   UI/Panes/      One folder per settings tab
 ```
 
-Swift extensions can't add stored properties, so a few large classes keep their data in the main file and split their behavior across extensions: `InputInjector` (pen, touch, tablet buttons and dials, event posting), `WacomKnownDevice` (data sent to tablets), and `TabletSettings` (saving, presets, per-app settings).
+Swift extensions can't add stored properties, so a few large classes keep their data in the main file and split their behavior across extensions: `InputInjector` (pen, touch, tablet buttons and dials, and event posting) and `TabletSettings` (saving, presets, per-app settings).
 
 ## Testing
 
