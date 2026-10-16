@@ -50,6 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         TabletManager.shared.start()
         AppWatcher.shared.start()
         // After the driver starts, so the pen works while windows build.
+        DisplayInfo.prewarmThumbnails()
+        InfoView.prewarmSystemQueries()
         SettingsWindowManager.shared.restoreWindows()
 
         // Only open a fresh window on first launch — subsequent launches

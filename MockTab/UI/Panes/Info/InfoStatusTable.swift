@@ -120,31 +120,32 @@ extension InfoView {
                 value: deviceContext?.transport ?? "—",
                 ok: isConnected ? true : nil)
 
-            if let pct = deviceContext?.batteryPercent {
+            // One row in every state, so a report arriving changes its value
+            // instead of swapping in a new row. A model that has reported
+            // before keeps the row while it connects, so rows below don't shift.
+            let batteryPercent = deviceContext?.batteryPercent
+            let charging = deviceContext?.batteryCharging ?? false
+            if batteryPercent != nil || charging
+                || (instanceKey ?? deviceContext?.instanceKey).map(DeviceContext.expectsBatteryReport(for:)) == true
+            {
                 row(
                     String(localized: "Battery", comment: "Row label in Info tab status table"),
-                    value: (deviceContext?.batteryCharging ?? false)
-                        ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
-                        : "\(pct)%",
-                    ok: pct < 20 ? false : nil,
-                    leadingSymbol: BatteryIndicator.symbolName(
-                        pct: pct,
-                        charging: deviceContext?.batteryCharging ?? false),
+                    value: batteryPercent.map { pct in
+                        charging
+                            ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
+                            : "\(pct)%"
+                    } ?? (charging
+                        ? String(
+                            localized: "Charging",
+                            comment: "Status bar and Info battery value while a tablet charges and doesn't report its level")
+                        : "—"),
+                    ok: batteryPercent.map { $0 < 20 ? false : nil } ?? nil,
+                    leadingSymbol: BatteryIndicator.symbolName(pct: batteryPercent ?? 100, charging: charging),
                     // Affirmative green when healthy — this table is the
                     // place users come to check on the device.
-                    symbolColor: BatteryIndicator.tint(
-                        pct: pct,
-                        charging: deviceContext?.batteryCharging ?? false,
-                        healthy: .green))
-            } else if deviceContext?.batteryCharging == true {
-                row(
-                    String(localized: "Battery", comment: "Row label in Info tab status table"),
-                    value: String(
-                        localized: "Charging",
-                        comment: "Status bar and Info battery value while a tablet charges and doesn't report its level"),
-                    ok: nil,
-                    leadingSymbol: BatteryIndicator.symbolName(pct: 100, charging: true),
-                    symbolColor: .green)
+                    symbolColor: batteryPercent.map {
+                        BatteryIndicator.tint(pct: $0, charging: charging, healthy: .green)
+                    } ?? (charging ? .green : .secondary))
             }
 
             if let pct = companionContext?.batteryPercent {
@@ -249,7 +250,8 @@ extension InfoView {
                 action: conflicts.isEmpty ? nil : { showConflictAlert() },
                 // Ellipsis: opens an alert rather than fixing anything directly.
                 actionLabel: String(localized: "Fix…", comment: "Button on the Conflicts row that opens an alert describing the detected conflicts"),
-                actionHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row")
+                actionHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row"),
+                reservesActionSpace: true
             )
 
             row(
@@ -281,7 +283,8 @@ extension InfoView {
         action: (() -> Void)? = nil,
         actionLabel: String? = nil,
         actionHelp: String? = nil,
-        actionDisabled: Bool = false
+        actionDisabled: Bool = false,
+        reservesActionSpace: Bool = false
     ) -> some View {
         GridRow {
             Text(label)
@@ -324,6 +327,13 @@ extension InfoView {
                         // Sized to its own label — equal widths would stretch
                         // "Enable" to "Open System Settings"'s width.
                         .fixedSize()
+                } else if reservesActionSpace, let actionLabel {
+                    // Keeps the row's height when an action may appear later.
+                    Button(actionLabel) {}
+                        .buttonStyle(.bordered)
+                        .appControlSize(.small)
+                        .fixedSize()
+                        .hidden()
                 }
                 Spacer(minLength: 0)
             }
