@@ -722,7 +722,7 @@ struct DevicesView: View {
                 let eraser = registry.allKnownTools.first(where: { $0.id == eraserID })
             {
                 let oldEraserName = eraser.nickname
-                let newEraserName = "\(trimmed) (Eraser)"
+                let newEraserName = DeviceRegistry.eraserName(trimmed)
                 registry.renameToolEverywhere(id: eraserID, to: newEraserName)
                 registerRenameUndo(
                     renameToolAction,
@@ -750,7 +750,7 @@ struct DevicesView: View {
             let eraser = registry.knownTools.first(where: { $0.id == eraserID })
         {
             let oldEraserName = eraser.nickname
-            let newEraserName = "\(trimmed) (Eraser)"
+            let newEraserName = DeviceRegistry.eraserName(trimmed)
             registry.renameTool(id: eraserID, to: newEraserName, forDevice: deviceID)
             registerRenameUndo(
                 renameToolAction,

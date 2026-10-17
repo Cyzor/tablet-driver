@@ -250,10 +250,19 @@ final class DeviceRegistry: ObservableObject {
 
     // MARK: - Pen model lookup
 
-    /// Full name for a Wacom tool code, including "(Eraser)" suffix when appropriate.
+    /// Full name for a Wacom tool code, with a localized eraser suffix when appropriate.
     /// Delegates to ToolCatalog for the authoritative name table.
     static func penName(forToolCode toolCode: UInt16) -> String {
-        return ToolCatalog.name(forToolCode: toolCode)
+        // The catalog names an eraser end "<pen> (Eraser)" in English.
+        let name = ToolCatalog.name(forToolCode: toolCode)
+        let suffix = " (Eraser)"
+        guard name.hasSuffix(suffix) else { return name }
+        return eraserName(String(name.dropLast(suffix.count)))
+    }
+
+    /// A pen's eraser end, in the user's language.
+    static func eraserName(_ pen: String) -> String {
+        String(localized: "\(pen) (Eraser)", comment: "Tool name for a pen's eraser end; the argument is the pen's name")
     }
 
     /// Fallback used for IntuosV1 devices that don't report a tool code.
@@ -266,7 +275,7 @@ final class DeviceRegistry: ObservableObject {
         case 0x00F4: base = "Grip Pen"
         default: base = "Stylus"
         }
-        return isEraser ? "\(base) (Eraser)" : base
+        return isEraser ? eraserName(base) : base
     }
 
     // MARK: - Recording
@@ -697,6 +706,9 @@ final class DeviceRegistry: ObservableObject {
                 freshKind = Self.penName(forProductID: deviceID, isEraser: isEraser)
             }
             if list[i].kind != freshKind {
+                // A nickname still equal to the old kind is a default, as in
+                // `recordTool`; keep anything the user typed.
+                if list[i].nickname == list[i].kind { list[i].nickname = freshKind }
                 list[i].kind = freshKind
                 changed = true
             }

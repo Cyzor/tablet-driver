@@ -533,6 +533,29 @@
       },
       "shouldTranslate" : false
     },
+    "%@ (Eraser)" : {
+      "comment" : "Tool name for a pen's eraser end; the argument is the pen's name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (Radierer)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (borrador)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（消しゴム）"
+          }
+        }
+      }
+    },
     "%@ %@" : {
       "comment" : "Button name qualified by its device or side, e.g. 'Pucky-Puck Key 1' or 'Left Key 1'",
       "localizations" : {
