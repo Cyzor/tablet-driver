@@ -455,6 +455,9 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 draftRect = nil
                 cornerDominantAxisIsWidth = nil
                 isSnapped = false
+                // The pointer may have left the handle mid-drag, when hover
+                // was ignored; the next move over a handle sets its cursor.
+                NSCursor.arrow.set()
             }
     }
 
@@ -851,13 +854,17 @@ enum AreaSpokenSize {
 // MARK: - Cursor modifier
 
 private extension View {
-    /// `active: false` skips the hover-driven push/pop — used during an
-    /// active drag, where moving handle frames under a stationary cursor
-    /// would otherwise toggle `onHover` repeatedly.
+    /// Sets `cursor` on every move over the view, rather than pushing it on
+    /// entry: a drag can end away from where it began, skipping the exit that
+    /// would pop it. `active: false` holds the cursor still during a drag,
+    /// where handles move under a stationary pointer.
     func cursor(_ cursor: NSCursor, active: Bool = true) -> some View {
-        self.onHover { inside in
+        self.onContinuousHover { phase in
             guard active else { return }
-            if inside { cursor.push() } else { NSCursor.pop() }
+            switch phase {
+            case .active: cursor.set()
+            case .ended: NSCursor.arrow.set()
+            }
         }
     }
 }
