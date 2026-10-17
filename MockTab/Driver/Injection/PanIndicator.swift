@@ -72,6 +72,9 @@ final class PanIndicator {
         panel.backgroundColor = .clear
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
+        // Ordering a hideable window front unhides a hidden app, bringing
+        // its other windows back with it.
+        panel.canHide = false
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.contentView = imageView
