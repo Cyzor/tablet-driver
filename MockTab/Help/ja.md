@@ -225,4 +225,4 @@ Info ペインには、X/Y 位置、筆圧、傾き、回転、ホバー距離�
 
 ## 謝辞
 
-MockTab のデバイスデータとプロトコル調査は、2 つのオープンソースプロジェクトの成果に支えられています。[OpenTabletDriver](https://opentabletdriver.net/) は多くのメーカーのタブレット設定を提供しており、[Linux Wacom Project](https://linuxwacom.github.io/) は libwacom を通じた Wacom デバイス寸法の主要な情報源です。
+MockTab のデバイスデータとプロトコル調査は、2 つのオープンソースプロジェクトの成果に支えられています。[OpenTabletDriver](https://opentabletdriver.net/) は多くのメーカーのタブレット設定を提供しており、[Linux Wacom Project](https://linuxwacom.github.io/) は libwacom を通じた Wacom デバイスの寸法とコントロール配置の主要な情報源です。

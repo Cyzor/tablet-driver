@@ -225,4 +225,4 @@ Los informes de errores y las preguntas van a [github.com/Cyzor/tablet-driver/is
 
 ## Agradecimientos
 
-Los datos de dispositivos y la investigación de protocolos de MockTab se apoyan en el trabajo de dos proyectos de código abierto: [OpenTabletDriver](https://opentabletdriver.net/), cuyas configuraciones cubren modelos de muchas marcas, y [Linux Wacom Project](https://linuxwacom.github.io/), fuente de referencia para las dimensiones de dispositivos Wacom a través de su biblioteca libwacom.
+Los datos de dispositivos y la investigación de protocolos de MockTab se apoyan en el trabajo de dos proyectos de código abierto: [OpenTabletDriver](https://opentabletdriver.net/), cuyas configuraciones cubren modelos de muchas marcas, y [Linux Wacom Project](https://linuxwacom.github.io/), fuente de referencia para las dimensiones y la disposición de controles de dispositivos Wacom a través de su biblioteca libwacom.

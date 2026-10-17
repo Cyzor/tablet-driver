@@ -117,7 +117,7 @@ Each file names its license in an `SPDX-License-Identifier:` header.
 
 ## Acknowledgments
 
-MockTab builds on several open-source projects. [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) supplies all of TabletKit’s non-Wacom tablet entries and some Wacom ones. [wacom-hid-descriptors](https://github.com/linuxwacom/wacom-hid-descriptors) guided decoders for many tablet families, and [libwacom](https://github.com/linuxwacom/libwacom) supplies Wacom tablet sizes. Much of the report format knowledge traces back to [input-wacom](https://github.com/linuxwacom/input-wacom) and the Linux kernel.
+MockTab builds on several open-source projects. [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) supplies all of TabletKit’s non-Wacom tablet entries and some Wacom ones. [wacom-hid-descriptors](https://github.com/linuxwacom/wacom-hid-descriptors) guided decoders for many tablet families, and [libwacom](https://github.com/linuxwacom/libwacom) supplies Wacom tablet sizes and the control layouts behind each tablet’s drawing. Much of the report format knowledge traces back to [input-wacom](https://github.com/linuxwacom/input-wacom) and the Linux kernel.
 
 ***
 

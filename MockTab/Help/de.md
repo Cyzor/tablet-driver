@@ -227,4 +227,4 @@ Bugmeldungen und Fragen gehören nach [github.com/Cyzor/tablet-driver/issues](ht
 
 ## Danksagung
 
-MockTabs Gerätedaten und Protokollrecherche bauen auf der Arbeit von zwei Open-Source-Projekten auf: [OpenTabletDriver](https://opentabletdriver.net/), dessen Gerätekonfigurationen Modelle vieler Hersteller abdecken, und dem [Linux Wacom Project](https://linuxwacom.github.io/), der maßgeblichen Quelle für Wacom-Geräteabmessungen über die libwacom-Bibliothek.
+MockTabs Gerätedaten und Protokollrecherche bauen auf der Arbeit von zwei Open-Source-Projekten auf: [OpenTabletDriver](https://opentabletdriver.net/), dessen Gerätekonfigurationen Modelle vieler Hersteller abdecken, und dem [Linux Wacom Project](https://linuxwacom.github.io/), der maßgeblichen Quelle für Abmessungen und Bedienelemente von Wacom-Geräten über die libwacom-Bibliothek.
