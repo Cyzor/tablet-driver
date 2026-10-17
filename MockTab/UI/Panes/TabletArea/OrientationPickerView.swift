@@ -10,6 +10,8 @@ import SwiftUI
 /// Orientation selector with a native radio button on the left of each row.
 struct OrientationPickerView: View {
     @ObservedObject var settings: TabletSettings
+    /// The bound tablet, drawn turned to each orientation.
+    let figure: TabletFigure
 
     var body: some View {
         ForEach(TabletOrientation.allCases, id: \.rawValue) { orientation in
@@ -26,7 +28,10 @@ struct OrientationPickerView: View {
                 NativeRadioIndicator(isSelected: settings.tabletOrientation == orientation)
                     .frame(width: 18, height: 18)
                     .allowsHitTesting(false)
-                OrientationGlyph(orientation: orientation)
+                // Decorative: the row's label already names the orientation.
+                TabletGlyphView(figure: figure.oriented(orientation),
+                                isSelected: settings.tabletOrientation == orientation)
+                    .equatable()
                     .frame(width: 50, height: 50)
                 Text(orientation.pickerLabel)
                 Spacer(minLength: 0)
@@ -106,24 +111,5 @@ extension TabletOrientation {
         case .landscapeFlipped: return "Flip 180° for left-handed use or reversed cable routing."
         case .portraitFlipped:  return "Rotate the active surface 90° counter-clockwise."
         }
-    }
-}
-
-// MARK: - Orientation glyph
-
-/// Small tablet icon for each orientation radio button.
-/// The landscape SVG is rotated by the orientation's angle to produce all four variants.
-/// No fixed frame is applied here — the caller controls the display size.
-struct OrientationGlyph: View {
-    let orientation: TabletOrientation
-
-    var body: some View {
-        Image("TabletOrientation")
-            .resizable()
-            .scaledToFit()
-            .rotationEffect(Angle(radians: orientation.rotationAngle))
-            // Orientation is redundantly conveyed by the parent radio row's
-            // localised text label, so the rotated glyph is decorative.
-            .accessibilityHidden(true)
     }
 }

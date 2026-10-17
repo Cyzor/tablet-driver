@@ -75,6 +75,17 @@ struct TabletAreaView: View {
         return false
     }
 
+    /// The bound tablet drawn from parts, before turning for orientation.
+    /// Only Wacom models have layouts; other brands draw as a plain body.
+    private var tabletFigure: TabletFigure {
+        let pid = boundProductID ?? TabletFigure.fallbackProductID
+        return TabletFigure(
+            layoutProductID: VendorDeviceRegistry.profile(forProductID: pid) == nil ? pid : nil,
+            surfaceMM: tabletManager.surfaceSizeMM(for: boundKey),
+            aspect: activeAspectRatio,
+            isPenDisplay: activeDeviceIsPenDisplay)
+    }
+
     /// True if the bound device is currently physically connected.
     private var activeDeviceIsConnected: Bool {
         guard boundKey != nil else { return false }
@@ -143,48 +154,50 @@ struct TabletAreaView: View {
             onResetToDefaults: resetToDefaults
         ) {
                 Section {
-                    NormalizedAreaEditor(
-                        aspectRatio: orientedAspectRatio,
-                        rect: activeAreaBinding,
-                        onCommit: { oldRect in
-                            settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
-                                x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
-                        }
-                    ) { areaRect, cs in
-                        Canvas { ctx, _ in
-                            // areaRect is the crop box's LIVE canvas-pixel
-                            // rect (tracks a drag in progress), not the
-                            // last-committed settings value — converting it
-                            // back to a fraction here (rather than reading
-                            // activeAreaBinding) is what makes the
-                            // letterbox preview track the drag instead of
-                            // only updating on drag-end.
-                            let liveFraction = NormalizedRect(
-                                x: areaRect.minX / cs.width, y: areaRect.minY / cs.height,
-                                w: areaRect.width / cs.width, h: areaRect.height / cs.height)
-                            if let crop = proportionalCropRect(insetting: liveFraction) {
-                                let cropRect = CGRect(
-                                    x: crop.x * cs.width, y: crop.y * cs.height,
-                                    width: crop.w * cs.width, height: crop.h * cs.height)
-                                letterboxOverlay(ctx: ctx, activeAreaRect: areaRect, liveRect: cropRect)
+                    TabletBezelFrame(figure: tabletFigure.oriented(settings.tabletOrientation)) {
+                        NormalizedAreaEditor(
+                            aspectRatio: orientedAspectRatio,
+                            rect: activeAreaBinding,
+                            onCommit: { oldRect in
+                                settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
+                                    x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
                             }
-                            tabletBadge(ctx: ctx, areaRect: areaRect)
+                        ) { areaRect, cs in
+                            Canvas { ctx, _ in
+                                // areaRect is the crop box's LIVE canvas-pixel
+                                // rect (tracks a drag in progress), not the
+                                // last-committed settings value — converting it
+                                // back to a fraction here (rather than reading
+                                // activeAreaBinding) is what makes the
+                                // letterbox preview track the drag instead of
+                                // only updating on drag-end.
+                                let liveFraction = NormalizedRect(
+                                    x: areaRect.minX / cs.width, y: areaRect.minY / cs.height,
+                                    w: areaRect.width / cs.width, h: areaRect.height / cs.height)
+                                if let crop = proportionalCropRect(insetting: liveFraction) {
+                                    let cropRect = CGRect(
+                                        x: crop.x * cs.width, y: crop.y * cs.height,
+                                        width: crop.w * cs.width, height: crop.h * cs.height)
+                                    letterboxOverlay(ctx: ctx, activeAreaRect: areaRect, liveRect: cropRect)
+                                }
+                                tabletBadge(ctx: ctx, areaRect: areaRect)
+                            }
+                            .frame(width: cs.width, height: cs.height)
                         }
-                        .frame(width: cs.width, height: cs.height)
-                    }
-                    .snapping(
-                        to: screenAreaAspect,
-                        label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
-                    .speaking(
-                        as: String(localized: "Tablet Area"),
-                        size: .tablet(tabletManager.surfaceSizeMM(for: boundKey), orientation: settings.tabletOrientation))
-                    .editMappingMenu(enabled: screenAreaAspect != nil) {
-                        MappingSheetPresenter.present(
-                            from: windowRef.window, settings: settings,
-                            tabletAspect: orientedAspectRatio,
-                            tabletCaption: deviceLabel,
-                            tabletSizeMM: tabletManager.surfaceSizeMM(for: boundKey),
-                            destination: MappingDestination.current(for: settings))
+                        .snapping(
+                            to: screenAreaAspect,
+                            label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
+                        .speaking(
+                            as: String(localized: "Tablet Area"),
+                            size: .tablet(tabletManager.surfaceSizeMM(for: boundKey), orientation: settings.tabletOrientation))
+                        .editMappingMenu(enabled: screenAreaAspect != nil) {
+                            MappingSheetPresenter.present(
+                                from: windowRef.window, settings: settings,
+                                tabletAspect: orientedAspectRatio,
+                                tabletCaption: deviceLabel,
+                                tabletSizeMM: tabletManager.surfaceSizeMM(for: boundKey),
+                                destination: MappingDestination.current(for: settings))
+                        }
                     }
                     .background(WindowReader(ref: windowRef))
                     .frame(height: 200)
@@ -340,7 +353,7 @@ struct TabletAreaView: View {
                 }
 
                 Section("Orientation") {
-                    OrientationPickerView(settings: settings)
+                    OrientationPickerView(settings: settings, figure: tabletFigure)
                 }
         }
     }

@@ -14,16 +14,6 @@ enum TabletOrientation: Int, CaseIterable {
     case landscapeFlipped = 2  // 180°     — USB port at top
     case portraitFlipped = 3  // 90° CW   — USB port at left
 
-    /// Clockwise rotation angle in radians used for Canvas transforms.
-    var rotationAngle: Double {
-        switch self {
-        case .landscape: return 0
-        case .portrait: return 3 * .pi / 2  // 270° (swapped from 90°)
-        case .landscapeFlipped: return .pi  // 180°
-        case .portraitFlipped: return .pi / 2  // 90° (swapped from 270°)
-        }
-    }
-
     /// Whether this orientation swaps the X and Y hardware axes.
     var swapsAxes: Bool { self == .portrait || self == .portraitFlipped }
 
