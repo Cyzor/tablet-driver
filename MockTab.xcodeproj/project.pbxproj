@@ -79,6 +79,7 @@
 		AA000080 /* ButtonMappingBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000080 /* ButtonMappingBindings.swift */; };
 		AA000053 /* FontExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000053 /* FontExtensions.swift */; };
 		AA000054 /* PenDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000054 /* PenDiagramView.swift */; };
+		AA00F804 /* PenRecipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F804 /* PenRecipe.swift */; };
 		AA000055 /* DisclosureRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000055 /* DisclosureRow.swift */; };
 		AA000056 /* SettingsControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000056 /* SettingsControls.swift */; };
 		AA000070 /* HIDCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000070 /* HIDCapture.swift */; };
@@ -221,6 +222,7 @@
 		AB000080 /* ButtonMappingBindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingBindings.swift; sourceTree = "<group>"; };
 		AB000053 /* FontExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontExtensions.swift; sourceTree = "<group>"; };
 		AB000054 /* PenDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenDiagramView.swift; sourceTree = "<group>"; };
+		AB00F804 /* PenRecipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenRecipe.swift; sourceTree = "<group>"; };
 		AB000055 /* DisclosureRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisclosureRow.swift; sourceTree = "<group>"; };
 		AB000056 /* SettingsControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsControls.swift; sourceTree = "<group>"; };
 		AB000070 /* HIDCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDCapture.swift; sourceTree = "<group>"; };
@@ -540,6 +542,7 @@
 				AB000207 /* LEDColorControl.swift */,
 				AB000077 /* LiveResizeDetector.swift */,
 				AB000054 /* PenDiagramView.swift */,
+				AB00F804 /* PenRecipe.swift */,
 				AB000154 /* TouchRingDiagramView.swift */,
 				AB000208 /* TouchRingModeList.swift */,
 			);
@@ -918,6 +921,7 @@
 				AA000079 /* ButtonMappingQuickKeys.swift in Sources */,
 				AA000080 /* ButtonMappingBindings.swift in Sources */,
 				AA000054 /* PenDiagramView.swift in Sources */,
+				AA00F804 /* PenRecipe.swift in Sources */,
 				AA000154 /* TouchRingDiagramView.swift in Sources */,
 				AA000053 /* FontExtensions.swift in Sources */,
 				AA000055 /* DisclosureRow.swift in Sources */,

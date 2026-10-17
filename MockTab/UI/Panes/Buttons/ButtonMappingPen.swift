@@ -94,7 +94,7 @@ extension ButtonMappingView {
             // background shows through unchanged. Clicking a part starts
             // recording in its binding row — parts whose row isn't shown
             // (mouse tools, missing buttons) stay inert.
-            PenDiagramView(liveButtons: lb, onPartTap: { part in
+            PenDiagramView(liveButtons: lb, recipe: PenRecipe(tool: toolSpec, buttonCount: isMouse ? 3 : btnCount), onPartTap: { part in
                 switch part {
                 case .tip: if !isMouse { penRecordTokens[0] += 1 }
                 case .eraser: if !isMouse { penRecordTokens[1] += 1 }
