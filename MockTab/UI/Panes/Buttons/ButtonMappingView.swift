@@ -60,7 +60,20 @@ struct ButtonMappingView: View {
         // otherwise the button layout reverts to a generic default every
         // time the pen briefly lifts off, since activeToolCode goes back to
         // 0 on proximity exit.
-        return ToolCatalog.spec(forToolCode: ctx.lastKnownToolCode)
+        let tool = ToolCatalog.spec(forToolCode: ctx.lastKnownToolCode)
+        // A flipped pen reports its eraser end as the tool. The pane shows the
+        // pen it belongs to, so its buttons and drawing stay put.
+        guard let eraser = tool, eraser.toolType == .eraser else { return tool }
+        return Self.pen(forEraser: eraser) ?? eraser
+    }
+
+    /// The pen whose eraser end is `eraser`, or nil if none is listed.
+    static func pen(forEraser eraser: ToolSpec) -> ToolSpec? {
+        let pen = ToolCatalog.allTools.values.first { $0.eraserToolCode == eraser.toolCode }
+            // Erasers set bit 3 of their pen's code.
+            ?? ToolCatalog.allTools[eraser.toolCode & ~UInt16(0x0008)]
+        guard let pen, pen.toolType != .eraser, pen.toolType != .mouse else { return nil }
+        return pen
     }
 
     var hasTouchRing: Bool { spec?.hasTouchRing == true }
