@@ -1,7 +1,7 @@
 # Graphire (ET-0405): no pen report in the descriptor
 0x0010 usb routes=fallback pens=- spec=intuosV1 44704x27940 p1023 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
 # Intuos5 M (PTH-650): vendor reports only, relative mouse alongside
-0x0027 usb routes=fallback,fallback pens=- spec=intuosV1 127x127 p1023 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
+0x0027 usb routes=fallback,fallback pens=- spec=intuosV1 44704x27940 p1023 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
 # Bamboo Pad (CTH-300): descriptor pen on report 3
 0x0319 usb routes=fallback,fallback pens=r3 10690x6680 p511 [tip,range,press,barrel,eraser,invert] spec=intuosV1 10690x6680 p511 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
 # Intuos S (CTL-4100): descriptor pen and four pad buttons
