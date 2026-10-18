@@ -83,11 +83,14 @@ extension WacomKnownDevice {
 
         case .intuosV1:
             if isWireless && pairedPID > 0 {
-                // Through the ACK-40401: WAC_CMD_WL_LED_CONTROL (0x03), 13
-                // bytes, Intuos5 packing in buf[4]. From the kernel; not
-                // checked against a dongle, so best effort.
+                // Through the ACK-40401: report 0x03, 13 bytes, Intuos5
+                // packing in buf[4]. The same report holds the receiver's
+                // sleep timer in buf[1...3], so read it first and change
+                // only the LED; writing zeros there resets the timer.
                 let slot = UInt8(index & 0x03)
-                var buf = [UInt8](repeating: 0, count: 13)
+                let (ret, current) = IOKitHIDInterface(device).getReport(.feature, id: 0x03, length: 13)
+                var buf = ret == kIOReturnSuccess && current.count == 13 && current[0] == 0x03
+                    ? current : [UInt8](repeating: 0, count: 13)
                 buf[0] = 0x03
                 buf[4] = (Self.intuos5CropLuminance << 4) | (Self.intuos5RingLuminance << 2) | slot
                 queueSetReport(device, buf,
