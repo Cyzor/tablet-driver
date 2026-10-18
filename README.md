@@ -12,15 +12,17 @@ MockTab is a community project, not affiliated with Wacom Co., Ltd. or Xencelabs
 
 ## Supported hardware
 
-MockTab supports these Wacom families:
+MockTab supports these families:
 
-- **Intuos 1–5 / Intuos Pro Gen 1** (PTH-x50/x51, PTZ, PTK series), USB.
-- **Intuos Pro Gen 2** (PTH-460, PTH-660, PTH-860), USB and Bluetooth.
-- **Intuos Pro Gen 3** (PTK-470, PTK-670, PTK-870), USB, experimental.
-- **Cintiq** pen displays, including CintiqV1 and IntuosV2-format models.
-- **DTU / DTUS** small pen displays, USB, experimental.
-- **Bamboo** and consumer CTL/CTH tablets.
-- **Xencelabs Pen Display** and Quick Keys remote, wired and wireless.
+| | Family | Connection |
+|:---:|:---|:---|
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/intuos5-dark.svg"><img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/intuos5-light.svg" width="50" alt=""></picture> | **Intuos 1–5 / Intuos Pro Gen 1**<br>PTH-x50/x51, PTZ, PTK series | USB |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/intuos-pro-gen2-dark.svg"><img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/intuos-pro-gen2-light.svg" width="50" alt=""></picture> | **Intuos Pro Gen 2**<br>PTH-460, PTH-660, PTH-860 | USB and Bluetooth |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/intuos-pro-gen3-dark.svg"><img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/intuos-pro-gen3-light.svg" width="50" alt=""></picture> | **Intuos Pro Gen 3**<br>PTK-470, PTK-670, PTK-870 | USB, experimental |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/displays-dark.svg"><img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/displays-light.svg" width="50" alt=""></picture> | **Cintiq** pen displays<br>Including CintiqV1 and IntuosV2-format models | USB |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/dtu-dark.svg"><img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/dtu-light.svg" width="50" alt=""></picture> | **DTU / DTUS** small pen displays | USB, experimental |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/consumer-dark.svg"><img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/consumer-light.svg" width="50" alt=""></picture> | **Bamboo** and consumer CTL/CTH tablets | USB |
+| <picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/xencelabs-display-dark.svg"><img src="https://raw.githubusercontent.com/Cyzor/mocktab-web/main/images/hardware/xencelabs-display-light.svg" width="50" alt=""></picture> | **Xencelabs Pen Display** and Quick Keys remote | Wired and wireless |
 
 Full list: [mocktab.org/hardware](https://mocktab.org/hardware.html)
 
