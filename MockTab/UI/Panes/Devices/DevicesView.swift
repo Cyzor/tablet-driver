@@ -218,7 +218,7 @@ struct DevicesView: View {
             // Kind icon: the tablet drawn from parts, or a symbol for a device
             // with no surface. The symbols run large to match the icons' weight.
             Group {
-                if let figure = tabletFigure(forProductID: tablet.productID) {
+                if let figure = tabletFigure(forProductID: tablet.productID, vendorID: tablet.vendorID) {
                     TabletIconView(figure: figure).equatable()
                 } else {
                     Image(systemName: kindSymbolName(forProductID: tablet.productID))
@@ -375,13 +375,15 @@ struct DevicesView: View {
     }
 
     /// The tablet drawn as an icon, or nil for a device with no surface,
-    /// like a puck or a wireless receiver. Only Wacom models have layouts.
-    private func tabletFigure(forProductID productID: Int) -> TabletFigure? {
+    /// like a puck or a wireless receiver. Only Wacom models have layouts; a
+    /// tablet saved before vendors were recorded counts as Wacom.
+    private func tabletFigure(forProductID productID: Int, vendorID: Int?) -> TabletFigure? {
         let key = DeviceInstanceKey(productID: productID, instance: "")
         guard let size = tabletManager.surfaceSizeMM(for: key) else { return nil }
         let vendor = VendorDeviceRegistry.profile(forProductID: productID)
+        let isWacom = vendor == nil && (vendorID ?? 0x056A) == 0x056A
         return TabletFigure(
-            layoutProductID: vendor == nil ? productID : nil, surfaceMM: size,
+            layoutProductID: isWacom ? productID : nil, surfaceMM: size,
             aspect: size.width / size.height,
             isPenDisplay: vendor?.isPenDisplay ?? WacomDeviceRegistry.spec(for: productID)?.isPenDisplay ?? false)
     }

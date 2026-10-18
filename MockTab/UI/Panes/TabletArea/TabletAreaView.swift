@@ -79,8 +79,13 @@ struct TabletAreaView: View {
     /// Only Wacom models have layouts; other brands draw as a plain body.
     private var tabletFigure: TabletFigure {
         let pid = boundProductID ?? TabletFigure.fallbackProductID
+        // The live device's vendor, else the saved one; a tablet saved before
+        // vendors were recorded counts as Wacom.
+        let vendorID = tabletManager.context(forKey: boundKey)?.vendorID
+            ?? registry.knownTablets.first { $0.productID == pid }?.vendorID ?? 0x056A
+        let isWacom = vendorID == 0x056A && VendorDeviceRegistry.profile(forProductID: pid) == nil
         return TabletFigure(
-            layoutProductID: VendorDeviceRegistry.profile(forProductID: pid) == nil ? pid : nil,
+            layoutProductID: isWacom ? pid : nil,
             surfaceMM: tabletManager.surfaceSizeMM(for: boundKey),
             aspect: activeAspectRatio,
             isPenDisplay: activeDeviceIsPenDisplay)
