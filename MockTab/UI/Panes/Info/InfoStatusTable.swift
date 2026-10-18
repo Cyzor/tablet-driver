@@ -149,7 +149,8 @@ extension InfoView {
                     // place users come to check on the device.
                     symbolColor: batteryPercent.map {
                         BatteryIndicator.tint(pct: $0, charging: charging, healthy: .green)
-                    } ?? (charging ? .green : .secondary))
+                    } ?? (charging ? .green : .secondary),
+                    accessory: offersWirelessSleep ? AnyView(wirelessSleepPicker) : nil)
             }
 
             if let pct = companionContext?.batteryPercent {
@@ -288,7 +289,8 @@ extension InfoView {
         actionLabel: String? = nil,
         actionHelp: String? = nil,
         actionDisabled: Bool = false,
-        reservesActionSpace: Bool = false
+        reservesActionSpace: Bool = false,
+        accessory: AnyView? = nil
     ) -> some View {
         GridRow {
             Text(label)
@@ -322,7 +324,9 @@ extension InfoView {
             HStack(spacing: 0) {
                 // actionLabel required alongside action — no generic fallback,
                 // since that could silently pick the wrong ellipsis convention.
-                if let action, let actionLabel {
+                if let accessory {
+                    accessory
+                } else if let action, let actionLabel {
                     Button(actionLabel, action: action)
                         .buttonStyle(.bordered)
                         .appControlSize(.small)
@@ -343,6 +347,44 @@ extension InfoView {
             }
             .gridColumnAlignment(.leading)
         }
+    }
+
+    /// A model that runs on the Wacom wireless kit, which holds a sleep timer.
+    var offersWirelessSleep: Bool {
+        let pid = deviceContext?.productID ?? productID ?? 0
+        return WacomDeviceRegistry.spec(for: pid)?.offeredControls.contains(.wirelessKit) == true
+    }
+
+    /// The kit's sleep timer, live only while the tablet runs on its receiver.
+    var wirelessSleepPicker: some View {
+        let live = deviceContext?.tabletDevice?.controls.wirelessKit != nil
+        return HStack(spacing: 6) {
+            Text("Sleep After", comment: "Label before the sleep timer menu in the Info pane's Battery row")
+                .foregroundStyle(.secondary)
+            Picker(
+                String(localized: "Sleep Timer", comment: "Quick Keys auto-sleep timer row label"),
+                selection: settings.recordingBinding(
+                    String(localized: "Sleep Timer", comment: "Quick Keys auto-sleep timer row label"),
+                    get: { max(settings.wirelessSleepMinutes, 0) },
+                    set: { settings.wirelessSleepMinutes = $0 })
+            ) {
+                // Tags are minutes; the receiver counts 5-minute steps.
+                Text("5 minutes", comment: "Wireless kit sleep timer choice").tag(5)
+                Text("10 minutes", comment: "Wireless kit sleep timer choice").tag(10)
+                Text("15 minutes", comment: "Wireless kit sleep timer choice").tag(15)
+                Text("30 minutes", comment: "Quick Keys sleep timer choice").tag(30)
+                Text("60 minutes", comment: "Quick Keys sleep timer choice").tag(60)
+                Divider()
+                Text("Default", comment: "Wireless kit sleep timer choice: the tablet's own timer").tag(0)
+            }
+            .labelsHidden()
+            .appControlSize(.small)
+            .fixedSize()
+        }
+        .disabled(!live)
+        .help(live
+            ? String(localized: "Puts the tablet to sleep when it sits unused this long.", comment: "Tooltip on the wireless kit sleep timer in the Info pane")
+            : String(localized: "Works only through the wireless receiver.", comment: "Tooltip on the wireless kit sleep timer while the tablet is on USB"))
     }
 
     @ViewBuilder

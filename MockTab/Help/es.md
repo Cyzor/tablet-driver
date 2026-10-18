@@ -167,6 +167,8 @@ Al seleccionar una fila de dispositivo, en el panel de detalles de la derecha ap
 
 Los dispositivos desconectados permanecen en la lista para que sus perfiles sigan disponibles para inspección o ajuste aunque estén desenchufados. Cuando un dispositivo de la lista vuelve a conectarse, MockTab aplica automáticamente su configuración guardada.
 
+En una Intuos5 o Intuos Pro (2013) con el kit inalámbrico de Wacom, la fila **Batería** del panel Info establece cuánto tiempo puede estar la tableta sin usarse antes de entrar en reposo.
+
 ## Detección de conflictos
 
 Si otro controlador de tabletas, como el controlador oficial de Wacom, se ejecuta al mismo tiempo, MockTab intenta detectar el conflicto y mostrar una advertencia.

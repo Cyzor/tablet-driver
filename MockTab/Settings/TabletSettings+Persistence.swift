@@ -46,6 +46,7 @@ extension TabletSettings {
         quickKeysOrientation = loadInt("quickKeysOrientation", default: -1)
         quickKeysSleepMinutes = loadInt("quickKeysSleepMinutes", default: -1)
         quickKeysOledBrightness = loadInt("quickKeysOledBrightness", default: -1)
+        wirelessSleepMinutes = loadInt("wirelessSleepMinutes", default: -1)
         bezelLEDColor = loadString("bezelLEDColor", default: "")
         toggleDisplayIDs = loadString("toggleDisplayIDs", default: "")
         smoothingStrength = loadDouble("smoothingStrength", default: 0.0)

@@ -169,6 +169,8 @@ Selecting a device row reveals model-specific settings and tools in the details 
 
 Disconnected devices remain in the list so their profiles remain available for inspection or adjustment even while unplugged. When a listed device reconnects, MockTab applies its saved settings automatically.
 
+On an Intuos5 or Intuos Pro (2013) running on the Wacom wireless kit, the Info pane's **Battery** row sets how long the tablet sits unused before it sleeps.
+
 ## Conflict Detection
 
 If another tablet driver (such as the official Wacom driver) runs at the same time, MockTab attempts to detect the conflict and show a warning.

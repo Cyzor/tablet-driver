@@ -169,6 +169,8 @@ Wählst du ein Gerät aus, erscheinen rechts die passenden Einstellungen und Wer
 
 Auch nicht verbundene Geräte bleiben in der Liste, damit du ihre Profile prüfen oder anpassen kannst. Sobald ein Gerät wieder verbunden wird, übernimmt MockTab automatisch die gespeicherten Einstellungen.
 
+Bei einem Intuos5 oder Intuos Pro (2013) mit dem Wacom Wireless-Kit legt die Zeile **Batterie** im Info-Bereich fest, wie lange das Grafiktablett unbenutzt bleibt, bevor es in den Ruhezustand wechselt.
+
 ## Konflikterkennung
 
 Wenn gleichzeitig ein anderer Grafiktablett-Treiber läuft, etwa der offizielle Wacom-Treiber, versucht MockTab den Konflikt zu erkennen und eine Warnung anzuzeigen.

@@ -384,6 +384,16 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+    /// Wireless kit sleep timer, in minutes (0 = the tablet's own timer). -1 =
+    /// never set here; nothing is sent, so the receiver keeps what it holds.
+    /// Hardware state, like `quickKeysSleepMinutes`.
+    @Published var wirelessSleepMinutes: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(wirelessSleepMinutes, forKey: devicePrefix + "wirelessSleepMinutes")
+        }
+    }
+
     /// Quick Keys OLED brightness, 0 (off) through 3 (bright). -1 = never set
     /// here; nothing is sent, so the puck keeps its own stored brightness.
     /// Hardware state — same semantics as `displayBrightness`.

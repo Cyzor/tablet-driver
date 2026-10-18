@@ -139,6 +139,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         let quickKeysOrientation = settings.quickKeysOrientation
         let quickKeysSleepMinutes = settings.quickKeysSleepMinutes
         let quickKeysOledBrightness = settings.quickKeysOledBrightness
+        let wirelessSleepMinutes = settings.wirelessSleepMinutes
         // Every TabletDevice control-surface write is confined to HIDThread —
         // see the header comment on `onHIDThread`. Values are snapshotted
         // above on the main actor.
@@ -169,6 +170,9 @@ final class DeviceContext: ObservableObject, Identifiable {
             }
             if quickKeysOledBrightness >= 0 {
                 device.controls.quickKeys?.setQuickKeysOledBrightness(quickKeysOledBrightness)
+            }
+            if wirelessSleepMinutes >= 0 {
+                device.controls.wirelessKit?.setSleepMinutes(wirelessSleepMinutes)
             }
         }
         pushDeviceDisplayState()
@@ -481,6 +485,12 @@ final class DeviceContext: ObservableObject, Identifiable {
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
                 self.onHIDThread(device) { device in device.controls.quickKeys?.setQuickKeysOledBrightness(value) }
+            }
+            .store(in: &cancellables)
+        settings.$wirelessSleepMinutes
+            .sink { [weak self] value in
+                guard value >= 0, let self, let device = self.tabletDevice else { return }
+                self.onHIDThread(device) { device in device.controls.wirelessKit?.setSleepMinutes(value) }
             }
             .store(in: &cancellables)
     }
