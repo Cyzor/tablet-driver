@@ -16,3 +16,5 @@
 0x03CB usb routes=fallback,observe pens=r6 29376x16524 p4095 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,hover] | r30 29376x16524 p4095 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,hover] spec=intuosV2 29376x16524 p4095 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=r12 c5 11752x6608 | r31 c1 11752x6608
 # Intuos Pro L (PTK-870): two pen reports, ring and dial
 0x03F9 usb routes=fallback pens=r6 32767x32767 p4095 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,hover] | r30 69800x39000 p8191 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,twist,hover,serial,tool] spec=intuosV2 32767x32767 p4095 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=btn8+ring2 touch=-
+# ThinkPad X1 Yoga pen panel: absolute mouse on report 1
+0x503E usb routes=observe,fallback pens=r6 30914x17389 p2047 [tip,range,press,barrel,barrel2,eraser,invert,serial] | r11 30914x17389 p2047 [tip,range,press,barrel,barrel2,eraser,invert,serial] spec=intuosV1 30914x17389 p2047 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=r12 c5 12364x6956
