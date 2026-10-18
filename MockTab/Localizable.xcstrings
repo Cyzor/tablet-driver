@@ -2681,6 +2681,29 @@
         }
       }
     },
+    "Asleep" : {
+      "comment" : "Driver status value — a wireless tablet is asleep",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Ruhezustand"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En reposo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スリープ中"
+          }
+        }
+      }
+    },
     "Assign a click, modifier key, display switch, or other action instead of a shortcut." : {
       "comment" : "Tooltip on the click action menu beside the shortcut recorder",
       "localizations" : {
@@ -21838,6 +21861,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ウインドウ"
+          }
+        }
+      }
+    },
+    "Wireless Kit" : {
+      "comment" : "Connection value for a tablet on the Wacom wireless kit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wireless-Kit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kit inalámbrico"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ワイヤレスキット"
           }
         }
       }

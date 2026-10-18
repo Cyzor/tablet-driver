@@ -228,6 +228,7 @@ struct DeviceStatusBar: View {
 
     private var connectionSymbol: String {
         guard let context = context else { return "cable.connector.horizontal" }
+        if context.isOnWirelessKit { return "mediastick" }
         let t = context.transport.lowercased()
         if t.contains("bluetooth") { return "wave.3.right" }
         return "cable.connector.horizontal"
@@ -237,11 +238,14 @@ struct DeviceStatusBar: View {
         guard let context = context, context.isConnected else {
             return String(localized: "Not connected", comment: "Connection status when this window's tablet is disconnected")
         }
-        return context.transport
+        return context.connectionName
     }
 
     private var batteryItem: (String, String)? {
         guard let context = context else { return nil }
+        if context.isConnected && context.wirelessLinked == false {
+            return ("moon.zzz", String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep"))
+        }
         guard let pct = context.batteryPercent else {
             guard context.batteryCharging else { return nil }
             return (
@@ -266,6 +270,7 @@ struct DeviceStatusBar: View {
 
     private var batteryTint: Color {
         guard let context = context else { return .secondary }
+        if context.wirelessLinked == false { return .secondary }
         guard let pct = context.batteryPercent else { return context.batteryCharging ? .green : .secondary }
         // Neutral when healthy — the slim footer shouldn't draw the eye.
         return BatteryIndicator.tint(pct: pct, charging: context.batteryCharging, healthy: .secondary)

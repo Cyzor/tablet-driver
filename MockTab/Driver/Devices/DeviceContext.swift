@@ -91,6 +91,17 @@ final class DeviceContext: ObservableObject, Identifiable {
 
     var hasAnyDriverSlot: Bool { !driverSlots.isEmpty }
 
+    /// Whether the tablet currently runs through the Wacom wireless kit.
+    var isOnWirelessKit: Bool { activeDriverRawProductID == 0x0084 }
+
+    /// The connection as shown: the kit's receiver is a USB device, but
+    /// "USB" would read as a cable.
+    var connectionName: String {
+        isOnWirelessKit
+            ? String(localized: "Wireless Kit", comment: "Connection value for a tablet on the Wacom wireless kit")
+            : transport
+    }
+
     func driverSlot(forRawProductID rawPID: Int) -> (any TabletDevice)? {
         driverSlots[rawPID]
     }
@@ -278,6 +289,10 @@ final class DeviceContext: ObservableObject, Identifiable {
     @Published var batteryPercent: Int? = nil {
         didSet { if batteryPercent != nil { noteBatteryReported() } }
     }
+
+    /// For a tablet on the wireless kit, whether it's linked (false while it
+    /// sleeps); nil otherwise. Its battery reading is the last one before.
+    @Published var wirelessLinked: Bool? = nil
 
     /// True if the device is currently charging.
     @Published var batteryCharging: Bool = false {

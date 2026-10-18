@@ -90,6 +90,8 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     /// charges (96% whatever the charge).
     private let isWireless: Bool
     private let callbacks: DeviceRouter.Callbacks
+    /// The kit's last link status; its receiver repeats it twice a second.
+    private var wirelessLinked: Bool?
     /// Interfaces joined after the primary, for telling their report
     /// streams apart in a capture.
     var siblingCount = 0
@@ -219,6 +221,16 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
                 case .battery:
                     if let b = device.battery {
                         callbacks.onBattery(isWireless && b.charging ? nil : b.percent, b.charging)
+                    }
+                case .wireless:
+                    let linked: Bool? = switch device.wireless {
+                    case .active: true
+                    case .lost: false
+                    default: nil
+                    }
+                    if isWireless, let linked, linked != wirelessLinked {
+                        wirelessLinked = linked
+                        callbacks.onWirelessLink(linked)
                     }
                 case .mouseButtons:
                     if let mask = device.mouseButtons { callbacks.onMouseButton(mask) }

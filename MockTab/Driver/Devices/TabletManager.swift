@@ -1163,6 +1163,12 @@ final class TabletManager: ObservableObject {
             } // end Task @MainActor
         }
 
+        // Called on HIDThread when a wireless kit's tablet links or sleeps.
+        let onWirelessLink: @Sendable (Bool) -> Void = { [contextHandle] linked in
+            let context = contextHandle.context
+            Task { @MainActor [weak context] in context?.wirelessLinked = linked }
+        }
+
         // ── USB HID mouse button closure (KC-100 cordless mouse) ────────────────
         // Called when a 4-byte Report ID 0x01 arrives from the mouse interface
         // (usagePage=0x01, seized).  Routes directly to the injector so buttons
@@ -1298,7 +1304,7 @@ final class TabletManager: ObservableObject {
 
         return DeviceRouter.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
-            onMouseButton: onMouseButton, onBattery: onBattery,
+            onMouseButton: onMouseButton, onBattery: onBattery, onWirelessLink: onWirelessLink,
             onWheel: onWheel, onTouch: onTouch)
     }
 
@@ -1374,6 +1380,7 @@ final class TabletManager: ObservableObject {
         context.usbSpeed = "—"
         context.batteryPercent = nil
         context.batteryCharging = false
+        context.wirelessLinked = nil
         context.activeToolID = nil
         context.activeToolCode = 0
         context.livePoint = nil
@@ -1517,6 +1524,7 @@ final class TabletManager: ObservableObject {
             target.batteryPercent = source.batteryPercent
             target.batteryCharging = source.batteryCharging
         }
+        target.wirelessLinked = source.wirelessLinked
         if !target.hasWiredDriverLifecycle {
             target.observeRingLED()
             target.observeInjectionSnapshot()

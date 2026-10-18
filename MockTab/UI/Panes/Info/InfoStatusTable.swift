@@ -121,7 +121,7 @@ extension InfoView {
 
             row(
                 String(localized: "Connection", comment: "Row label in Info tab status table"),
-                value: deviceContext?.transport ?? "—",
+                value: deviceContext?.connectionName ?? "—",
                 ok: isConnected ? true : nil)
 
             // One row in every state, so a report arriving changes its value
@@ -147,7 +147,8 @@ extension InfoView {
                     leadingSymbol: BatteryIndicator.symbolName(pct: batteryPercent ?? 100, charging: charging),
                     // Affirmative green when healthy — this table is the
                     // place users come to check on the device.
-                    symbolColor: batteryPercent.map {
+                    // Grey while the tablet sleeps: the reading is from before.
+                    symbolColor: deviceContext?.wirelessLinked == false ? .secondary : batteryPercent.map {
                         BatteryIndicator.tint(pct: $0, charging: charging, healthy: .green)
                     } ?? (charging ? .green : .secondary),
                     accessory: offersWirelessSleep ? AnyView(wirelessSleepPicker) : nil)
@@ -174,12 +175,15 @@ extension InfoView {
                 value: deviceContext?.usbSpeed ?? "—",
                 ok: isConnected ? true : nil)
 
+            let asleep = isConnected && deviceContext?.wirelessLinked == false
             row(
                 String(localized: "Status", comment: "Row label in Info tab status table — driver status"),
-                value: isConnected
+                value: asleep
+                    ? String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep")
+                    : isConnected
                     ? String(localized: "Active", comment: "Driver status value — device is active")
                     : String(localized: "Idle", comment: "Driver status value — device is idle"),
-                ok: isConnected ? true : nil)
+                ok: isConnected && !asleep ? true : nil)
 
             // Labeled with System Settings' own names. Granted rows keep a
             // button rather than going bare: revoking is the user's to do,
