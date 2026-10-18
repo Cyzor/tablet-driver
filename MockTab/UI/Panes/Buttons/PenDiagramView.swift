@@ -161,7 +161,7 @@ extension PenRecipe {
     /// Pens are classic, Pro Pen 2 and 3 slim, the Xencelabs 3 Button Pen
     /// its own, and the rest straight; an airbrush is a fatter straight
     /// barrel for now.
-    init(tool: ToolSpec?, buttonCount: Int) {
+    init(tool: ToolSpec?, buttonCount: Int, hasEraser: Bool? = nil) {
         let name = tool?.name ?? ""
         var recipe: PenRecipe
         switch tool?.toolType {
@@ -176,7 +176,7 @@ extension PenRecipe {
             else if name.hasPrefix("Pro Pen") { recipe = .slim }
             else { recipe = .straight }
         }
-        recipe.eraser = tool?.hasEraserVariant ?? true
+        recipe.eraser = hasEraser ?? tool?.hasEraserVariant ?? true
         self = recipe.buttons(buttonCount)
     }
 }

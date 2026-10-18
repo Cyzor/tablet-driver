@@ -19862,6 +19862,35 @@
         }
       }
     },
+    "This pen has no eraser." : {
+      "comment" : "Tooltip on the greyed-out Eraser row in Buttons tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Stift hat keinen Radierer."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This pen has no eraser."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este lápiz no tiene borrador."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このペンには消しゴムがありません。"
+          }
+        }
+      }
+    },
     "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it." : {
       "comment" : "Capture error shown when the device's USB identifiers are missing or zero",
       "localizations" : {

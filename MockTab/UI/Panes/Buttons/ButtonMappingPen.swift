@@ -36,6 +36,8 @@ extension ButtonMappingView {
                     offersEraser: true,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[1])
+                .disabled(!penHasEraser)
+                .help(penHasEraser ? "" : String(localized: "This pen has no eraser.", comment: "Tooltip on the greyed-out Eraser row in Buttons tab"))
             }
 
             // Button 1
@@ -94,7 +96,7 @@ extension ButtonMappingView {
             // background shows through unchanged. Clicking a part starts
             // recording in its binding row — parts whose row isn't shown
             // (mouse tools, missing buttons) stay inert.
-            PenDiagramView(liveButtons: lb, recipe: PenRecipe(tool: toolSpec, buttonCount: isMouse ? 3 : btnCount), onPartTap: { part in
+            PenDiagramView(liveButtons: lb, recipe: PenRecipe(tool: toolSpec, buttonCount: isMouse ? 3 : btnCount, hasEraser: penHasEraser), onPartTap: { part in
                 switch part {
                 case .tip: if !isMouse { penRecordTokens[0] += 1 }
                 case .eraser: if !isMouse { penRecordTokens[1] += 1 }

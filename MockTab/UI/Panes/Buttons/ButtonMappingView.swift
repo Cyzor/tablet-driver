@@ -76,6 +76,19 @@ struct ButtonMappingView: View {
         return pen
     }
 
+    /// False only for a known pen the catalog lists without an eraser end,
+    /// and only until one is seen: an eraser recorded for it wins.
+    var penHasEraser: Bool {
+        guard let pen = activeToolSpec, pen.toolType != .mouse, !pen.hasEraserVariant else { return true }
+        return registry.allKnownTools.contains { known in
+            guard let code = known.toolCode, code != pen.toolCode else { return false }
+            if let eraser = ToolCatalog.spec(forToolCode: code) {
+                return eraser.toolType == .eraser && Self.pen(forEraser: eraser)?.toolCode == pen.toolCode
+            }
+            return code & ~UInt16(0x0008) == pen.toolCode
+        }
+    }
+
     var hasTouchRing: Bool { spec?.hasTouchRing == true }
     var hasDualRings: Bool { spec?.hasDualRings == true }
     var hasTouchStrips: Bool { spec?.hasTouchStrips == true }

@@ -95,10 +95,12 @@ private struct LabelText: View {
     let label: String
     let isActive: Bool
     @Environment(\.liveInputMuffled) private var muffled
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Text(label)
-            .foregroundStyle(Color.primary)
+            // An explicit style ignores the disabled state, so dim it here.
+            .foregroundStyle(isEnabled ? Color.primary : Color(nsColor: .disabledControlTextColor))
             .fontWeight(isActive && !muffled ? .semibold : .regular)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
