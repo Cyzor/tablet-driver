@@ -645,7 +645,7 @@ extension InputInjector {
             isArtPen = false
         } else {
             switch toolCode {
-            case 0x0804, 0x1108, 0x1804:  // Art Pen variants
+            case 0x0804, 0x1108, 0x1804, 0x0204:  // Art Pen variants and Art Pen 2
                 vendorPtr = 0x0804
                 isArtPen = true
             case 0x0842, 0x0832, 0x0852:  // Pro Pen 2, Stroke Pen, Intuos2 Grip Pen
