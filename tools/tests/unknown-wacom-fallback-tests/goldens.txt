@@ -1,0 +1,18 @@
+# Graphire (ET-0405): no pen report in the descriptor
+0x0010 usb routes=fallback pens=- spec=intuosV1 44704x27940 p1023 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
+# Intuos5 M (PTH-650): vendor reports only, relative mouse alongside
+0x0027 usb routes=fallback,fallback pens=- spec=intuosV1 127x127 p1023 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
+# Bamboo Pad (CTH-300): descriptor pen on report 3
+0x0319 usb routes=fallback,fallback pens=r3 10690x6680 p511 [tip,range,press,barrel,eraser,invert] spec=intuosV1 10690x6680 p511 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
+# Intuos S (CTL-4100): descriptor pen and four pad buttons
+0x0374 usb routes=fallback pens=r16 15200x9500 p4095 [tip,range,press,barrel,barrel2,hover,serial,tool] spec=intuosV2 15200x9500 p4095 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=btn4 touch=-
+# Intuos M Bluetooth (CTL-6100WL): opaque Bluetooth descriptor
+0x0379 bt routes=fallback pens=- spec=intuosV2 44800x29600 p8191 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
+# Cintiq Pro 16 (DTH-1620): pen on the vendor page
+0x0350 usb routes=fallback pens=r6 34560x19440 p2047 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,twist,hover,serial,tool] | r16 69920x39680 p8191 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,twist,hover,serial,tool] spec=intuosV2 34560x19440 p2047 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=-
+# Cintiq Pro 16 touch sensor: touch only
+0x0354 usb routes=observe pens=- spec=none pad=- touch=r12 c5 13824x7776 | r31 c1 13824x7776
+# Wacom One 13 (DTH-134): pen interface plus touch interface
+0x03CB usb routes=fallback,observe pens=r6 29376x16524 p4095 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,hover] | r30 29376x16524 p4095 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,hover] spec=intuosV2 29376x16524 p4095 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=- touch=r12 c5 11752x6608 | r31 c1 11752x6608
+# Intuos Pro L (PTK-870): two pen reports, ring and dial
+0x03F9 usb routes=fallback pens=r6 32767x32767 p4095 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,hover] | r30 69800x39000 p8191 [tip,range,press,barrel,barrel2,eraser,invert,tiltx,tilty,twist,hover,serial,tool] spec=intuosV2 32767x32767 p4095 btn8 ring=false eraser=true touch=false init=feature 02 02 pad=btn8+ring2 touch=-
