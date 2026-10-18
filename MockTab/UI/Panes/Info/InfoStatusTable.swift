@@ -302,8 +302,15 @@ extension InfoView {
             // column so values and buttons stay together.
             HStack(spacing: 8) {
                 if let sym = leadingSymbol {
-                    Image(systemName: sym)
-                        .foregroundStyle(symbolColor ?? .primary)
+                    // Centered in a status icon's width, so the value lines
+                    // up with the rows above and below however wide it is.
+                    statusIcon(nil)
+                        .hidden()
+                        .overlay {
+                            Image(systemName: sym)
+                                .foregroundStyle(symbolColor ?? .primary)
+                                .fixedSize()
+                        }
                         .accessibilityHidden(true)
                 } else {
                     statusIcon(ok)
