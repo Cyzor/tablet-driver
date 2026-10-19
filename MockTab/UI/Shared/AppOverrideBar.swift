@@ -88,6 +88,9 @@ struct AppOverrideBar: View {
     /// to whichever layer *is* active instead, since panes read/write through
     /// `settings`/`tool`'s current override, not through the clicked chip.
     var onResetToDefaults: (() -> Void)? = nil
+    /// Runs after an app chip's pane reset, for settings this pane shows that
+    /// belong to another device.
+    var onResetAppOverride: ((String) -> Void)? = nil
 
     @Environment(\.controlActiveState) private var controlActiveState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -558,6 +561,7 @@ struct AppOverrideBar: View {
                     Divider()
                     Button {
                         settings.removeAppOverride(bundleID: bundleID, keyScope: domainKeys)
+                        onResetAppOverride?(bundleID)
                     } label: {
                         Label("Reset Pane to Defaults", systemImage: "arrow.counterclockwise")
                     }
@@ -898,6 +902,7 @@ struct AppOverrideBar: View {
                     settings.removeAllAppOverrides()
                 } else {
                     settings.removeAppOverride(bundleID: override.bundleID, keyScope: domainKeys)
+                    onResetAppOverride?(override.bundleID)
                 }
             }
             .appFont(.settingsLabel)

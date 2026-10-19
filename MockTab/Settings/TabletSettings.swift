@@ -1004,6 +1004,9 @@ final class TabletSettings: ObservableObject {
     /// All per-app overrides registered for this device.
     @Published var appOverrides: [AppOverride] = []
 
+    /// Overrides `followAppOverride` added that haven't been edited yet.
+    var followedEmptyOverrideIDs: Set<String> = []
+
     /// The override the driver is currently applying, keyed by frontmost app.
     /// Set exclusively by handleAppOverrideActivation (AppWatcher).
     /// Used by reloadAll() / load helpers so the injector reads the right values.

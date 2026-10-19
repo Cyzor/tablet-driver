@@ -72,6 +72,27 @@ extension TabletSettings {
         reloadAll()
     }
 
+    /// Selects this device's override for an app chosen in another device's
+    /// window, as when a tablet's Buttons pane shows a companion's controls.
+    /// Adds an empty override if the app has none, and drops the one it
+    /// added last time if that was never edited.
+    func followAppOverride(bundleID: String?, appName: String?) {
+        guard !appOverridesLoadFailed else { return }
+        for id in followedEmptyOverrideIDs where id != bundleID {
+            followedEmptyOverrideIDs.remove(id)
+            guard appOverrides.first(where: { $0.bundleID == id })?.overriddenKeys.isEmpty == true
+            else { continue }
+            appOverrides.removeAll { $0.bundleID == id }
+            saveAppOverrides()
+        }
+        if let bundleID, let appName, !appOverrides.contains(where: { $0.bundleID == bundleID }) {
+            appOverrides.append(AppOverride(bundleID: bundleID, appName: appName))
+            saveAppOverrides()
+            followedEmptyOverrideIDs.insert(bundleID)
+        }
+        selectAppOverride(bundleID: bundleID)
+    }
+
     /// Registers the given application as having a per-app override for this device.
     /// Creates an empty override entry; settings modified afterwards are routed to it.
     /// No-ops if the app already has a registered override.
