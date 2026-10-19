@@ -32,6 +32,7 @@ private func testArtwork() {
         ("slim", .slim, [CGPoint(x: 9.13, y: 60), CGPoint(x: 12.6, y: 200), CGPoint(x: 15.0, y: 371.08), CGPoint(x: 0, y: 381.43)]),
         ("straight", .straight, [CGPoint(x: 10.4, y: 60), CGPoint(x: 12.1, y: 300), CGPoint(x: 0, y: 381.43)]),
         ("xencelabs", .xencelabs, [CGPoint(x: 11.6, y: 63), CGPoint(x: 14.6, y: 193), CGPoint(x: 18.19, y: 371.87), CGPoint(x: 0, y: 384.43)]),
+        ("artPen2", .artPen2, [CGPoint(x: 9.93, y: 60), CGPoint(x: 12.39, y: 250), CGPoint(x: 14.67, y: 360), CGPoint(x: 0, y: 381.43)]),
     ]
     for (name, recipe, points) in barrels {
         let body = recipe.body
@@ -65,7 +66,7 @@ private func testArtwork() {
 private func testVariants() {
     var recipes: [(String, PenRecipe)] = []
     for (name, barrel) in [("classic", PenRecipe.classic), ("slim", .slim), ("straight", .straight), ("xencelabs", .xencelabs),
-                           ("fat", .straight.girth(1.3)), ("thin", .straight.girth(0.85))] {
+                           ("artPen2", .artPen2), ("fat", .straight.girth(1.3)), ("thin", .straight.girth(0.85))] {
         for count in 0...5 {
             for eraser in [false, true] {
                 var r = barrel.buttons(count)
@@ -82,7 +83,7 @@ private func testVariants() {
         case .single: expected = 1
         case let .separate(n): expected = n
         case let .rocker(dot): expected = dot ? 3 : 2
-        case .pairAndDot: expected = 3
+        case .pairAndDot, .slotAndRocker: expected = 3
         }
         expect(count == expected, "\(name): \(expected) buttons drawn (\(count))")
         expect(count <= 3, "\(name): at most three buttons, as the pane's parts allow")

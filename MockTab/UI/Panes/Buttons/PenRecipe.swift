@@ -44,6 +44,8 @@ struct PenRecipe: Equatable {
         case rocker(dot: Bool)
         /// Two separate slots with a third button as a dot below them.
         case pairAndDot
+        /// A two-way rocker, with a third button as a slot above it.
+        case slotAndRocker
     }
 
     /// Clickable parts, matching the pane's binding rows.
@@ -82,6 +84,13 @@ struct PenRecipe: Equatable {
         waistY: 331.08, waistHalf: 15.85, flareY: 371.87, flareHalf: 18.19,
         chamferHalf: 10.79, tipHalf: 8.41, eraser: true, buttons: .pairAndDot,
         seamY: 178.53, bottom: 384.43)
+    /// Art Pen 2: a straight taper that bends at the seam, a rocker with a
+    /// slot above it, and no eraser.
+    static let artPen2 = PenRecipe(
+        top: 47.55, topHalf: 9.77, seamHalf: 11.45, stepHalf: 11.45,
+        waistY: 369.65, waistHalf: 14.87, flareY: 369.65, flareHalf: 14.87,
+        chamferHalf: 11.1, tipHalf: 9.65, eraser: false, buttons: .slotAndRocker,
+        seamY: 183.51)
 
     /// The same pen with its body widened or narrowed; the tip, eraser, and
     /// buttons keep their size.
@@ -107,6 +116,7 @@ struct PenRecipe: Equatable {
             switch buttons {
             case .rocker: r.buttons = .rocker(dot: count >= 3)
             case .pairAndDot: r.buttons = count >= 3 ? .pairAndDot : .separate(2)
+            case .slotAndRocker: r.buttons = count >= 3 ? .slotAndRocker : .rocker(dot: false)
             default: r.buttons = .separate(min(count, 3))
             }
         }
@@ -186,24 +196,31 @@ extension PenRecipe {
                 return (i + 1, slot(center - length / 2, center + length / 2))
             }
         case let .rocker(dot):
-            // Round outer ends, flat inner ends, narrowing slightly toward the split.
-            let w = 5.55, n = 4.92
-            let upper = Self.rounded([CGPoint(x: -n, y: 305.41), CGPoint(x: -w, y: 264.16),
-                                      CGPoint(x: w, y: 264.16), CGPoint(x: n, y: 305.41)], radius: 1)
-                .intersection(CGPath(roundedRect: CGRect(x: -w, y: 264.16, width: 2 * w, height: 60),
-                                     cornerWidth: w, cornerHeight: w, transform: nil))
-            let lower = Self.rounded([CGPoint(x: -n, y: 310.35), CGPoint(x: n, y: 310.35),
-                                      CGPoint(x: w, y: 333.09), CGPoint(x: -w, y: 333.09)], radius: 1)
-                .intersection(CGPath(roundedRect: CGRect(x: -w, y: 290, width: 2 * w, height: 43.09),
-                                     cornerWidth: w, cornerHeight: w, transform: nil))
-            var shapes: [(number: Int, path: CGPath)] = [(1, lower), (2, upper)]
+            var shapes = Self.rocker(top: 264.16, split: 305.41, bottom: 333.09)
             if dot { shapes.append((3, Self.dot(at: 343.67, radius: 5.64))) }
             return shapes
+        case .slotAndRocker:
+            return Self.rocker(top: 269.16, split: 306.41, bottom: 334.08) + [(3, slot(237.72, 262.6))]
         case .pairAndDot:
             let length = 23.33
             return [(1, slot(311.81, 311.81 + length)), (2, slot(281.64, 281.64 + length)),
                     (3, Self.dot(at: 347.67, radius: 5.69))]
         }
+    }
+
+    /// A rocker's two halves: round outer ends, flat inner ends, narrowing
+    /// slightly toward the split.
+    private static func rocker(top: Double, split: Double, bottom: Double) -> [(number: Int, path: CGPath)] {
+        let w = 5.55, n = 4.92, lowerTop = split + 4.94
+        let upper = rounded([CGPoint(x: -n, y: split), CGPoint(x: -w, y: top),
+                             CGPoint(x: w, y: top), CGPoint(x: n, y: split)], radius: 1)
+            .intersection(CGPath(roundedRect: CGRect(x: -w, y: top, width: 2 * w, height: 60),
+                                 cornerWidth: w, cornerHeight: w, transform: nil))
+        let lower = rounded([CGPoint(x: -n, y: lowerTop), CGPoint(x: n, y: lowerTop),
+                             CGPoint(x: w, y: bottom), CGPoint(x: -w, y: bottom)], radius: 1)
+            .intersection(CGPath(roundedRect: CGRect(x: -w, y: bottom - 43.09, width: 2 * w, height: 43.09),
+                                 cornerWidth: w, cornerHeight: w, transform: nil))
+        return [(1, lower), (2, upper)]
     }
 
     private static func dot(at y: Double, radius r: Double) -> CGPath {
