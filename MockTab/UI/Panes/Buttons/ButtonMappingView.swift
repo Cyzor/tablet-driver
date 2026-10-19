@@ -193,7 +193,12 @@ struct ButtonMappingView: View {
         SettingsPane(
             settings: settings, tabletManager: tabletManager, registry: registry,
             instanceKey: instanceKey, overrideKeys: AppOverrideBar.buttonKeys,
-            onResetToDefaults: resetToDefaults
+            onResetToDefaults: resetToDefaults,
+            onResetAppOverride: { bundleID in
+                companionContext?.settings.removeAppOverride(
+                    bundleID: bundleID, keyScope: AppOverrideBar.buttonKeys)
+                followChipSelection()
+            }
         ) {
             // Aux-only devices (Quick Keys puck/dongle) have no pen digitizer,
             // so the pen-buttons section is structurally inapplicable — and
@@ -236,7 +241,18 @@ struct ButtonMappingView: View {
             if let pid = productID {
                 tabletManager.ensureCompanionStubs(forOwnerProductID: pid)
             }
+            followChipSelection()
         }
+        .onChange(of: settings.activeAppOverride?.bundleID) { _ in followChipSelection() }
+        .onChange(of: companionProductID) { _ in followChipSelection() }
+    }
+
+    /// The companion keeps its own per-app overrides. Its section here shows
+    /// the one for the app chosen in this window's chip bar.
+    private func followChipSelection() {
+        let selected = settings.activeAppOverride
+        companionContext?.settings.followAppOverride(
+            bundleID: selected?.bundleID, appName: selected?.appName)
     }
 
     // MARK: - Reset to Defaults

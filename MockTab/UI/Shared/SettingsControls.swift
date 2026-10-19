@@ -91,6 +91,7 @@ struct SettingsPane<Content: View>: View {
     /// nil panes get no "Reset to Defaults" entry. Per-app-override resets
     /// don't need this — they reuse `settings.removeAppOverride(keyScope:)`.
     var onResetToDefaults: (() -> Void)?
+    var onResetAppOverride: ((String) -> Void)?
     @ViewBuilder let content: () -> Content
 
     init(settings: TabletSettings,
@@ -99,6 +100,7 @@ struct SettingsPane<Content: View>: View {
          instanceKey: DeviceInstanceKey?,
          overrideKeys: Set<String>? = nil,
          onResetToDefaults: (() -> Void)? = nil,
+         onResetAppOverride: ((String) -> Void)? = nil,
          @ViewBuilder content: @escaping () -> Content) {
         self.settings = settings
         self.tabletManager = tabletManager
@@ -106,6 +108,7 @@ struct SettingsPane<Content: View>: View {
         self.instanceKey = instanceKey
         self.overrideKeys = overrideKeys
         self.onResetToDefaults = onResetToDefaults
+        self.onResetAppOverride = onResetAppOverride
         self.content = content
     }
 
@@ -116,7 +119,8 @@ struct SettingsPane<Content: View>: View {
                 AppOverrideBar(
                     settings: settings, domainKeys: overrideKeys,
                     productID: instanceKey?.productID,
-                    onResetToDefaults: onResetToDefaults)
+                    onResetToDefaults: onResetToDefaults,
+                    onResetAppOverride: onResetAppOverride)
             } else {
                 // Keeps the form from scrolling under the toolbar, so every
                 // pane's toolbar stays solid.
