@@ -83,7 +83,7 @@ extension TabletSettings {
 
     /// Creates a new preset from a parsed import dict (keys are the same internal
     /// key names used by `saveAsPreset`, values are already in UserDefaults-ready form).
-    /// The preset is appended but NOT activated.  Returns the new preset.
+    /// The preset is appended but not activated.  Returns the new preset.
     ///
     /// Undoable: unlike overrides/tool settings, an imported preset always
     /// gets a fresh UUID, so there's no collision to reason about — undo is

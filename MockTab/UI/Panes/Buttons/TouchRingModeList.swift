@@ -159,7 +159,7 @@ struct TouchRingModeListView: View {
 
     /// Mode currently expanded for editing; nil = all collapsed (pure
     /// overview). Session-scoped view state, deliberately not persisted.
-    /// Lives in this thin non-equatable wrapper — NOT in the equatable core
+    /// Lives in this thin non-equatable wrapper — not in the equatable core
     /// below — because a Form row swallows @State-driven re-renders inside
     /// an EquatableView (selection clicks stopped disclosing anything).
     /// Here the state change re-runs this cheap body, the core receives a

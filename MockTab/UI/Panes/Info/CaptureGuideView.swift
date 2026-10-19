@@ -298,7 +298,7 @@ struct CaptureGuideView: View {
         guard coordinator.start(), let info = coordinator.resolvedInfo else { return }
         checklistOrder = Self.checklistOrder(vendorID: info.vendorID, productID: info.productID)
         if let reportID = coordinator.autoDetectedModeReportID {
-            // Deliberately does NOT expand the section. Pre-filling the field
+            // Deliberately does not expand the section. Pre-filling the field
             // is the useful part; opening it put two text fields on screen at
             // first layout, and AppKit handed first responder to the Report
             // field — instantiating the shared field editor, which drew a

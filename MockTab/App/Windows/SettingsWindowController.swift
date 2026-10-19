@@ -700,14 +700,6 @@ final class SettingsWindowController: NSWindowController {
         selectTab(at: index)
     }
 
-    /// `showTab(at:)` without the activation — for callers that have already
-    /// placed the window with `orderFront()` and must not pull focus.
-    func orderFrontWithTab(at index: Int) {
-        suppressAutoResize()
-        orderFront()
-        selectTab(at: index)
-    }
-
     /// Selects a tab without putting the window on screen, so a restore can
     /// build several windows and show them together.
     func prepareTab(at index: Int) {

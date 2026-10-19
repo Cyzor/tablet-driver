@@ -12,7 +12,7 @@ import TabletKit
 /// the tool. Parts illuminate in accent color when the corresponding
 /// physical input is active.
 ///
-/// Thin non-equatable wrapper owning the pressed-part state — NOT in the
+/// Thin non-equatable wrapper owning the pressed-part state — not in the
 /// equatable core below — because a Form row swallows @State-driven
 /// re-renders inside an EquatableView (same trap as TouchRingModeListView).
 struct PenDiagramView: View {

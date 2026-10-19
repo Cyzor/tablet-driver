@@ -13,7 +13,7 @@ struct ScratchpadView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
-    /// Deliberately NOT @ObservedObject: the ~30 Hz touch-frame stream must
+    /// Deliberately not @ObservedObject: the ~30 Hz touch-frame stream must
     /// invalidate only the small `TouchVisualizer` child (which observes the
     /// publisher itself), not this whole pane — re-evaluating the full body
     /// per frame was a measurable main-thread CPU cost while touch was live.
