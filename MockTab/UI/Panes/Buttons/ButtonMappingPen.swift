@@ -17,6 +17,32 @@ extension ButtonMappingView {
         let hasWheel = toolSpec?.hasWheel == true
 
         Section {
+            // Diagram row first, like the other panes' previews; every pen
+            // draws at one height, so the rows below don't move when the tool
+            // changes. No label column; transparent so the section background
+            // shows through unchanged. Clicking a part starts recording in its
+            // binding row — parts whose row isn't shown (mouse tools, missing
+            // buttons) stay inert.
+            PenDiagramView(liveButtons: lb, recipe: PenRecipe(tool: toolSpec, buttonCount: isMouse ? 3 : btnCount, hasEraser: penHasEraser), onPartTap: { part in
+                switch part {
+                case .tip: if !isMouse { penRecordTokens[0] += 1 }
+                case .eraser: if !isMouse { penRecordTokens[1] += 1 }
+                case .button1: if btnCount >= 1 { penRecordTokens[2] += 1 }
+                case .button2: if btnCount >= 2 { penRecordTokens[3] += 1 }
+                case .button3: if btnCount >= 3 { penRecordTokens[4] += 1 }
+                }
+            }, enabledParts: {
+                var parts: Set<PenDiagramView.Part> = []
+                if !isMouse { parts.insert(.tip); parts.insert(.eraser) }
+                if btnCount >= 1 { parts.insert(.button1) }
+                if btnCount >= 2 { parts.insert(.button2) }
+                if btnCount >= 3 { parts.insert(.button3) }
+                return parts
+            }())
+                .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
+                .listRowInsets(EdgeInsets(top: 14, leading: 8, bottom: 14, trailing: 8))
+                .listRowBackground(Color.clear)
+
             // Tip — only for non-mouse tools
             if !isMouse {
                 buttonRow(
@@ -91,30 +117,6 @@ extension ButtonMappingView {
             if hasWheel {
                 buttonRow(Self.wheelLabel(tool: toolSpec), isActive: false, binding: wheelBinding, modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
             }
-
-            // Diagram row: no label column; transparent so the section
-            // background shows through unchanged. Clicking a part starts
-            // recording in its binding row — parts whose row isn't shown
-            // (mouse tools, missing buttons) stay inert.
-            PenDiagramView(liveButtons: lb, recipe: PenRecipe(tool: toolSpec, buttonCount: isMouse ? 3 : btnCount, hasEraser: penHasEraser), onPartTap: { part in
-                switch part {
-                case .tip: if !isMouse { penRecordTokens[0] += 1 }
-                case .eraser: if !isMouse { penRecordTokens[1] += 1 }
-                case .button1: if btnCount >= 1 { penRecordTokens[2] += 1 }
-                case .button2: if btnCount >= 2 { penRecordTokens[3] += 1 }
-                case .button3: if btnCount >= 3 { penRecordTokens[4] += 1 }
-                }
-            }, enabledParts: {
-                var parts: Set<PenDiagramView.Part> = []
-                if !isMouse { parts.insert(.tip); parts.insert(.eraser) }
-                if btnCount >= 1 { parts.insert(.button1) }
-                if btnCount >= 2 { parts.insert(.button2) }
-                if btnCount >= 3 { parts.insert(.button3) }
-                return parts
-            }())
-                .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
-                .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
-                .listRowBackground(Color.clear)
         } header: {
             PaneSectionHeader(isMouse ? "Mouse Buttons" : "Pen Buttons") {
                 ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
