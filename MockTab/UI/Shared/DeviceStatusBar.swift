@@ -246,6 +246,11 @@ struct DeviceStatusBar: View {
         if context.isConnected && context.wirelessLinked == false {
             return ("moon.zzz", String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep"))
         }
+        if context.awaitingBatteryReading {
+            return (
+                BatteryIndicator.symbolName(pct: 100, charging: false),
+                String(localized: "Checking…", comment: "Battery value while a wireless tablet's level settles after it links"))
+        }
         guard let pct = context.batteryPercent else {
             guard context.batteryCharging else { return nil }
             return (

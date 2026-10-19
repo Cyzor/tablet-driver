@@ -294,6 +294,12 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// sleeps); nil otherwise. Its battery reading is the last one before.
     @Published var wirelessLinked: Bool? = nil
 
+    /// A tablet on the wireless kit is linked, but its level hasn't held long
+    /// enough to show yet.
+    var awaitingBatteryReading: Bool {
+        isConnected && wirelessLinked == true && batteryPercent == nil && !batteryCharging
+    }
+
     /// True if the device is currently charging.
     @Published var batteryCharging: Bool = false {
         didSet { if batteryCharging { noteBatteryReported() } }

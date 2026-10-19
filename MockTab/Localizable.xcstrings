@@ -4115,6 +4115,29 @@
         }
       }
     },
+    "Checking…" : {
+      "comment" : "Battery value while a wireless tablet's level settles after it links",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geprüft …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確認中…"
+          }
+        }
+      }
+    },
     "Choose a MockTab backup file to import" : {
       "comment" : "File picker message for importing backup",
       "localizations" : {

@@ -129,7 +129,8 @@ extension InfoView {
             // before keeps the row while it connects, so rows below don't shift.
             let batteryPercent = deviceContext?.batteryPercent
             let charging = deviceContext?.batteryCharging ?? false
-            if batteryPercent != nil || charging
+            let checking = deviceContext?.awaitingBatteryReading == true
+            if batteryPercent != nil || charging || checking
                 || (instanceKey ?? deviceContext?.instanceKey).map(DeviceContext.expectsBatteryReport(for:)) == true
             {
                 row(
@@ -142,7 +143,9 @@ extension InfoView {
                         ? String(
                             localized: "Charging",
                             comment: "Status bar and Info battery value while a tablet charges and doesn't report its level")
-                        : "—"),
+                        : checking
+                            ? String(localized: "Checking…", comment: "Battery value while a wireless tablet's level settles after it links")
+                            : "—"),
                     ok: batteryPercent.map { $0 < 20 ? false : nil } ?? nil,
                     leadingSymbol: BatteryIndicator.symbolName(pct: batteryPercent ?? 100, charging: charging),
                     // Affirmative green when healthy — this table is the
