@@ -226,7 +226,7 @@ struct TouchView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
 
-            TouchAreaCropView(settings: settings, spec: spec, productID: productID)
+            TouchAreaCropView(settings: settings, spec: spec, productID: effectiveProductID)
                 .frame(height: 200)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
@@ -268,15 +268,9 @@ struct TouchView: View {
         let spec: TabletSpec?
         let productID: Int?
 
-        /// Sourced from the tablet's own physical/pen-digitizer proportions —
-        /// same derivation as `TabletAreaView.activeAspectRatio` — rather than
-        /// touch's own sensor maxima, so this tool's preview box matches the
-        /// Tablet Area pane's shape for the same device. (Touch's actual
-        /// sensor resolution is more square on some models — PTH-850 and
-        /// PTH-651's kernel-reported 4096×4096 touch space against a physical
-        /// 1.60 aspect — but this box aims for cross-pane visual consistency,
-        /// not touch-sensor precision.) Physical millimetres first; the pen
-        /// digitizer's raw maxima only as a fallback.
+        /// The surface's shape as the Tablet Area pane derives it, not the
+        /// touch sensor's maxima (4096×4096 on some models), so both panes
+        /// draw the same box. Millimeters first, pen maxima as a fallback.
         private var aspectRatio: Double {
             if let pid = productID,
                 let profile = VendorDeviceRegistry.profile(forProductID: pid),
@@ -341,19 +335,31 @@ struct TouchView: View {
             )
         }
 
+        /// The same tablet the Tablet Area pane draws behind its editor.
+        private var figure: TabletFigure {
+            let pid = productID ?? TabletFigure.fallbackProductID
+            return TabletFigure(
+                layoutProductID: VendorDeviceRegistry.profile(forProductID: pid) == nil ? pid : nil,
+                surfaceMM: sizeMM,
+                aspect: aspectRatio,
+                isPenDisplay: spec?.isPenDisplay == true)
+        }
+
         var body: some View {
             // `onCommit` fires once on drag-end, so a crop drag is undoable
             // here exactly as it is in the pen pane.
-            NormalizedAreaEditor(
-                aspectRatio: orientedAspectRatio,
-                rect: rectBinding,
-                onCommit: { oldRect in
-                    settings.recordTouchAreaDrag(before: TabletSettings.AreaSnapshot(
-                        x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
-                })
-                .speaking(
-                    as: String(localized: "Touch Area"),
-                    size: .tablet(sizeMM, orientation: settings.tabletOrientation))
+            TabletBezelFrame(figure: figure.oriented(settings.tabletOrientation)) {
+                NormalizedAreaEditor(
+                    aspectRatio: orientedAspectRatio,
+                    rect: rectBinding,
+                    onCommit: { oldRect in
+                        settings.recordTouchAreaDrag(before: TabletSettings.AreaSnapshot(
+                            x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
+                    })
+                    .speaking(
+                        as: String(localized: "Touch Area"),
+                        size: .tablet(sizeMM, orientation: settings.tabletOrientation))
+            }
         }
     }
 
