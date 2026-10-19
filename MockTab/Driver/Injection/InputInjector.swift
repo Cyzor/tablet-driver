@@ -481,7 +481,7 @@ final class InputInjector: @unchecked Sendable {
     // light lift doesn't end a fast stroke. Cancelled if the tip comes back down.
 
     static let tipUpAssistVelocityThreshold: CGFloat = 2.0  // pts/sample
-    /// One-shot CFRunLoopTimer scheduled on HIDThread (NOT the main queue —
+    /// One-shot CFRunLoopTimer scheduled on HIDThread (not the main queue —
     /// a congested main thread must not be able to stretch the 80 ms delay).
     /// Fires and is cancelled on HIDThread, same thread as all per-report state.
     var pendingMouseUp: CFRunLoopTimer? = nil

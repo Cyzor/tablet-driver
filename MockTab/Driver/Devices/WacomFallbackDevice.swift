@@ -37,7 +37,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 /// button 1), middle-click (barrel button 2 / mouse middle), eraser detection,
 /// tool-change packets (IntuosV1), pen serial (IntuosV2), express keys.
 ///
-/// Does NOT provide:  EA/E0 button debounce (DTK-2400 specific), Art Pen
+/// Does not provide:  EA/E0 button debounce (DTK-2400 specific), Art Pen
 /// rotation, touch ring, or device seizure.  For full-fidelity support,
 /// create a dedicated `*Device.swift`.
 final class WacomFallbackDevice: TabletDevice, @unchecked Sendable {  // split between main and the pen thread; see ThreadContract

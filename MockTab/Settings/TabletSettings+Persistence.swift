@@ -16,7 +16,7 @@ extension TabletSettings {
     // MARK: - Reload
 
     /// Reloads every setting from UserDefaults using the current `devicePrefix`
-    /// and `activeProfile`.  Falls back to legacy unprefixed keys, then to
+    /// and `activeProfile`.  Falls back to bare unprefixed keys, then to
     /// compile-time defaults.
     func reloadAll() {
         isLoading = true
@@ -186,13 +186,13 @@ extension TabletSettings {
     ///   active app override (if key is in its `overriddenKeys`)
     ///   → active profile  (if key is in its `overriddenKeys`)
     ///   → device prefix
-    ///   → legacy unprefixed key (pre-per-device migration)
+    ///   → bare unprefixed key (a global `defaults write` value)
     ///   → nil  (caller substitutes the compile-time default)
     ///
-    /// The empty-string return ("") signals "use the unprefixed legacy key" —
+    /// The empty-string return ("") signals "use the bare key" —
     /// `prefix + key` is then literally `key`.
     ///
-    /// All `load*` helpers below MUST go through this function. Adding a new
+    /// All `load*` helpers below must go through this function. Adding a new
     /// inheritance layer requires editing this method and nowhere else.
     private func resolveLayer(for key: String) -> String? {
         if let override = effectiveOverride,
@@ -439,9 +439,8 @@ extension TabletSettings {
         loadRotaries(controlCount: max(1, controlCount))
     }
 
-    /// Loads touchRingSlots with migration from legacy touchRingMode/touchStrip*Mode keys.
+    /// Loads touchRingSlots from the override, profile, or device layer.
     private func loadTouchRingSlots() {
-        // Try override, then preset, then device, then legacy keys.
         var data: Data?
         if let override = effectiveOverride, override.overriddenKeys.contains("touchRingSlotsJSON") {
             data = ud.data(forKey: appOverrideKeyPrefix(override) + "touchRingSlotsJSON")
@@ -465,17 +464,7 @@ extension TabletSettings {
             return
         }
         touchRingSlotsLoadFailed = false
-
-        // Migration: synthesize slots from legacy touchRingMode.
-        // touchStrip1Mode and touchStrip2Mode are ignored — strips share the ring's mode.
-        let legacyMode =
-            TouchRingMode(
-                rawValue: loadString("touchRingMode", default: TouchRingMode.scroll.rawValue))
-            ?? .scroll
-        switch legacyMode {
-        default:
-            touchRingSlots = ControlSlot.defaults
-        }
+        touchRingSlots = ControlSlot.defaults
     }
 
     // MARK: - Reset

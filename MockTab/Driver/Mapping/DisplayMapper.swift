@@ -116,7 +116,7 @@ struct DisplayMapper {
     private var lastRelativeNorm: CGPoint? = nil
 
     /// The relative-mode cursor position, owned here as an unrounded float and
-    /// carried report-to-report — NOT re-read from the OS cursor each time.
+    /// carried report-to-report — not re-read from the OS cursor each time.
     /// Re-reading (`CGEvent(source: nil).location`) races WindowServer's async
     /// commit of the previous posted move: at ~5ms between reports the readback
     /// often hasn't caught up yet, so computing the next delta from a stale

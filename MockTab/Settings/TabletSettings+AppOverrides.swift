@@ -63,7 +63,7 @@ extension TabletSettings {
     /// Selects an override by bundle ID for viewing/editing in the UI without
     /// requiring the app to be frontmost.  Pass nil to return to device defaults.
     /// Changes the editing context (chip highlight, persist routing, UI panel values)
-    /// but does NOT affect what the driver applies (driverOverride).
+    /// but does not affect what the driver applies (driverOverride).
     func selectAppOverride(bundleID: String?) {
         let newOverride = bundleID.flatMap { bid in appOverrides.first { $0.bundleID == bid } }
         guard newOverride?.bundleID != activeAppOverride?.bundleID else { return }

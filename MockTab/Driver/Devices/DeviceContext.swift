@@ -309,7 +309,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Serial ID (as hex string) of the tool currently in proximity, or nil.
     @Published var activeToolID: String? = nil
 
-    /// Last-seen pen/stylus point at tablet coordinates. Deliberately NOT
+    /// Last-seen pen/stylus point at tablet coordinates. Deliberately not
     /// @Published: TabletManager forwards every context.objectWillChange up
     /// to its own objectWillChange, which every SwiftUI view holding
     /// @ObservedObject tabletManager observes — including panes (e.g.

@@ -1687,7 +1687,7 @@ struct TouchStateTracker {
             // Backstop: the wound-down gesture's own finger(s) are still
             // down after the whole backstop window — an all-lifted frame
             // was apparently lost. Release the hold, but resume as a plain
-            // pointer, NOT a fresh `.pending`: seeding a new `tapStart`
+            // pointer, not a fresh `.pending`: seeding a new `tapStart`
             // here would make this lingering finger tap-eligible, so a
             // pan → lift-one → rest → lift would fire a phantom click.
             // Leaving `tapStart` stale means the isEmpty branch's

@@ -46,7 +46,7 @@ struct TouchVisualizer: View {
 /// noise and unrelated X/Y movement are filtered out for free.
 struct TiltVisualizerCanvas: View {
     @ObservedObject var tabletManager: TabletManager
-    /// Incremented by the `livePointPublisher` subscription below. It MUST be
+    /// Incremented by the `livePointPublisher` subscription below. It must be
     /// read in `body` (see the `let _` line) to register as a dependency —
     /// a `@State` write to a value the body never reads does not invalidate
     /// the view, so without the read the disc only refreshed when some *other*

@@ -1042,7 +1042,7 @@ final class TabletManager: ObservableObject {
             // First transport this context has ever seen — wire the
             // settings-driven hardware sinks once. A second transport
             // (e.g. the dongle joining a context the wired puck already
-            // owns) must NOT repeat this: these sinks target whichever
+            // owns) must not repeat this: these sinks target whichever
             // slot currently wins, so a second subscription fires every
             // write twice. (after open() so initial LED sync reaches it)
             context.observeRingLED()

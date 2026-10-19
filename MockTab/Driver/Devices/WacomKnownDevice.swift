@@ -694,7 +694,7 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
                 }
             }
         } else {
-            // Do NOT seize here — seizing 0x01 causes the PTH-660/860 firmware to stop
+            // Do not seize here — seizing 0x01 causes the PTH-660/860 firmware to stop
             // sending pen reports entirely. The IOHIDManager already holds the device open
             // for input delivery; that same open is sufficient for IOHIDDeviceSetReport.
             onPenThread {

@@ -24,7 +24,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 /// exposes them) tip pressure, barrel buttons, eraser, and tilt. Anything the
 /// descriptor doesn't describe simply does nothing.
 ///
-/// Does NOT provide: express keys, touch ring/strip, rotation, vendor mode
+/// Does not provide: express keys, touch ring/strip, rotation, vendor mode
 /// switching, or device seizure. Those need a dedicated `*Device.swift` or a
 /// vendor handshake. This is the rudimentary-usability tier, not full fidelity.
 final class GenericHIDDigitizer: TabletDevice {
