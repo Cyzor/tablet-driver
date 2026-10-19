@@ -193,7 +193,7 @@ extension InputInjector {
         if !touchRing2Active { ring2Accum = 0 }
         lastRing2Pos = touchRing2Active ? ring2Pos : 0x7F
 
-        // ── Touch strips (Intuos3 WS): ring 1's modes, no wrap ─────────────────
+        // ── Touch strips (Intuos3): ring 1's modes, no wrap ─────────────────
 
         // Strip 1 (left).
         let s1pos = pad.strips.first?.position.map { UInt8($0) } ?? 0xFF
