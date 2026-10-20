@@ -129,6 +129,20 @@ struct TabletFigureControlsTests {
         #expect(keys.contains(.expressKey(0)) && keys.contains(.expressKey(10)) && keys.contains(.ring(1)))
     }
 
+    @Test("Keys keep their distance from a centered ring, the same on both sides")
+    func ringSpacing() throws {
+        let pro = try #require(Self.figures.first { $0.name.contains("PTH-660") }?.figure)
+        for scale in [1.0, 2.0] {
+            let d = pro.drawing(.bezel, in: CGRect(x: 2, y: 2, width: 596, height: 176), scale: scale)
+            let ring = try #require(d.shapes.first { $0.kind == .ring }).rect
+            let keys = d.shapes.filter { $0.kind == .key }.map(\.rect)
+            let above = ring.minY - (keys.filter { $0.maxY <= ring.minY }.map(\.maxY).max() ?? 0)
+            let below = (keys.filter { $0.minY >= ring.maxY }.map(\.minY).min() ?? 0) - ring.maxY
+            #expect(abs(above - below) < 1 / scale + 1e-9, "mirrored about the ring: \(above) above, \(below) below")
+            #expect(min(above, below) >= 3 * d.grid - 1e-9, "at least three grid steps from the ring")
+        }
+    }
+
     @Test("Turning a figure drops its controls")
     func turnDropsControls() throws {
         let figure = try #require(Self.figures.first?.figure)
