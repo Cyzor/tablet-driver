@@ -92,7 +92,9 @@ final class DeviceContext: ObservableObject, Identifiable {
     var hasAnyDriverSlot: Bool { !driverSlots.isEmpty }
 
     /// Whether the tablet currently runs through the Wacom wireless kit.
-    var isOnWirelessKit: Bool { activeDriverRawProductID == 0x0084 }
+    var isOnWirelessKit: Bool { activeDriverRawProductID == Self.wirelessKitRawProductID }
+
+    private static let wirelessKitRawProductID = 0x0084
 
     /// The connection as shown: the kit's receiver is a USB device, but
     /// "USB" would read as a cable.
@@ -109,6 +111,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     func installDriver(_ driver: any TabletDevice, forRawProductID rawPID: Int) {
         driverSlots[rawPID] = driver
         applyRotaryHardware()
+        showKitBatteryOnlyWhileKitDrives()
     }
 
     /// Tells the settings how many rotary controls this tablet has. Two are
@@ -127,7 +130,8 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Does not touch other slots — a surviving transport keeps running.
     @discardableResult
     func removeDriverSlot(forRawProductID rawPID: Int) -> (any TabletDevice)? {
-        driverSlots.removeValue(forKey: rawPID)
+        defer { showKitBatteryOnlyWhileKitDrives() }
+        return driverSlots.removeValue(forKey: rawPID)
     }
 
     /// Re-applies every persisted display-affecting setting directly to the
@@ -288,6 +292,37 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// level: the wireless kit's level reads high while the tablet charges.
     @Published var batteryPercent: Int? = nil {
         didSet { if batteryPercent != nil { noteBatteryReported() } }
+    }
+
+    /// The kit's last reading, held while a cable drives the tablet: a cable
+    /// carries no battery level, and the kit reports only changes, so a
+    /// cleared reading wouldn't come back when the kit drives again.
+    private var heldKitBattery: (percent: Int?, charging: Bool)?
+
+    /// Stores a battery reading. A tablet with the kit attached hears its
+    /// level only from the kit, so a reading while a cable drives is held.
+    func applyBatteryReading(percent: Int?, charging: Bool) {
+        if driverSlots[Self.wirelessKitRawProductID] != nil && !isOnWirelessKit {
+            heldKitBattery = (percent, charging)
+        } else {
+            batteryPercent = percent
+            batteryCharging = charging
+        }
+    }
+
+    private func showKitBatteryOnlyWhileKitDrives() {
+        if driverSlots[Self.wirelessKitRawProductID] == nil {
+            heldKitBattery = nil
+        } else if isOnWirelessKit {
+            guard let held = heldKitBattery else { return }
+            heldKitBattery = nil
+            batteryPercent = held.percent
+            batteryCharging = held.charging
+        } else if heldKitBattery == nil {
+            heldKitBattery = (batteryPercent, batteryCharging)
+            batteryPercent = nil
+            batteryCharging = false
+        }
     }
 
     /// For a tablet on the wireless kit, whether it's linked (false while it

@@ -739,6 +739,7 @@ final class TabletManager: ObservableObject {
         let instanceKey = probe.instanceKey
         let hadNoDriverYet = !context.hasAnyDriverSlot
         context.installDriver(driver, forRawProductID: rawProductID)
+        updateDockBadge()
         if rawProductID == Self.ack40401ProductID {
             dongleTransports[instanceKey] = DongleTransport(handle: contextHandle, home: context)
         }
@@ -1157,8 +1158,7 @@ final class TabletManager: ObservableObject {
             let context = contextHandle.context
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
-            context.batteryPercent = percent
-            context.batteryCharging = charging
+            context.applyBatteryReading(percent: percent, charging: charging)
             self.updateDockBadge()
             } // end Task @MainActor
         }
@@ -1345,6 +1345,7 @@ final class TabletManager: ObservableObject {
         let wasOwner = context.activeDriverRawProductID == rawPID
         let removed = context.removeDriverSlot(forRawProductID: rawPID)
         removed?.close()
+        updateDockBadge()
         if removed != nil, rawPID == Self.ack40401ProductID {
             dongleTransports = dongleTransports.filter { $0.value.home !== context }
         }
