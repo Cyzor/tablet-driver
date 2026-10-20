@@ -13,6 +13,7 @@ on one of the protocol pages.
 | [PTH-850 pressure ramp](PTH-850-Pressure-Ramp.md) | Pressure starts low and climbs; no jump at first touch |
 | [PTH-850 key order](PTH-850-Key-Order.md) | Keys 1–8 run top to bottom; the ring's center is its own bit |
 | [DTK-2400 key order](DTK-2400-Key-Order.md) | Each side's eight keys run top to bottom, left in byte 6 and right in byte 8 |
+| [PTH-860 Bluetooth keys](PTH-860-Bluetooth-Keys.md) | Keys and the ring's center stay set while held; a resting finger sets only the touch byte |
 | [Report rate](Report-Rate.md) | Xencelabs reports every 5 ms, the Cintiq 24HD every 7 |
 | [Scroll event parity](Scroll-Event-Parity.md) | MockTab's scrolls match a trackpad's in every field an app can set |
 

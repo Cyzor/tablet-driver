@@ -166,9 +166,9 @@ read it unsigned, so a slight left tilt arrived as a hard right one.
 | 99–106 | Tool serial, 64-bit (kernel) |
 | 107–108 | Tool ID (kernel) |
 | 109–280 | Four 43-byte touch frames |
-| 281 | Touch-ring center button (`0x40` pressed) |
-| 282 | Keys, mechanical — set for one report per press |
-| 283 | Keys, capacitive touch |
+| 281 | Touch-ring center button: `0x40` while held |
+| 282 | Keys pressed, one bit each from the top, set while held ([evidence](Evidence/PTH-860-Bluetooth-Keys.md)) |
+| 283 | Keys touched: set while a finger rests on a key, pressed or not |
 | 284 | Battery: bit 7 charging, bits 0–6 percent |
 | 285 | Touch ring: bit 7 active, bits 0–6 position 0–71 |
 
