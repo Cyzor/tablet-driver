@@ -37,7 +37,7 @@ struct TabletControlMapTests {
 
     @Test("Only verified families show")
     func gate() {
-        #expect(TabletControlMap.verifiedFamilies == [.intuos5, .cintiq24HD])
+        #expect(TabletControlMap.verifiedFamilies == [.intuos5, .cintiq24HD, .intuosPro2, .intuosPro3])
         for spec in WacomDeviceRegistry.knownDevices {
             let family = TabletControlMap.family(for: spec)
             let shown = TabletControlMap.forDevice(productID: spec.productID, spec: spec) != nil
@@ -146,11 +146,34 @@ struct TabletControlMapTests {
         return r
     }, released: [0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
 
+    /// PTK-870 over USB: report 0x11, outer keys in byte 1, center keys in byte 3.
+    private static let ptk870Walk = walk("ADIBCEHJFG", { i in
+        let bits: [(Int, UInt8)] = [(1, 0x01), (1, 0x08), (3, 0x01), (1, 0x02), (1, 0x04),
+                                    (1, 0x10), (1, 0x80), (3, 0x02), (1, 0x20), (1, 0x40)]
+        var r: [UInt8] = [0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        r[bits[i].0] = bits[i].1
+        return r
+    }, released: [0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+
+    /// PTK-870 over Bluetooth LE: report 0x1A, outer keys in byte 18, center keys in byte 19.
+    private static let ptk870BLEWalk = walk("ADIBCEHJFG", { i in
+        let bits: [(Int, UInt8)] = [(18, 0x01), (18, 0x08), (19, 0x01), (18, 0x02), (18, 0x04),
+                                    (18, 0x10), (18, 0x80), (19, 0x02), (18, 0x20), (18, 0x40)]
+        var r: [UInt8] = [0x1A, 0x02] + Array(repeating: 0, count: 18)
+        r[bits[i].0] = bits[i].1
+        return r
+    }, released: [0x1A, 0x02] + Array(repeating: 0, count: 18))
+
     @Test("Walked keys light the key that was pressed", arguments: [
-        (0x0028, "PTH-850"), (0x00F4, "DTK-2400"),
+        (0x0028, "PTH-850"), (0x00F4, "DTK-2400"), (0x03F9, "PTK-870"), (0x03F9, "PTK-870 BLE"),
     ])
     func walks(pid: Int, model: String) throws {
-        let steps = pid == 0x0028 ? Self.pth850Walk : Self.dtk2400Walk
+        let steps = switch model {
+        case "PTH-850": Self.pth850Walk
+        case "DTK-2400": Self.dtk2400Walk
+        case "PTK-870": Self.ptk870Walk
+        default: Self.ptk870BLEWalk
+        }
         let spec = try #require(WacomDeviceRegistry.spec(for: pid))
         let map = try #require(TabletControlMap.forDevice(productID: pid, spec: spec))
         var targets: [Character: ControlTarget] = [:]
