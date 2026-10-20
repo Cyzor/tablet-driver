@@ -81,7 +81,9 @@ value.
 | 4 | Left dial, signed 7-bit step count (bits 0–6) |
 | 5 | Right dial, signed 7-bit step count |
 
-Observed, and backed by the tablet's HID descriptor. One full turn of
+Observed, and backed by the tablet's HID descriptor. Each cluster's keys
+run top, right, bottom, left in bit order
+([evidence](Evidence/PTK-870-Key-Order.md)). One full turn of
 either dial is 24 steps; the dials' raised ridges are grip texture, not
 detents. The dials only turn: they have no push switch, and the center key
 between each cluster is an ordinary key.
@@ -106,7 +108,7 @@ later field along by a byte.
 | 14 (high nibble) | Frame counter; mask it off rotation |
 | 15 | Hover distance: 20 in contact, rising with height, 255 out of range |
 | 16–17 | Changes every frame; timing or sequence data |
-| 18 | ExpressKeys: bits 0–3 left cluster, 4–7 right cluster |
+| 18 | ExpressKeys: bits 0–3 left cluster, 4–7 right cluster ([evidence](Evidence/PTK-870-Key-Order.md)) |
 | 19 | Dial flags, below |
 
 All observed. X really is 20 bits: read as 16, it wraps at 65536 (the
@@ -133,7 +135,7 @@ kernel's gen 2 and Pro 2022 layouts)
   starts with the pen already in range may never see one. Nothing else
   identifies the pen.
 
-**Dial flags `[19]`:** bit 0 left cluster active, bit 1 right cluster active,
+**Dial flags `[19]`:** bit 0 left center key, bit 1 right center key,
 bit 2 left dial step, bit 3 left dial counterclockwise, bit 4 right dial
 step, bit 5 right dial counterclockwise. One frame per detent, so each
 flagged frame is exactly one step.
