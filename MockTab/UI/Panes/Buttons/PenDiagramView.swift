@@ -113,6 +113,7 @@ private struct PenDiagramCore: View, Equatable {
     }
 
     var body: some View {
+        let _ = BodyCounter.note("PenDiagramCore")
         Canvas { context, size in
             let t = Self.transform(for: size)
             func view(_ path: CGPath) -> Path { Path(path).applying(t) }

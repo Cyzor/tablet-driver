@@ -80,6 +80,7 @@ struct TouchRingDiagramView: View, Equatable {
     // swiftlint:enable line_length
 
     var body: some View {
+        let _ = BodyCounter.note("TouchRingDiagram")
         Canvas { context, size in
             // Square ring centered in available space, preserving aspect ratio.
             let scale = min(size.width, size.height) / Self.svgSize
