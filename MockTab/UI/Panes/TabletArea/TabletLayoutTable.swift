@@ -87,4 +87,55 @@ enum TabletLayoutTable {
     03F7: cT0 197-295, dT0 307-400, dT0 594-687, cT0 702-800
     03F9: cT0 267-343, dT0 352-424, dT0 574-645, cT0 657-732
     """
+
+    /// Which button each part's keys are, from libwacom, for drawing a
+    /// tablet whose controls light up. Lines group product IDs their own
+    /// way; each lists one entry per part of that model's `packed` line, in
+    /// the same order. Buttons are libwacom's letters, A on, in evdev order.
+    ///
+    /// - `k ABCD`: a run's keys from start to end.
+    /// - `c <grid>`: a cluster's keys. Rows run along the edge from the top
+    ///   or left, columns from the edge inward; `.` is empty, and a letter in
+    ///   several cells is one key spanning them.
+    /// - `r 1`, `d 2`, `s 1`: which ring, dial, or strip, then the key set
+    ///   into it (its center button) or a grid of the keys beside it, where
+    ///   `@` is the ring or dial itself.
+    /// - ` | m A=r1 …`: keys that switch a ring, dial, or strip's mode;
+    ///   `.k` picks mode k, and none cycles through them.
+    /// - ` | ev …`: each button's evdev code from A on, in hex, when they
+    ///   aren't the ExpressKey defaults.
+    static let identity = """
+    0015: k A; k B | ev 110 111
+    0016: k A; k B | ev 116 115
+    0017 0018 0065: c AC; r 1; c BD | ev 116 115 110 111
+    0026 0029 00B8 0314: k BCD; r 1 A; k EFG | m A=r1
+    0027 0028 002A 00B9 00BA 00BB 00BC 00BD 0315 0317: k BCDE; r 1 A; k FGHI | m A=r1
+    003A: k FGHIJ; k BA; c ED; k CB
+    003F: s 1; c CA/CB/DD; s 2; c GE/GF/HH
+    0057 0059: k A; k BCDEF
+    005B 00CC 00FA: s 1; k BCDEAFGHI; s 2; k KLMNJOPQR | m A=s1 J=s2
+    00B0 00B7: c CA/CB/DD; s 1
+    00B1 00B2 00B3 00B4 00B5: c CA/CB/DD; s 1; c GE/GF/HH; s 2
+    00C5: s 1; c KL; c II/CA/CB/DD; s 2; c NM; c JJ/GE/GF/HH
+    00C6: s 1; c II/CA/CB/DD; s 2; c JJ/GE/GF/HH
+    00D0 00D1 00D2 00D3 00D6 00D7 00D8 00D9 00DA 00DB: k ABCD | ev 111 116 115 110
+    00DC 00DE 00DF: k ABCD | ev 110 115 116 111
+    00F4 00F8: r 1 A@/B@/C@; c DEF/DEG/DEH; r 2 I@/J@/K@; c LMN/LMO/LMP | m A=r1.0 B=r1.1 C=r1.2 I=r2.0 J=r2.1 K=r2.2
+    00FB 0336 0359 0374 0375 0376 0377 0378 0379 03C5 03C6 03C7 03C8: k ABCD
+    0302 0303 030E 0323: c AB; c CD | ev 110 111 115 116
+    0304 0333: k BC; r 1 @G@/HAF/@I@; k DE
+    0318 0319: k AB | ev 110 111
+    0325: k BCD; r 1 @I@/JAH/@K@; k EFG
+    033B 033C 033D 033E: c A./.B; c .D/C. | ev 110 111 115 116
+    0343: k CD; k AB
+    034D 0398: k ABC; r 1 @I@/JGH/@K@; k DEF | m H=r1.0 I=r1.1 J=r1.2 K=r1.3
+    034E 0399 03AA: k ABCD; r 1 @K@/LIJ/@M@; k EFGH | m J=r1.0 K=r1.1 L=r1.2 M=r1.3
+    0357 0358 0360 0361: k ABCD; r 1 I; k EFGH | m I=r1
+    037D: k AB; k CD
+    0392 03DC: k ABC; r 1 G; k DEF
+    03B2 03C0 03C4 03D0: k ABCD; k EFGH
+    03F0: k A; k B; k C
+    03F5: c .D./AEC/.B.; d 1 | m E=d1
+    03F7 03F9: c .D./AIC/.B.; d 1; d 2; c .H./EJG/.F. | m I=d1 J=d2
+    """
 }

@@ -206,6 +206,9 @@ def svg_parts(path: Path):
             if kind:
                 b = bounds(el, m)
                 letter = next((c for c in cls if re.fullmatch(r"[A-Z]{1,2}", c)), "")
+                if kind != "key":
+                    # Ring, Ring2, Dial2…: which of the tablet's rings, dials, or strips it is.
+                    letter = "2" if (el.get("id") or "").endswith("2") else "1"
                 if b and b[2] > b[0] and b[3] > b[1]:
                     found.append((kind, letter, (b[0] / h, b[1] / h, b[2] / h, b[3] / h)))
         for child in el:
@@ -275,9 +278,12 @@ def key_shape(keys, side):
 
 
 def simplify(found, aspect, hints):
-    """Parts as dicts of control, side, lane, start, and end, the span in fractions of the edge."""
+    """Parts as dicts of control, side, lane, start, end, the span in fractions of the edge, and the
+    letters of the keys each one stands for; plus the keys dropped beside or inside a ring or dial,
+    as (letter, rect)."""
     rounds = [(k, r) for k, _, r in found if k in ("ring", "dial")]
     strips = [r for k, _, r in found if k == "strip"]
+    dropped_keys = []
     keys = [(letter, r) for k, letter, r in found if k == "key"]
     if keys:
         median = sorted(area(r) for _, r in keys)[len(keys) // 2]
@@ -296,6 +302,7 @@ def simplify(found, aspect, hints):
                     return True
             return False
 
+        dropped_keys = [(letter, r) for letter, r in keys if dropped(r)]
         keys = [(letter, r) for letter, r in keys if not dropped(r)]
 
     # Keys that touch, or sit one behind the other on the same edge, form groups.
@@ -327,11 +334,11 @@ def simplify(found, aspect, hints):
 
     parts = []
 
-    def add(control, r, side):
+    def add(control, r, side, keys=()):
         a0, a1 = along(r, side)
         edge = 1.0 if vertical(side) else aspect
         parts.append({"control": control, "side": side, "start": a0 / edge, "end": a1 / edge,
-                      "depth": edge_distances(r, aspect)[side]})
+                      "depth": edge_distances(r, aspect)[side], "rect": r, "keys": list(keys)})
 
     for kind, r in rounds:
         add(kind[0], r, side_of(r, aspect))
@@ -364,35 +371,36 @@ def simplify(found, aspect, hints):
         centers = [((r[0] + r[2]) / 2) if vertical(side) else ((r[1] + r[3]) / 2) for r in rects]
         thin = min(thickness(r, side) for r in rects)
         if len(rects) == 1 or max(centers) - min(centers) < thin * LINE_TOLERANCE:
-            singles += [(side, r) for r in rects]
+            singles += [(side, k) for k in g]
         else:
-            add("c", union(rects), side)
+            add("c", union(rects), side, g)
 
     # Single keys in a row along one side become runs, unless something at
     # the same depth sits between them.
     by_side: dict[str, list] = {}
-    for side, r in singles:
-        by_side.setdefault(side, []).append(r)
+    for side, k in singles:
+        by_side.setdefault(side, []).append(k)
     for side, ks in by_side.items():
-        ks.sort(key=lambda r: along(r, side)[0])
+        ks.sort(key=lambda k: along(k[1], side)[0])
         edge = 1.0 if vertical(side) else aspect
         run = [ks[0]]
 
         def flush():
-            add("k%d%s" % (len(run), key_shape(run, side)), union(run), side)
+            rects = [r for _, r in run]
+            add("k%d%s" % (len(run), key_shape(rects, side)), union(rects), side, run)
 
-        for k in ks[1:]:
-            last_end = along(run[-1], side)[1]
+        for letter, k in ks[1:]:
+            last_end = along(run[-1][1], side)[1]
             start = along(k, side)[0]
             here = edge_distances(k, aspect)[side]
-            level = abs(edge_distances(run[-1], aspect)[side] - here) <= thickness(k, side) / 2
+            level = abs(edge_distances(run[-1][1], aspect)[side] - here) <= thickness(k, side) / 2
             between = any(p["side"] == side and abs(p["depth"] - here) <= LANE_STEP
                           and p["start"] * edge < start and p["end"] * edge > last_end for p in parts)
             if (start - last_end) / edge < RUN_BREAK and level and not between:
-                run.append(k)
+                run.append((letter, k))
             else:
                 flush()
-                run = [k]
+                run = [(letter, k)]
         flush()
 
     # Lanes: parts at clearly different depths sharing a stretch of edge.
@@ -408,7 +416,7 @@ def simplify(found, aspect, hints):
             p["lane"] = max(i for i, lv in enumerate(levels) if p["depth"] >= lv - 1e-9) if crowded else 0
 
     parts.sort(key=lambda p: (EDGES.index(p["side"]), p["lane"], p["start"]))
-    return parts
+    return parts, dropped_keys
 
 
 def side_hints(cp):
@@ -420,6 +428,160 @@ def side_hints(cp):
                 if letter.strip():
                     hints[letter.strip()] = side
     return hints
+
+
+# MARK: - Identity
+
+# Evdev codes by name, for EvdevCodes; and the codes libwacom assumes without one.
+EVDEV = {"BTN_LEFT": 0x110, "BTN_RIGHT": 0x111, "BTN_MIDDLE": 0x112, "BTN_SIDE": 0x113, "BTN_EXTRA": 0x114,
+         "BTN_FORWARD": 0x115, "BTN_BACK": 0x116, "BTN_A": 0x130, "BTN_B": 0x131, "BTN_C": 0x132,
+         "BTN_X": 0x133, "BTN_Y": 0x134, "BTN_Z": 0x135, "BTN_BASE": 0x126, "BTN_BASE2": 0x127,
+         **{"BTN_%d" % i: 0x100 + i for i in range(10)}}
+EXPRESS_CODES = [0x100 + i for i in range(10)] + [0x130, 0x131, 0x132, 0x133, 0x134, 0x135, 0x126, 0x127]
+MOUSE_CODES = [0x110, 0x111, 0x115, 0x116]
+MODE_LISTS = (("Ring", "r1"), ("Ring2", "r2"), ("Strip", "s1"), ("Strip2", "s2"), ("Dial", "d1"), ("Dial2", "d2"))
+
+# Models whose libwacom data breaks an identity invariant, and why. The
+# build fails when an entry no longer applies, so a libwacom update gets a look.
+IDENTITY_EXCEPTIONS = {
+    0x003A: "DTI-520: libwacom draws key B twice (ButtonB and ButtonB2)",
+}
+
+
+def button_list(cp, key):
+    return [t.strip() for t in cp.get("Buttons", key, fallback="").split(";") if t.strip()]
+
+
+def button_facts(cp):
+    """Number of buttons, each letter's evdev code, and each mode-switch letter's target."""
+    letters = set()
+    for key in ("Left", "Right", "Top", "Bottom") + tuple(k for k, _ in MODE_LISTS):
+        letters |= set(button_list(cp, key))
+    n = len(letters)
+    codes = button_list(cp, "EvdevCodes")
+    if codes:
+        ev = [EVDEV[c] if c in EVDEV else int(c, 16) for c in codes[:n]]
+    elif cp.get("Device", "Class", fallback="") in ("Bamboo", "Graphire"):
+        ev = [MOUSE_CODES[i] if i < len(MOUSE_CODES) else 0 for i in range(n)]
+    else:
+        ev = [EXPRESS_CODES[i] if i < len(EXPRESS_CODES) else 0 for i in range(n)]
+    modes = {}
+    for key, tag in MODE_LISTS:
+        ls = button_list(cp, key)
+        for i, letter in enumerate(ls):
+            modes[letter] = "%s.%d" % (tag, i) if len(ls) > 1 else tag
+    return n, ev, modes
+
+
+def depth_span(r, side, aspect):
+    d = edge_distances(r, aspect)[side]
+    t = thickness(r, side) / 2
+    return (d - t, d + t)
+
+
+def grid(keys, side, aspect, body=None):
+    """Keys as rows along the edge and columns of depth from it, nearest first.
+
+    Slices come from key centers merged within half the smallest key's short
+    side. A key fills every slice whose center lies inside it; "." is empty
+    and "@" is the ring or dial the keys sit beside. Slices holding nothing
+    of their own are dropped.
+    """
+    items = list(keys) + ([("@", body)] if body else [])
+    tol = min(min(r[2] - r[0], r[3] - r[1]) for _, r in keys) / 2
+
+    def slices(span):
+        merged = []
+        for v in sorted(sum(span(r)) / 2 for _, r in items):
+            if merged and v - merged[-1][-1] <= tol:
+                merged[-1].append(v)
+            else:
+                merged.append([v])
+        return [sum(m) / len(m) for m in merged]
+
+    def ax(r):
+        return along(r, side)
+
+    def dp(r):
+        return depth_span(r, side, aspect)
+
+    def cell(a, d):
+        eps = 1e-9
+        hits = [(letter == "@", area(r), letter) for letter, r in items
+                if ax(r)[0] - eps <= a <= ax(r)[1] + eps and dp(r)[0] - eps <= d <= dp(r)[1] + eps]
+        if hits:
+            return min(hits)[2]
+        dist, letter = min((abs(sum(ax(r)) / 2 - a) + abs(sum(dp(r)) / 2 - d), letter) for letter, r in items)
+        return letter if dist <= tol else "."
+
+    def prune(rows, keep_body):
+        changed = True
+        while changed and len(rows) > 1:
+            changed = False
+            for i, row in enumerate(rows):
+                others = {c for j, other in enumerate(rows) if j != i for c in other}
+                mine = {c for c in row if c != "."}
+                if (mine <= others and "@" not in mine) or (not any(c.isalpha() for c in row)
+                                                           and (not keep_body or "@" not in mine)):
+                    rows = rows[:i] + rows[i + 1:]
+                    changed = True
+                    break
+        return rows
+
+    cells = [[cell(a, d) for d in slices(dp)] for a in slices(ax)]
+    beside = body is not None and not any(
+        ax(r)[0] <= sum(ax(body)) / 2 <= ax(r)[1] and dp(r)[0] <= sum(dp(body)) / 2 <= dp(r)[1] for _, r in keys)
+    cells = prune(cells, False)
+    columns = prune([list(c) for c in zip(*cells)], beside)
+    return "/".join("".join(row) for row in zip(*columns))
+
+
+def identity(found, aspect, parts, dropped, cp):
+    """The identity line for a layout, one entry per part in `parts`' order, and the letters it used.
+
+    - `k ABCD`: a run's letters from start to end.
+    - `c <grid>`: a cluster's keys (see `grid`).
+    - `r 1 [<letter> | <grid>]`, `d 2 …`: which ring or dial, and the keys
+      inside it (its center button) or beside it.
+    - `s 1`: which strip.
+    - ` | m A=r1 …`: mode-switch keys; `.k` picks mode k, none cycles.
+    - ` | ev …`: evdev codes from A on, when they aren't the ExpressKey defaults.
+    """
+    n, ev, modes = button_facts(cp)
+    numbers = {r: letter for kind, letter, r in found if kind != "key"}
+    rounds = [p for p in parts if p["control"] in ("r", "d")]
+    owned: dict[int, list] = {}
+    for letter, r in dropped:
+        c = ((r[0] + r[2]) / 2, (r[1] + r[3]) / 2)
+        if rounds:
+            nearest = min(rounds, key=lambda p: (sum(p["rect"][0::2]) / 2 - c[0]) ** 2
+                          + (sum(p["rect"][1::2]) / 2 - c[1]) ** 2)
+            owned.setdefault(id(nearest), []).append((letter, r))
+    entries, used = [], []
+    for p in parts:
+        control = p["control"]
+        if control.startswith("k"):
+            entries.append("k " + "".join(letter for letter, _ in p["keys"]))
+            used += [letter for letter, _ in p["keys"]]
+        elif control == "c":
+            entries.append("c " + grid(p["keys"], p["side"], aspect))
+            used += [letter for letter, _ in p["keys"]]
+        else:
+            text = "%s %s" % (control, numbers[p["rect"]])
+            keys = owned.get(id(p), [])
+            if len(keys) == 1 and inside(((keys[0][1][0] + keys[0][1][2]) / 2,
+                                          (keys[0][1][1] + keys[0][1][3]) / 2), p["rect"]):
+                text += " " + keys[0][0]
+            elif keys:
+                text += " " + grid(keys, p["side"], aspect, body=p["rect"])
+            entries.append(text)
+            used += [letter for letter, _ in keys]
+    text = "; ".join(entries)
+    if modes:
+        text += " | m " + " ".join("%s=%s" % (letter, modes[letter]) for letter in sorted(modes))
+    if any(code != (EXPRESS_CODES[i] if i < len(EXPRESS_CODES) else 0) for i, code in enumerate(ev)):
+        text += " | ev " + " ".join("%X" % code for code in ev)
+    return text, sorted(used), n
 
 
 def encode(parts):
@@ -478,6 +640,28 @@ enum TabletLayoutTable {
     static let packed = """
 '''
 
+IDENTITY_HEADER = '''\
+    """
+
+    /// Which button each part's keys are, from libwacom, for drawing a
+    /// tablet whose controls light up. Lines group product IDs their own
+    /// way; each lists one entry per part of that model's `packed` line, in
+    /// the same order. Buttons are libwacom's letters, A on, in evdev order.
+    ///
+    /// - `k ABCD`: a run's keys from start to end.
+    /// - `c <grid>`: a cluster's keys. Rows run along the edge from the top
+    ///   or left, columns from the edge inward; `.` is empty, and a letter in
+    ///   several cells is one key spanning them.
+    /// - `r 1`, `d 2`, `s 1`: which ring, dial, or strip, then the key set
+    ///   into it (its center button) or a grid of the keys beside it, where
+    ///   `@` is the ring or dial itself.
+    /// - ` | m A=r1 …`: keys that switch a ring, dial, or strip's mode;
+    ///   `.k` picks mode k, and none cycles through them.
+    /// - ` | ev …`: each button's evdev code from A on, in hex, when they
+    ///   aren't the ExpressKey defaults.
+    static let identity = """
+'''
+
 FOOTER = '''\
     """
 }
@@ -488,6 +672,8 @@ def build(libwacom: Path, registry: Path) -> str:
     tablets = read_tablets(libwacom)
     devices = json.loads(registry.read_text(encoding="utf-8"))["devices"]
     lines: dict[str, list[int]] = {}
+    identities: dict[str, list[int]] = {}
+    problems, exceptions_used = [], set()
     for d in devices:
         pid = d["productID"] if isinstance(d["productID"], int) else int(d["productID"], 16)
         cp = tablets.get(pid)
@@ -498,12 +684,27 @@ def build(libwacom: Path, registry: Path) -> str:
         if not layout or not svg.exists():
             continue
         found, aspect = svg_parts(svg)
-        parts = simplify(found, aspect, side_hints(cp))
+        parts, dropped = simplify(found, aspect, side_hints(cp))
         if parts:
             lines.setdefault(encode(parts), []).append(pid)
-    rows = sorted(((sorted(pids), parts) for parts, pids in lines.items()), key=lambda r: r[0][0])
-    body = "".join("    %s: %s\n" % (" ".join("%04X" % p for p in pids), parts) for pids, parts in rows)
-    return HEADER + body + FOOTER
+            text, used, n = identity(found, aspect, parts, dropped, cp)
+            identities.setdefault(text, []).append(pid)
+            expected = [chr(ord("A") + i) for i in range(n)]
+            if used != expected:
+                if pid in IDENTITY_EXCEPTIONS:
+                    exceptions_used.add(pid)
+                else:
+                    problems.append("%04X: letters %s, libwacom has %s" % (pid, "".join(used), "".join(expected)))
+    for pid in sorted(set(IDENTITY_EXCEPTIONS) - exceptions_used):
+        problems.append("%04X: exception no longer applies (%s)" % (pid, IDENTITY_EXCEPTIONS[pid]))
+    if problems:
+        raise SystemExit("identity check failed:\n  " + "\n  ".join(problems))
+
+    def table(entries):
+        rows = sorted(((sorted(pids), text) for text, pids in entries.items()), key=lambda r: r[0][0])
+        return "".join("    %s: %s\n" % (" ".join("%04X" % p for p in pids), text) for pids, text in rows)
+
+    return HEADER + table(lines) + IDENTITY_HEADER + table(identities) + FOOTER
 
 
 def main() -> int:
