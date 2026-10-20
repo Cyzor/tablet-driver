@@ -60,6 +60,11 @@ enum KeyOrderCheck {
             say("  Hold the tablet in landscape, as a right-handed user would. Press each key")
             say("  shown, then let go. Control-C stops early.")
             walk.prompt()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                guard walk.reports == 0 else { return }
+                say("  Nothing from \(walk.name) yet. If you've pressed the key, it may be asleep,")
+                say("  or connected another way; wake it with the pen and try again.")
+            }
         }
         let sigint = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
         sigint.setEventHandler { current?.finish() ?? exit(1) }
@@ -79,6 +84,7 @@ let reportCallback: IOHIDReportCallback = { _, _, sender, _, _, report, length i
     let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue()
     let pid = (IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? Int) ?? 0
     guard pid == walk.pid else { return }
+    walk.reports += 1
     let bytes = Array(UnsafeBufferPointer(start: report, count: length))
     let events = HIDReport.withReport(bytes) { walk.decoder.events($0) }
     for case .pad(let pad) in events { walk.handle(pad, report: bytes) }
@@ -108,6 +114,8 @@ final class Walk {
     var waitingForRelease = false
     /// False between steps, so a key pressed before its prompt shows doesn't count.
     var ready = false
+    /// Reports from the tablet so far, to tell a quiet tablet from a waiting user.
+    var reports = 0
 
     init?(pid: Int, spec: TabletSpec) {
         guard let family = TabletControlMap.family(for: spec),
