@@ -87,7 +87,7 @@ struct TabletBezelView: View, Equatable {
                     let inset = pixels(r.width * 0.27)
                     ring.addEllipse(in: r.insetBy(dx: inset, dy: inset))
                     context.fill(ring, with: .color(controlFill), style: FillStyle(eoFill: true))
-                case .dial, .center:
+                case .dial, .center, .wedge:
                     context.fill(Path(ellipseIn: r), with: .color(controlFill))
                 case .strip:
                     let corner = min(r.width, r.height) / 2
@@ -180,7 +180,7 @@ enum TabletFigureInk {
                 let r = shape.rect
                 let path: Path
                 switch shape.kind {
-                case .ring, .dial, .center:
+                case .ring, .dial, .center, .wedge:
                     path = Path(ellipseIn: r)
                 case .strip:
                     path = Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)

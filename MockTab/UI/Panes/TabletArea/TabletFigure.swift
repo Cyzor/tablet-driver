@@ -209,6 +209,10 @@ extension TabletFigure {
             case key, cluster, ring, dial, strip, mark
             /// A ring's center button, inside the ring's hole.
             case center
+            /// One of a round pad's four keys, a quarter ring centered on
+            /// this direction in radians (0 right, π/2 down); `rect` is the
+            /// whole pad.
+            case wedge(Double)
         }
         var kind: Kind
         var rect: CGRect
@@ -268,11 +272,11 @@ extension TabletFigure.Drawing {
     func hitAreas() -> [(target: ControlTarget, rect: CGRect)] {
         let targeted = shapes.filter { $0.target != nil }
         return targeted.compactMap { shape in
-            guard let target = shape.target, shape.kind != .ring, shape.kind != .dial else { return nil }
+            guard let target = shape.target, !Self.isRound(shape.kind) else { return nil }
             var reach = Self.hitSlop
             for other in targeted where other != shape {
-                // A center sits inside its ring, which isn't a neighbor.
-                if shape.kind == .center, other.kind == .ring || other.kind == .dial { continue }
+                // A center sits inside its ring or pad, which isn't a neighbor.
+                if shape.kind == .center, Self.isRound(other.kind) { continue }
                 let a = shape.rect, b = other.rect
                 let apart = max(b.minX - a.maxX, a.minX - b.maxX, b.minY - a.maxY, a.minY - b.maxY)
                 reach = min(reach, max(apart, 0) / 2)
@@ -281,13 +285,30 @@ extension TabletFigure.Drawing {
         }
     }
 
+    /// Rings, dials, and a pad's keys answer by where in their circle a click lands.
+    static func isRound(_ kind: TabletFigure.Shape.Kind) -> Bool {
+        switch kind {
+        case .ring, .dial, .wedge: return true
+        default: return false
+        }
+    }
+
     /// The control under `point`, or nil. One pass over 20 or so shapes.
     func target(at point: CGPoint) -> ControlTarget? {
         for area in hitAreas() where area.rect.contains(point) { return area.target }
-        for shape in shapes where shape.kind == .ring || shape.kind == .dial {
+        for shape in shapes where Self.isRound(shape.kind) {
             guard let target = shape.target else { continue }
             let r = shape.rect
-            if hypot(point.x - r.midX, point.y - r.midY) <= r.width / 2 { return target }
+            let dx = point.x - r.midX, dy = point.y - r.midY
+            guard hypot(dx, dy) <= r.width / 2 else { continue }
+            if case let .wedge(direction) = shape.kind {
+                // The quarter whose middle is nearest the click's direction.
+                var turn = atan2(dy, dx) - direction
+                turn = atan2(sin(turn), cos(turn))
+                if abs(turn) <= .pi / 4 { return target }
+                continue
+            }
+            return target
         }
         return nil
     }
@@ -324,6 +345,27 @@ extension TabletFigure {
     static let ringHole = 1 - 2 * 0.27
     /// Least gap between a diagram's keys, in points, so their cleared rims don't meet.
     static let diagramGap: Double = 3
+
+    /// A cluster of four keys around a center key, the shape of a four-way
+    /// pad: its center, and each other key's offset along the edge and inward
+    /// from it, −1 to 1. Nil for any other shape.
+    static func pad(_ grid: TabletLayoutIdentity.Grid)
+        -> (center: Character, around: [(letter: Character, along: Double, inward: Double)])? {
+        let rows = grid.rows
+        guard rows.count == 3, rows.allSatisfy({ $0.count == 3 }),
+              case let .key(center) = rows[1][1] else { return nil }
+        var around: [(letter: Character, along: Double, inward: Double)] = []
+        for (r, row) in rows.enumerated() {
+            for (c, cell) in row.enumerated() where (r == 1) != (c == 1) {
+                guard case let .key(letter) = cell, letter != center else { return nil }
+                around.append((letter, Double(r - 1), Double(c - 1)))
+            }
+            // Corners stay empty.
+            for c in [0, 2] where r != 1 && rows[r][c] != .empty { return nil }
+        }
+        guard Set(around.map { $0.letter }).count == 4 else { return nil }
+        return (center: center, around: around)
+    }
 
     private var metrics: Metrics {
         let shortSide = min(surfaceMM.width, surfaceMM.height)
@@ -513,6 +555,26 @@ extension TabletFigure {
                 return (0..<keyCount).map { i in
                     Shape(kind: .key, rect: rect(from: start + Double(i) * (length + gap), length: length, depth: keyDepth))
                 }
+            case let (.cluster, .cluster(grid)?) where TabletFigure.pad(grid) != nil:
+                let pad = TabletFigure.pad(grid)!
+                let d = pixels(length)
+                let box = rect(from: start, length: d, depth: d)
+                let c = pixels(length * 0.36)
+                var shapes = [Shape(kind: .center, rect: CGRect(x: snap(box.midX - c / 2), y: snap(box.midY - c / 2),
+                                                                width: c, height: c),
+                                    target: controls?.keys[pad.center])]
+                for key in pad.around {
+                    // Along the edge and inward from it, turned to screen directions.
+                    let (dx, dy): (Double, Double)
+                    switch side {
+                    case .top: (dx, dy) = (key.along, key.inward)
+                    case .bottom: (dx, dy) = (key.along, -key.inward)
+                    case .left: (dx, dy) = (key.inward, key.along)
+                    case .right: (dx, dy) = (-key.inward, key.along)
+                    }
+                    shapes.append(Shape(kind: .wedge(atan2(dy, dx)), rect: box, target: controls?.keys[key.letter]))
+                }
+                return shapes
             case let (.cluster, .cluster(grid)?):
                 let columns = grid.rows.first?.count ?? 1
                 let depth = pixels(min(laneDepth * 0.8, m.keyDepth * Double(columns)))
@@ -623,6 +685,9 @@ extension TabletFigure {
         var item = size(part, keepEveryKey: controls != nil, edgeLength: edgeLength, laneDepth: laneDepth, metrics: m)
         item.controls = controls
         switch (part.control, controls?.entry) {
+        case let (.cluster, .cluster(grid)?) where Self.pad(grid) != nil:
+            // A round pad takes the same size as the rings and dials.
+            item.length = min(m.round, laneDepth * 0.92)
         case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):
             // The ring shrinks to leave room for its keys' columns.
             let keyColumns = (grid.rows.first?.indices ?? 0..<0).filter { c in !grid.rows.contains { $0[c] == .body } }.count

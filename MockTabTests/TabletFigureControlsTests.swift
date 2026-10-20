@@ -68,8 +68,9 @@ struct TabletFigureControlsTests {
                 #expect([r.minX, r.minY, r.maxX, r.maxY].allSatisfy { abs(($0 * scale).rounded() - $0 * scale) < 1e-6 },
                         "\(name): \(a.kind) on whole pixels \(r)")
                 for b in shapes[(i + 1)...] {
-                    // A center sits inside its ring.
+                    // A center sits inside its ring or pad; a pad's keys share its circle.
                     if a.kind == .center || b.kind == .center { continue }
+                    if case .wedge = a.kind, case .wedge = b.kind, a.rect == b.rect { continue }
                     let overlap = a.rect.intersection(b.rect)
                     #expect(overlap.isNull || overlap.width * overlap.height <= slack * slack / 4,
                             "\(name): \(a.kind) and \(b.kind) apart")
@@ -91,13 +92,32 @@ struct TabletFigureControlsTests {
             for shape in d.shapes {
                 guard let target = shape.target else { continue }
                 let r = shape.rect
-                // A ring's middle may be its center button; aim at its band.
-                let point = shape.kind == .ring || shape.kind == .dial ? CGPoint(x: r.midX, y: r.minY + r.height * 0.1)
-                    : CGPoint(x: r.midX, y: r.midY)
+                // A ring's middle may be its center button; aim at its band, and
+                // at the middle of a pad key's quarter.
+                let point: CGPoint
+                switch shape.kind {
+                case .ring, .dial: point = CGPoint(x: r.midX, y: r.minY + r.height * 0.1)
+                case let .wedge(direction):
+                    point = CGPoint(x: r.midX + cos(direction) * r.width * 0.35, y: r.midY + sin(direction) * r.width * 0.35)
+                default: point = CGPoint(x: r.midX, y: r.midY)
+                }
                 #expect(d.target(at: point) == target, "\(name): \(shape.kind) answers for \(target)")
             }
             #expect(d.target(at: CGPoint(x: d.surface.midX, y: d.surface.midY)) == nil, "\(name): the surface answers nothing")
         }
+    }
+
+    @Test("A four-way cluster draws as a round pad the size of the dials")
+    func pads() throws {
+        let ptk = try #require(Self.figures.first { $0.name.contains("PTK-870") }?.figure)
+        let d = ptk.drawing(.bezel, in: Self.frames[0], scale: 2)
+        let wedges = d.shapes.filter { if case .wedge = $0.kind { return true } else { return false } }
+        #expect(wedges.count == 8, "four keys around each of two pads")
+        let dials = d.shapes.filter { $0.kind == .dial }
+        #expect(dials.count == 2 && wedges.allSatisfy { w in dials.allSatisfy { abs($0.rect.width - w.rect.width) < 1 } },
+                "pads and dials share one size")
+        #expect(d.shapes.filter { $0.kind == .center }.compactMap(\.target) == [.ringCenter(0), .ringCenter(1)],
+                "each pad's center is its dial's toggle")
     }
 
     @Test("The Pro 2 shows its ring's center, and the 24HD its mode keys")

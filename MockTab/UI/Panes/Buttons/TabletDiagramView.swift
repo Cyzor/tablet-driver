@@ -122,7 +122,13 @@ private struct TabletDiagramCore: View, Equatable {
             let surface = d.surface.insetBy(dx: gap, dy: gap)
             body.addPath(Path(roundedRect: surface.insetBy(dx: -gap, dy: -gap), cornerRadius: pixels(3) + gap,
                               style: .continuous))
+            // A pad's four keys share one slot; adding it twice would refill it.
+            var pads: [CGRect] = []
             for shape in d.shapes where shape.kind != .mark && shape.kind != .center {
+                if case .wedge = shape.kind {
+                    if pads.contains(shape.rect) { continue }
+                    pads.append(shape.rect)
+                }
                 body.addPath(Self.path(shape, outset: gap))
             }
             context.fill(body, with: .color(ink), style: FillStyle(eoFill: true))
@@ -134,7 +140,7 @@ private struct TabletDiagramCore: View, Equatable {
             }
 
             for shape in d.shapes where shape.kind != .mark {
-                let face = Self.face(shape, scale: scale)
+                let face = Self.face(shape, scale: scale, gap: gap)
                 let on = shape.target.map { lit & (1 << UInt64($0.bit)) != 0 } ?? false
                 context.fill(face, with: .color(on ? accent : passive), style: FillStyle(eoFill: true))
                 if let target = shape.target, target == pressed {
@@ -149,15 +155,31 @@ private struct TabletDiagramCore: View, Equatable {
     private static func path(_ shape: TabletFigure.Shape, outset: CGFloat = 0) -> Path {
         let r = shape.rect.insetBy(dx: -outset, dy: -outset)
         switch shape.kind {
-        case .ring, .dial, .center: return Path(ellipseIn: r)
+        case .ring, .dial, .center, .wedge: return Path(ellipseIn: r)
         case .strip: return Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
         case .key, .cluster, .mark:
             return Path(roundedRect: r, cornerRadius: min(min(r.width, r.height) * 0.25, 3) + outset, style: .continuous)
         }
     }
 
-    /// The face that fills: a ring is an annulus, so its hole stays clear.
-    private static func face(_ shape: TabletFigure.Shape, scale: CGFloat) -> Path {
+    /// The face that fills: a ring is an annulus, so its hole stays clear; a
+    /// pad's key is a quarter of the ring around its center, cleared apart
+    /// from its neighbors by `gap`.
+    private static func face(_ shape: TabletFigure.Shape, scale: CGFloat, gap: CGFloat) -> Path {
+        if case let .wedge(direction) = shape.kind {
+            let r = shape.rect
+            let center = CGPoint(x: r.midX, y: r.midY)
+            let outer = r.width / 2, inner = r.width * 0.18 + gap
+            // Half the gap on each side, as an angle at each radius.
+            let spread = Double.pi / 4
+            var wedge = Path()
+            wedge.addArc(center: center, radius: outer, startAngle: .radians(direction - spread + gap / 2 / outer),
+                         endAngle: .radians(direction + spread - gap / 2 / outer), clockwise: false)
+            wedge.addArc(center: center, radius: inner, startAngle: .radians(direction + spread - gap / 2 / inner),
+                         endAngle: .radians(direction - spread + gap / 2 / inner), clockwise: true)
+            wedge.closeSubpath()
+            return wedge
+        }
         guard shape.kind == .ring else { return path(shape) }
         let r = shape.rect
         var ring = Path(ellipseIn: r)
