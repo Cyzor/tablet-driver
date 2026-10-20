@@ -25,6 +25,9 @@ struct ButtonMappingView: View {
     @State var centerRecordToken = 0
     /// Same for the pen diagram's parts: tip, eraser, buttons 1–3.
     @State var penRecordTokens = [0, 0, 0, 0, 0]
+    /// Same for the tablet diagram's keys and the second dial's toggle.
+    @State var keyRecordTokens = Array(repeating: 0, count: 16)
+    @State var dial2RecordToken = 0
 
     /// Live button state, zeroed when this window is not key or is live-resizing.
     /// Zeroing during resize stops ~100 Hz tablet events from compounding the
@@ -41,7 +44,7 @@ struct ButtonMappingView: View {
         return tabletManager.activeContext
     }
 
-    private var liveInputMuffled: Bool {
+    var liveInputMuffled: Bool {
         instanceKey != nil && liveSource !== tabletManager.context(forKey: instanceKey)
     }
 

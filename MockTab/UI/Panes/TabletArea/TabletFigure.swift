@@ -322,11 +322,15 @@ extension TabletFigure {
 
     /// Share of a ring's diameter its hole takes, as `TabletBezelView` draws it.
     static let ringHole = 1 - 2 * 0.27
+    /// Least gap between a diagram's keys, in points, so their cleared rims don't meet.
+    static let diagramGap: Double = 3
 
     private var metrics: Metrics {
         let shortSide = min(surfaceMM.width, surfaceMM.height)
         let margin = isPenDisplay ? max(8, shortSide * 0.045) : max(9, shortSide * 0.07)
-        let band = min(max(shortSide * 0.14, 18), 32)
+        // A diagram's bands take the real bezel's share, so its keys have room;
+        // the backdrop's stay quiet.
+        let band = controls == nil ? min(max(shortSide * 0.14, 18), 32) : max(shortSide * 0.25, 18)
         let key = band * 0.5
         return Metrics(
             margin: margin, inset: margin / 2, band: band, wideBand: band * 1.45, chin: margin * 1.2,
@@ -496,7 +500,10 @@ extension TabletFigure {
             let keyDepth = pixels(min(m.keyDepth, laneDepth * 0.8))
             switch (part.control, controls?.entry) {
             case let (.keys, .run(letters)?):
-                let length = pixels(keyLength), gap = pixels(keyGap)
+                // Same overall length as `drawnLength`, with the gap widened to the floor.
+                let total = Double(keyCount) * pixels(keyLength) + Double(keyCount - 1) * pixels(keyGap)
+                let gap = max(pixels(keyGap), TabletFigure.diagramGap)
+                let length = max(snap((total - Double(keyCount - 1) * gap) / Double(keyCount)), pixels(0))
                 return (0..<keyCount).map { i in
                     Shape(kind: .key, rect: rect(from: start + Double(i) * (length + gap), length: length, depth: keyDepth),
                           target: i < letters.count ? controls?.keys[letters[i]] : nil)
@@ -510,7 +517,8 @@ extension TabletFigure {
                 let columns = grid.rows.first?.count ?? 1
                 let depth = pixels(min(laneDepth * 0.8, m.keyDepth * Double(columns)))
                 return gridShapes(grid, start: start, length: pixels(length), widths: Array(repeating: depth / Double(columns),
-                                  count: columns), side: side, laneCenter: laneCenter, metrics: m, pixels: pixels, snap: snap)
+                                  count: columns), room: laneDepth * unit * 0.86, side: side, laneCenter: laneCenter,
+                                  metrics: m, pixels: pixels, snap: snap)
             case (.cluster, _):
                 return [Shape(kind: .cluster, rect: rect(from: start, length: pixels(length), depth: keyDepth))]
             case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):
@@ -519,8 +527,9 @@ extension TabletFigure {
                 let widths = (0..<(grid.rows.first?.count ?? 0)).map { c in
                     grid.rows.contains { $0[c] == .body } ? d : key
                 }
-                return gridShapes(grid, start: start, length: pixels(length), widths: widths, side: side,
-                                  laneCenter: laneCenter, metrics: m, pixels: pixels, snap: snap)
+                return gridShapes(grid, start: start, length: pixels(length), widths: widths,
+                                  room: laneDepth * unit * 0.86, side: side, laneCenter: laneCenter,
+                                  metrics: m, pixels: pixels, snap: snap)
             case (.ring, _), (.dial, _):
                 let d = pixels(length)
                 let ring = rect(from: start, length: d, depth: d)
@@ -544,11 +553,15 @@ extension TabletFigure {
         /// edge and columns of `widths` points from the edge inward, each key
         /// filling its cells less a gap.
         private func gridShapes(
-            _ grid: TabletLayoutIdentity.Grid, start: Double, length: Double, widths: [Double], side: Side,
-            laneCenter: Double, metrics m: Metrics, pixels: (Double) -> Double, snap: (Double) -> Double
+            _ grid: TabletLayoutIdentity.Grid, start: Double, length: Double, widths: [Double], room: Double,
+            side: Side, laneCenter: Double, metrics m: Metrics, pixels: (Double) -> Double, snap: (Double) -> Double
         ) -> [Shape] {
             let vertical = side == .left || side == .right
-            let gap = pixels(m.keyGap * 0.6)
+            let gap = max(pixels(m.keyGap * 0.6), TabletFigure.diagramGap)
+            // Columns shrink together to fit `room` points across the lane, gaps included.
+            let natural = widths.reduce(0, +)
+            let fit = min(1, max(room - Double(widths.count - 1) * gap, 1) / max(natural, 1))
+            let widths = widths.map { $0 * fit }
             let rows = grid.rows.count
             let total = widths.reduce(0, +) + Double(widths.count - 1) * gap
             // Column edges from the body's edge inward, then in points across the lane.
@@ -592,7 +605,7 @@ extension TabletFigure {
                 }
             }
             if !body.isNull, let kind: Shape.Kind = part.control == .ring ? .ring : part.control == .dial ? .dial : nil {
-                let d = pixels(round)
+                let d = snap(min(pixels(round), vertical ? body.width : body.height))
                 shapes.append(Shape(kind: kind, rect: snapped(CGRect(x: body.midX - d / 2, y: body.midY - d / 2,
                                                                      width: d, height: d)),
                                     target: controls?.control))
@@ -610,9 +623,6 @@ extension TabletFigure {
         var item = size(part, keepEveryKey: controls != nil, edgeLength: edgeLength, laneDepth: laneDepth, metrics: m)
         item.controls = controls
         switch (part.control, controls?.entry) {
-        case (.ring, .ring(_, .center)?):
-            // A diagram's ring takes the band's full depth, so its center button fits.
-            item.length = laneDepth
         case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):
             // The ring shrinks to leave room for its keys' columns.
             let keyColumns = (grid.rows.first?.indices ?? 0..<0).filter { c in !grid.rows.contains { $0[c] == .body } }.count

@@ -21,6 +21,7 @@ extension ButtonMappingView {
             remoteKeySections(lb: lb)
         } else if expressKeyCount > 0 {
             Section {
+                tabletDiagramRow(lb: lb)
                 ForEach(0..<expressKeyCount, id: \.self) { i in
                     expressKeyRow(
                         index: i,
@@ -172,7 +173,8 @@ extension ButtonMappingView {
                 set: { settings.touchRingButtonBinding2 = $0 }),
             ringSlotCount: spec?.ringSlotCount ?? 4,
             isMechanicalDialHardware: true,
-            dialToggleControl: .second)
+            dialToggleControl: .second,
+            recordRequestToken: dial2RecordToken)
     }
 
     /// Direction preference for every ring/dial/strip on the device — one
@@ -270,6 +272,7 @@ extension ButtonMappingView {
     @ViewBuilder
     func dualSidedSection(lb: LiveButtonState) -> some View {
         Section {
+            tabletDiagramRow(lb: lb)
             ForEach(0..<3, id: \.self) { i in
                 expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
@@ -401,7 +404,72 @@ extension ButtonMappingView {
             ),
             ringSlotCount: spec?.ringSlotCount ?? 4,
             offersSecondDial: hasDualRings,
-            modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial
+            modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
+            recordRequestToken: keyRecordTokens[index]
         )
+    }
+
+    // MARK: - Tablet diagram
+
+    /// The tablet drawn above its key rows, once its family's key order is verified.
+    @ViewBuilder
+    func tabletDiagramRow(lb: LiveButtonState) -> some View {
+        if let figure = tabletDiagramFigure {
+            TabletDiagramView(figure: figure, lit: diagramLit(lb), enabled: diagramEnabled, onTap: { diagramTap($0) })
+                .frame(maxWidth: .infinity)
+                .frame(height: 180)
+                .listRowInsets(EdgeInsets(top: 10, leading: 8, bottom: 10, trailing: 8))
+                .listRowBackground(Color.clear)
+        }
+    }
+
+    var tabletDiagramFigure: TabletFigure? {
+        guard let spec, spec.maxX > 0, spec.maxY > 0,
+              let map = TabletControlMap.forDevice(productID: spec.productID, spec: spec)
+        else { return nil }
+        let mm = spec.activeWidthMM.flatMap { w in spec.activeHeightMM.map { CGSize(width: w, height: $0) } }
+        var figure = TabletFigure(layoutProductID: spec.productID, surfaceMM: mm,
+                                  aspect: Double(spec.maxX) / Double(spec.maxY), isPenDisplay: spec.isPenDisplay)
+        figure.controls = map.parts
+        return figure
+    }
+
+    /// The controls in use, as `ControlTarget` bits. Input from another
+    /// tablet lights nothing: its key 3 isn't this tablet's.
+    func diagramLit(_ lb: LiveButtonState) -> UInt64 {
+        guard !liveInputMuffled else { return 0 }
+        var bits: UInt64 = 0
+        func set(_ target: ControlTarget, _ on: Bool) { if on { bits |= 1 << UInt64(target.bit) } }
+        for (i, down) in lb.expressKeys.prefix(16).enumerated() { set(.expressKey(i), down) }
+        for (i, down) in lb.bezelButtons.prefix(3).enumerated() { set(.bezel(i), down) }
+        set(.ringCenter(0), lb.touchRingButtonDown)
+        set(.ringCenter(1), lb.touchRing2ButtonDown)
+        set(.ring(0), lb.touchRingActive)
+        set(.ring(1), lb.touchRing2Active)
+        set(.strip(0), lb.touchStrip1Active)
+        set(.strip(1), lb.touchStrip2Active)
+        return bits
+    }
+
+    /// The controls with a row below, which answer clicks: the rows
+    /// `singleSidedSection`, `dualSidedSection`, and `touchRingBlock` show.
+    var diagramEnabled: UInt64 {
+        var bits: UInt64 = 0
+        for i in 0..<(hasSplitPadLayout ? 16 : expressKeyCount) { bits |= 1 << UInt64(i) }
+        if hasTouchRing && !hasSplitPadLayout && !isRemote { bits |= 1 << UInt64(ControlTarget.ringCenter(0).bit) }
+        if hasTouchRing && hasDualRings && hasMechanicalDial && !hasSplitPadLayout {
+            bits |= 1 << UInt64(ControlTarget.ringCenter(1).bit)
+        }
+        return bits
+    }
+
+    /// Starts recording in the clicked control's row.
+    func diagramTap(_ target: ControlTarget) {
+        switch target {
+        case let .expressKey(i) where i < keyRecordTokens.count: keyRecordTokens[i] += 1
+        case .ringCenter(0): centerRecordToken += 1
+        case .ringCenter(1): dial2RecordToken += 1
+        default: break
+        }
     }
 }
