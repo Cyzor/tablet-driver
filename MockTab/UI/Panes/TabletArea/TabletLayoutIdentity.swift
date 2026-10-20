@@ -225,3 +225,32 @@ extension TabletLayoutIdentity.ModeSwitch {
         return (letter, Self(control: control, mode: mode))
     }
 }
+
+// MARK: - Targets
+
+/// A control the Buttons pane has state or a row for.
+enum ControlTarget: Hashable {
+    /// `LiveButtonState.expressKeys` and `expressKeyBindings`, 0–15.
+    case expressKey(Int)
+    /// `bezelButtons`, 0–2.
+    case bezel(Int)
+    /// A ring's center button or a dial's toggle key, 0 or 1:
+    /// `touchRingButtonDown` and `touchRing2ButtonDown`.
+    case ringCenter(Int)
+    /// The ring, dial, or strip itself, 0 or 1.
+    case ring(Int)
+    case dial(Int)
+    case strip(Int)
+
+    /// A fixed bit for each target, so a set of them fits a `UInt64`.
+    var bit: Int {
+        switch self {
+        case let .expressKey(i): return i
+        case let .bezel(i): return 16 + i
+        case let .ringCenter(i): return 19 + i
+        case let .ring(i): return 21 + i
+        case let .dial(i): return 23 + i
+        case let .strip(i): return 25 + i
+        }
+    }
+}

@@ -93,6 +93,9 @@
 		AAT00006 /* TabletControlMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F806 /* TabletControlMap.swift */; };
 		AAT00007 /* TabletLayoutIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F805 /* TabletLayoutIdentity.swift */; };
 		AAT00008 /* TabletLayoutTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F803 /* TabletLayoutTable.swift */; };
+		AAT00009 /* TabletFigure.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F801 /* TabletFigure.swift */; };
+		AAT0000A /* TabletOrientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000203 /* TabletOrientation.swift */; };
+		AAT0000B /* TabletFigureControlsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABT00004 /* TabletFigureControlsTests.swift */; };
 		AA000206 /* TabletSettings+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000206 /* TabletSettings+Persistence.swift */; };
 		AA000207 /* LEDColorControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000207 /* LEDColorControl.swift */; };
 		AA000208 /* TouchRingModeList.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000208 /* TouchRingModeList.swift */; };
@@ -155,6 +158,7 @@
 /* Begin PBXFileReference section */
 		ABT00002 /* RingScrollGlideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingScrollGlideTests.swift; sourceTree = "<group>"; };
 		ABT00003 /* TabletControlMapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletControlMapTests.swift; sourceTree = "<group>"; };
+		ABT00004 /* TabletFigureControlsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletFigureControlsTests.swift; sourceTree = "<group>"; };
 		ABT00001 /* RelativeBallisticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelativeBallisticsTests.swift; sourceTree = "<group>"; };
 		ABT00099 /* MockTabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MockTabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		053AB9A52F723B910084C0E2 /* TabletManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletManager.swift; sourceTree = "<group>"; };
@@ -697,6 +701,7 @@
 				ABT00001 /* RelativeBallisticsTests.swift */,
 				ABT00002 /* RingScrollGlideTests.swift */,
 				ABT00003 /* TabletControlMapTests.swift */,
+				ABT00004 /* TabletFigureControlsTests.swift */,
 			);
 			path = MockTabTests;
 			sourceTree = "<group>";
@@ -968,6 +973,9 @@
 				AAT00006 /* TabletControlMap.swift in Sources */,
 				AAT00007 /* TabletLayoutIdentity.swift in Sources */,
 				AAT00008 /* TabletLayoutTable.swift in Sources */,
+				AAT00009 /* TabletFigure.swift in Sources */,
+				AAT0000A /* TabletOrientation.swift in Sources */,
+				AAT0000B /* TabletFigureControlsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

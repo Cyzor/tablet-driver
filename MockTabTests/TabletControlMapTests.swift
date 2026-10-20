@@ -173,13 +173,13 @@ struct TabletControlMapTests {
         }
         let pro2 = try map(0x0358)  // k ABCD; r 1 I; k EFGH
         #expect(pro2.parts[0].keys == ["A": .expressKey(0), "B": .expressKey(1), "C": .expressKey(2), "D": .expressKey(3)])
-        #expect(pro2.parts[1] == .init(control: .ring(0), keys: ["I": .ringCenter(0)]))
+        #expect(pro2.parts[1].control == .ring(0) && pro2.parts[1].keys == ["I": .ringCenter(0)])
         #expect(pro2.parts[2].keys["H"] == .expressKey(7))
 
         let intuos5 = try map(0x0028)  // k BCDE; r 1 A; k FGHI
         #expect(intuos5.family == .intuos5)
         #expect(intuos5.parts[0].keys["B"] == .expressKey(0))
-        #expect(intuos5.parts[1] == .init(control: .ring(0), keys: ["A": .ringCenter(0)]))
+        #expect(intuos5.parts[1].control == .ring(0) && intuos5.parts[1].keys == ["A": .ringCenter(0)])
         #expect(intuos5.parts[2].keys["I"] == .expressKey(7))
 
         let ptk = try map(0x03F9)  // c .D./AIC/.B.; d 1; d 2; c .H./EJG/.F. | m I=d1 J=d2
@@ -189,7 +189,8 @@ struct TabletControlMapTests {
         #expect(ptk.parts[3].keys["J"] == .ringCenter(1))
 
         let hd = try map(0x00F4)  // r 1 A@/B@/C@; c DEF/DEG/DEH; r 2 I@/J@/K@; c LMN/LMO/LMP
-        #expect(hd.parts[0] == .init(control: .ring(0), keys: ["A": .expressKey(0), "B": .expressKey(1), "C": .expressKey(2)]))
+        #expect(hd.parts[0].control == .ring(0)
+                && hd.parts[0].keys == ["A": .expressKey(0), "B": .expressKey(1), "C": .expressKey(2)])
         #expect(hd.parts[2].control == .ring(1))
         // The left ring is the first one decoded (DTK-2400 evidence).
         let hdLine = try #require(TabletLayoutTable.packed.split(separator: "\n").first { $0.contains("00F4") })

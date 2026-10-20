@@ -5,20 +5,7 @@
 import Foundation
 import TabletKit
 
-/// A control the Buttons pane has state or a row for.
-enum ControlTarget: Hashable {
-    /// `LiveButtonState.expressKeys` and `expressKeyBindings`, 0–15.
-    case expressKey(Int)
-    /// `bezelButtons`, 0–2.
-    case bezel(Int)
-    /// A ring's center button or a dial's toggle key, 0 or 1:
-    /// `touchRingButtonDown` and `touchRing2ButtonDown`.
-    case ringCenter(Int)
-    /// The ring, dial, or strip itself, 0 or 1.
-    case ring(Int)
-    case dial(Int)
-    case strip(Int)
-
+extension ControlTarget {
     /// The controls a pad report holds down, read as `TabletManager` reads
     /// them into `LiveButtonState`: buttons 0–15 are ExpressKeys, 16–18
     /// bezel buttons, and each ring's button its center or toggle.
@@ -32,18 +19,6 @@ enum ControlTarget: Hashable {
         }
         for (i, ring) in pad.rings.prefix(2).enumerated() where ring.buttonDown { down.insert(.ringCenter(i)) }
         return down
-    }
-
-    /// A fixed bit for each target, so a set of them fits a `UInt64`.
-    var bit: Int {
-        switch self {
-        case let .expressKey(i): return i
-        case let .bezel(i): return 16 + i
-        case let .ringCenter(i): return 19 + i
-        case let .ring(i): return 21 + i
-        case let .dial(i): return 23 + i
-        case let .strip(i): return 25 + i
-        }
     }
 }
 
@@ -70,13 +45,8 @@ struct TabletControlMap: Equatable {
         case cintiq24HD
     }
 
-    /// One layout part's targets.
-    struct Part: Equatable {
-        /// The ring, dial, or strip the part is, if it's one.
-        var control: ControlTarget?
-        /// Each of the part's keys by letter.
-        var keys: [Character: ControlTarget] = [:]
-    }
+    /// One layout part's targets, as the tablet figure draws them.
+    typealias Part = TabletFigure.PartControls
 
     var family: Family
     /// One for each of the model's layout parts, in the same order.
@@ -148,7 +118,7 @@ struct TabletControlMap: Equatable {
             }
             var keys: [Character: ControlTarget] = [:]
             for letter in entry.letters { keys[letter] = targets[letter] }
-            return Part(control: control, keys: keys)
+            return Part(entry: entry, control: control, keys: keys)
         }
         return TabletControlMap(family: family, parts: parts)
     }

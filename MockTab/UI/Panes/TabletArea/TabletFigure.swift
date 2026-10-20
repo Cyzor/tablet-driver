@@ -46,6 +46,19 @@ struct TabletFigure: Equatable {
     /// The edge with a deeper bezel on a figure with no controls, so it still
     /// shows which way it's turned. Bottom in landscape.
     var chin: Side? = nil
+    /// Which control each part and key drives, one per part, for the Buttons
+    /// pane's diagram. With them, the bezel draws every key on its own and
+    /// tags each shape with its target; without them it draws as always.
+    var controls: [PartControls]? = nil
+
+    struct PartControls: Equatable {
+        /// The part's keys and their grid, from `TabletLayoutIdentity`.
+        var entry: TabletLayoutIdentity.Entry
+        /// The ring, dial, or strip the part is, if it's one.
+        var control: ControlTarget?
+        /// Each of the part's keys by letter.
+        var keys: [Character: ControlTarget] = [:]
+    }
 }
 
 // MARK: - Lookup
@@ -152,6 +165,8 @@ extension TabletFigure {
     /// and left.
     private func turnedCounterclockwise() -> TabletFigure {
         var figure = self
+        // Turning reverses top and bottom runs, so targets would land on the wrong keys.
+        figure.controls = nil
         figure.chin = chin.map { side in
             switch side {
             case .left: return .bottom
@@ -190,9 +205,15 @@ extension TabletFigure {
     }
 
     struct Shape: Equatable {
-        enum Kind: Equatable { case key, cluster, ring, dial, strip, mark }
+        enum Kind: Equatable {
+            case key, cluster, ring, dial, strip, mark
+            /// A ring's center button, inside the ring's hole.
+            case center
+        }
         var kind: Kind
         var rect: CGRect
+        /// The control it stands for, on a figure with `controls`.
+        var target: ControlTarget? = nil
     }
 
     /// The figure laid out in points.
@@ -234,6 +255,44 @@ extension TabletFigure {
     }
 }
 
+// MARK: - Hit testing
+
+extension TabletFigure.Drawing {
+    /// Most a hit area reaches past its shape, in points.
+    static let hitSlop: CGFloat = 4
+
+    /// Where each targeted key, strip, and center button answers a click: its
+    /// shape, grown by up to `hitSlop` but never past half the gap to another
+    /// targeted shape, so no two areas overlap. Rings and dials answer within
+    /// their circle instead; see `target(at:)`.
+    func hitAreas() -> [(target: ControlTarget, rect: CGRect)] {
+        let targeted = shapes.filter { $0.target != nil }
+        return targeted.compactMap { shape in
+            guard let target = shape.target, shape.kind != .ring, shape.kind != .dial else { return nil }
+            var reach = Self.hitSlop
+            for other in targeted where other != shape {
+                // A center sits inside its ring, which isn't a neighbor.
+                if shape.kind == .center, other.kind == .ring || other.kind == .dial { continue }
+                let a = shape.rect, b = other.rect
+                let apart = max(b.minX - a.maxX, a.minX - b.maxX, b.minY - a.maxY, a.minY - b.maxY)
+                reach = min(reach, max(apart, 0) / 2)
+            }
+            return (target, shape.rect.insetBy(dx: -reach, dy: -reach))
+        }
+    }
+
+    /// The control under `point`, or nil. One pass over 20 or so shapes.
+    func target(at point: CGPoint) -> ControlTarget? {
+        for area in hitAreas() where area.rect.contains(point) { return area.target }
+        for shape in shapes where shape.kind == .ring || shape.kind == .dial {
+            guard let target = shape.target else { continue }
+            let r = shape.rect
+            if hypot(point.x - r.midX, point.y - r.midY) <= r.width / 2 { return target }
+        }
+        return nil
+    }
+}
+
 // MARK: - Bezel
 
 extension TabletFigure {
@@ -260,6 +319,9 @@ extension TabletFigure {
         var square: Double
         var long: Double
     }
+
+    /// Share of a ring's diameter its hole takes, as `TabletBezelView` draws it.
+    static let ringHole = 1 - 2 * 0.27
 
     private var metrics: Metrics {
         let shortSide = min(surfaceMM.width, surfaceMM.height)
@@ -342,7 +404,8 @@ extension TabletFigure {
         var shapes: [Shape] = []
         for side in Side.allCases {
             guard let band = bands[side] else { continue }
-            shapes += place(parts.filter { $0.side == side }, side: side, band: band, body: body,
+            let edgeParts = parts.indices.filter { parts[$0].side == side }.map { (index: $0, part: parts[$0]) }
+            shapes += place(edgeParts, side: side, band: band, body: body,
                             metrics: m, unit: unit, pixels: pixels, snap: snap)
         }
         return Drawing(
@@ -352,14 +415,14 @@ extension TabletFigure {
 
     /// Lays one edge's parts into its band, lane by lane.
     private func place(
-        _ edgeParts: [Part], side: Side, band: CGRect, body: CGRect, metrics m: Metrics, unit: Double,
+        _ edgeParts: [(index: Int, part: Part)], side: Side, band: CGRect, body: CGRect, metrics m: Metrics, unit: Double,
         pixels: (Double) -> Double, snap: (Double) -> Double
     ) -> [Shape] {
         let vertical = side == .left || side == .right
-        let laneCount = (edgeParts.map(\.lane).max() ?? 0) + 1
+        let laneCount = (edgeParts.map(\.part.lane).max() ?? 0) + 1
         // A lane of strips needs half the depth of one with keys.
         let weights = (0..<laneCount).map { lane in
-            edgeParts.filter { $0.lane == lane }.allSatisfy { $0.control == .strip } ? 1.0 : 2.0
+            edgeParts.filter { $0.part.lane == lane }.allSatisfy { $0.part.control == .strip } ? 1.0 : 2.0
         }
         let bandDepth = vertical ? band.width : band.height
         let totalWeight = laneCount > 1 ? weights.reduce(0, +) : 1
@@ -383,15 +446,16 @@ extension TabletFigure {
             case .top: laneCenter = band.minY + fromEdge
             case .bottom: laneCenter = band.maxY - fromEdge
             }
-            let items = edgeParts.filter { $0.lane == lane }.sorted { $0.start < $1.start }
-                .map { size($0, edgeLength: edgeLength, laneDepth: laneDepth / unit, metrics: m) }
+            let items = edgeParts.filter { $0.part.lane == lane }.sorted { $0.part.start < $1.part.start }
+                .map { size($0.part, controls: controls?[$0.index], edgeLength: edgeLength,
+                            laneDepth: laneDepth / unit, metrics: m) }
             for item in arrange(items, lo: lo, hi: hi, edgeLength: edgeLength, metrics: m) {
                 // Whole-pixel shapes, centered on where the part belongs.
                 let length = item.drawnLength(pixels: pixels)
                 let start = snap(edgeStart + (item.position + item.length / 2) * unit - length / 2)
                 shapes += item.shapes(
-                    at: start, vertical: vertical, laneCenter: laneCenter, laneDepth: laneDepth / unit,
-                    metrics: m, pixels: pixels, snap: snap)
+                    at: start, side: side, laneCenter: laneCenter, laneDepth: laneDepth / unit,
+                    metrics: m, unit: unit, pixels: pixels, snap: snap)
             }
         }
         return shapes
@@ -405,6 +469,9 @@ extension TabletFigure {
         var keyCount = 0
         var keyLength = 0.0
         var keyGap = 0.0
+        var controls: PartControls? = nil
+        /// A ring or dial's diameter, in millimeters, when keys sit beside it.
+        var round = 0.0
         /// Where it starts along the edge, in millimeters, once placed.
         var position = 0.0
 
@@ -416,9 +483,10 @@ extension TabletFigure {
 
         /// The item's shapes, starting `start` points along the edge.
         func shapes(
-            at start: Double, vertical: Bool, laneCenter: Double, laneDepth: Double,
-            metrics m: Metrics, pixels: (Double) -> Double, snap: (Double) -> Double
+            at start: Double, side: Side, laneCenter: Double, laneDepth: Double,
+            metrics m: Metrics, unit: Double, pixels: (Double) -> Double, snap: (Double) -> Double
         ) -> [Shape] {
+            let vertical = side == .left || side == .right
             func rect(from a: Double, length: Double, depth: Double) -> CGRect {
                 let across = snap(laneCenter - depth / 2)
                 return vertical
@@ -426,25 +494,135 @@ extension TabletFigure {
                     : CGRect(x: a, y: across, width: length, height: depth)
             }
             let keyDepth = pixels(min(m.keyDepth, laneDepth * 0.8))
-            switch part.control {
-            case .keys:
+            switch (part.control, controls?.entry) {
+            case let (.keys, .run(letters)?):
+                let length = pixels(keyLength), gap = pixels(keyGap)
+                return (0..<keyCount).map { i in
+                    Shape(kind: .key, rect: rect(from: start + Double(i) * (length + gap), length: length, depth: keyDepth),
+                          target: i < letters.count ? controls?.keys[letters[i]] : nil)
+                }
+            case (.keys, _):
                 let length = pixels(keyLength), gap = pixels(keyGap)
                 return (0..<keyCount).map { i in
                     Shape(kind: .key, rect: rect(from: start + Double(i) * (length + gap), length: length, depth: keyDepth))
                 }
-            case .cluster:
+            case let (.cluster, .cluster(grid)?):
+                let columns = grid.rows.first?.count ?? 1
+                let depth = pixels(min(laneDepth * 0.8, m.keyDepth * Double(columns)))
+                return gridShapes(grid, start: start, length: pixels(length), widths: Array(repeating: depth / Double(columns),
+                                  count: columns), side: side, laneCenter: laneCenter, metrics: m, pixels: pixels, snap: snap)
+            case (.cluster, _):
                 return [Shape(kind: .cluster, rect: rect(from: start, length: pixels(length), depth: keyDepth))]
-            case .ring, .dial:
+            case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):
+                // Keys in their own columns, the ring or dial in the rest.
+                let key = pixels(m.keyDepth * 0.6), d = pixels(round)
+                let widths = (0..<(grid.rows.first?.count ?? 0)).map { c in
+                    grid.rows.contains { $0[c] == .body } ? d : key
+                }
+                return gridShapes(grid, start: start, length: pixels(length), widths: widths, side: side,
+                                  laneCenter: laneCenter, metrics: m, pixels: pixels, snap: snap)
+            case (.ring, _), (.dial, _):
                 let d = pixels(length)
-                return [Shape(kind: part.control == .ring ? .ring : .dial, rect: rect(from: start, length: d, depth: d))]
-            case .strip:
+                let ring = rect(from: start, length: d, depth: d)
+                var shapes = [Shape(kind: part.control == .ring ? .ring : .dial, rect: ring, target: controls?.control)]
+                // A center button where the ring's hole is big enough to press.
+                if case let .ring(_, .center(letter))? = controls?.entry, let target = controls?.keys[letter],
+                   ring.width * TabletFigure.ringHole >= 10 {
+                    let c = pixels(length * 0.34)
+                    let center = CGRect(x: snap(ring.midX - c / 2), y: snap(ring.midY - c / 2), width: c, height: c)
+                    shapes.append(Shape(kind: .center, rect: center, target: target))
+                }
+                return shapes
+            case (.strip, _):
                 let depth = pixels(min(m.stripDepth, laneDepth * 0.6))
-                return [Shape(kind: .strip, rect: rect(from: start, length: pixels(length), depth: depth))]
+                return [Shape(kind: .strip, rect: rect(from: start, length: pixels(length), depth: depth),
+                              target: controls?.control)]
             }
+        }
+
+        /// A grid's keys, and the ring or dial among them, in rows along the
+        /// edge and columns of `widths` points from the edge inward, each key
+        /// filling its cells less a gap.
+        private func gridShapes(
+            _ grid: TabletLayoutIdentity.Grid, start: Double, length: Double, widths: [Double], side: Side,
+            laneCenter: Double, metrics m: Metrics, pixels: (Double) -> Double, snap: (Double) -> Double
+        ) -> [Shape] {
+            let vertical = side == .left || side == .right
+            let gap = pixels(m.keyGap * 0.6)
+            let rows = grid.rows.count
+            let total = widths.reduce(0, +) + Double(widths.count - 1) * gap
+            // Column edges from the body's edge inward, then in points across the lane.
+            var columnStarts: [Double] = []
+            var offset = 0.0
+            for w in widths { columnStarts.append(offset); offset += w + gap }
+            let towardEdge = side == .left || side == .top
+            func across(_ c: Int) -> (Double, Double) {
+                let a = towardEdge ? laneCenter - total / 2 + columnStarts[c]
+                    : laneCenter + total / 2 - columnStarts[c] - widths[c]
+                return (a, widths[c])
+            }
+            let rowLength = (length - Double(rows - 1) * gap) / Double(rows)
+            func along(_ r: Int) -> (Double, Double) { (start + Double(r) * (rowLength + gap), rowLength) }
+            func cell(_ r: Int, _ c: Int) -> CGRect {
+                let (a, l) = along(r), (x, w) = across(c)
+                return vertical ? CGRect(x: x, y: a, width: w, height: l) : CGRect(x: a, y: x, width: l, height: w)
+            }
+            func snapped(_ r: CGRect) -> CGRect {
+                let x0 = snap(r.minX), y0 = snap(r.minY)
+                // pixels(0) is one pixel, the least a side may be.
+                return CGRect(x: x0, y: y0, width: max(snap(r.maxX) - x0, pixels(0)),
+                              height: max(snap(r.maxY) - y0, pixels(0)))
+            }
+
+            var shapes: [Shape] = []
+            var body = CGRect.null
+            var keys: [(Character, CGRect)] = []
+            for (r, row) in grid.rows.enumerated() {
+                for (c, cellKind) in row.enumerated() {
+                    switch cellKind {
+                    case .empty: break
+                    case .body: body = body.union(cell(r, c))
+                    case let .key(letter):
+                        if let i = keys.firstIndex(where: { $0.0 == letter }) {
+                            keys[i].1 = keys[i].1.union(cell(r, c))
+                        } else {
+                            keys.append((letter, cell(r, c)))
+                        }
+                    }
+                }
+            }
+            if !body.isNull, let kind: Shape.Kind = part.control == .ring ? .ring : part.control == .dial ? .dial : nil {
+                let d = pixels(round)
+                shapes.append(Shape(kind: kind, rect: snapped(CGRect(x: body.midX - d / 2, y: body.midY - d / 2,
+                                                                     width: d, height: d)),
+                                    target: controls?.control))
+            }
+            for (letter, r) in keys {
+                // Cells that a key spans merge across the gaps between them.
+                shapes.append(Shape(kind: .key, rect: snapped(r), target: controls?.keys[letter]))
+            }
+            return shapes
         }
     }
 
-    private func size(_ part: Part, edgeLength: Double, laneDepth: Double, metrics m: Metrics) -> Item {
+    private func size(_ part: Part, controls: PartControls?, edgeLength: Double, laneDepth: Double,
+                      metrics m: Metrics) -> Item {
+        var item = size(part, keepEveryKey: controls != nil, edgeLength: edgeLength, laneDepth: laneDepth, metrics: m)
+        item.controls = controls
+        switch (part.control, controls?.entry) {
+        case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):
+            // The ring shrinks to leave room for its keys' columns.
+            let keyColumns = (grid.rows.first?.indices ?? 0..<0).filter { c in !grid.rows.contains { $0[c] == .body } }.count
+            item.round = max(min(m.round, laneDepth * 0.92 - Double(keyColumns) * (m.keyDepth * 0.6 + m.keyGap * 0.6)),
+                             m.keyDepth * 0.6)
+            item.length = max(item.round, Double(grid.rows.count) * m.keyDepth * 0.6
+                              + Double(grid.rows.count - 1) * m.keyGap * 0.6)
+        default: break
+        }
+        return item
+    }
+
+    private func size(_ part: Part, keepEveryKey: Bool, edgeLength: Double, laneDepth: Double, metrics m: Metrics) -> Item {
         let span = (part.end - part.start) * edgeLength
         switch part.control {
         case let .keys(count, shape):
@@ -456,8 +634,9 @@ extension TabletFigure {
             }
             // Keys spread across their span, no longer than their shape allows.
             let shortest = m.keyDepth * 0.3
+            // A diagram keeps every key, so each lines up with its target.
             var shown = count
-            while shown > 1, Double(shown) * shortest + Double(shown - 1) * m.keyGap > span { shown -= 1 }
+            while !keepEveryKey, shown > 1, Double(shown) * shortest + Double(shown - 1) * m.keyGap > span { shown -= 1 }
             let length = max(min(longest, (span - Double(shown - 1) * m.keyGap) / Double(shown)), shortest)
             let gap = shown > 1 ? max(m.keyGap, (span - Double(shown) * length) / Double(shown - 1)) : 0
             return Item(part: part, length: Double(shown) * length + Double(shown - 1) * gap,
