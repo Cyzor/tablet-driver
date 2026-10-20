@@ -39,7 +39,7 @@ struct PenDiagramView: View {
     @Environment(\.liveInputMuffled) private var muffled
 
     var body: some View {
-        PenDiagramCore(recipe: recipe, liveButtons: liveButtons, pressedPart: pressedPart, muffled: muffled)
+        PenDiagramCore(recipe: recipe, down: PenDiagramCore.down(liveButtons), pressedPart: pressedPart, muffled: muffled)
             .equatable()
             .overlay {
                 if onPartTap != nil {
@@ -94,13 +94,42 @@ extension PenDiagramView.Part {
 
 /// The drawn diagram, equatable over its visible state so the ~16 Hz
 /// liveButtons/livePoint invalidations streaming through the pane
-/// short-circuit when nothing visible has changed.
+/// short-circuit when nothing visible has changed. It sees only the pen's
+/// own parts, so ExpressKey and ring traffic never redraws it.
 private struct PenDiagramCore: View, Equatable {
     let recipe: PenRecipe
-    let liveButtons: LiveButtonState
+    /// One bit per part that's down; see `bit(_:)`.
+    let down: UInt8
     let pressedPart: PenDiagramView.Part?
     /// Outline-only highlights; see `EnvironmentValues.liveInputMuffled`.
     let muffled: Bool
+
+    @Environment(\.controlActiveState) private var controlActiveState
+
+    // Environment changes refresh the view on their own, so equality
+    // compares only the drawn state.
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        // SwiftUI compares views on the main actor.
+        MainActor.assumeIsolated {
+            a.recipe == b.recipe && a.down == b.down && a.pressedPart == b.pressedPart && a.muffled == b.muffled
+        }
+    }
+
+    static func bit(_ part: PenDiagramView.Part) -> UInt8 {
+        switch part {
+        case .tip: return 1 << 0
+        case .eraser: return 1 << 1
+        case .button1: return 1 << 2
+        case .button2: return 1 << 3
+        case .button3: return 1 << 4
+        }
+    }
+
+    static func down(_ live: LiveButtonState) -> UInt8 {
+        (live.tipDown ? bit(.tip) : 0) | (live.eraserDown ? bit(.eraser) : 0)
+            | (live.button1Down ? bit(.button1) : 0) | (live.button2Down ? bit(.button2) : 0)
+            | (live.button3Down ? bit(.button3) : 0)
+    }
 
     /// Recipe space to view space: scaled to fit, turned so the tip faces
     /// left. Every recipe shares one frame, so pens compare in size.
@@ -123,14 +152,14 @@ private struct PenDiagramCore: View, Equatable {
             let isDark = context.environment.colorScheme == .dark
             let passive = isDark ? Color.secondary : Color.primary.opacity(0.35)
             let bodyFill = isDark ? Color.primary.opacity(0.80) : Color.secondary
-            let accent = Color.accentColor
+            let accent = Color.windowAccent(controlActiveState)
 
             context.fill(view(recipe.outline), with: .color(bodyFill))
             context.fill(view(recipe.bodyFill), with: .color(bodyFill))
             for (part, path) in recipe.parts {
                 let p = view(path)
                 let shown = PenDiagramView.Part(part)
-                let down = isDown(shown)
+                let down = self.down & Self.bit(shown) != 0
                 context.fill(p, with: .color(down && !muffled ? accent : passive))
                 if pressedPart == shown {
                     // Pushed-button feedback: primary darkens in light mode
@@ -141,16 +170,6 @@ private struct PenDiagramCore: View, Equatable {
                     context.stroke(p, with: .color(.primary), lineWidth: 1)
                 }
             }
-        }
-    }
-
-    private func isDown(_ part: PenDiagramView.Part) -> Bool {
-        switch part {
-        case .tip: return liveButtons.tipDown
-        case .eraser: return liveButtons.eraserDown
-        case .button1: return liveButtons.button1Down
-        case .button2: return liveButtons.button2Down
-        case .button3: return liveButtons.button3Down
         }
     }
 }
