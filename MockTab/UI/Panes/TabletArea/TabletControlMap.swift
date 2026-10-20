@@ -19,6 +19,21 @@ enum ControlTarget: Hashable {
     case dial(Int)
     case strip(Int)
 
+    /// The controls a pad report holds down, read as `TabletManager` reads
+    /// them into `LiveButtonState`: buttons 0–15 are ExpressKeys, 16–18
+    /// bezel buttons, and each ring's button its center or toggle.
+    /// `includingPresses` adds buttons pressed and let go within the report.
+    static func down(in pad: PadState, includingPresses: Bool = false) -> Set<ControlTarget> {
+        var down: Set<ControlTarget> = []
+        for i in 0..<19 {
+            let held = pad.buttons.indices.contains(i) && pad.buttons[i]
+            guard held || (includingPresses && pad.pressedThisReport.contains(i)) else { continue }
+            down.insert(i < 16 ? .expressKey(i) : .bezel(i - 16))
+        }
+        for (i, ring) in pad.rings.prefix(2).enumerated() where ring.buttonDown { down.insert(.ringCenter(i)) }
+        return down
+    }
+
     /// A fixed bit for each target, so a set of them fits a `UInt64`.
     var bit: Int {
         switch self {

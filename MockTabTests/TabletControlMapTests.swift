@@ -108,6 +108,17 @@ struct TabletControlMapTests {
         #expect(all.allSatisfy { (0..<64).contains($0.bit) })
     }
 
+    @Test("Pad reports read as the Buttons pane reads them")
+    func down() {
+        var buttons = Array(repeating: false, count: 19)
+        buttons[0] = true; buttons[15] = true; buttons[17] = true
+        let pad = PadState(buttons: buttons, pressedThisReport: [3],
+                           rings: [RingState(position: nil, buttonDown: false), RingState(position: 4, buttonDown: true)])
+        #expect(ControlTarget.down(in: pad) == [.expressKey(0), .expressKey(15), .bezel(1), .ringCenter(1)])
+        #expect(ControlTarget.down(in: pad, includingPresses: true).contains(.expressKey(3)))
+        #expect(ControlTarget.down(in: PadState(buttons: [])).isEmpty)
+    }
+
     @Test("Rules for each family")
     func rules() throws {
         func map(_ pid: Int) throws -> TabletControlMap {
