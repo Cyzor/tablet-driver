@@ -35,18 +35,24 @@ struct TabletControlMapTests {
         return rows
     }
 
-    @Test("Nothing shows until a family is verified")
+    @Test("Only verified families show")
     func gate() {
-        #expect(TabletControlMap.verifiedFamilies.isEmpty)
+        #expect(TabletControlMap.verifiedFamilies == [.intuos5])
         for spec in WacomDeviceRegistry.knownDevices {
-            #expect(TabletControlMap.forDevice(productID: spec.productID, spec: spec) == nil)
+            let family = TabletControlMap.family(for: spec)
+            let shown = TabletControlMap.forDevice(productID: spec.productID, spec: spec) != nil
+            let expected = family.map(TabletControlMap.verifiedFamilies.contains) == true
+                && TabletLayoutIdentity.all[spec.productID] != nil
+            #expect(shown == expected, "\(spec.name)")
         }
     }
 
     @Test("Families are told apart by registry features")
     func families() {
         let expected: [Int: TabletControlMap.Family?] = [
-            0x00B9: .intuos4To5, 0x0028: .intuos4To5, 0x0315: .intuos4To5,
+            0x00B8: .intuos4, 0x00B9: .intuos4, 0x00BC: .intuos4,
+            0x00BD: .intuos4,  // Bluetooth row, no key-display flag of its own
+            0x0026: .intuos5, 0x0028: .intuos5, 0x0315: .intuos5, 0x0317: .intuos5,
             0x0357: .intuosPro2, 0x0358: .intuosPro2, 0x0361: .intuosPro2, 0x0392: .intuosPro2,
             0x03F5: .intuosPro3, 0x03F9: .intuosPro3,
             0x00F4: .cintiq24HD, 0x00F8: .cintiq24HD,
@@ -119,6 +125,38 @@ struct TabletControlMapTests {
         #expect(ControlTarget.down(in: PadState(buttons: [])).isEmpty)
     }
 
+    /// Reports from a key-order walk on a PTH-850 over USB, one per key, in
+    /// walk order, with the letter each key is in libwacom's layout.
+    private static let pth850Walk: [(letter: Character, report: [UInt8])] = [
+        ("B", [0x03, 0x80, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00]),
+        ("C", [0x03, 0x80, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x00]),
+        ("D", [0x03, 0x80, 0x00, 0x00, 0x04, 0x04, 0x00, 0x00, 0x00, 0x00]),
+        ("E", [0x03, 0x80, 0x00, 0x00, 0x08, 0x08, 0x00, 0x00, 0x00, 0x00]),
+        ("A", [0x03, 0x80, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+        ("F", [0x03, 0x80, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x00, 0x00]),
+        ("G", [0x03, 0x80, 0x00, 0x00, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00]),
+        ("H", [0x03, 0x80, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00]),
+        ("I", [0x03, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00]),
+    ]
+
+    @Test("PTH-850 keys light the key that was pressed")
+    func pth850Walk() throws {
+        let spec = try #require(WacomDeviceRegistry.spec(for: 0x0028))
+        let map = try #require(TabletControlMap.forDevice(productID: 0x0028, spec: spec))
+        var targets: [Character: ControlTarget] = [:]
+        for part in map.parts { targets.merge(part.keys) { a, _ in a } }
+        var decoder = spec.makeDecoder()
+        let released: [UInt8] = [0x03, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        for (letter, report) in Self.pth850Walk {
+            let down = HIDReport.withReport(report) { decoder.events($0) }
+                .reduce(into: Set<ControlTarget>()) { set, event in
+                    if case let .pad(pad) = event { set.formUnion(ControlTarget.down(in: pad, includingPresses: true)) }
+                }
+            #expect(down == [try #require(targets[letter])], "key \(letter)")
+            _ = HIDReport.withReport(released) { decoder.events($0) }
+        }
+    }
+
     @Test("Rules for each family")
     func rules() throws {
         func map(_ pid: Int) throws -> TabletControlMap {
@@ -130,6 +168,7 @@ struct TabletControlMapTests {
         #expect(pro2.parts[2].keys["H"] == .expressKey(7))
 
         let intuos5 = try map(0x0028)  // k BCDE; r 1 A; k FGHI
+        #expect(intuos5.family == .intuos5)
         #expect(intuos5.parts[0].keys["B"] == .expressKey(0))
         #expect(intuos5.parts[1] == .init(control: .ring(0), keys: ["A": .ringCenter(0)]))
         #expect(intuos5.parts[2].keys["I"] == .expressKey(7))

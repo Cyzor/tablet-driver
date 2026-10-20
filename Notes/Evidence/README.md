@@ -11,6 +11,7 @@ on one of the protocol pages.
 | [PTK-870 edge and groove](PTK-870-Edge-and-Groove.md) | The edge reaches the specified maximum; the groove folds back, flagged by a status bit |
 | [Xencelabs pen bit](Xencelabs-Pen-Bit.md) | Bit 7 tells the 3 Button Pen from the Thin Pen |
 | [PTH-850 pressure ramp](PTH-850-Pressure-Ramp.md) | Pressure starts low and climbs; no jump at first touch |
+| [PTH-850 key order](PTH-850-Key-Order.md) | Keys 1–8 run top to bottom; the ring's center is its own bit |
 | [Report rate](Report-Rate.md) | Xencelabs reports every 5 ms, the Cintiq 24HD every 7 |
 | [Scroll event parity](Scroll-Event-Parity.md) | MockTab's scrolls match a trackpad's in every field an app can set |
 

@@ -57,8 +57,11 @@ enum ControlTarget: Hashable {
 /// diagram rather than one that lights the wrong key.
 struct TabletControlMap: Equatable {
     enum Family: CaseIterable {
-        /// Intuos4, Intuos5, and Intuos Pro gen 1: the key set into the ring is its center.
-        case intuos4To5
+        /// Intuos4: the key set into the ring is its center. Its keys arrive in
+        /// a different report from Intuos5's, so it's verified apart.
+        case intuos4
+        /// Intuos5 and Intuos Pro gen 1: the key set into the ring is its center.
+        case intuos5
         /// Intuos Pro gen 2 (PTH-x60): the key set into the ring is its center.
         case intuosPro2
         /// Intuos Pro gen 3 (PTK-x70): each dial's mode key is its toggle.
@@ -81,7 +84,9 @@ struct TabletControlMap: Equatable {
 
     /// Families whose key order has been checked on hardware. Each entry
     /// cites its evidence.
-    static let verifiedFamilies: Set<Family> = []
+    static let verifiedFamilies: Set<Family> = [
+        .intuos5,  // Notes/Evidence/PTH-850-Key-Order.md
+    ]
 
     /// The map for a connected model, or nil when it has no layout, no known
     /// family, or a family not yet verified.
@@ -97,7 +102,10 @@ struct TabletControlMap: Equatable {
     static func family(for spec: TabletSpec) -> Family? {
         switch spec.format {
         // The Cintiq 13HD shares the format but has no ring and a rocker.
-        case .intuosV1 where spec.hasTouchRing && !spec.isPenDisplay: return .intuos4To5
+        // Intuos4 has key displays; its Bluetooth row takes them from its USB twin.
+        case .intuosV1 where spec.hasTouchRing && !spec.isPenDisplay:
+            let canonical = WacomDeviceRegistry.spec(for: WacomDeviceRegistry.canonicalProductID(for: spec.productID)) ?? spec
+            return canonical.hasKeyOLEDs ? .intuos4 : .intuos5
         // The MobileStudio Pro shares the format but has mode keys around its ring.
         case .intuosV2 where spec.hasTouchRing && !spec.isPenDisplay: return .intuosPro2
         case .intuosV3 where spec.hasMechanicalDial: return .intuosPro3
@@ -114,7 +122,8 @@ struct TabletControlMap: Equatable {
         var special: [Character: ControlTarget] = [:]
         for entry in identity.entries {
             switch (family, entry) {
-            case let (.intuos4To5, .ring(n, .center(letter))), let (.intuosPro2, .ring(n, .center(letter))):
+            case let (.intuos4, .ring(n, .center(letter))), let (.intuos5, .ring(n, .center(letter))),
+                 let (.intuosPro2, .ring(n, .center(letter))):
                 special[letter] = .ringCenter(n - 1)
             default: break
             }
