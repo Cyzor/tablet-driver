@@ -59,6 +59,13 @@ struct InjectionSnapshot: Sendable, Equatable {
     // MARK: - Express keys & touch ring
 
     var expressKeyBindings: [ButtonBinding]
+    /// How many leading `expressKeyBindings` entries make up the tablet's
+    /// ExpressKey column — the keys that sit on the tablet body and so swap
+    /// ends when it's flipped 180°. 0 means "don't reorder": devices with no
+    /// express keys, and devices whose keys don't travel with
+    /// `tabletOrientation` (the Xencelabs Quick Keys is a separate puck with
+    /// its own orientation). See `DeviceContext.flippingExpressKeyCount`.
+    var expressKeyCount: Int
     var bezelButtonBindings: [ButtonBinding]
     var touchRingButtonBinding: ButtonBinding
     /// Second dial's own toggle-key binding (PTK-670/870's right cluster
@@ -141,6 +148,17 @@ struct InjectionSnapshot: Sendable, Equatable {
         }
     }
 
+    /// Binding for the physical ExpressKey at `index`, counted top to bottom on
+    /// the tablet. A 180° flip reverses the column, so the entry is read from
+    /// the far end of the settings list; the rest of the time this is just
+    /// `expressKeyBindings[index]`. Allocation-free — the injection hot path
+    /// reads this on every key transition.
+    func expressKeyBinding(atPhysicalIndex index: Int) -> ButtonBinding {
+        let source = tabletOrientation.expressKeySourceIndex(index, count: expressKeyCount)
+        guard expressKeyBindings.indices.contains(source) else { return .none }
+        return expressKeyBindings[source]
+    }
+
     /// One rotary control's mode state, from whichever storage this tablet
     /// uses. See `RotarySet.resolving`.
     func rotary(_ index: RotaryIndex) -> RotaryConfig {
@@ -165,7 +183,10 @@ extension TabletSettings {
     ///
     /// `pairedProductID` comes from the owning `DeviceContext`, not
     /// `TabletSettings` itself — see `InjectionSnapshot.pairedProductID`.
-    func makeInjectionSnapshot(pairedProductID: Int = 0) -> InjectionSnapshot {
+    /// `expressKeyCount` likewise — see
+    /// `InjectionSnapshot.expressKeyCount`.
+    func makeInjectionSnapshot(pairedProductID: Int = 0,
+                               expressKeyCount: Int = 0) -> InjectionSnapshot {
         InjectionSnapshot(
             tabletOrientation: tabletOrientation,
             activeAreaX: activeAreaX,
@@ -193,6 +214,7 @@ extension TabletSettings {
             doubleClickInterval: NSEvent.doubleClickInterval,
             activeTool: activeTool.injectionSnapshot(),
             expressKeyBindings: expressKeyBindings,
+            expressKeyCount: expressKeyCount,
             bezelButtonBindings: bezelButtonBindings,
             touchRingButtonBinding: touchRingButtonBinding,
             touchRingButtonBinding2: touchRingButtonBinding2,

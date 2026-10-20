@@ -254,6 +254,40 @@ enum DisplayRegionTestRunner {
         expect(moved.x.isFinite && moved.x > start.x, "real range afterward: relative cursor moves")
     }
 
+    /// A 180° flip swaps the ExpressKey column's ends, so a settings list read
+    /// top-to-bottom has to be taken from the far end; the ±90° orientations
+    /// move the column to another edge instead and must not reorder it.
+    static func testExpressKeyColumnReversesOnFlip() {
+        let list = Array(0..<16)
+        expect(TabletOrientation.landscape.expressKeys(inOrder: list, count: 8) == list,
+               "landscape: key order unchanged")
+        expect(TabletOrientation.landscapeFlipped.expressKeys(inOrder: list, count: 8)
+                == [7, 6, 5, 4, 3, 2, 1, 0] + Array(8..<16),
+               "flipped: the first eight swap ends, the rest stay put")
+        expect(TabletOrientation.portrait.expressKeys(inOrder: list, count: 8) == list,
+               "portrait: key order unchanged")
+        expect(TabletOrientation.portraitFlipped.expressKeys(inOrder: list, count: 8) == list,
+               "portrait flipped: key order unchanged")
+
+        // The hot path reads single entries, so it must agree with the list.
+        for orientation in TabletOrientation.allCases {
+            for index in 0..<16 {
+                let source = orientation.expressKeySourceIndex(index, count: 8)
+                expect(list[source] == orientation.expressKeys(inOrder: list, count: 8)[index],
+                       "\(orientation): index \(index) agrees with the reordered list")
+            }
+        }
+
+        // A device with no express keys, or a column wider than the list on
+        // hand, must be left alone rather than trap.
+        expect(TabletOrientation.landscapeFlipped.expressKeys(inOrder: list, count: 0) == list,
+               "no express keys: nothing reorders")
+        expect(TabletOrientation.landscapeFlipped.expressKeys(inOrder: list, count: 99) == list,
+               "column wider than the list: nothing reorders")
+        expect(TabletOrientation.landscapeFlipped.expressKeySourceIndex(16, count: 8) == 16,
+               "index past the column: keeps its own index")
+    }
+
     static func main() {
         testZeroRangeMapsNowhere()
         testDefaultRegionIsWholeDisplay()
@@ -265,6 +299,7 @@ enum DisplayRegionTestRunner {
         testTouchAspectFollowsCrop()
         testEdgePinningFollowsEachDisplay()
         testSpecificDisplayResolution()
+        testExpressKeyColumnReversesOnFlip()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

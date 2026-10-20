@@ -49,6 +49,31 @@ enum TabletOrientation: Int, CaseIterable {
         }
     }
 
+    /// Whether the ExpressKey column runs the other way on screen. A 180° flip
+    /// swaps its ends, so a list ordered top-to-bottom has to be read from the
+    /// far end to stay top-to-bottom on the tablet. The ±90° orientations move
+    /// the column to a different edge rather than reversing it, so they're
+    /// excluded.
+    var reversesExpressKeyOrder: Bool { self == .landscapeFlipped }
+
+    /// Index in a top-to-bottom settings list that drives the physical key at
+    /// `index`. `count` is the number of ExpressKeys on the tablet: entries
+    /// past the column (bezel keys, unused padding) keep their own index.
+    /// Identity unless this orientation reverses the column.
+    func expressKeySourceIndex(_ index: Int, count: Int) -> Int {
+        guard reversesExpressKeyOrder, index >= 0, index < count else { return index }
+        return count - 1 - index
+    }
+
+    /// `values` reordered into physical key order: the first `count` entries
+    /// are the ExpressKey column and reverse together, the rest are untouched.
+    /// For display-side lists; the injection hot path calls
+    /// `expressKeySourceIndex` to avoid the copy.
+    func expressKeys<T>(inOrder values: [T], count: Int) -> [T] {
+        guard reversesExpressKeyOrder, count > 0, count <= values.count else { return values }
+        return values.indices.map { values[expressKeySourceIndex($0, count: count)] }
+    }
+
     var label: String {
         switch self {
         case .landscape:

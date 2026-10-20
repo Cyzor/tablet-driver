@@ -59,14 +59,13 @@ extension WacomKnownDevice {
         }
     }
 
-    /// Turns the key OLED images 180° for a tablet used upside down, and
-    /// resends the labels already shown.
+    /// Turns the key OLED images 180° for a tablet used upside down. Only
+    /// clears the per-key cache: the caller's `setAuxKeyLabels` repaints, so
+    /// the keys never show the old order rotated first.
     func setKeyOLEDsRotated180(_ rotated: Bool) {
         guard deviceSpec.hasKeyOLEDs, rotated != keyOLEDsRotated180 else { return }
         keyOLEDsRotated180 = rotated
-        let shown = intuos4SentKeyLabels
         intuos4SentKeyLabels = []
-        setIntuos4KeyOLEDLabels(shown)
     }
 
     /// Renders each label and sends it to its key's OLED, USB only. Deduped
