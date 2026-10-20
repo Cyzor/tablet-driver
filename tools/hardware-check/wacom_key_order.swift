@@ -43,8 +43,10 @@ enum KeyOrderCheck {
             let pids = Set(devices.compactMap { IOHIDDeviceGetProperty($0, kIOHIDProductIDKey as CFString) as? Int })
             var skipped: [String] = []
             for pid in pids.sorted() {
-                guard let spec = WacomDeviceRegistry.spec(for: pid) else { continue }
-                guard let walk = Walk(pid: pid, spec: spec) else {
+                // Bluetooth and revision IDs share their USB model's layout.
+                let model = WacomDeviceRegistry.canonicalProductID(for: pid)
+                guard let spec = WacomDeviceRegistry.spec(for: pid) ?? WacomDeviceRegistry.spec(for: model) else { continue }
+                guard let walk = Walk(pid: pid, model: model, spec: spec) else {
                     if spec.buttonCount > 0 { skipped.append(spec.name) }
                     continue
                 }
@@ -103,6 +105,7 @@ final class Walk {
         var report: [UInt8] = []
     }
 
+    /// The ID the tablet reports under; `model` picks its layout.
     let pid: Int
     let name: String
     let family: TabletControlMap.Family
@@ -117,10 +120,10 @@ final class Walk {
     /// Reports from the tablet so far, to tell a quiet tablet from a waiting user.
     var reports = 0
 
-    init?(pid: Int, spec: TabletSpec) {
+    init?(pid: Int, model: Int, spec: TabletSpec) {
         guard let family = TabletControlMap.family(for: spec),
-              let identity = TabletLayoutIdentity.all[pid],
-              let parts = TabletFigure.layouts[pid]
+              let identity = TabletLayoutIdentity.all[model],
+              let parts = TabletFigure.layouts[model]
         else { return nil }
         let map = TabletControlMap.make(identity, family: family)
         self.pid = pid
