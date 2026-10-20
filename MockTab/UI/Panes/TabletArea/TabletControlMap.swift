@@ -23,17 +23,14 @@ extension ControlTarget {
 }
 
 /// Which `ControlTarget` each part of a model's layout drives: libwacom's
-/// letters, from `TabletLayoutIdentity`, turned into MockTab's indices by
-/// the rule for the model's family.
+/// letters, from `TabletLayoutIdentity`, turned into MockTab's indices.
 ///
-/// A family's key order comes from libwacom and the kernel, which can be
-/// wrong for a given model, so `forDevice` returns nil until the family is
-/// in `verifiedFamilies`. A tablet without a verified family gets no
-/// diagram rather than one that lights the wrong key.
+/// Every model with a layout gets a map. Where its key order hasn't been
+/// checked on hardware, the order is the best guess the sources support,
+/// and a user who sees the wrong key light can report it.
 struct TabletControlMap: Equatable {
     enum Family: CaseIterable {
-        /// Intuos4: the key set into the ring is its center. Its keys arrive in
-        /// a different report from Intuos5's, so it's verified apart.
+        /// Intuos4: the key set into the ring is its center.
         case intuos4
         /// Intuos5 and Intuos Pro gen 1: the key set into the ring is its center.
         case intuos5
@@ -43,6 +40,8 @@ struct TabletControlMap: Equatable {
         case intuosPro3
         /// Cintiq 24HD: the mode keys beside each ring are the first three keys of their side.
         case cintiq24HD
+        /// Any other model: the general rule below.
+        case other
     }
 
     /// One layout part's targets, as the tablet figure draws them.
@@ -52,27 +51,28 @@ struct TabletControlMap: Equatable {
     /// One for each of the model's layout parts, in the same order.
     var parts: [Part]
 
-    /// Families whose key order has been checked on hardware. Each entry
-    /// cites its evidence.
+    /// Families whose key order has been checked, each citing its evidence.
+    /// The rest are drawn from libwacom's order.
     static let verifiedFamilies: Set<Family> = [
+        .intuos4,  // libwacom's order, which the kernel's report layout follows
         .intuos5,  // Notes/Evidence/PTH-850-Key-Order.md
         .cintiq24HD,  // Notes/Evidence/DTK-2400-Key-Order.md
         .intuosPro2,  // Notes/Evidence/PTH-860-Bluetooth-Keys.md
         .intuosPro3,  // Notes/Evidence/PTK-870-Key-Order.md
     ]
 
-    /// The map for a connected model, or nil when it has no layout, no known
-    /// family, or a family not yet verified.
+    /// The map for a connected model, or nil when it has no layout or its
+    /// layout names a key twice.
     static func forDevice(productID: Int, spec: TabletSpec) -> TabletControlMap? {
-        guard let family = family(for: spec), verifiedFamilies.contains(family),
-              let identity = TabletLayoutIdentity.all[productID]
+        guard let identity = TabletLayoutIdentity.all[productID],
+              Set(identity.letters).count == identity.letters.count
         else { return nil }
-        return make(identity, family: family)
+        return make(identity, family: family(for: spec), hasCenterRow: hasCenterRow(spec))
     }
 
     /// The family whose rule fits a model, told apart by what the registry
     /// knows about it, not by product ID.
-    static func family(for spec: TabletSpec) -> Family? {
+    static func family(for spec: TabletSpec) -> Family {
         switch spec.format {
         // The Cintiq 13HD shares the format but has no ring and a rocker.
         case .intuosV1 where spec.hasTouchRing && !spec.isPenDisplay:
@@ -82,35 +82,69 @@ struct TabletControlMap: Equatable {
         case .intuosV3 where spec.hasMechanicalDial: return .intuosPro3
         // The Companion 2 shares the format but has one ring with a rocker.
         case .cintiqV1 where spec.hasDualRings: return .cintiq24HD
-        default: return nil
+        default: return .other
         }
     }
 
-    /// Applies a family's rule, without the verification gate. Special keys
-    /// (ring centers, dial toggles) take their own targets; every other key
-    /// takes the next ExpressKey index in letter order.
-    static func make(_ identity: TabletLayoutIdentity, family: Family) -> TabletControlMap {
+    /// Whether the Buttons pane shows a Center or Dial Toggle row for the
+    /// first ring, as `touchRingBlock` decides.
+    static func hasCenterRow(_ spec: TabletSpec) -> Bool {
+        spec.hasTouchRing && !(spec.hasDualRings && spec.format == .cintiqV1)
+    }
+
+    /// Decoder button order by evdev code, keyed by the codes libwacom
+    /// lists for a model. Each list belongs to one report layout, so it
+    /// picks that layout's bit order (the kernel's `wacom_bpt_touch`,
+    /// `wacom_bpt3_button_msg`, and `wacom_graphire_irq`).
+    private static let evdevOrder: [[Int]: [Int]] = [
+        [0x111, 0x116, 0x115, 0x110]: [0x110, 0x115, 0x116, 0x111],  // Bamboo Pen & Touch, CTH-460
+        [0x110, 0x115, 0x116, 0x111]: [0x111, 0x116, 0x115, 0x110],  // Bamboo CTH-470
+        [0x110, 0x111, 0x115, 0x116]: [0x111, 0x110, 0x115, 0x116],  // Intuos CTH-480, CTL-490
+        [0x116, 0x115, 0x110, 0x111]: [0x116, 0x115, 0x110, 0x111],  // Bamboo Fun CTE
+    ]
+
+    /// Applies the rule. Special keys take their own targets: a ring's center
+    /// key where the pane has a Center row, a dial's mode key as its toggle,
+    /// and a strip's mode key as the bezel slot the decoder reports it in.
+    /// Every other key takes an ExpressKey index: by the decoder's evdev
+    /// order where libwacom lists codes, else in letter order.
+    static func make(_ identity: TabletLayoutIdentity, family: Family, hasCenterRow: Bool) -> TabletControlMap {
         var special: [Character: ControlTarget] = [:]
-        for entry in identity.entries {
-            switch (family, entry) {
-            case let (.intuos4, .ring(n, .center(letter))), let (.intuos5, .ring(n, .center(letter))),
-                 let (.intuosPro2, .ring(n, .center(letter))):
-                special[letter] = .ringCenter(n - 1)
-            default: break
+        if hasCenterRow && family != .intuosPro3 {
+            for entry in identity.entries {
+                switch entry {
+                case let .ring(n, .center(letter)): special[letter] = .ringCenter(n - 1)
+                case let .ring(n, .beside(grid)):
+                    if let pad = TabletFigure.pad(grid) { special[pad.center] = .ringCenter(n - 1) }
+                default: break
+                }
             }
         }
-        if family == .intuosPro3 {
-            for (letter, mode) in identity.modeSwitches {
-                if case let .dial(n) = mode.control, mode.mode == nil { special[letter] = .ringCenter(n - 1) }
+        for (letter, mode) in identity.modeSwitches where mode.mode == nil {
+            switch mode.control {
+            case let .dial(n): special[letter] = .ringCenter(n - 1)
+            case let .strip(n): special[letter] = .bezel(n - 1)
+            case .ring: break
             }
         }
-        let plain = Set(identity.letters).subtracting(special.keys).sorted()
         var targets = special
-        for (index, letter) in plain.enumerated() { targets[letter] = .expressKey(index) }
+        let plain = Set(identity.letters).subtracting(special.keys).sorted()
+        if let codes = identity.evdevCodes, let order = evdevOrder[codes] {
+            for letter in plain {
+                let position = Int(letter.asciiValue! - 65)
+                if position < codes.count, let index = order.firstIndex(of: codes[position]) {
+                    targets[letter] = .expressKey(index)
+                }
+            }
+        } else {
+            for (index, letter) in plain.enumerated() { targets[letter] = .expressKey(index) }
+        }
 
         let parts = identity.entries.map { entry -> Part in
             let control: ControlTarget?
             switch entry {
+            // A ring with four keys around it and one inside is a rocker, drawn as a pad.
+            case let .ring(_, .beside(grid)) where TabletFigure.pad(grid) != nil: control = nil
             case let .ring(n, _): control = .ring(n - 1)
             case let .dial(n, _): control = .dial(n - 1)
             case let .strip(n): control = .strip(n - 1)

@@ -346,9 +346,9 @@ extension TabletFigure {
     /// Least gap between a diagram's keys, in points, so their cleared rims don't meet.
     static let diagramGap: Double = 3
 
-    /// A cluster of four keys around a center key, the shape of a four-way
-    /// pad: its center, and each other key's offset along the edge and inward
-    /// from it, −1 to 1. Nil for any other shape.
+    /// Four keys around a center key, the shape of a four-way pad or a rocker
+    /// ring: its center, and each other key's offset along the edge and
+    /// inward from it, −1 to 1. Nil for any other shape.
     static func pad(_ grid: TabletLayoutIdentity.Grid)
         -> (center: Character, around: [(letter: Character, along: Double, inward: Double)])? {
         let rows = grid.rows
@@ -360,8 +360,8 @@ extension TabletFigure {
                 guard case let .key(letter) = cell, letter != center else { return nil }
                 around.append((letter, Double(r - 1), Double(c - 1)))
             }
-            // Corners stay empty.
-            for c in [0, 2] where r != 1 && rows[r][c] != .empty { return nil }
+            // Corners stay empty, or hold the ring the keys sit around.
+            for c in [0, 2] where r != 1 && rows[r][c] != .empty && rows[r][c] != .body { return nil }
         }
         guard Set(around.map { $0.letter }).count == 4 else { return nil }
         return (center: center, around: around)
@@ -555,26 +555,10 @@ extension TabletFigure {
                 return (0..<keyCount).map { i in
                     Shape(kind: .key, rect: rect(from: start + Double(i) * (length + gap), length: length, depth: keyDepth))
                 }
-            case let (.cluster, .cluster(grid)?) where TabletFigure.pad(grid) != nil:
-                let pad = TabletFigure.pad(grid)!
-                let d = pixels(length)
-                let box = rect(from: start, length: d, depth: d)
-                let c = pixels(length * 0.36)
-                var shapes = [Shape(kind: .center, rect: CGRect(x: snap(box.midX - c / 2), y: snap(box.midY - c / 2),
-                                                                width: c, height: c),
-                                    target: controls?.keys[pad.center])]
-                for key in pad.around {
-                    // Along the edge and inward from it, turned to screen directions.
-                    let (dx, dy): (Double, Double)
-                    switch side {
-                    case .top: (dx, dy) = (key.along, key.inward)
-                    case .bottom: (dx, dy) = (key.along, -key.inward)
-                    case .left: (dx, dy) = (key.inward, key.along)
-                    case .right: (dx, dy) = (-key.inward, key.along)
-                    }
-                    shapes.append(Shape(kind: .wedge(atan2(dy, dx)), rect: box, target: controls?.keys[key.letter]))
-                }
-                return shapes
+            case let (.cluster, .cluster(grid)?) where TabletFigure.pad(grid) != nil,
+                 let (.ring, .ring(_, .beside(grid))?) where TabletFigure.pad(grid) != nil:
+                return padShapes(TabletFigure.pad(grid)!, box: rect(from: start, length: pixels(length), depth: pixels(length)),
+                                 side: side, pixels: pixels, snap: snap)
             case let (.cluster, .cluster(grid)?):
                 let columns = grid.rows.first?.count ?? 1
                 let depth = pixels(min(laneDepth * 0.8, m.keyDepth * Double(columns)))
@@ -609,6 +593,30 @@ extension TabletFigure {
                 return [Shape(kind: .strip, rect: rect(from: start, length: pixels(length), depth: depth),
                               target: controls?.control)]
             }
+        }
+
+        /// A round pad: a center disc and four quarter-ring keys around it,
+        /// each turned to face its key's direction on the tablet.
+        private func padShapes(
+            _ pad: (center: Character, around: [(letter: Character, along: Double, inward: Double)]), box: CGRect,
+            side: Side, pixels: (Double) -> Double, snap: (Double) -> Double
+        ) -> [Shape] {
+            let c = pixels(length * 0.36)
+            var shapes = [Shape(kind: .center, rect: CGRect(x: snap(box.midX - c / 2), y: snap(box.midY - c / 2),
+                                                            width: c, height: c),
+                                target: controls?.keys[pad.center])]
+            for key in pad.around {
+                // Along the edge and inward from it, turned to screen directions.
+                let (dx, dy): (Double, Double)
+                switch side {
+                case .top: (dx, dy) = (key.along, key.inward)
+                case .bottom: (dx, dy) = (key.along, -key.inward)
+                case .left: (dx, dy) = (key.inward, key.along)
+                case .right: (dx, dy) = (-key.inward, key.along)
+                }
+                shapes.append(Shape(kind: .wedge(atan2(dy, dx)), rect: box, target: controls?.keys[key.letter]))
+            }
+            return shapes
         }
 
         /// A grid's keys, and the ring or dial among them, in rows along the
@@ -685,7 +693,8 @@ extension TabletFigure {
         var item = size(part, keepEveryKey: controls != nil, edgeLength: edgeLength, laneDepth: laneDepth, metrics: m)
         item.controls = controls
         switch (part.control, controls?.entry) {
-        case let (.cluster, .cluster(grid)?) where Self.pad(grid) != nil:
+        case let (.cluster, .cluster(grid)?) where Self.pad(grid) != nil,
+             let (.ring, .ring(_, .beside(grid))?) where Self.pad(grid) != nil:
             // A round pad takes the same size as the rings and dials.
             item.length = min(m.round, laneDepth * 0.92)
         case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):

@@ -8,15 +8,12 @@ import Testing
 
 @Suite("Tablet figure with controls")
 struct TabletFigureControlsTests {
-    /// Every model with a family rule, drawn with its controls. The gate
-    /// isn't applied, so unverified families' geometry is tested too.
+    /// Every model with a map, drawn with its controls.
     private static let figures: [(name: String, map: TabletControlMap, figure: TabletFigure)] =
         WacomDeviceRegistry.knownDevices.compactMap { spec in
-            guard let family = TabletControlMap.family(for: spec),
-                  let identity = TabletLayoutIdentity.all[spec.productID],
-                  spec.maxX > 0, spec.maxY > 0
+            guard spec.maxX > 0, spec.maxY > 0,
+                  let map = TabletControlMap.forDevice(productID: spec.productID, spec: spec)
             else { return nil }
-            let map = TabletControlMap.make(identity, family: family)
             let mm = spec.activeWidthMM.flatMap { w in spec.activeHeightMM.map { CGSize(width: w, height: $0) } }
             var figure = TabletFigure(layoutProductID: spec.productID, surfaceMM: mm,
                                       aspect: Double(spec.maxX) / Double(spec.maxY), isPenDisplay: spec.isPenDisplay)

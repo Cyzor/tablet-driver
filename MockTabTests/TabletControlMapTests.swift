@@ -7,22 +7,24 @@ import Testing
 
 @Suite("Tablet control map")
 struct TabletControlMapTests {
-    /// Every registry model with a layout, and the family its rule comes from.
+    /// Every registry model with a map.
     private static let mapped: [(spec: TabletSpec, map: TabletControlMap)] =
         WacomDeviceRegistry.knownDevices.compactMap { spec in
-            guard let family = TabletControlMap.family(for: spec),
-                  let identity = TabletLayoutIdentity.all[spec.productID]
-            else { return nil }
-            return (spec, TabletControlMap.make(identity, family: family))
+            TabletControlMap.forDevice(productID: spec.productID, spec: spec).map { (spec, $0) }
         }
 
     /// Models whose registry key count disagrees with libwacom's, so a
     /// diagram would have keys with no row or rows with no key. Fix the
     /// registry, then take the model out of this list.
     private static let knownCountMismatches: Set<Int> = [
-        0x0026,  // PTH-450: registry says 8 keys, libwacom 6
-        0x0314,  // PTH-451: registry says 8 keys, libwacom 6
+        0x0017, 0x0018, 0x0065,  // Bamboo Fun CTE-450/650, MTE-450: a Center row, but no center button
+        0x0026, 0x0314,  // PTH-450, PTH-451: registry says 8 keys, libwacom 6
         0x03F5,  // PTK-470: registry says 5 keys, libwacom 4 and a dial toggle
+        0x00D0,  // CTT-460: registry says no keys, libwacom 4
+        0x00C6,  // Cintiq 12WX: registry says 8 keys, libwacom 10
+        0x00C5,  // Cintiq 20WSX: registry says 10 keys, libwacom 14
+        0x0325,  // Companion 2: registry says 4 keys, libwacom 11
+        0x034D, 0x0398, 0x034E, 0x0399, 0x03AA,  // MobileStudio Pro: the ring's four mode keys have no rows
     ]
 
     /// The rows the Buttons pane shows for a model's keys, rings, and dials,
@@ -35,29 +37,30 @@ struct TabletControlMapTests {
         return rows
     }
 
-    @Test("Only verified families show")
-    func gate() {
-        #expect(TabletControlMap.verifiedFamilies == [.intuos5, .cintiq24HD, .intuosPro2, .intuosPro3])
+    @Test("Every model with a layout has a map, unless it names a key twice")
+    func coverage() {
+        #expect(TabletControlMap.verifiedFamilies == [.intuos4, .intuos5, .cintiq24HD, .intuosPro2, .intuosPro3])
         for spec in WacomDeviceRegistry.knownDevices {
-            let family = TabletControlMap.family(for: spec)
             let shown = TabletControlMap.forDevice(productID: spec.productID, spec: spec) != nil
-            let expected = family.map(TabletControlMap.verifiedFamilies.contains) == true
-                && TabletLayoutIdentity.all[spec.productID] != nil
+            let identity = TabletLayoutIdentity.all[spec.productID]
+            let expected = identity.map { Set($0.letters).count == $0.letters.count } ?? false
             #expect(shown == expected, "\(spec.name)")
         }
+        #expect(TabletControlMap.forDevice(productID: 0x003A, spec: WacomDeviceRegistry.spec(for: 0x003A)!) == nil,
+                "the DTI-520's layout names key B twice")
     }
 
     @Test("Families are told apart by registry features")
     func families() {
-        let expected: [Int: TabletControlMap.Family?] = [
+        let expected: [Int: TabletControlMap.Family] = [
             0x00B8: .intuos4, 0x00B9: .intuos4, 0x00BC: .intuos4,
             0x00BD: .intuos4,  // Bluetooth row, no key-display flag of its own
             0x0026: .intuos5, 0x0028: .intuos5, 0x0315: .intuos5, 0x0317: .intuos5,
             0x0357: .intuosPro2, 0x0358: .intuosPro2, 0x0361: .intuosPro2, 0x0392: .intuosPro2,
             0x03F5: .intuosPro3, 0x03F9: .intuosPro3,
             0x00F4: .cintiq24HD, 0x00F8: .cintiq24HD,
-            // Same formats, different shapes: no rule yet.
-            0x0304: nil, 0x034D: nil, 0x0325: nil, 0x00CC: nil, 0x0374: nil,
+            // Same formats, different shapes: the general rule.
+            0x0304: .other, 0x034D: .other, 0x0325: .other, 0x00CC: .other, 0x0374: .other,
         ]
         for (pid, family) in expected {
             let spec = WacomDeviceRegistry.spec(for: pid)
@@ -93,7 +96,7 @@ struct TabletControlMapTests {
     @Test("Keys match the pane's rows")
     func matchesPaneRows() {
         for (spec, map) in Self.mapped where !Self.knownCountMismatches.contains(spec.productID) {
-            let keys = Set(map.parts.flatMap(\.keys.values))
+            let keys = Set(map.parts.flatMap(\.keys.values)).filter { if case .bezel = $0 { return false } else { return true } }
             #expect(keys == Self.paneRows(spec), "\(spec.name)")
         }
         // A fixed mismatch should leave the list.
@@ -101,9 +104,43 @@ struct TabletControlMapTests {
             let entry = Self.mapped.first { $0.spec.productID == pid }
             #expect(entry != nil, "\(pid) is still mapped")
             if let entry {
-                #expect(Set(entry.map.parts.flatMap(\.keys.values)) != Self.paneRows(entry.spec), "\(entry.spec.name) now matches")
+                let keys = Set(entry.map.parts.flatMap(\.keys.values)).filter { if case .bezel = $0 { return false } else { return true } }
+                #expect(keys != Self.paneRows(entry.spec), "\(entry.spec.name) now matches")
             }
         }
+    }
+
+    @Test("Keys follow the decoder's order where libwacom lists evdev codes")
+    func evdevOrder() throws {
+        func keys(_ pid: Int) throws -> [Character: ControlTarget] {
+            let map = try #require(Self.mapped.first { $0.spec.productID == pid }?.map)
+            return map.parts.reduce(into: [:]) { $0.merge($1.keys) { a, _ in a } }
+        }
+        // CTH-460: libwacom lists RIGHT, BACK, FORWARD, LEFT; the decoder reads LEFT first.
+        #expect(try keys(0x00D1) == ["A": .expressKey(3), "B": .expressKey(2), "C": .expressKey(1), "D": .expressKey(0)])
+        // CTH-470: LEFT, FORWARD, BACK, RIGHT, against the decoder's RIGHT, BACK, FORWARD, LEFT.
+        #expect(try keys(0x00DC) == ["A": .expressKey(3), "B": .expressKey(2), "C": .expressKey(1), "D": .expressKey(0)])
+        // CTH-480: LEFT, RIGHT, FORWARD, BACK, against RIGHT, LEFT, FORWARD, BACK.
+        #expect(try keys(0x0302) == ["A": .expressKey(1), "B": .expressKey(0), "C": .expressKey(2), "D": .expressKey(3)])
+        // Bamboo Fun: libwacom and the decoder agree.
+        #expect(try keys(0x0017) == ["A": .expressKey(0), "B": .expressKey(1), "C": .expressKey(2), "D": .expressKey(3)])
+    }
+
+    @Test("The general rule's special keys")
+    func generalRule() throws {
+        func keys(_ pid: Int) throws -> [Character: ControlTarget] {
+            let map = try #require(Self.mapped.first { $0.spec.productID == pid }?.map)
+            return map.parts.reduce(into: [:]) { $0.merge($1.keys) { a, _ in a } }
+        }
+        // 21UX2: strip mode keys arrive in the bezel slots; the rest in letter order.
+        let ux2 = try keys(0x00CC)
+        #expect(ux2["A"] == .bezel(0) && ux2["J"] == .bezel(1))
+        #expect(ux2["B"] == .expressKey(0) && ux2["I"] == .expressKey(7) && ux2["K"] == .expressKey(8) && ux2["R"] == .expressKey(15))
+        // 13HD: no Center row, so the rocker's middle is key 1.
+        #expect(try keys(0x0304)["A"] == .expressKey(0))
+        // MobileStudio Pro 13: the ring's center has its row; mode keys follow the six keys.
+        let msp = try keys(0x034D)
+        #expect(msp["G"] == .ringCenter(0) && msp["F"] == .expressKey(5) && msp["H"] == .expressKey(6))
     }
 
     @Test("Bits are distinct and fit 64")
