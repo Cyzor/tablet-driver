@@ -59,8 +59,51 @@ packed value at `[4]`. (kernel)
 
 ## Intuos4 and Earlier
 
-Report `0x20`, 9 bytes: `[1]` = luminance (bits 0–4) | LED (bits 5–7);
-`[2]` = high luminance (bits 0–4). (kernel)
+Report `0x20`, 9 bytes:
+
+```
+[1] = selected mode 0–3 | 0x04     the 0x04 bit is a required enable bit, not
+                                   decoration; without it the ring stays dark
+[2] = ring LED luminance (0–127)
+[3] = ring LED luminance on contact (0–127)
+[4] = OLED brightness | 0x10       low nibble 0–15; 0x10 = OLEDs enabled
+[5]–[8] = 0                        never written by the vendor driver
+```
+
+This is shared with the Cintiq 24HD/21UX2 branch below, which ORs the second
+ring into the high nibble of `[1]`. (kernel)
+
+The LED bytes are a continuous ramp: a lightmeter saw a new level at every
+step of `01 03 05 08 0a 10 20 40 80 ff`, the biggest jump near the top, so
+mid-range values look alike. The OLED nibble is likewise multi-level.
+(observed, PTK-640)
+
+### Idle dimming
+
+Wacom's driver rewrites this report from an idle timer
+(`CPTKTabletControls::SendDisplayProperties`). It indexes three tables by a
+display brightness level: the user's setting (default 6) while awake, 3 after
+300 s without input, and 0 after another 300 s, when the timer stops until
+input arrives.
+
+```
+kLEDNormalBrightness = [10,10,10,10,10,10,10,32,32,32]    -> [2]
+kLEDHighBrightness   = [10,40,40,40,40,40,40,127,127,127] -> [3]
+kOLEDBrightness      = [ 0, 5, 5, 5,10,10,10,15,15,15]    -> [4] | 0x10 unless level 0
+```
+
+A PTK-640 therefore sends `[2,3,4]` = `10,40,0x1a` awake, `10,40,0x15` dimmed
+and `10,10,0x00` off. The PTK-540WL uses its own OLED table
+(`[0,7,7,7,12,12,12,15,15,15]`) and, on battery, 60 s / 90 s delays. The
+PTK-440 has no key displays and is left out (`HasOLEDS`). `[2]`/`[3]` are the
+kernel's `llv`/`hlv`. The firmware switches the ring from `[2]` to `[3]` by
+itself while the pen tip is down (the Intuos4 mouse is untested), so once the
+displays are off, contact no longer brightens it. (disassembly, observed on
+PTK-640)
+
+TabletKit's `Intuos4DisplayProperties` holds these tables. MockTab runs the
+cycle for the wired PTK-640/840/1240/540WL and sends the kernel defaults
+(10, 20, 10) to every other `.intuosV1` device.
 
 ## Cintiq 24HD and 21UX2
 
@@ -83,14 +126,19 @@ Eight 64 × 32 displays, one beside each key. The host writes images to
 them over feature reports (`wacom_led_putimage()` in `wacom_sys.c`):
 
 ```
-0x21  [0x21, 0x01]                         begin transfer
-0x23  [0x23, key & 0x07, chunk, 256 bytes] four chunks per key (USB)
-0x21  [0x21, 0x00]                         end transfer
+0x21  [0x21, 0x01]                             begin transfer
+0x23  [0x23, key & 0x07, chunk 0–3, 256 bytes] four chunks per key (USB)
+0x21  [0x21, 0x00]                             end transfer
 ```
 
 Over USB each image is 1024 bytes of 4-bit grayscale in the kernel's
 row-interleaved order. Bluetooth uses a different command and a 1-bit,
-bit-scrambled encoding. (kernel; no Intuos4 on hand)
+bit-scrambled encoding. (kernel)
+
+Wacom's driver (`CPTKUSBGraphicsTablet::SendImageToDisplay`) frames each
+key the same way: one start/stop pair per key around four 259-byte `0x23`
+reports. MockTab's frames match it byte for byte. (disassembly, observed on
+PTK-640)
 
 Intuos5 and Intuos Pro have no key displays.
 
@@ -105,3 +153,4 @@ These TabletKit tests check the layouts above, many with frames from real captur
 
 - [`WacomOutputProtocolTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/WacomOutputProtocolTests.swift)
 - [`IntuosOLEDImageEncoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosOLEDImageEncoderTests.swift)
+- [`Intuos4DisplayPropertiesTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/Intuos4DisplayPropertiesTests.swift)

@@ -37,6 +37,9 @@ MockTab.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 # Python bytecode cache
 __pycache__/
 
+# Swift test coverage artifacts emitted into the working tree
+*.profraw
+
 # Playgrounds
 timeline.xctimeline
 playground.xcworkspace

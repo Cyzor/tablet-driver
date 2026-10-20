@@ -290,6 +290,13 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// (Xencelabs Quick Keys only). nil entries fall back to the factory palette.
     var dialSlotColors: [(r: UInt8, g: UInt8, b: UInt8)?] = []
 
+    // Intuos4 idle cycle, pen thread only: see WacomKnownDevice+Sleep.swift.
+    var sleepState: Intuos4DisplayProperties.SleepState = .awake
+    /// `CFAbsoluteTime` of the last decoded input; every sleep deadline counts from it.
+    var lastActivity = CFAbsoluteTimeGetCurrent()
+    /// Fires at the end of the current sleep state; nil in deep sleep or before the first arm.
+    var sleepTimer: CFRunLoopTimer?
+
     /// The Xencelabs Quick Keys/Pen Tablet family enumerates as several separate
     /// IOHIDDevices for one physical product (digitizer usage page 0x0D/0x02,
     /// generic-desktop mouse usage page 0x01/0x02, and the real vendor tunnel
@@ -375,10 +382,6 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
     /// 0 Low, 1 Medium, 2 High, 3 Off. The kernel's defaults.
     static let intuos5RingLuminance: UInt8 = 0
     static let intuos5CropLuminance: UInt8 = 0
-    /// Intuos4 LED report luminances, 0–127: the kernel's defaults.
-    static let intuos4RingLuminance: UInt8 = 10
-    static let intuos4PressedLuminance: UInt8 = 20
-    static let intuos4OLEDBrightness: UInt8 = 10
 
     init(
         device: IOHIDDevice,
@@ -819,6 +822,11 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         restoreTouchModes()
         xencelabsBatteryPollTimer.map { CFRunLoopTimerInvalidate($0) }
         xencelabsBatteryPollTimer = nil
+        // Reopen awake, with a fresh idle clock.
+        sleepTimer.map { CFRunLoopTimerInvalidate($0) }
+        sleepTimer = nil
+        sleepState = .awake
+        lastActivity = CFAbsoluteTimeGetCurrent()
         IOHIDDeviceUnscheduleFromRunLoop(
             device, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
         IOHIDDeviceRegisterInputReportWithTimeStampCallback(
@@ -1209,6 +1217,11 @@ final class WacomKnownDevice: TabletDevice, @unchecked Sendable {  // split betw
         }
         if deviceSpec.format == .xencelabs, !results.isEmpty {
             xencelabsLastReportAt = DispatchTime.now().uptimeNanoseconds
+        }
+        // Decoded input is activity, as in Wacom's ProcessDataPacket; empty
+        // decodes (status, battery, keep-alives) don't keep the tablet awake.
+        if !results.isEmpty {
+            noteDeviceActivity()
         }
         let (batchFrames, touchFrameStamps) = collectResults(
             results, report: report, length: length, sender: sender, name: name,
