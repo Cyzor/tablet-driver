@@ -191,6 +191,10 @@ struct TabletControlMapTests {
         let hd = try map(0x00F4)  // r 1 A@/B@/C@; c DEF/DEG/DEH; r 2 I@/J@/K@; c LMN/LMO/LMP
         #expect(hd.parts[0] == .init(control: .ring(0), keys: ["A": .expressKey(0), "B": .expressKey(1), "C": .expressKey(2)]))
         #expect(hd.parts[2].control == .ring(1))
+        // The left ring is the first one decoded (DTK-2400 evidence).
+        let hdLine = try #require(TabletLayoutTable.packed.split(separator: "\n").first { $0.contains("00F4") })
+        let hdParts = hdLine.split(separator: ":")[1].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        #expect(hdParts[0].hasPrefix("rL") && hdParts[2].hasPrefix("rR"), "\(hdParts)")
         #expect(hd.parts[2].keys["I"] == .expressKey(8))
         #expect(hd.parts[3].keys["P"] == .expressKey(15))
     }

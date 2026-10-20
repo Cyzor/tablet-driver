@@ -33,5 +33,8 @@ I to P down the right, in the same order as the bits.
  right, key block 5        P      0c 00 00 00 00 00 00 00 80 00   right 8
 ```
 
+The rings follow the same left-then-right order: a finger on the left ring
+sets byte 1, the first ring, and one on the right ring sets byte 2.
+
 The three panel buttons on the bezel aren't in libwacom's layout and weren't
 part of this walk; their bits are listed under 24HD panel buttons.
