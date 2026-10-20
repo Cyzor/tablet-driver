@@ -26,7 +26,7 @@ struct TabletFigureControlsTests {
 
     /// The Tablet Area and Touch panes' bezel sizes, and a diagram-sized row.
     private static let frames = [CGRect(x: 2, y: 2, width: 516, height: 196), CGRect(x: 2, y: 2, width: 296, height: 196),
-                                 CGRect(x: 2, y: 2, width: 596, height: 166)]
+                                 CGRect(x: 2, y: 2, width: 596, height: 176)]
 
     private static func drawings() -> [(name: String, map: TabletControlMap, drawing: TabletFigure.Drawing, scale: CGFloat)] {
         figures.flatMap { f in
@@ -104,10 +104,9 @@ struct TabletFigureControlsTests {
     func specialKeys() throws {
         let frame = Self.frames[0]
         let pro = try #require(Self.figures.first { $0.name.contains("PTH-660") }?.figure)
-        // The center needs a frame about 220 points tall before its hole reaches 10.
-        let d = pro.drawing(.bezel, in: CGRect(x: 0, y: 0, width: 800, height: 260), scale: 2)
+        // A diagram 180 points tall leaves the ring's hole room for its center.
+        let d = pro.drawing(.bezel, in: CGRect(x: 0, y: 0, width: 800, height: 180), scale: 2)
         #expect(d.shapes.contains { $0.kind == .center && $0.target == .ringCenter(0) })
-        #expect(!pro.drawing(.bezel, in: frame, scale: 2).shapes.contains { $0.kind == .center })
         let hd = try #require(Self.figures.first { $0.name.contains("DTK-2400") }?.figure)
         let keys = hd.drawing(.bezel, in: frame, scale: 2).shapes.compactMap(\.target)
         #expect(keys.contains(.expressKey(0)) && keys.contains(.expressKey(10)) && keys.contains(.ring(1)))

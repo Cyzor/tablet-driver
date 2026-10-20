@@ -610,6 +610,9 @@ extension TabletFigure {
         var item = size(part, keepEveryKey: controls != nil, edgeLength: edgeLength, laneDepth: laneDepth, metrics: m)
         item.controls = controls
         switch (part.control, controls?.entry) {
+        case (.ring, .ring(_, .center)?):
+            // A diagram's ring takes the band's full depth, so its center button fits.
+            item.length = laneDepth
         case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):
             // The ring shrinks to leave room for its keys' columns.
             let keyColumns = (grid.rows.first?.indices ?? 0..<0).filter { c in !grid.rows.contains { $0[c] == .body } }.count
