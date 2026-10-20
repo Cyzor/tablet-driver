@@ -36,6 +36,17 @@ extension WacomKnownDevice {
         armSleepTimer()
     }
 
+    /// After system sleep the tablet has lost its key images and report 0x20
+    /// levels. Restarts the idle cycle awake and forgets the labels already
+    /// sent, so the next label and LED writes repaint everything.
+    func resetKeyDisplaysAfterSystemWake() {
+        ThreadContract.expectPenThread()
+        intuos4SentKeyLabels = []
+        sleepState = .awake
+        lastActivity = CFAbsoluteTimeGetCurrent()
+        armSleepTimer()
+    }
+
     /// Schedules the end of the current sleep state, counted from the last input.
     /// Reuses the one timer; deep sleep drops it until input arrives.
     func armSleepTimer() {

@@ -119,6 +119,16 @@ final class DeviceContext: ObservableObject, Identifiable {
         driverSlots.removeValue(forKey: rawPID)
     }
 
+    /// After system sleep an Intuos4 has lost its key images and LED levels,
+    /// and resending the mode switch leaves its displays dark. Forgets what
+    /// was sent, then sends the LED report and every label again.
+    func restoreKeyDisplaysAfterSystemWake() {
+        guard resolvedSpec?.hasKeyOLEDs == true, let device = tabletDevice as? WacomKnownDevice else { return }
+        onHIDThread { device.resetKeyDisplaysAfterSystemWake() }
+        resyncActiveDriverDisplayState()
+        pushDeviceDisplayState()
+    }
+
     /// Re-applies every persisted display-affecting setting directly to the
     /// current winning driver. `observeRingLED`'s Combine sinks only reach
     /// whatever `tabletDevice` resolves to *at the moment a setting changes*
