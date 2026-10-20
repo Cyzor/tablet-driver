@@ -23,7 +23,7 @@ struct TabletFigureControlsTests {
 
     /// The Tablet Area and Touch panes' bezel sizes, and a diagram-sized row.
     private static let frames = [CGRect(x: 2, y: 2, width: 516, height: 196), CGRect(x: 2, y: 2, width: 296, height: 196),
-                                 CGRect(x: 2, y: 2, width: 596, height: 176)]
+                                 CGRect(x: 2, y: 2, width: 596, height: 196)]
 
     private static func drawings() -> [(name: String, map: TabletControlMap, drawing: TabletFigure.Drawing, scale: CGFloat)] {
         figures.flatMap { f in
@@ -133,7 +133,7 @@ struct TabletFigureControlsTests {
     func ringSpacing() throws {
         let pro = try #require(Self.figures.first { $0.name.contains("PTH-660") }?.figure)
         for scale in [1.0, 2.0] {
-            let d = pro.drawing(.bezel, in: CGRect(x: 2, y: 2, width: 596, height: 176), scale: scale)
+            let d = pro.drawing(.bezel, in: CGRect(x: 2, y: 2, width: 596, height: 196), scale: scale)
             let ring = try #require(d.shapes.first { $0.kind == .ring }).rect
             let keys = d.shapes.filter { $0.kind == .key }.map(\.rect)
             let above = ring.minY - (keys.filter { $0.maxY <= ring.minY }.map(\.maxY).max() ?? 0)
@@ -143,11 +143,33 @@ struct TabletFigureControlsTests {
         }
     }
 
-    @Test("Turning a figure drops its controls")
-    func turnDropsControls() throws {
-        let figure = try #require(Self.figures.first?.figure)
-        #expect(figure.controls != nil)
-        #expect(figure.oriented(.landscape).controls != nil)
-        #expect(figure.oriented(.portrait).controls == nil)
+    @Test("Turning a figure keeps each key on its own spot")
+    func turnKeepsKeys() throws {
+        for name in ["PTK-870", "PTH-850", "DTK-2400", "PTZ-631W"] {
+            let figure = try #require(Self.figures.first { $0.name.contains(name) }?.figure)
+            let flipped = figure.oriented(.landscapeFlipped)
+            #expect(flipped.controls != nil, "\(name) keeps its controls")
+            let frame = CGRect(x: 0, y: 0, width: 600, height: 180)
+            let a = figure.drawing(.backdrop, in: frame, scale: 2), b = flipped.drawing(.backdrop, in: frame, scale: 2)
+            // Where each target sits within the body, as a fraction of it.
+            func spots(_ d: TabletFigure.Drawing) -> [ControlTarget: CGPoint] {
+                d.shapes.reduce(into: [:]) { spots, shape in
+                    guard let t = shape.target, shape.kind != .center else { return }
+                    var x = shape.rect.midX, y = shape.rect.midY
+                    // A pad's keys share its circle; aim at each one's quarter.
+                    if case let .wedge(direction) = shape.kind {
+                        x += cos(direction) * shape.rect.width * 0.35
+                        y += sin(direction) * shape.rect.width * 0.35
+                    }
+                    spots[t] = CGPoint(x: (x - d.body.minX) / d.body.width, y: (y - d.body.minY) / d.body.height)
+                }
+            }
+            let before = spots(a), after = spots(b)
+            #expect(Set(before.keys) == Set(after.keys), "\(name): the same targets")
+            for (t, p) in before {
+                guard let q = after[t] else { continue }
+                #expect(abs(q.x - (1 - p.x)) < 0.02 && abs(q.y - (1 - p.y)) < 0.02, "\(name): \(t) mirrored, \(p) → \(q)")
+            }
+        }
     }
 }

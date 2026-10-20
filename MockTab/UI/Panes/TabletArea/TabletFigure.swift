@@ -165,8 +165,6 @@ extension TabletFigure {
     /// and left.
     private func turnedCounterclockwise() -> TabletFigure {
         var figure = self
-        // Turning reverses top and bottom runs, so targets would land on the wrong keys.
-        figure.controls = nil
         figure.chin = chin.map { side in
             switch side {
             case .left: return .bottom
@@ -187,6 +185,16 @@ extension TabletFigure {
             }
             return turned
         }
+        // A part whose order reverses keeps each key on its own spot by
+        // reversing its keys too: a run's letters and a grid's rows.
+        figure.controls = controls.map { list in
+            zip(parts, list).map { part, c in
+                guard part.side == .bottom || part.side == .top else { return c }
+                var turned = c
+                turned.entry = c.entry.reversedAlongEdge
+                return turned
+            }
+        }
         figure.surfaceMM = CGSize(width: surfaceMM.height, height: surfaceMM.width)
         return figure
     }
@@ -196,8 +204,12 @@ extension TabletFigure {
 
 extension TabletFigure {
     enum Style {
-        /// The quiet body behind the area editor, in real proportions.
+        /// The Buttons pane's diagram, on its grid; without `controls`, the
+        /// body in real proportions.
         case bezel
+        /// The diagram's layout behind the area editors, its surface left
+        /// exact so the editor lands on it.
+        case backdrop
         /// The orientation picture, drawn on a fixed grid.
         case glyph
         /// The list icon, simpler still, in whole points.
@@ -244,7 +256,8 @@ extension TabletFigure {
     /// editor lands on it. The glyph and icon keep to their own grids.
     func drawing(_ style: Style, in rect: CGRect, scale: CGFloat) -> Drawing {
         switch style {
-        case .bezel: return bezel(in: rect, scale: scale)
+        case .bezel: return bezel(in: rect, scale: scale, exactSurface: false)
+        case .backdrop: return bezel(in: rect, scale: scale, exactSurface: true)
         case .glyph: return glyph(in: rect)
         case .icon: return icon(in: rect)
         }
@@ -370,13 +383,15 @@ extension TabletFigure {
         return (center: center, around: around)
     }
 
-    private var metrics: Metrics {
+    /// The bezel's sizes. With `band`, a figure with controls: its bands that
+    /// deep, controls in proportion. Without, the quiet bands the glyph and
+    /// icon take their silhouette from.
+    private func metrics(band: Double? = nil) -> Metrics {
         let shortSide = min(surfaceMM.width, surfaceMM.height)
         let margin = isPenDisplay ? max(8, shortSide * 0.045) : max(9, shortSide * 0.07)
-        if controls != nil {
-            // A diagram's band is about 1.7 rings deep, so every control keeps a
-            // margin toward the edge and the surface; proportions give way to it.
-            let band = max(shortSide * 0.35, 24)
+        if let band {
+            // A band is about 1.7 rings deep, so every control keeps a margin
+            // toward the edge and the surface; proportions give way to it.
             let key = band * 0.36
             return Metrics(
                 margin: margin, inset: margin / 2, band: band, wideBand: band * 1.45, chin: margin * 1.2,
@@ -389,6 +404,46 @@ extension TabletFigure {
             margin: margin, inset: margin / 2, band: band, wideBand: band * 1.45, chin: margin * 1.2,
             gutter: margin / 2, keyDepth: key, keyGap: key * 0.2, partGap: key * 0.35, round: band * 0.82,
             stripDepth: band * 0.2, short: key * 0.75, square: key, long: key * 2.2)
+    }
+
+    /// A band's depth in millimeters where controls are about finger-sized,
+    /// as on the hardware: a small tablet looks band-heavy, a large one
+    /// mostly surface.
+    static let fingerBand = 38.0
+    /// The least a ring, dial, or pad measures in the panes' standard row, in
+    /// points. Below it, bands deepen until controls read.
+    static let leastRound = 26.0
+    /// The panes' standard row, landscape, where `leastRound` applies.
+    private static let referenceRow = CGSize(width: 516, height: 196)
+
+    /// Metrics for a figure with controls: finger-sized bands, deepened
+    /// until round controls reach `leastRound`. Solved in the standard row
+    /// whichever way the figure faces, so every pane and orientation draws
+    /// the same proportions.
+    private var controlMetrics: Metrics {
+        var band = Self.fingerBand
+        var m = metrics(band: band)
+        guard hasRoundControls else { return m }
+        let row = Self.referenceRow
+        // Deeper bands shrink the scale, so settle the two together.
+        for _ in 0..<8 {
+            let size = bodyMM(m)
+            let unit = min(row.width / max(size.width, size.height), row.height / min(size.width, size.height))
+            guard unit > 0, unit.isFinite else { break }
+            let needed = max(Self.fingerBand, Self.leastRound / 0.6 / unit)
+            if abs(needed - band) < 0.05 { break }
+            band = needed
+            m = metrics(band: band)
+        }
+        return m
+    }
+
+    private var hasRoundControls: Bool {
+        parts.contains { $0.control == .ring || $0.control == .dial }
+            || (controls ?? []).contains { part in
+                if case let .cluster(grid) = part.entry { return Self.pad(grid) != nil }
+                return false
+            }
     }
 
     private func laneCount(_ side: Side) -> Int {
@@ -410,23 +465,24 @@ extension TabletFigure {
     }
 
     /// The bezel's body in millimeters. The glyph takes its silhouette.
-    private var bodyMM: CGSize {
-        let m = metrics, depths = depths(m)
+    private func bodyMM(_ m: Metrics? = nil) -> CGSize {
+        let m = m ?? metrics(), depths = depths(m)
         func extent(_ side: Side) -> Double { self.extent(side, depths: depths, metrics: m) }
         return CGSize(width: surfaceMM.width + extent(.left) + extent(.right),
                       height: surfaceMM.height + extent(.top) + extent(.bottom))
     }
 
-    private func bezel(in rect: CGRect, scale: CGFloat) -> Drawing {
-        let m = metrics, depths = depths(m), size = bodyMM
+    private func bezel(in rect: CGRect, scale: CGFloat, exactSurface: Bool) -> Drawing {
+        let m = controls == nil ? metrics() : controlMetrics, depths = depths(m), size = bodyMM(m)
         let unit = min(rect.width / size.width, rect.height / size.height)
         // Layout can propose nothing at first; draw nothing until it doesn't.
         guard unit > 0, unit.isFinite else { return .empty }
         let scale = max(scale, 1)
-        // A diagram lays out on a grid of whole pixels, about 1.5 points at the
-        // Buttons pane's height, so every gap, rim, and corner matches; the
-        // backdrop snaps to single pixels.
-        let grid = controls == nil ? 1 / scale : max(1 / scale, (rect.height / 120 * scale).rounded() / scale)
+        // A diagram lays out on a grid of whole pixels, about 1.5 points across
+        // a landscape row, so every gap, rim, and corner matches. Measured on
+        // the body's short side, so a turned figure keeps its look.
+        let shortSide = min(size.width, size.height) * unit
+        let grid = controls == nil ? 1 / scale : max(1 / scale, (shortSide / 120 * scale).rounded() / scale)
         func snap(_ v: Double) -> Double { (v / grid).rounded() * grid }
         /// A length in millimeters as whole grid steps, never less than one.
         func pixels(_ mm: Double) -> Double { max((mm * unit / grid).rounded(), 1) * grid }
@@ -440,7 +496,7 @@ extension TabletFigure {
             height: exact.height - extent(.top) - extent(.bottom))
         // A diagram's surface sits on its grid too; the backdrop's stays exact,
         // so the area editor lands on it.
-        let surfaceRect = controls == nil ? surface
+        let surfaceRect = controls == nil || exactSurface ? surface
             : CGRect(x: snap(surface.minX), y: snap(surface.minY),
                      width: snap(surface.maxX) - snap(surface.minX), height: snap(surface.maxY) - snap(surface.minY))
         // Whole pixels, so the outline lands crisply on the grid.
@@ -520,15 +576,37 @@ extension TabletFigure {
             let items = edgeParts.filter { $0.part.lane == lane }.sorted { $0.part.start < $1.part.start }
                 .map { size($0.part, controls: controls?[$0.index], edgeLength: edgeLength,
                             laneDepth: laneDepth / unit, metrics: m) }
-            var placed = arrange(items, lo: lo, hi: hi, edgeLength: edgeLength, metrics: m)
+            var placed = controls == nil ? arrange(items, lo: lo, hi: hi, edgeLength: edgeLength, metrics: m)
+                : symmetricArrange(items, lo: lo, hi: hi, edgeLength: edgeLength, metrics: m)
             if controls != nil { placed = mirrored(placed, lo: lo, hi: hi, gap: m.partGap) }
-            for item in placed {
+            // A mirrored lane snaps about its middle part, so rounding can't
+            // tip it: the middle spans an even count of grid steps on a grid
+            // line, and each part's distance from it snaps alike either side.
+            let mid = placed.count / 2
+            let middle = edgeStart + (lo + hi) / 2 * unit
+            let pivot: Double? = controls != nil && placed.count % 2 == 1 && placed.count >= 3
+                && abs(placed[mid].position + placed[mid].length / 2 - (lo + hi) / 2) < 1e-6
+                ? snap(middle) : nil
+            let grid = pixels(0)  // One grid step: the least `pixels` gives.
+            func evenPixels(_ mm: Double) -> Double { max((mm * unit / grid / 2).rounded(), 1) * 2 * grid }
+            for (k, item) in placed.enumerated() {
                 // Whole-pixel shapes, centered on where the part belongs.
-                let length = item.drawnLength(pixels: pixels)
-                let start = snap(edgeStart + (item.position + item.length / 2) * unit - length / 2)
+                let partPixels = pivot != nil && k == mid ? evenPixels : pixels
+                let length = item.drawnLength(pixels: partPixels)
+                let center = edgeStart + (item.position + item.length / 2) * unit
+                var start = snap(center - length / 2)
+                if let pivot {
+                    if k == mid {
+                        start = pivot - length / 2
+                    } else if k < mid {
+                        start = pivot - snap(middle - (center + length / 2)) - length
+                    } else {
+                        start = pivot + snap(center - length / 2 - middle)
+                    }
+                }
                 shapes += item.shapes(
                     at: start, side: side, laneCenter: laneCenter, laneDepth: laneDepth / unit,
-                    metrics: m, unit: unit, pixels: pixels, snap: snap)
+                    metrics: m, unit: unit, pixels: partPixels, snap: snap)
             }
         }
         return shapes
@@ -551,7 +629,11 @@ extension TabletFigure {
         /// Length along the edge in whole pixels, as `shapes` draws it.
         func drawnLength(pixels: (Double) -> Double) -> Double {
             guard case .keys = part.control else { return pixels(length) }
-            return Double(keyCount) * pixels(keyLength) + Double(keyCount - 1) * pixels(keyGap)
+            let total = Double(keyCount) * pixels(keyLength) + Double(keyCount - 1) * pixels(keyGap)
+            guard case .run? = controls?.entry else { return total }
+            // A diagram's run, as `shapes` draws it: keys one grid step apart.
+            let grid = pixels(0), gaps = Double(keyCount - 1) * grid
+            return Double(keyCount) * max(((total - gaps) / Double(keyCount) / grid).rounded() * grid, grid) + gaps
         }
 
         /// The item's shapes, starting `start` points along the edge.
@@ -569,17 +651,12 @@ extension TabletFigure {
             let keyDepth = pixels(min(m.keyDepth, laneDepth * 0.8))
             switch (part.control, controls?.entry) {
             case let (.keys, .run(letters)?):
-                // Same overall length as `drawnLength`, the keys one grid step apart
-                // so the run reads as a block.
-                let total = Double(keyCount) * pixels(keyLength) + Double(keyCount - 1) * pixels(keyGap)
+                // The keys one grid step apart so the run reads as a block,
+                // filling `drawnLength` exactly.
                 let gap = pixels(0)
-                let length = max(snap((total - Double(keyCount - 1) * gap) / Double(keyCount)), pixels(0))
-                // Snapping the keys changes the run's length; keep it centered
-                // where it was placed, so a mirrored layout stays mirrored.
-                let actual = Double(keyCount) * length + Double(keyCount - 1) * gap
-                let first = snap(start + (total - actual) / 2)
+                let length = (drawnLength(pixels: pixels) - Double(keyCount - 1) * gap) / Double(keyCount)
                 return (0..<keyCount).map { i in
-                    Shape(kind: .key, rect: rect(from: first + Double(i) * (length + gap), length: length, depth: keyDepth),
+                    Shape(kind: .key, rect: rect(from: start + Double(i) * (length + gap), length: length, depth: keyDepth),
                           target: i < letters.count ? controls?.keys[letters[i]] : nil)
                 }
             case (.keys, _):
@@ -780,6 +857,29 @@ extension TabletFigure {
         }
     }
 
+    /// `arrange`, made even-handed: it pushes parts one way first, so a lane
+    /// and its mirror image could come out differently. Averaging it with
+    /// the arrangement of the mirrored lane, mirrored back, gives a layout
+    /// that turns into its own mirror image; both satisfy the same spacing,
+    /// so their average does too.
+    private func symmetricArrange(_ items: [Item], lo: Double, hi: Double, edgeLength: Double,
+                                  metrics m: Metrics) -> [Item] {
+        let forward = arrange(items, lo: lo, hi: hi, edgeLength: edgeLength, metrics: m)
+        let flipped = items.reversed().map { item -> Item in
+            var i = item
+            i.part.start = 1 - item.part.end
+            i.part.end = 1 - item.part.start
+            return i
+        }
+        let back = arrange(flipped, lo: edgeLength - hi, hi: edgeLength - lo, edgeLength: edgeLength, metrics: m)
+        var out = forward
+        for (k, item) in back.reversed().enumerated() where k < out.count {
+            let mirroredPosition = edgeLength - item.position - item.length
+            out[k].position = (out[k].position + mirroredPosition) / 2
+        }
+        return out
+    }
+
     /// A lane with a ring or dial on the band's midline, mirrored about it:
     /// each pair of parts either side sits at the same gap, the larger of
     /// the two, so a centered ring reads as centered. Unchanged when the
@@ -888,7 +988,7 @@ extension TabletFigure {
         } else {
             // A figure with controls takes the bezel's silhouette, which also
             // settles which way a square surface faces.
-            let body = bodyMM
+            let body = bodyMM()
             let ratio = min(max(max(body.width, body.height) / min(body.width, body.height), 1.28), 1.85)
             short = Int((Double(Grid.side) / ratio / Double(Grid.step)).rounded()) * Grid.step
             wide = body.width >= body.height
@@ -1159,7 +1259,7 @@ extension TabletFigure {
         let g = IconGrid.self
         let unit = 0.5
         func even(_ v: Double) -> Int { Int((v / 2).rounded()) * 2 }
-        let body = bodyMM
+        let body = bodyMM()
         let (lowest, highest) = parts.isEmpty ? (1.25, 1.8) : (1.28, 1.85)
         let ratio = min(max(max(body.width, body.height) / min(body.width, body.height), lowest), highest)
         let wide = body.width >= body.height

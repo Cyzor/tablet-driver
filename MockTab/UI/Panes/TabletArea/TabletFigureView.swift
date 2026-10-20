@@ -17,11 +17,14 @@ struct TabletBezelFrame<Content: View>: View {
     /// The area editor keeps 4 pt clear on each side for its edge.
     private static var editorInset: CGFloat { 4 }
 
+    /// The row's height: taller when turned upright, so the surface keeps
+    /// its room.
+    static func height(_ orientation: TabletOrientation) -> CGFloat { orientation.swapsAxes ? 300 : 200 }
+
     var body: some View {
         GeometryReader { geo in
-            let surface = figure.drawing(
-                .bezel, in: TabletBezelView.bounds(geo.size), scale: displayScale
-            ).surface
+            let drawing = figure.drawing(.backdrop, in: TabletBezelView.bounds(geo.size), scale: displayScale)
+            let surface = drawing.surface
             ZStack(alignment: .topLeading) {
                 TabletBezelView(figure: figure)
                     .equatable()
@@ -31,6 +34,8 @@ struct TabletBezelFrame<Content: View>: View {
                         width: surface.width + Self.editorInset * 2,
                         height: surface.height + Self.editorInset * 2)
                     .offset(x: surface.minX - Self.editorInset, y: surface.minY - Self.editorInset)
+                    .environment(\.areaEditorCanvasOpening,
+                                 TabletDiagramInk.openingRadius(drawing, scale: displayScale))
             }
         }
     }
@@ -38,15 +43,11 @@ struct TabletBezelFrame<Content: View>: View {
 
 // MARK: - Bezel
 
-/// The tablet drawn quietly behind the area editor: its body and controls,
-/// and a darker screen for a pen display. Decorative; the editor on top
-/// carries the meaning.
+/// The tablet drawn quietly behind the area editor, in the Buttons pane
+/// diagram's line art at low contrast. Decorative; the editor on top carries
+/// the meaning.
 struct TabletBezelView: View, Equatable {
     let figure: TabletFigure
-
-    /// Outline weight, rounded to whole pixels: 2 px at 1x, 3 px at 2x.
-    private static var lineWidth: CGFloat { 1.5 }
-    private static var cornerRadius: CGFloat { 8 }
 
     /// Where the body fits, leaving its edge clear of the frame.
     static func bounds(_ size: CGSize) -> CGRect {
@@ -56,49 +57,10 @@ struct TabletBezelView: View, Equatable {
     var body: some View {
         Canvas { context, size in
             let scale = max(context.environment.displayScale, 1)
-            let d = figure.drawing(.bezel, in: Self.bounds(size), scale: scale)
-            let dark = context.environment.colorScheme == .dark
-            let ink = dark ? Color.white : Color.black
-            let display = figure.isPenDisplay
-            func pixels(_ points: CGFloat) -> CGFloat { max((points * scale).rounded(), 1) / scale }
-
-            // Light mode needs more weight than dark to read at all.
-            let bodyFill = display ? ink.opacity(dark ? 0.10 : 0.17) : ink.opacity(dark ? 0.07 : 0.10)
-            // Corners and edges on whole pixels stay smooth at 1x, where a
-            // fractional edge steps.
-            let line = pixels(Self.lineWidth), radius = pixels(Self.cornerRadius)
-            let inner = d.body.insetBy(dx: line, dy: line)
-            context.fill(Path(roundedRect: inner, cornerRadius: radius - line), with: .color(bodyFill))
-            var outline = Path(roundedRect: d.body, cornerRadius: radius)
-            outline.addPath(Path(roundedRect: inner, cornerRadius: radius - line))
-            context.fill(outline, with: .color(ink.opacity(dark ? 0.12 : 0.20)), style: FillStyle(eoFill: true))
-
-            let surfaceFill = display
-                ? Color.black.opacity(dark ? 0.40 : 0.16)
-                : Color.black.opacity(dark ? 0.16 : 0.05)
-            context.fill(Path(d.surface), with: .color(surfaceFill))
-
-            let controlFill = ink.opacity(dark ? 0.17 : 0.26)
-            for shape in d.shapes {
-                let r = shape.rect
-                switch shape.kind {
-                case .ring:
-                    var ring = Path(ellipseIn: r)
-                    let inset = pixels(r.width * 0.27)
-                    ring.addEllipse(in: r.insetBy(dx: inset, dy: inset))
-                    context.fill(ring, with: .color(controlFill), style: FillStyle(eoFill: true))
-                case .dial, .center, .wedge:
-                    context.fill(Path(ellipseIn: r), with: .color(controlFill))
-                case .strip:
-                    let corner = min(r.width, r.height) / 2
-                    context.fill(Path(roundedRect: r, cornerRadius: corner), with: .color(controlFill))
-                case .key, .cluster:
-                    let corner = pixels(min(min(r.width, r.height) * 0.25, 3))
-                    context.fill(Path(roundedRect: r, cornerRadius: corner), with: .color(controlFill))
-                case .mark:
-                    break
-                }
-            }
+            let d = figure.drawing(.backdrop, in: Self.bounds(size), scale: scale)
+            TabletDiagramInk.draw(d, isPenDisplay: figure.isPenDisplay,
+                                  palette: .backdrop(dark: context.environment.colorScheme == .dark),
+                                  scale: scale, in: &context)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -197,5 +159,166 @@ enum TabletFigureInk {
                 layer.fill(Path(d.body), with: .color(tint))
             }
         }
+    }
+}
+
+// MARK: - Diagram ink
+
+/// How the Buttons pane's diagram and the area editors' backdrop draw a
+/// tablet, in the pen diagram's anatomy: an outline ring, a cleared gap, then
+/// the body filled, with the surface and each control set into it through a
+/// cleared slot. Every width and corner is the drawing's grid step.
+enum TabletDiagramInk {
+    struct Palette {
+        /// Outline and body.
+        var ink: Color
+        /// Each control's face, and a pen display's screen.
+        var face: Color
+        var screen: Color
+        /// A face in use.
+        var accent: Color
+        /// Controls cut straight out of the body, with no slot or face, as
+        /// the glyph draws them: one tone, borderless.
+        var knockout = false
+        /// The body's corner radius, in grid steps.
+        var corner: CGFloat = 5
+
+        /// The Buttons pane's diagram, the pen diagram's palette.
+        static func diagram(dark: Bool, accent: Color) -> Palette {
+            let face = dark ? Color.secondary : Color.primary.opacity(0.35)
+            return Palette(ink: dark ? Color.primary.opacity(0.80) : Color.secondary, face: face, screen: face,
+                           accent: accent)
+        }
+
+        /// Behind the area editors: the same relationship at low contrast, so
+        /// the editor on top leads.
+        static func backdrop(dark: Bool) -> Palette {
+            let ink = dark ? Color.white : Color.black
+            return Palette(ink: ink.opacity(0.16), face: ink.opacity(dark ? 0.08 : 0.07),
+                           screen: Color.black.opacity(dark ? 0.40 : 0.16), accent: ink.opacity(dark ? 0.08 : 0.07),
+                           knockout: true, corner: 3)
+        }
+    }
+
+    /// One grid step: the drawing's own, or 1.5 pt in whole pixels.
+    private static func unit(_ d: TabletFigure.Drawing, scale: CGFloat) -> CGFloat {
+        d.grid > 0 ? d.grid : max((1.5 * scale).rounded(), 1) / scale
+    }
+
+    /// The surface opening's corner radius.
+    static func openingRadius(_ d: TabletFigure.Drawing, scale: CGFloat) -> CGFloat {
+        3 * unit(d, scale: scale)
+    }
+
+    static func draw(
+        _ d: TabletFigure.Drawing, isPenDisplay: Bool, palette: Palette, lit: UInt64 = 0,
+        pressed: ControlTarget? = nil, scale: CGFloat, in context: inout GraphicsContext
+    ) {
+        let u = unit(d, scale: scale)
+        let line = u, gap = u, radius = palette.corner * u
+        guard d.body.width > 4 * radius, d.body.height > 4 * radius else { return }
+
+        var outline = Path(roundedRect: d.body, cornerRadius: radius, style: .continuous)
+        outline.addPath(Path(roundedRect: d.body.insetBy(dx: line, dy: line), cornerRadius: radius - line,
+                             style: .continuous))
+        context.fill(outline, with: .color(palette.ink), style: FillStyle(eoFill: true))
+
+        let inset = line + gap
+        var body = Path(roundedRect: d.body.insetBy(dx: inset, dy: inset), cornerRadius: radius - inset,
+                        style: .continuous)
+        let surface = d.surface.insetBy(dx: gap, dy: gap)
+        body.addPath(Path(roundedRect: d.surface, cornerRadius: openingRadius(d, scale: scale),
+                          style: .continuous))
+        if palette.knockout {
+            // Each face cut once; a pad's wedges and a block's keys don't overlap.
+            for shape in d.shapes where shape.kind != .mark {
+                body.addPath(Self.face(shape, scale: scale, gap: gap, corner: u))
+            }
+            context.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))
+            if isPenDisplay {
+                context.fill(Path(roundedRect: surface, cornerRadius: 2 * u, style: .continuous),
+                             with: .color(palette.screen))
+            }
+            return
+        }
+        // Even-odd fills a doubly cut area back in, so each area is cut once:
+        // a pad's four keys share one slot, and the slots of keys close
+        // enough to touch merge into one block, as in a cluster.
+        var pads: [CGRect] = []
+        var blocks: [CGRect] = []
+        for shape in d.shapes where shape.kind != .mark && shape.kind != .center {
+            switch shape.kind {
+            case .wedge:
+                if pads.contains(shape.rect) { continue }
+                pads.append(shape.rect)
+                body.addPath(path(shape, outset: gap, corner: u))
+            case .key, .cluster:
+                var block = shape.rect.insetBy(dx: -gap, dy: -gap)
+                while let i = blocks.firstIndex(where: { $0.intersects(block) }) {
+                    block = block.union(blocks.remove(at: i))
+                }
+                blocks.append(block)
+            default:
+                body.addPath(path(shape, outset: gap, corner: u))
+            }
+        }
+        for block in blocks {
+            body.addPath(Path(roundedRect: block, cornerRadius: u + gap, style: .continuous))
+        }
+        context.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))
+
+        // A pen display's screen is a face in its opening; a tablet's active
+        // area stays open.
+        if isPenDisplay {
+            context.fill(Path(roundedRect: surface, cornerRadius: 2 * u, style: .continuous), with: .color(palette.screen))
+        }
+
+        for shape in d.shapes where shape.kind != .mark {
+            let face = Self.face(shape, scale: scale, gap: gap, corner: u)
+            let on = shape.target.map { lit & (1 << UInt64($0.bit)) != 0 } ?? false
+            context.fill(face, with: .color(on ? palette.accent : palette.face), style: FillStyle(eoFill: true))
+            if let target = shape.target, target == pressed {
+                // Pushed-button feedback, like AppKit's press state.
+                context.fill(face, with: .color(.primary.opacity(0.15)), style: FillStyle(eoFill: true))
+            }
+        }
+    }
+
+    /// A shape's outline grown by `outset`, for the slot cleared around it;
+    /// keys take `corner` as their radius.
+    private static func path(_ shape: TabletFigure.Shape, outset: CGFloat = 0, corner: CGFloat) -> Path {
+        let r = shape.rect.insetBy(dx: -outset, dy: -outset)
+        switch shape.kind {
+        case .ring, .dial, .center, .wedge: return Path(ellipseIn: r)
+        case .strip: return Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
+        case .key, .cluster, .mark:
+            return Path(roundedRect: r, cornerRadius: min(corner, min(r.width, r.height) / 2) + outset, style: .continuous)
+        }
+    }
+
+    /// The face that fills: a ring is an annulus, so its hole stays clear; a
+    /// pad's key is a quarter of the ring around its center, cleared apart
+    /// from its neighbors by `gap`.
+    private static func face(_ shape: TabletFigure.Shape, scale: CGFloat, gap: CGFloat, corner: CGFloat) -> Path {
+        if case let .wedge(direction) = shape.kind {
+            let r = shape.rect
+            let center = CGPoint(x: r.midX, y: r.midY)
+            let outer = r.width / 2, inner = r.width * 0.18 + gap
+            // Half the gap on each side, as an angle at each radius.
+            let spread = Double.pi / 4
+            var wedge = Path()
+            wedge.addArc(center: center, radius: outer, startAngle: .radians(direction - spread + gap / 2 / outer),
+                         endAngle: .radians(direction + spread - gap / 2 / outer), clockwise: false)
+            wedge.addArc(center: center, radius: inner, startAngle: .radians(direction + spread - gap / 2 / inner),
+                         endAngle: .radians(direction - spread + gap / 2 / inner), clockwise: true)
+            wedge.closeSubpath()
+            return wedge
+        }
+        guard shape.kind == .ring else { return path(shape, corner: corner) }
+        let r = shape.rect
+        var ring = Path(ellipseIn: r)
+        let inset = (r.width * (1 - TabletFigure.ringHole) / 2 * scale).rounded() / scale
+        ring.addEllipse(in: r.insetBy(dx: inset, dy: inset))
+        return ring
     }
 }

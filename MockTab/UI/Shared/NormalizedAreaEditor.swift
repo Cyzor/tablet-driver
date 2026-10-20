@@ -33,8 +33,16 @@ enum AreaEditorStyle {
     case fullScreen
 }
 
+extension EnvironmentValues {
+    /// The corner radius of an opening behind the editor that already outlines
+    /// its canvas, as the tablet backdrop's surface does. The editor then skips
+    /// its own canvas-edge border and rounds its tint to match.
+    @Entry var areaEditorCanvasOpening: CGFloat? = nil
+}
+
 struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     @Environment(\.controlActiveState) private var controlActiveState
+    @Environment(\.areaEditorCanvasOpening) private var canvasOpening
     private var accent: Color { .windowAccent(controlActiveState) }
 
     let aspectRatio: Double
@@ -106,7 +114,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 background()
                     .frame(width: cs.width, height: cs.height)
                     .allowsHitTesting(false)
-                if style == .embedded {
+                if style == .embedded && canvasOpening == nil {
                     Rectangle()
                         .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
                         .frame(width: cs.width, height: cs.height)
@@ -253,32 +261,36 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             // which measured as a large sustained CPU cost during drag
             // (zero GPU involved). Plain `Rectangle`s are cheap layer
             // geometry updates instead.
-            Rectangle()
-                .fill(Color.black.opacity(dimOpacity))
-                .frame(width: cs.width, height: y)
-                .allowsHitTesting(false)
-            Rectangle()
-                .fill(Color.black.opacity(dimOpacity))
-                .frame(width: cs.width, height: max(cs.height - (y + h), 0))
-                .offset(y: y + h)
-                .allowsHitTesting(false)
-            Rectangle()
-                .fill(Color.black.opacity(dimOpacity))
-                .frame(width: x, height: h)
-                .offset(y: y)
-                .allowsHitTesting(false)
-            Rectangle()
-                .fill(Color.black.opacity(dimOpacity))
-                .frame(width: max(cs.width - (x + w), 0), height: h)
-                .offset(x: x + w, y: y)
-                .allowsHitTesting(false)
+            ZStack(alignment: .topLeading) {
+                Rectangle()
+                    .fill(Color.black.opacity(dimOpacity))
+                    .frame(width: cs.width, height: y)
+                    .allowsHitTesting(false)
+                Rectangle()
+                    .fill(Color.black.opacity(dimOpacity))
+                    .frame(width: cs.width, height: max(cs.height - (y + h), 0))
+                    .offset(y: y + h)
+                    .allowsHitTesting(false)
+                Rectangle()
+                    .fill(Color.black.opacity(dimOpacity))
+                    .frame(width: x, height: h)
+                    .offset(y: y)
+                    .allowsHitTesting(false)
+                Rectangle()
+                    .fill(Color.black.opacity(dimOpacity))
+                    .frame(width: max(cs.width - (x + w), 0), height: h)
+                    .offset(x: x + w, y: y)
+                    .allowsHitTesting(false)
 
-            Rectangle()
-                .fill(accent.opacity(style == .fullScreen ? 0.01 : 0.12))
-                .frame(width: w, height: h)
-                .offset(x: x, y: y)
-                .gesture(cropGesture(.body, cs: cs))
-                .cursor(.openHand, active: dragAnchor == nil)
+                Rectangle()
+                    .fill(accent.opacity(style == .fullScreen ? 0.01 : 0.12))
+                    .frame(width: w, height: h)
+                    .offset(x: x, y: y)
+                    .gesture(cropGesture(.body, cs: cs))
+                    .cursor(.openHand, active: dragAnchor == nil)
+            }
+            .frame(width: cs.width, height: cs.height, alignment: .topLeading)
+            .clipShape(RoundedRectangle(cornerRadius: canvasOpening ?? 0, style: .continuous))
 
             Group {
                 if style == .fullScreen {

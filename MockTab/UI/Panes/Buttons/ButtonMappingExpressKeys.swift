@@ -421,7 +421,7 @@ extension ButtonMappingView {
         if let figure = tabletDiagramFigure {
             TabletDiagramView(figure: figure, lit: diagramLit(lb), enabled: diagramEnabled, onTap: { diagramTap($0) })
                 .frame(maxWidth: .infinity)
-                .frame(height: 180)
+                .frame(height: TabletBezelFrame<EmptyView>.height(.landscape))
                 .listRowInsets(EdgeInsets(top: 10, leading: 8, bottom: 10, trailing: 8))
                 .listRowBackground(Color.clear)
         }

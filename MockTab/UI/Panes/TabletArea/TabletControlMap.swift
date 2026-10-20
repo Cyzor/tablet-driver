@@ -70,6 +70,16 @@ struct TabletControlMap: Equatable {
         return make(identity, family: family(for: spec), hasCenterRow: hasCenterRow(spec))
     }
 
+    /// The figure parts for a Wacom model by product ID, for drawing it in
+    /// the diagram's style; a Bluetooth ID without its own row reads as its
+    /// USB model. Nil without a layout.
+    static func figureControls(productID: Int) -> [Part]? {
+        let model = WacomDeviceRegistry.spec(for: productID) != nil ? productID
+            : WacomDeviceRegistry.canonicalProductID(for: productID)
+        guard let spec = WacomDeviceRegistry.spec(for: model) else { return nil }
+        return forDevice(productID: model, spec: spec)?.parts
+    }
+
     /// The family whose rule fits a model, told apart by what the registry
     /// knows about it, not by product ID.
     static func family(for spec: TabletSpec) -> Family {

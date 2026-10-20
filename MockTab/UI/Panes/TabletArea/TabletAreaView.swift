@@ -84,11 +84,14 @@ struct TabletAreaView: View {
         let vendorID = tabletManager.context(forKey: boundKey)?.vendorID
             ?? registry.knownTablets.first { $0.productID == pid }?.vendorID ?? 0x056A
         let isWacom = vendorID == 0x056A && VendorDeviceRegistry.profile(forProductID: pid) == nil
-        return TabletFigure(
+        var figure = TabletFigure(
             layoutProductID: isWacom ? pid : nil,
             surfaceMM: tabletManager.surfaceSizeMM(for: boundKey),
             aspect: activeAspectRatio,
             isPenDisplay: activeDeviceIsPenDisplay)
+        // Drawn like the Buttons pane's diagram, at low contrast.
+        if isWacom { figure.controls = TabletControlMap.figureControls(productID: pid) }
+        return figure
     }
 
     /// True if the bound device is currently physically connected.
@@ -205,7 +208,7 @@ struct TabletAreaView: View {
                         }
                     }
                     .background(WindowReader(ref: windowRef))
-                    .frame(height: 200)
+                    .frame(height: TabletBezelFrame<EmptyView>.height(settings.tabletOrientation))
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
 

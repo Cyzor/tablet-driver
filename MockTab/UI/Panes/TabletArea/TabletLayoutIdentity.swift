@@ -226,6 +226,20 @@ extension TabletLayoutIdentity.ModeSwitch {
     }
 }
 
+extension TabletLayoutIdentity.Entry {
+    /// The entry seen from the other end of its edge: a run's keys and a
+    /// grid's rows in reverse.
+    var reversedAlongEdge: Self {
+        switch self {
+        case let .run(letters): return .run(letters.reversed())
+        case let .cluster(grid): return .cluster(.init(rows: grid.rows.reversed()))
+        case let .ring(n, .beside(grid)): return .ring(n, .beside(.init(rows: grid.rows.reversed())))
+        case let .dial(n, .beside(grid)): return .dial(n, .beside(.init(rows: grid.rows.reversed())))
+        case .ring, .dial, .strip: return self
+        }
+    }
+}
+
 // MARK: - Targets
 
 /// A control the Buttons pane has state or a row for.

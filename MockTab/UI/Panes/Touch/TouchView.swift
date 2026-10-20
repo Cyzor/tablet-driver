@@ -227,7 +227,7 @@ struct TouchView: View {
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
 
             TouchAreaCropView(settings: settings, spec: spec, productID: effectiveProductID)
-                .frame(height: 200)
+                .frame(height: TabletBezelFrame<EmptyView>.height(settings.tabletOrientation))
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
                 // A pen display's touch always covers its whole screen.
@@ -338,11 +338,14 @@ struct TouchView: View {
         /// The same tablet the Tablet Area pane draws behind its editor.
         private var figure: TabletFigure {
             let pid = productID ?? TabletFigure.fallbackProductID
-            return TabletFigure(
-                layoutProductID: VendorDeviceRegistry.profile(forProductID: pid) == nil ? pid : nil,
+            let isWacom = VendorDeviceRegistry.profile(forProductID: pid) == nil
+            var figure = TabletFigure(
+                layoutProductID: isWacom ? pid : nil,
                 surfaceMM: sizeMM,
                 aspect: aspectRatio,
                 isPenDisplay: spec?.isPenDisplay == true)
+            if isWacom { figure.controls = TabletControlMap.figureControls(productID: pid) }
+            return figure
         }
 
         var body: some View {
