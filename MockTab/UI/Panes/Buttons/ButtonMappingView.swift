@@ -39,6 +39,12 @@ struct ButtonMappingView: View {
 
     /// This window's tablet when connected, else the active one, shown
     /// muffled so it doesn't read as this tablet working.
+    /// Each dial's turning state, zeroed like `liveButtons`.
+    var dialsTurning: [Bool] {
+        guard controlActiveState == .key, !isLiveResizing else { return [false, false] }
+        return liveSource?.dialsTurning ?? [false, false]
+    }
+
     private var liveSource: DeviceContext? {
         if let own = tabletManager.context(forKey: instanceKey), own.isConnected { return own }
         return tabletManager.activeContext

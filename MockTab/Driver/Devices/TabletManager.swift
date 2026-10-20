@@ -1182,9 +1182,38 @@ final class TabletManager: ObservableObject {
         // ── Relative wheel closure (IntuosV3 PTK-x70 scroll wheels) ────────────
         // Called on HIDThread; injectWheel runs inline (same threading contract
         // as injectAux).
-        let onWheel: @Sendable (Int, Int) -> Void = { [contextHandle] index, delta in
+        // When each dial last stepped, and whether the pane shows it turning.
+        // Written on HIDThread, read by the main-actor watch below.
+        let dialActivity = OSAllocatedUnfairLock(initialState: (lastStep: [0.0, 0.0], lit: [false, false]))
+        let onWheel: @Sendable (Int, Int) -> Void = { [weak self, contextHandle] index, delta in
             guard let context = contextHandle.context else { return }
             context.injector.injectWheel(index: index, delta: delta, settings: context.settings)
+            // Same gate as onAux: no hop while no pane is watching. Only the
+            // step that starts a turn hops; later steps just move the time.
+            guard index < 2, self?.appIsFrontmost == true && self?.infoViewVisible == true else { return }
+            let now = ProcessInfo.processInfo.systemUptime
+            let starts = dialActivity.withLock { a -> Bool in
+                a.lastStep[index] = now
+                guard !a.lit[index] else { return false }
+                a.lit[index] = true
+                return true
+            }
+            guard starts else { return }
+            Task { @MainActor [weak context] in
+                guard let context else { return }
+                context.dialsTurning[index] = true
+                // Off once the dial has been still for a third of a second.
+                while true {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    let still = dialActivity.withLock { a -> Bool in
+                        guard ProcessInfo.processInfo.systemUptime - a.lastStep[index] > 0.35 else { return false }
+                        a.lit[index] = false
+                        return true
+                    }
+                    if still { break }
+                }
+                context.dialsTurning[index] = false
+            }
         }
 
         // ── Touch closure (capacitive finger input on touch-capable Cintiqs) ───

@@ -397,6 +397,11 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Live button state for the pen/stylus and device.
     @Published var liveButtons: LiveButtonState = .init()
 
+    /// Each mechanical dial, true while it's turning: from its first step
+    /// until it's been still a moment. A dial has no touch to report, so the
+    /// Buttons pane lights it from this.
+    @Published var dialsTurning: [Bool] = [false, false]
+
     /// Subscriptions managed by this context (e.g., to TabletManager for change propagation).
     var cancellables: Set<AnyCancellable> = []
 

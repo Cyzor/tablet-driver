@@ -51,7 +51,7 @@ extension ButtonMappingView {
                     if hasMechanicalDial { dialToggleBlock2(lb: lb) }
                     touchRingSlotsSection(
                         ringSectionLabel,
-                        isActive: lb.touchRing2Active, showsDiagram: !hasMechanicalDial,
+                        isActive: hasMechanicalDial ? dialsTurning[1] : lb.touchRing2Active, showsDiagram: !hasMechanicalDial,
                         showsModeBadge: hasMechanicalDial,
                         ring: .secondary)
                 }
@@ -149,7 +149,7 @@ extension ButtonMappingView {
             hasMechanicalDial
                 ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
                 : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-            isActive: lb.touchRingActive, showsDiagram: !hasMechanicalDial,
+            isActive: hasMechanicalDial ? dialsTurning[0] : lb.touchRingActive, showsDiagram: !hasMechanicalDial,
             showsModeBadge: hasMechanicalDial,
             onCenterTap: hasCenterButton ? { centerRecordToken += 1 } : nil,
             centerBinding: !hasCenterButton ? nil : settings.recordingBinding(
@@ -464,6 +464,9 @@ extension ButtonMappingView {
         set(.ring(1), lb.touchRing2Active)
         set(.strip(0), lb.touchStrip1Active)
         set(.strip(1), lb.touchStrip2Active)
+        let dials = dialsTurning
+        set(.dial(0), dials[0])
+        set(.dial(1), dials[1])
         return bits
     }
 
