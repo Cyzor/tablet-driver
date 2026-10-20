@@ -36,10 +36,9 @@ struct ButtonBindingControl: View, Equatable {
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
     @State private var pendingModifiers: NSEvent.ModifierFlags = []
-    /// Set by the left-mouse-down monitor so toggleRecording() knows the
-    /// click that fired the button action was the same one that already
-    /// stopped recording — and should not restart it.
-    @State private var stoppedByMouseDown = false
+    /// Event number of the click that stopped recording. Its mouse-up shares
+    /// the number, so toggleRecording() ignores only that click, not a later one.
+    @State private var stoppingClick: Int?
 
     nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
         // SwiftUI compares views on the main actor.
@@ -312,18 +311,16 @@ struct ButtonBindingControl: View, Equatable {
     }
 
     private func toggleRecording() {
-        // The left-mouse-down monitor already stopped recording on the mouse-down
-        // event that caused this button action to fire. Don't restart — the user
-        // clicked this field to dismiss, not to begin a new recording.
-        if stoppedByMouseDown {
-            stoppedByMouseDown = false
-            return
-        }
+        // The click that fired this action already stopped recording on its
+        // mouse-down; the user clicked this field to dismiss, not to restart.
+        let stopping = stoppingClick
+        stoppingClick = nil
+        if let stopping, NSApp.currentEvent?.eventNumber == stopping { return }
         isRecording ? stopRecording() : startRecording()
     }
 
     private func startRecording() {
-        stoppedByMouseDown = false
+        stoppingClick = nil
         isRecording = true
         pendingModifiers = []
         // leftMouseDown passes through, so clicking another field starts its
@@ -336,7 +333,7 @@ struct ButtonBindingControl: View, Equatable {
                 self.handleFlagsChanged(event)
                 return nil
             case .leftMouseDown:
-                self.stoppedByMouseDown = true
+                self.stoppingClick = event.eventNumber
                 self.stopRecording()
                 return event  // pass through — click reaches its target
             default:
