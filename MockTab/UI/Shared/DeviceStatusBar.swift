@@ -243,7 +243,7 @@ struct DeviceStatusBar: View {
 
     private var batteryItem: (String, String)? {
         guard let context = context else { return nil }
-        if context.isConnected && context.wirelessLinked == false {
+        if context.isAsleepOnWirelessKit {
             return ("moon.zzz", String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep"))
         }
         if context.awaitingBatteryReading {
@@ -275,7 +275,7 @@ struct DeviceStatusBar: View {
 
     private var batteryTint: Color {
         guard let context = context else { return .secondary }
-        if context.wirelessLinked == false { return .secondary }
+        if context.isAsleepOnWirelessKit { return .secondary }
         guard let pct = context.batteryPercent else { return context.batteryCharging ? .green : .secondary }
         // Neutral when healthy — the slim footer shouldn't draw the eye.
         return BatteryIndicator.tint(pct: pct, charging: context.batteryCharging, healthy: .secondary)

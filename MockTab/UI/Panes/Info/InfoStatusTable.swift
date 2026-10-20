@@ -151,7 +151,7 @@ extension InfoView {
                     // Affirmative green when healthy — this table is the
                     // place users come to check on the device.
                     // Grey while the tablet sleeps: the reading is from before.
-                    symbolColor: deviceContext?.wirelessLinked == false ? .secondary : batteryPercent.map {
+                    symbolColor: deviceContext?.isAsleepOnWirelessKit == true ? .secondary : batteryPercent.map {
                         BatteryIndicator.tint(pct: $0, charging: charging, healthy: .green)
                     } ?? (charging ? .green : .secondary),
                     accessory: offersWirelessSleep ? AnyView(wirelessSleepPicker) : nil)
@@ -178,7 +178,7 @@ extension InfoView {
                 value: deviceContext?.usbSpeed ?? "—",
                 ok: isConnected ? true : nil)
 
-            let asleep = isConnected && deviceContext?.wirelessLinked == false
+            let asleep = deviceContext?.isAsleepOnWirelessKit == true
             row(
                 String(localized: "Status", comment: "Row label in Info tab status table — driver status"),
                 value: asleep
