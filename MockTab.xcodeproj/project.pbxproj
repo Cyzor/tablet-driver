@@ -87,6 +87,7 @@
 		AA00F801 /* TabletFigure.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F801 /* TabletFigure.swift */; };
 		AA00F802 /* TabletFigureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F802 /* TabletFigureView.swift */; };
 		AA00F803 /* TabletLayoutTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F803 /* TabletLayoutTable.swift */; };
+		AA00F805 /* TabletLayoutIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F805 /* TabletLayoutIdentity.swift */; };
 		AA000206 /* TabletSettings+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000206 /* TabletSettings+Persistence.swift */; };
 		AA000207 /* LEDColorControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000207 /* LEDColorControl.swift */; };
 		AA000208 /* TouchRingModeList.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000208 /* TouchRingModeList.swift */; };
@@ -230,6 +231,7 @@
 		AB00F801 /* TabletFigure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletFigure.swift; sourceTree = "<group>"; };
 		AB00F802 /* TabletFigureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletFigureView.swift; sourceTree = "<group>"; };
 		AB00F803 /* TabletLayoutTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletLayoutTable.swift; sourceTree = "<group>"; };
+		AB00F805 /* TabletLayoutIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletLayoutIdentity.swift; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB000206 /* TabletSettings+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TabletSettings+Persistence.swift"; sourceTree = "<group>"; };
 		AB000207 /* LEDColorControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LEDColorControl.swift; sourceTree = "<group>"; };
@@ -621,6 +623,7 @@
 				AB000012 /* TabletAreaView.swift */,
 				AB00F801 /* TabletFigure.swift */,
 				AB00F802 /* TabletFigureView.swift */,
+				AB00F805 /* TabletLayoutIdentity.swift */,
 				AB00F803 /* TabletLayoutTable.swift */,
 			);
 			path = TabletArea;
@@ -887,6 +890,7 @@
 				AA00F801 /* TabletFigure.swift in Sources */,
 				AA00F802 /* TabletFigureView.swift in Sources */,
 				AA00F803 /* TabletLayoutTable.swift in Sources */,
+				AA00F805 /* TabletLayoutIdentity.swift in Sources */,
 				AA000200 /* NormalizedAreaEditor.swift in Sources */,
 				AA000103 /* CaptureGuideView.swift in Sources */,
 				AA00F602 /* CaptureGuideCompletion.swift in Sources */,

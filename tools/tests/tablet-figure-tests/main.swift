@@ -6,7 +6,7 @@
 //
 // The app has no XCTest target, so these run as a small executable compiled
 // against the real TabletFigure.swift, the generated TabletLayoutTable.swift,
-// and TabletOrientation.swift. Run via tools/tests/tablet-figure-tests/run.sh.
+// TabletLayoutIdentity.swift, and TabletOrientation.swift. Run via tools/tests/tablet-figure-tests/run.sh.
 // Exits non-zero on failure.
 
 import CoreGraphics
@@ -367,6 +367,104 @@ private func testIcon() {
     }
 }
 
+// MARK: - Identity
+
+private typealias Identity = TabletLayoutIdentity
+
+/// Models where libwacom draws one key twice, matching the generator's exceptions.
+private let doubledKeys: [Int: Set<Character>] = [0x003A: ["B"]]
+
+private func testIdentityTable() {
+    var ids: [Int] = []
+    for line in TabletLayoutTable.identity.split(separator: "\n") {
+        let parsed = Identity.parse(line: line)
+        expect(parsed != nil, "identity line parses: \(line)")
+        ids += parsed?.ids ?? []
+    }
+    expect(Set(ids).count == ids.count, "each model has one identity line")
+    expect(Set(ids) == Set(TabletFigure.layouts.keys), "every layout has an identity, and nothing else does")
+    expect(Identity.all.count == ids.count, "the loader reads every line")
+
+    for (pid, identity) in Identity.all.sorted(by: { $0.key < $1.key }) {
+        let name = String(format: "%04X", pid)
+        guard let parts = TabletFigure.layouts[pid] else { continue }
+        expect(identity.entries.count == parts.count, "\(name): one entry per part")
+        var numbers: [String: Set<Int>] = [:]
+        for (entry, part) in zip(identity.entries, parts) {
+            switch (entry, part.control) {
+            case let (.run(letters), .keys(count, _)):
+                expect(letters.count == count, "\(name): run of \(count) names \(letters.count) keys")
+            case (.cluster, .cluster): break
+            case let (.ring(n, _), .ring): numbers["r", default: []].insert(n)
+            case let (.dial(n, _), .dial): numbers["d", default: []].insert(n)
+            case let (.strip(n), .strip): numbers["s", default: []].insert(n)
+            default: expect(false, "\(name): \(entry) doesn't match \(part.control)")
+            }
+        }
+        // Rings, dials, and strips number from 1 without gaps or repeats.
+        for (kind, n) in numbers {
+            let count = identity.entries.filter { e in
+                switch (e, kind) {
+                case (.ring, "r"), (.dial, "d"), (.strip, "s"): return true
+                default: return false
+                }
+            }.count
+            expect(n == Set(1...max(count, 1)) && n.count == count, "\(name): \(kind) numbered 1 to \(count) (\(n.sorted()))")
+        }
+
+        // Every letter from A to the last, once, apart from known doubles.
+        let letters = identity.letters
+        let unique = Set(letters)
+        let expected = Set((0..<unique.count).map { Character(UnicodeScalar(UInt8(65 + $0))) })
+        expect(unique == expected, "\(name): letters run from A without gaps (\(String(letters.sorted())))")
+        let doubled = Set(letters.filter { l in letters.filter { $0 == l }.count > 1 })
+        expect(doubled == doubledKeys[pid] ?? [], "\(name): no key named twice (\(String(doubled.sorted())))")
+
+        for (letter, mode) in identity.modeSwitches {
+            expect(unique.contains(letter), "\(name): mode key \(letter) is a drawn key")
+            let target: (String, Int)
+            switch mode.control {
+            case let .ring(n): target = ("r", n)
+            case let .dial(n): target = ("d", n)
+            case let .strip(n): target = ("s", n)
+            }
+            expect(numbers[target.0]?.contains(target.1) == true, "\(name): mode key \(letter) targets a drawn control")
+        }
+        if let codes = identity.evdevCodes {
+            expect(codes.count == unique.count, "\(name): one evdev code per key (\(codes.count) of \(unique.count))")
+        }
+    }
+}
+
+private func testIdentityTokens() {
+    let parsed = Identity.parse(line: "03F7 03F9: c .D./AIC/.B.; d 1; d 2; c .H./EJG/.F. | m I=d1 J=d2")
+    expect(parsed?.ids == [0x03F7, 0x03F9], "ids")
+    if let identity = parsed?.identity {
+        expect(identity.entries.count == 4, "four entries")
+        expect(identity.entries[0] == .cluster(Identity.Grid(rows: [[.empty, .key("D"), .empty],
+                                                                   [.key("A"), .key("I"), .key("C")],
+                                                                   [.empty, .key("B"), .empty]])), "cluster grid")
+        expect(identity.entries[0].letters == ["D", "A", "I", "C", "B"], "grid letters in reading order")
+        expect(identity.entries[1] == .dial(1, .none), "dial with no keys")
+        expect(identity.modeSwitches["J"] == Identity.ModeSwitch(control: .dial(2), mode: nil), "cycling mode key")
+    }
+    let ring = Identity.parse(line: "00F4: r 1 A@/B@/C@; k D | m A=r1.0 | ev 100 101 102 103")?.identity
+    expect(ring?.entries.first == .ring(1, .beside(Identity.Grid(rows: [[.key("A"), .body], [.key("B"), .body],
+                                                                       [.key("C"), .body]]))), "keys beside a ring")
+    expect(ring?.modeSwitches["A"] == Identity.ModeSwitch(control: .ring(1), mode: 0), "mode key picks mode 0")
+    expect(ring?.evdevCodes == [0x100, 0x101, 0x102, 0x103], "evdev codes in hex")
+    expect(Identity.parse(line: "0357: k ABCD; r 1 I; k EFGH")?.identity.entries[1] == .ring(1, .center("I")), "center key")
+    expect(Identity.parse(line: "0357: c AB/AC; k D")?.identity.entries[0].letters == ["A", "B", "C"],
+           "a key spanning cells counts once")
+
+    for bad in ["0357 k ABCD", "XYZ: k A", "0357: k abc", "0357: k", "0357: q A", "0357: c AB/C", "0357: c A",
+                "0357: c A@", "0357: r 0", "0357: r 1 AB", "0357: s 1 A", "0357: k A | m A=x1", "0357: k A | m A=r1.x",
+                "0357: k A | ev 1G", "0357: k A | zz 1", "0357: k A | m A=r1 A=r1", "0357: k A;; k B",
+                "0357: k A || m A=r1", "0357: k A |"] {
+        expect(Identity.parse(line: Substring(bad)) == nil, "rejects \(bad)")
+    }
+}
+
 // MARK: - Golden drawings
 
 /// Every layout drawn in every style, orientation, and scale the app uses,
@@ -443,6 +541,8 @@ private func testGoldenDrawings(directory: String) {
 
 testTableParses()
 testTokens()
+testIdentityTable()
+testIdentityTokens()
 testChin()
 testGlyphProportions()
 testOrientationTurns()

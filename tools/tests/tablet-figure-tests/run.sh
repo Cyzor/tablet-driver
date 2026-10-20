@@ -12,6 +12,6 @@ TEST="$DIR/main.swift"
 T="$(mktemp -d)"
 BIN="$T/tablet-figure-tests"
 
-swiftc -O "$AREA/TabletFigure.swift" "$AREA/TabletLayoutTable.swift" \
+swiftc -O "$AREA/TabletFigure.swift" "$AREA/TabletLayoutTable.swift" "$AREA/TabletLayoutIdentity.swift" \
     "$ROOT/MockTab/Settings/Model/TabletOrientation.swift" "$TEST" -o "$BIN"
 "$BIN" "$DIR"
