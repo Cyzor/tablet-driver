@@ -26,6 +26,7 @@ struct TabletDiagramView: View {
     /// pushed button; dragging off it cancels.
     @State private var pressed: ControlTarget? = nil
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.scrollPaneTo) private var scrollPaneTo
 
     var body: some View {
         TabletDiagramCore(figure: figure, lit: lit, enabled: enabled, pressed: pressed)
@@ -46,6 +47,8 @@ struct TabletDiagramView: View {
                                     pressed = nil
                                     if let start = target(at: value.startLocation, in: geo.size),
                                        target(at: value.location, in: geo.size) == start {
+                                        // Rows carry their target as ID.
+                                        scrollPaneTo(start)
                                         onTap?(start)
                                     }
                                 })

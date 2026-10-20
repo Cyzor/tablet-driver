@@ -126,9 +126,17 @@ struct SettingsPane<Content: View>: View {
                 // pane's toolbar stays solid.
                 Divider()
             }
-            Form { content() }
-                .formStyle(.grouped)
-                .scrollContentBackground(.hidden)
+            ScrollViewReader { proxy in
+                Form { content() }
+                    .formStyle(.grouped)
+                    .scrollContentBackground(.hidden)
+                    .environment(\.scrollPaneTo) { id in
+                        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(id, anchor: .center)
+                        }
+                    }
+            }
             DeviceStatusBar(
                 settings: settings, tabletManager: tabletManager, registry: registry,
                 instanceKey: instanceKey)
@@ -473,4 +481,10 @@ private struct WindowWidthFloor: ViewModifier {
             })
             .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
+
+extension EnvironmentValues {
+    /// Scrolls the pane's form to the row with this ID, for a diagram click
+    /// whose row is out of view.
+    @Entry var scrollPaneTo: (AnyHashable) -> Void = { _ in }
 }

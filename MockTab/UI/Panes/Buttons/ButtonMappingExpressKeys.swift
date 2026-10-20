@@ -131,6 +131,7 @@ extension ButtonMappingView {
                 isMechanicalDialHardware: true,
                 dialToggleControl: .first,
                 recordRequestToken: centerRecordToken)
+            .id(ControlTarget.ringCenter(0))
         } else if hasCenterButton {
             buttonRow(
                 String(localized: "Center", comment: "Touch ring center button row label"),
@@ -142,6 +143,7 @@ extension ButtonMappingView {
                 ringSlotCount: spec?.ringSlotCount ?? 4,
                 modeNames: ringModeNames,
                 recordRequestToken: centerRecordToken)
+            .id(ControlTarget.ringCenter(0))
         }
         touchRingSlotsSection(
             hasMechanicalDial
@@ -175,6 +177,7 @@ extension ButtonMappingView {
             isMechanicalDialHardware: true,
             dialToggleControl: .second,
             recordRequestToken: dial2RecordToken)
+        .id(ControlTarget.ringCenter(1))
     }
 
     /// Direction preference for every ring/dial/strip on the device — one
@@ -407,6 +410,7 @@ extension ButtonMappingView {
             modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
             recordRequestToken: keyRecordTokens[index]
         )
+        .id(ControlTarget.expressKey(index))
     }
 
     // MARK: - Tablet diagram
@@ -475,8 +479,15 @@ extension ButtonMappingView {
         return bits
     }
 
-    /// Starts recording in the clicked control's row.
+    /// Starts recording in the clicked control's row. A row scrolled into
+    /// view only now is created after the first bump, so a second bump once
+    /// the scroll settles reaches it; a row already recording ignores it.
     func diagramTap(_ target: ControlTarget) {
+        bumpRecordToken(target)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { bumpRecordToken(target) }
+    }
+
+    private func bumpRecordToken(_ target: ControlTarget) {
         switch target {
         case let .expressKey(i) where i < keyRecordTokens.count: keyRecordTokens[i] += 1
         case .ringCenter(0): centerRecordToken += 1
