@@ -73,10 +73,8 @@ struct TabletControlMap: Equatable {
     static func family(for spec: TabletSpec) -> Family? {
         switch spec.format {
         // The Cintiq 13HD shares the format but has no ring and a rocker.
-        // Intuos4 has key displays; its Bluetooth row takes them from its USB twin.
         case .intuosV1 where spec.hasTouchRing && !spec.isPenDisplay:
-            let canonical = WacomDeviceRegistry.spec(for: WacomDeviceRegistry.canonicalProductID(for: spec.productID)) ?? spec
-            return canonical.hasKeyOLEDs ? .intuos4 : .intuos5
+            return spec.family == .intuos4 ? .intuos4 : .intuos5
         // The MobileStudio Pro shares the format but has mode keys around its ring.
         case .intuosV2 where spec.hasTouchRing && !spec.isPenDisplay: return .intuosPro2
         case .intuosV3 where spec.hasMechanicalDial: return .intuosPro3
