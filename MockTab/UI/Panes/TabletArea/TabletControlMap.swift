@@ -86,6 +86,7 @@ struct TabletControlMap: Equatable {
     /// cites its evidence.
     static let verifiedFamilies: Set<Family> = [
         .intuos5,  // Notes/Evidence/PTH-850-Key-Order.md
+        .cintiq24HD,  // Notes/Evidence/DTK-2400-Key-Order.md
     ]
 
     /// The map for a connected model, or nil when it has no layout, no known

@@ -37,7 +37,7 @@ struct TabletControlMapTests {
 
     @Test("Only verified families show")
     func gate() {
-        #expect(TabletControlMap.verifiedFamilies == [.intuos5])
+        #expect(TabletControlMap.verifiedFamilies == [.intuos5, .cintiq24HD])
         for spec in WacomDeviceRegistry.knownDevices {
             let family = TabletControlMap.family(for: spec)
             let shown = TabletControlMap.forDevice(productID: spec.productID, spec: spec) != nil
@@ -125,34 +125,43 @@ struct TabletControlMapTests {
         #expect(ControlTarget.down(in: PadState(buttons: [])).isEmpty)
     }
 
-    /// Reports from a key-order walk on a PTH-850 over USB, one per key, in
-    /// walk order, with the letter each key is in libwacom's layout.
-    private static let pth850Walk: [(letter: Character, report: [UInt8])] = [
-        ("B", [0x03, 0x80, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00]),
-        ("C", [0x03, 0x80, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x00]),
-        ("D", [0x03, 0x80, 0x00, 0x00, 0x04, 0x04, 0x00, 0x00, 0x00, 0x00]),
-        ("E", [0x03, 0x80, 0x00, 0x00, 0x08, 0x08, 0x00, 0x00, 0x00, 0x00]),
-        ("A", [0x03, 0x80, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
-        ("F", [0x03, 0x80, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x00, 0x00]),
-        ("G", [0x03, 0x80, 0x00, 0x00, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00]),
-        ("H", [0x03, 0x80, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x00, 0x00]),
-        ("I", [0x03, 0x80, 0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00]),
-    ]
+    /// Reports from key-order walks, one per key in walk order, with the
+    /// letter each key is in libwacom's layout. Each pair is a key press and
+    /// the report that lets it go.
+    private static func walk(_ letters: String, _ report: (Int) -> [UInt8], released: [UInt8])
+        -> [(letter: Character, report: [UInt8], released: [UInt8])] {
+        letters.enumerated().map { ($1, report($0), released) }
+    }
 
-    @Test("PTH-850 keys light the key that was pressed")
-    func pth850Walk() throws {
-        let spec = try #require(WacomDeviceRegistry.spec(for: 0x0028))
-        let map = try #require(TabletControlMap.forDevice(productID: 0x0028, spec: spec))
+    /// PTH-850 over USB: keys B–E, the ring center A, then F–I.
+    private static let pth850Walk = walk("BCDEAFGHI", { i in
+        i == 4 ? [0x03, 0x80, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+            : { b in [0x03, 0x80, 0x00, 0x00, b, b, 0x00, 0x00, 0x00, 0x00] }(UInt8(1 << (i < 4 ? i : i - 1)))
+    }, released: [0x03, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+
+    /// DTK-2400 over USB: the left side's A–H in byte 6, the right side's I–P in byte 8.
+    private static let dtk2400Walk = walk("ABCDEFGHIJKLMNOP", { i in
+        var r: [UInt8] = [0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        r[i < 8 ? 6 : 8] = UInt8(1 << (i % 8))
+        return r
+    }, released: [0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+
+    @Test("Walked keys light the key that was pressed", arguments: [
+        (0x0028, "PTH-850"), (0x00F4, "DTK-2400"),
+    ])
+    func walks(pid: Int, model: String) throws {
+        let steps = pid == 0x0028 ? Self.pth850Walk : Self.dtk2400Walk
+        let spec = try #require(WacomDeviceRegistry.spec(for: pid))
+        let map = try #require(TabletControlMap.forDevice(productID: pid, spec: spec))
         var targets: [Character: ControlTarget] = [:]
         for part in map.parts { targets.merge(part.keys) { a, _ in a } }
         var decoder = spec.makeDecoder()
-        let released: [UInt8] = [0x03, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-        for (letter, report) in Self.pth850Walk {
+        for (letter, report, released) in steps {
             let down = HIDReport.withReport(report) { decoder.events($0) }
                 .reduce(into: Set<ControlTarget>()) { set, event in
                     if case let .pad(pad) = event { set.formUnion(ControlTarget.down(in: pad, includingPresses: true)) }
                 }
-            #expect(down == [try #require(targets[letter])], "key \(letter)")
+            #expect(down == [try #require(targets[letter])], "\(model) key \(letter)")
             _ = HIDReport.withReport(released) { decoder.events($0) }
         }
     }
