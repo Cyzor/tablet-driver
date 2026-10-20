@@ -367,6 +367,80 @@ private func testIcon() {
     }
 }
 
+// MARK: - Golden drawings
+
+/// Every layout drawn in every style, orientation, and scale the app uses,
+/// compared exactly with golden-drawings.txt so a layout change shows up as a
+/// reviewable diff. UPDATE_GOLDENS=1 rewrites the file instead.
+private func testGoldenDrawings(directory: String) {
+    func r(_ rect: CGRect) -> String { "\(rect.minX) \(rect.minY) \(rect.width) \(rect.height)" }
+    func line(_ d: TabletFigure.Drawing) -> String {
+        var fields = ["body \(r(d.body))", "opening \(r(d.opening))", "surface \(r(d.surface))", "unit \(d.unit)"]
+        fields += d.bands.map { "band \(r($0))" }
+        fields += d.shapes.map { "\($0.kind) \(r($0.rect))" }
+        return fields.joined(separator: " | ")
+    }
+
+    // One figure per distinct layout, named by its first product ID, then plain bodies.
+    var figures: [(String, TabletFigure)] = []
+    for row in TabletLayoutTable.packed.split(separator: "\n") {
+        guard let first = row.split(separator: ":").first?.split(separator: " ").first,
+              let pid = Int(first, radix: 16), let parts = TabletFigure.layouts[pid] else { continue }
+        for display in [false, true] {
+            figures.append((String(format: "%04X %@", pid, display ? "display" : "tablet"),
+                            figure(parts, mm: CGSize(width: 300, height: 190), display: display)))
+        }
+    }
+    for (aspect, display) in [(1.6, false), (16.0 / 9.0, true)] {
+        figures.append((String(format: "plain %.3f %@", aspect, display ? "display" : "tablet"),
+                        TabletFigure(layoutProductID: nil, surfaceMM: nil, aspect: aspect, isPenDisplay: display)))
+    }
+
+    var out: [String] = []
+    for (name, base) in figures {
+        out.append("## \(name)")
+        for orientation in TabletOrientation.allCases {
+            let f = base.oriented(orientation)
+            // The glyph and icon keep their own grids, so scale doesn't reach them.
+            out.append("\(orientation) glyph 50x50: " + line(f.drawing(.glyph, in: CGRect(x: 0, y: 0, width: 50, height: 50), scale: 2)))
+            out.append("\(orientation) icon 28x22: " + line(f.drawing(.icon, in: CGRect(x: 0, y: 0, width: 28, height: 22), scale: 2)))
+            for scale in [1.0, 2.0] {
+                for rect in [CGRect(x: 2, y: 2, width: 516, height: 196), CGRect(x: 2, y: 2, width: 296, height: 196)] {
+                    out.append("\(orientation) bezel \(Int(rect.width))x\(Int(rect.height)) @\(Int(scale))x: "
+                               + line(f.drawing(.bezel, in: rect, scale: scale)))
+                }
+            }
+        }
+    }
+    let text = out.joined(separator: "\n") + "\n"
+    let path = directory + "/golden-drawings.txt"
+
+    if ProcessInfo.processInfo.environment["UPDATE_GOLDENS"] == "1" {
+        try? text.write(toFile: path, atomically: true, encoding: .utf8)
+        print("golden-drawings.txt rewritten (\(out.count) lines)")
+        return
+    }
+    guard let golden = try? String(contentsOfFile: path, encoding: .utf8) else {
+        expect(false, "no golden-drawings.txt; run with UPDATE_GOLDENS=1")
+        return
+    }
+    let a = golden.split(separator: "\n", omittingEmptySubsequences: false)
+    let b = text.split(separator: "\n", omittingEmptySubsequences: false)
+    var section = "", differing = 0
+    for i in 0..<max(a.count, b.count) {
+        let x = i < a.count ? String(a[i]) : "<end>"
+        let y = i < b.count ? String(b[i]) : "<end>"
+        if y.hasPrefix("## ") { section = y }
+        guard x != y else { continue }
+        differing += 1
+        // The first few are enough to see what moved.
+        if differing <= 3 {
+            FileHandle.standardError.write(Data("golden line \(i + 1) in \(section)\n  expected: \(x)\n  got:      \(y)\n".utf8))
+        }
+    }
+    expect(differing == 0, "drawings match golden-drawings.txt (\(differing) lines differ)")
+}
+
 testTableParses()
 testTokens()
 testChin()
@@ -376,6 +450,7 @@ testLayoutInvariants()
 testIntuosProGlyph()
 testPlainFigure()
 testIcon()
+testGoldenDrawings(directory: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : ".")
 
 if failures > 0 {
     print("tablet-figure-tests: \(failures) of \(checks) checks failed")
