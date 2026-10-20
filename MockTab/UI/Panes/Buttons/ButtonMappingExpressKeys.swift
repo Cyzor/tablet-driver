@@ -424,7 +424,19 @@ extension ButtonMappingView {
     }
 
     var tabletDiagramFigure: TabletFigure? {
-        guard let spec, spec.maxX > 0, spec.maxY > 0,
+        guard let spec else { return nil }
+        if let cached = Self.diagramFigures[spec.productID] { return cached }
+        let figure = Self.diagramFigure(for: spec)
+        Self.diagramFigures[spec.productID] = .some(figure)
+        return figure
+    }
+
+    /// Figures by product ID, nil for a model without one. A figure depends
+    /// only on the model, so each pane update costs a lookup.
+    private static var diagramFigures: [Int: TabletFigure?] = [:]
+
+    private static func diagramFigure(for spec: TabletSpec) -> TabletFigure? {
+        guard spec.maxX > 0, spec.maxY > 0,
               let map = TabletControlMap.forDevice(productID: spec.productID, spec: spec)
         else { return nil }
         let mm = spec.activeWidthMM.flatMap { w in spec.activeHeightMM.map { CGSize(width: w, height: $0) } }
