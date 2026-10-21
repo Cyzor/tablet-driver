@@ -172,8 +172,9 @@ enum TabletDiagramInk {
     struct Palette {
         /// Outline and body.
         var ink: Color
-        /// Each control's face, and a pen display's screen.
+        /// Each control's face.
         var face: Color
+        /// The surface: a screen or an active area.
         var screen: Color
         /// A face in use.
         var accent: Color
@@ -186,8 +187,8 @@ enum TabletDiagramInk {
         /// The Buttons pane's diagram, the pen diagram's palette.
         static func diagram(dark: Bool, accent: Color) -> Palette {
             let face = dark ? Color.secondary : Color.primary.opacity(0.35)
-            return Palette(ink: dark ? Color.primary.opacity(0.80) : Color.secondary, face: face, screen: face,
-                           accent: accent)
+            return Palette(ink: dark ? Color.primary.opacity(0.80) : Color.secondary, face: face,
+                           screen: Color.primary.opacity(dark ? 0.30 : 0.15), accent: accent)
         }
 
         /// Behind the area editors: the same relationship at low contrast, so
@@ -252,6 +253,14 @@ enum TabletDiagramInk {
                 if pads.contains(shape.rect) { continue }
                 pads.append(shape.rect)
                 body.addPath(path(shape, outset: gap, corner: u))
+            case .ring:
+                body.addPath(path(shape, outset: gap, corner: u))
+                // A hole with no center button is dead space: the body fills it.
+                let r = shape.rect
+                if !d.shapes.contains(where: { $0.kind == .center && r.contains(CGPoint(x: $0.rect.midX, y: $0.rect.midY)) }) {
+                    let inset = (r.width * (1 - TabletFigure.ringHole) / 2 * scale).rounded() / scale + gap
+                    body.addPath(Path(ellipseIn: r.insetBy(dx: inset, dy: inset)))
+                }
             case .key, .cluster:
                 var block = shape.rect.insetBy(dx: -gap, dy: -gap)
                 while let i = blocks.firstIndex(where: { $0.intersects(block) }) {
@@ -267,11 +276,8 @@ enum TabletDiagramInk {
         }
         context.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))
 
-        // A pen display's screen is a face in its opening; a tablet's active
-        // area stays open.
-        if isPenDisplay {
-            context.fill(Path(roundedRect: surface, cornerRadius: 2 * u, style: .continuous), with: .color(palette.screen))
-        }
+        // The surface, a screen or an active area, is a face in its opening.
+        context.fill(Path(roundedRect: surface, cornerRadius: 2 * u, style: .continuous), with: .color(palette.screen))
 
         for shape in d.shapes where shape.kind != .mark {
             let face = Self.face(shape, scale: scale, gap: gap, corner: u)
