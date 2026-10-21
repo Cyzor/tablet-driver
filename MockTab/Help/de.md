@@ -74,6 +74,10 @@ Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuh
 
 **Hover drag** – Halte Button 1 (die untere Barrel-Taste) gedrückt, während der Stift über der Oberfläche schwebt, um den Cursor ohne Spitzenkontakt zu bewegen und Drag-Gesten in der Luft auszuführen.
 
+## Tablett-Diagramm
+
+Das Diagramm zeigt, wo Tasten, Ringe und Dials eines Grafiktabletts sitzen. Klicke auf ein Element, um ihm eine Aktion zuzuweisen.
+
 ## Zuordnungstypen
 
 - **Maustasten** – Links-, Rechts-, Mittelklick oder Doppelklick  

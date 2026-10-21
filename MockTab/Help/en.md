@@ -74,6 +74,10 @@ Press any button while the window is open to highlight its position; this helps 
 
 **Hover drag** – Hold Button 1 (the lower barrel button) while the pen hovers above the surface to move the cursor without tip contact and perform drag gestures in mid-air.
 
+## Tablet Diagram
+
+The diagram depicts positions of a tablet's keys, rings, and dials. Click a component to assign an action.
+
 ## Assignment Types
 
 - **Mouse buttons** – Left, Right, Middle click, or Double-click  

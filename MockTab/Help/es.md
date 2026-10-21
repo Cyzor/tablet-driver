@@ -72,6 +72,10 @@ Pulsa cualquier botón mientras la ventana está abierta para resaltar su posici
 
 **Hover drag** – Mantén pulsado Button 1 (el botón lateral inferior) mientras el lápiz flota sobre la superficie para mover el cursor sin tocar con la punta y hacer gestos de arrastre en el aire.
 
+## Diagrama de la tableta
+
+El diagrama muestra la posición de las teclas, anillos y diales de una tableta. Haz clic en un elemento para asignarle una acción.
+
 ## Tipos de asignación
 
 - **Botones del ratón** – Clic izquierdo, derecho, central o doble clic  
