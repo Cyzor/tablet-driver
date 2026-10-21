@@ -57,7 +57,9 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
         parsedDescriptor = guessedAs != nil ? device.map(LiveHIDDescriptorInspector.read) : nil
         handler = TransportEventHandler(
             spec: transport.spec, isBluetooth: transport.isBluetooth,
-            isWireless: transport.isWireless, callbacks: callbacks)
+            isWireless: transport.isWireless, callbacks: callbacks,
+            keyDisplayClock: KeyDisplayIdleClock(
+                spec: transport.spec, isBluetooth: transport.isBluetooth, labels: transport.controls.labels))
     }
 
     /// The session opened it already.
@@ -90,6 +92,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     /// charges (96% whatever the charge).
     private let isWireless: Bool
     private let callbacks: DeviceRouter.Callbacks
+    private let keyDisplayClock: KeyDisplayIdleClock?
     /// The kit's last link status; its receiver repeats it twice a second.
     private var wirelessLinked: Bool?
     /// Interfaces joined after the primary, for telling their report
@@ -130,11 +133,13 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     /// 3.8 ms apart, windows at least 13 ms apart.
     private static let penWindowGapNs: UInt64 = 5_000_000
 
-    init(spec: TabletSpec, isBluetooth: Bool, isWireless: Bool, callbacks: DeviceRouter.Callbacks) {
+    init(spec: TabletSpec, isBluetooth: Bool, isWireless: Bool, callbacks: DeviceRouter.Callbacks,
+         keyDisplayClock: KeyDisplayIdleClock? = nil) {
         self.spec = spec
         self.isBluetooth = isBluetooth
         self.isWireless = isWireless
         self.callbacks = callbacks
+        self.keyDisplayClock = keyDisplayClock
     }
 
     // MARK: - From the session
@@ -169,6 +174,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
             CaptureActivityProbe.noteUndecoded()
         } else {
             CaptureActivityProbe.note(events)
+            keyDisplayClock?.noteInput()
         }
         let (frames, touchStamps) = collect(events, name: name)
         if let device {
@@ -353,5 +359,77 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
         case .pen(let point): callbacks.onTablet(point)
         case .touch(let contacts): callbacks.onTouch(contacts)
         }
+    }
+}
+
+/// Dims an Intuos4's key displays after 5 minutes without input and turns
+/// them off after 10, to spare the OLEDs. Any decoded input wakes them.
+///
+/// HIDThread-confined.
+final class KeyDisplayIdleClock: @unchecked Sendable {
+    private let labels: any LabelControl
+    private let name: String
+    /// Brightness awake, dimmed, and off.
+    private let levels: [Int]
+    private var stage = 0
+    private var lastInput = DispatchTime.now().uptimeNanoseconds
+    private var timer: CFRunLoopTimer?
+    private static let interval: Double = 300
+
+    init?(spec: TabletSpec, isBluetooth: Bool, labels: (any LabelControl)?) {
+        guard spec.hasKeyOLEDs, !isBluetooth, let labels else { return nil }
+        self.labels = labels
+        name = spec.name
+        // The PTK-540WL's displays run a little brighter.
+        levels = spec.productID == 0x00BC ? [12, 7, 0] : [10, 5, 0]
+        labels.setKeyDisplayBrightness(levels[0])
+        HIDThread.shared.perform { [weak self] in self?.schedule() }
+    }
+
+    deinit {
+        timer.map(CFRunLoopTimerInvalidate)
+    }
+
+    func noteInput() {
+        lastInput = DispatchTime.now().uptimeNanoseconds
+        guard stage != 0 else { return }
+        stage = 0
+        logger.info("\(self.name, privacy: .public): input — key displays awake")
+        labels.setKeyDisplayBrightness(levels[0])
+        schedule()
+    }
+
+    /// Sets the timer for the end of the current stage. While awake, input
+    /// only moves `lastInput`; the timer finds the newer stamp when it fires.
+    private func schedule() {
+        guard stage < levels.count - 1 else {
+            timer.map(CFRunLoopTimerInvalidate)
+            timer = nil
+            return
+        }
+        let idle = Double(DispatchTime.now().uptimeNanoseconds &- lastInput) / 1e9
+        let fireDate = CFAbsoluteTimeGetCurrent() + max(Double(stage + 1) * Self.interval - idle, 0)
+        if let timer {
+            CFRunLoopTimerSetNextFireDate(timer, fireDate)
+            return
+        }
+        // Repeating, so it stays valid for the next SetNextFireDate.
+        let timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, fireDate, Self.interval, 0, 0) { [weak self] _ in
+            self?.fired()
+        }
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+        self.timer = timer
+    }
+
+    private func fired() {
+        let idle = Double(DispatchTime.now().uptimeNanoseconds &- lastInput) / 1e9
+        // Half a second of slack, for a timer that fires a little early.
+        let due = min(Int((idle + 0.5) / Self.interval), levels.count - 1)
+        if due > stage {
+            stage = due
+            logger.info("\(self.name, privacy: .public): idle — key displays \(due == 1 ? "dimmed" : "off", privacy: .public)")
+            labels.setKeyDisplayBrightness(levels[due])
+        }
+        schedule()
     }
 }
