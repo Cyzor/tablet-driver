@@ -24,11 +24,9 @@ Publishing creates a draft. Nothing goes public until you click Publish on GitHu
 
 ## registry/
 
-Keeps the Wacom registry (`TabletKit/Sources/TabletKit/Registry/WacomDeviceRegistry.swift`) in step with outside sources.
+Keeps the app's tablet data in step with outside sources. The scripts that edit TabletKit's registry live in [`TabletKit/tools/`](../TabletKit/tools/).
 
-- `backfill_libwacom_dimensions.py` fills in missing tablet sizes from [libwacom](https://github.com/linuxwacom/libwacom). It leaves hand-measured entries alone. Try it with `--dry-run` first.
 - `generate_tablet_layouts.py` writes `MockTab/UI/Panes/TabletArea/TabletLayoutTable.swift` from libwacom's layouts: where each model's controls sit, and which button each key is. Run it with `--libwacom-data <libwacom>/data --libwacom-rev <commit>`; `--check` exits 1 and shows a diff if the table is out of date.
-- `import_vendor_configs.py` turns OpenTabletDriver configs into entries for other brands' tablets.
 - `upstream-sweep.sh` fetches libwacom, input-wacom, and OpenTabletDriver and reports what changed since the last review.
 
 ## capture/

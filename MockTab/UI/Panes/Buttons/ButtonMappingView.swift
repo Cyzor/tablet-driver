@@ -164,7 +164,7 @@ struct ButtonMappingView: View {
 
     var companionSpec: TabletSpec? {
         guard let pid = companionProductID, let ctx = companionContext else { return nil }
-        return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
+        return VendorDeviceRegistry.drivableSpec(forVendorID: ctx.vendorID, productID: pid)
     }
 
     /// Live button state for the companion, zeroed under the same
@@ -446,9 +446,8 @@ extension ButtonMappingView {
         guard let ctx else { return nil }
         if ctx.pairedProductID > 0 { return WacomDeviceRegistry.spec(for: ctx.pairedProductID) }
         // Non-Wacom drivable devices (Xencelabs) aren't in WacomDeviceRegistry
-        // at all — synthesize the same spec shape TabletManager attached the
-        // live driver with.
-        return TabletManager.vendorDeviceSpec(forVendorID: ctx.vendorID, productID: pid)
+        // at all — use the same spec the session attached the live driver with.
+        return VendorDeviceRegistry.drivableSpec(forVendorID: ctx.vendorID, productID: pid)
     }
 
     static func hasSplitPadLayout(_ spec: TabletSpec?) -> Bool {

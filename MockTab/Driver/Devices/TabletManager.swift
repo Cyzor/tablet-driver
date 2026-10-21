@@ -524,57 +524,7 @@ final class TabletManager: ObservableObject {
         let vendorID = DeviceRegistry.shared.vendorID(forProductID: productID)
             ?? lastSeenVendorID[productID]
             ?? 0x056A
-        return vendorDeviceSpec(forVendorID: vendorID, productID: productID)
-    }
-
-    /// Synthesizes the `TabletSpec` for a drivable non-Wacom device from
-    /// its `VendorDeviceRegistry` profile. Shared by connecting (which
-    /// needs it live, to attach a driver) and UI callers like
-    /// `ButtonMappingView` (which need the same shape — `hasTouchRing`,
-    /// `buttonCount`, etc. — even when no live `DeviceContext` spec is
-    /// reachable, since these devices aren't in the Wacom-only
-    /// `WacomDeviceRegistry` the UI otherwise consults).
-    static func vendorDeviceSpec(forVendorID vendorID: Int, productID: Int) -> TabletSpec? {
-        guard !WacomDeviceRegistry.vendorIDs.contains(vendorID),
-            let profile = VendorDeviceRegistry.drivableProfile(
-                forVendorID: vendorID, productID: productID)
-        else { return nil }
-        // Profiles without coordinate maxima are aux-only devices
-        // (Quick Keys: express keys + dial, no pen digitizer).
-        let isAuxOnly = profile.maxX == nil
-        return TabletSpec(
-            productID: productID,
-            name: profile.productName,
-            format: .xencelabs,
-            maxX: profile.maxX ?? 0,
-            maxY: profile.maxY ?? 0,
-            maxPressure: profile.maxPressure ?? 8191,
-            buttonCount: profile.auxButtonCount ?? 0,
-            bezelButtonCount: profile.bezelButtonCount ?? 0,
-            // hasTouchRing reuses the entire Wacom touch-ring UI/LED
-            // architecture for the Quick Keys dial (4 modes on both,
-            // ringSlotCount defaults to 4) — see XencelabsDecoder's
-            // touchRingButtonDown/buttons[8] mapping. Only the aux-only
-            // puck/dongle has a dial; the pen tablets/display themselves
-            // have neither express keys nor a ring of their own (those are
-            // the companion's, folded into the tablet's Buttons pane
-            // instead — see ButtonMappingView's Quick Keys section), so
-            // this must not be forced on for every Xencelabs PID.
-            // The Quick Keys dial is a bare mechanical encoder, same
-            // mechanism as PTK-470/670/870's gen-3 dials — no finger-presence
-            // sensing, rotation only. See hasMechanicalDial's doc comment.
-            hasTouchRing: isAuxOnly, hasMechanicalDial: isAuxOnly,
-            hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
-            // Hardware-confirmed — see ReportFormat.tiltMaxDegrees.
-            tiltMaxDegrees: isAuxOnly ? nil : ReportFormat.xencelabs.tiltMaxDegrees,
-            isPenDisplay: profile.isPenDisplay,
-            seizeUSB: false,
-            // Tablet-mode handshake; without it the device stays in
-            // mouse emulation (see Xencelabs-G1D-Feasibility note).
-            initSteps: [.outputReport([0x02, 0xB0, 0x04])],
-            confidence: .experimental,
-            activeWidthMM: profile.activeWidthMM,
-            activeHeightMM: profile.activeHeightMM)
+        return VendorDeviceRegistry.drivableSpec(forVendorID: vendorID, productID: productID)
     }
 
     /// Everything connecting needs to know about one `IOHIDDevice`

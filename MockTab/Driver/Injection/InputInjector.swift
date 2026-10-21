@@ -235,13 +235,10 @@ final class InputInjector: @unchecked Sendable {
         if let spec = WacomDeviceRegistry.spec(for: productID) {
             self.hasMechanicalDial = spec.hasMechanicalDial
             self.dialStepsPerRevolution = Self.wacomDialStepsPerRevolution
-        } else if vendorID == 0x28BD,
-            let profile = VendorDeviceRegistry.drivableProfile(
-                forVendorID: vendorID, productID: productID)
+        } else if let spec = VendorDeviceRegistry.drivableSpec(
+            forVendorID: vendorID, productID: productID)
         {
-            // Mirrors TabletManager.vendorDeviceSpec's isAuxOnly check: only
-            // the aux-only Quick Keys puck/dongle has a dial.
-            self.hasMechanicalDial = profile.maxX == nil
+            self.hasMechanicalDial = spec.hasMechanicalDial
             self.dialStepsPerRevolution = Self.xencelabsDialStepsPerRevolution
         } else {
             self.hasMechanicalDial = false

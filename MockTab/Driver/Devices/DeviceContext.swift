@@ -587,7 +587,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         }
         let modeNames = settings.rotaryModeNames
         let isMechanicalDial = (WacomDeviceRegistry.spec(for: productID)
-            ?? TabletManager.vendorDeviceSpec(forVendorID: vendorID, productID: productID))?.hasMechanicalDial ?? false
+            ?? VendorDeviceRegistry.drivableSpec(forVendorID: vendorID, productID: productID))?.hasMechanicalDial ?? false
         let keyLabels = settings.expressKeyBindings.map {
             $0.modeFunctionLabel(modeNames: modeNames, isMechanicalDial: isMechanicalDial) ?? $0.displayLabel
         }
