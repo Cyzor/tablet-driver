@@ -743,8 +743,8 @@ extension TabletFigure {
                 // A center button where the ring's hole is big enough to press.
                 if case let .ring(_, .center(letter))? = controls?.entry, let target = controls?.keys[letter],
                    ring.width * TabletFigure.ringHole >= 10 {
-                    let c = pixels(length * 0.34)
-                    let center = CGRect(x: snap(ring.midX - c / 2), y: snap(ring.midY - c / 2), width: c, height: c)
+                    let c = Self.centered(pixels(length * 0.34), in: ring.width, grid: pixels(0))
+                    let center = CGRect(x: ring.midX - c / 2, y: ring.midY - c / 2, width: c, height: c)
                     shapes.append(Shape(kind: .center, rect: center, target: target))
                 }
                 return shapes
@@ -757,12 +757,18 @@ extension TabletFigure {
 
         /// A round pad: a center disc and four quarter-ring keys around it,
         /// each turned to face its key's direction on the tablet.
+        /// The size nearest `size` that centers in `outer` on whole grid
+        /// steps: the two differ by an even number of steps.
+        static func centered(_ size: Double, in outer: Double, grid: Double) -> Double {
+            outer - 2 * max(((outer - size) / 2 / grid).rounded(), 1) * grid
+        }
+
         private func padShapes(
             _ pad: (center: Character, around: [(letter: Character, along: Double, inward: Double)]), box: CGRect,
             side: Side, pixels: (Double) -> Double, snap: (Double) -> Double
         ) -> [Shape] {
-            let c = pixels(length * 0.36)
-            var shapes = [Shape(kind: .center, rect: CGRect(x: snap(box.midX - c / 2), y: snap(box.midY - c / 2),
+            let c = Self.centered(pixels(length * 0.36), in: box.width, grid: pixels(0))
+            var shapes = [Shape(kind: .center, rect: CGRect(x: box.midX - c / 2, y: box.midY - c / 2,
                                                             width: c, height: c),
                                 target: controls?.keys[pad.center])]
             for key in pad.around {

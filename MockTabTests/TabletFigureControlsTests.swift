@@ -143,6 +143,18 @@ struct TabletFigureControlsTests {
         }
     }
 
+    @Test("A center button sits exactly in the middle of its ring or pad")
+    func centersCentered() {
+        for (name, _, d, _) in Self.drawings() {
+            for c in d.shapes where c.kind == .center {
+                guard let outer = d.shapes.first(where: {
+                    $0.kind != .center && $0.rect.width > c.rect.width && $0.rect.contains(CGPoint(x: c.rect.midX, y: c.rect.midY))
+                }) else { continue }
+                #expect(abs(c.rect.midX - outer.rect.midX) < 1e-9 && abs(c.rect.midY - outer.rect.midY) < 1e-9, "\(name)")
+            }
+        }
+    }
+
     @Test("Layouts libwacom lacks stay clear of Wacom's product IDs")
     func extrasStayClear() {
         let wacom = TabletFigure.parseLayouts(TabletLayoutTable.packed)
