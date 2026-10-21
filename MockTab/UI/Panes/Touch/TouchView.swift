@@ -21,9 +21,8 @@ import TabletKit
 ///   • Force Touch
 ///   • Native multi-touch `NSTouch` events that apps like Final Cut consume
 ///
-/// The first group is unimplemented, not impossible — see project memory
-/// `project_dock_swipe_gesture_feasibility`. The rest is a genuine platform
-/// ceiling.
+/// The first group is unimplemented, not impossible. The rest is a genuine
+/// platform ceiling.
 struct TouchView: View {
 
     @ObservedObject var settings: TabletSettings

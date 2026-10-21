@@ -29,7 +29,7 @@ Each piece of state belongs to one thread, and only that thread changes it. The 
 | Connecting and closing devices, init steps, and the hardware serial read | Main | The pen thread hops to main, as it does to resend init steps |
 | Collect Device Data's recorders and probes | Either, behind a lock | Both read and write under the lock |
 
-Debug builds check the table. `ThreadContract.expectPenThread()` and `expectMainThread()` sit at the start of code that has an owner. A call from the wrong thread logs a fault once per call site, and the app carries on. To watch for them:
+The compiler checks main's side of the table: those types are `@MainActor`. Debug builds check the pen thread's side: `ThreadContract.expectPenThread()` sits at the start of code the pen thread owns. A call from the wrong thread logs a fault once per call site, and the app carries on. To watch for them:
 
 ```
 /usr/bin/log stream --predicate 'subsystem == "com.cyzor.mocktab" AND category == "threading"'

@@ -17,7 +17,6 @@ tools/registry_audit.csv
 # Compiled diagnostic tools (build with the compile line in each header comment)
 tools/scroll_event_capture
 tools/scroll_momentum_probe
-tools/gpu_stress_probe
 tools/gpu_bandwidth_stress_probe
 tools/ram_pressure_probe
 

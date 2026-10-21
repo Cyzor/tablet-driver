@@ -27,17 +27,6 @@ enum ThreadContract {
         #endif
     }
 
-    /// The caller touches state the main thread owns.
-    @inline(__always)
-    static func expectMainThread(
-        _ function: StaticString = #function, file: StaticString = #fileID, line: UInt = #line
-    ) {
-        #if DEBUG
-        guard !Thread.isMainThread else { return }
-        report(expected: "the main thread", function: function, file: file, line: line)
-        #endif
-    }
-
     #if DEBUG
     private static let reportedSites = OSAllocatedUnfairLock<Set<String>>(initialState: [])
 

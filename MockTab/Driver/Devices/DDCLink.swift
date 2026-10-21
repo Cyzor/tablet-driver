@@ -227,15 +227,10 @@ extension DDCLink {
     /// EISA ID "WAC", the manufacturer code in every Wacom display's EDID.
     static let wacomDisplayVendor: UInt32 = 0x5C23
 
-    /// The DDC channel of the Wacom display the tablet named `modelName` is
-    /// built into. With several Wacom displays online, picks the one whose
-    /// EDID name leads the model name ("Cintiq 27QHDT" for "Cintiq 27QHD
-    /// Touch (DTH-2700)"); nil when that can't settle it.
-    static func wacomPanel(modelName: String) -> DDCLink? {
-        wacomPanelDisplay(modelName: modelName).flatMap { DDCLink(displayLocation: $0.location) }
-    }
-
-    /// The display ID and IOKit location of that same panel.
+    /// The display ID and IOKit location of the panel built into the tablet
+    /// named `modelName`. With several Wacom displays online, picks the one
+    /// whose EDID name leads the model name ("Cintiq 27QHDT" for "Cintiq
+    /// 27QHD Touch (DTH-2700)"); nil when that can't settle it.
     static func wacomPanelDisplay(
         modelName: String
     ) -> (id: CGDirectDisplayID, location: String)? {

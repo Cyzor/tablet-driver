@@ -1958,7 +1958,7 @@ struct TouchStateTracker {
     /// ⇒ deliberate brake ⇒ no coast" — is right when frames kept arriving
     /// and the finger held still. It is *wrong* when frames simply stopped
     /// arriving: a Bluetooth touch stream stalls 100–500 ms mid-flick
-    /// (measured, `project_bt_scroll_stuck_and_nocoast`), the finger was
+    /// (measured), the finger was
     /// still moving fast the whole time, and the user lifts expecting a
     /// coast. The two cases are told apart by the gaps: a brake keeps
     /// `frameGap` small while `motionGap` grows; a delivery stall grows both

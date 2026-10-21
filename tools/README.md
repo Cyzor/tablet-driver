@@ -38,7 +38,6 @@ Small tools for watching what a tablet sends and what the system does with it. M
 - The `.d` scripts log the commands any driver sends a tablet. They need System Integrity Protection off.
 - `check-report-zip.py` vets an emailed diagnostics file before you open it.
 - `WacomProbeDevice.swift` only builds when copied into the app. It reports the highest coordinates and pressure an unknown tablet sends, so you can write a registry entry.
-- `OTDImporter.swift` is unused, but it's easy to bring back.
 
 Older capture files may contain a device serial number. `triage_discovery.py` flags it. Remove the serial before committing, since captures end up in public issues.
 

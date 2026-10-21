@@ -2,7 +2,7 @@
 // it "hot" (touched, uncompressible, unswappable-in-practice), standing in
 // for a local LLM's multi-GB resident weight set.
 //
-// Both `gpu_stress_probe` (full compute occupancy) and
+// Both a compute-only probe (full occupancy) and
 // `gpu_bandwidth_stress_probe` (504 GB/s sustained streaming) produced zero
 // cursor lag — ruling out raw GPU throughput as the trigger. This probe
 // tests a different theory: system-wide memory *pressure* (approaching

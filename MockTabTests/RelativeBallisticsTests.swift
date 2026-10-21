@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Relative mode must be calm at rest and at slow speeds, and still cross the
-// screen on a quick sweep. Ported from tools/tests/relative-ballistics-tests
-// as the Swift Testing pilot. `RelativeBallistics.swift` is compiled into
-// this bundle, so the app isn't launched.
+// screen on a quick sweep. `RelativeBallistics.swift` is compiled into this
+// bundle, so the app isn't launched.
 
 import Foundation
 import Testing

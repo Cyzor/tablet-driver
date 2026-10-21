@@ -382,27 +382,6 @@ final class TabletManager: ObservableObject {
         return WacomDeviceRegistry.deviceName(forProductID: pid)
     }
 
-    var connectedDeviceName: String {
-        switch connectedProductIDs.count {
-        case 0: return "No tablet"
-        case 1: return Self.deviceName(forProductID: connectedProductIDs[0])
-        default:
-            let first = Self.deviceName(forProductID: connectedProductIDs[0])
-            return "\(first) + \(connectedProductIDs.count - 1) more"
-        }
-    }
-
-    // MARK: - Legacy single-device accessors
-
-    var settings: TabletSettings? {
-        get { activeContext?.settings }
-        set { /* no-op: settings are now per-context */  }
-    }
-
-    var injector: InputInjector? {
-        activeContext?.injector
-    }
-
     // MARK: - Known vendors
 
     /// Every USB vendor whose tablets MockTab recognizes, decoded or not.

@@ -69,8 +69,6 @@ final class BatchFramePacer {
         timer.map { CFRunLoopTimerInvalidate($0) }
     }
 
-    var isPacing: Bool { timer != nil }
-
     /// Queues frames to be delivered one per `interval`, oldest first.
     ///
     /// Any frames still queued from a prior batch are flushed immediately

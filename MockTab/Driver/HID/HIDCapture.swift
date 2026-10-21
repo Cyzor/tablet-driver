@@ -150,9 +150,6 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
 
     var isCapturing: Bool { state.withLock { $0.isCapturing } }
     var reportCount: Int { state.withLock { $0.reportCount } }
-    var elapsedSinceStart: TimeInterval {
-        state.withLock { $0.isCapturing ? Date().timeIntervalSince($0.startTime) : 0 }
-    }
     /// Most recent report's key bytes, for a live UI ticker. `nil` before the
     /// first report arrives.
     var lastSample: LiveSample? { state.withLock { $0.lastSample } }

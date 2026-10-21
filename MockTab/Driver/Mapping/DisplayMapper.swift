@@ -394,10 +394,7 @@ struct DisplayMapper {
         // pinned at a monitor's edge while the mouse keeps moving past it.
         // Overshoot past the boundary simply doesn't matter once clamped,
         // however far or erratic it gets, so there's no need to detect or
-        // filter it upstream (see the PTK-870 BLE bezel/express-key-band
-        // investigation this replaced, in
-        // `project_ptk870_ble_new_report_protocol` memory). Matches the
-        // existing touch-at-screen-edges precedent
+        // filter it upstream. Matches the existing touch-at-screen-edges precedent
         // (`DisplayMapper.pinNearEdges`, +Touch.swift) that made
         // touch-triggered Dock reveal reliable the same way.
         let relX = Swift.min(Swift.max((ox - areaX) / areaW, 0), 1)

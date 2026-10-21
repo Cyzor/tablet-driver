@@ -261,7 +261,7 @@ final class ScratchpadNSView: NSView {
         Self.ringCursor.set()
         let pt = canvasPoint(convert(event.locationInWindow, from: nil))
         let activeContext = tabletManager?.activeContext
-        let isEraser = tabletManager?.injector?.activeToolIsEraser == true
+        let isEraser = activeContext?.injector.activeToolIsEraser == true
             || activeContext?.activeToolID?.hasPrefix("eraser") == true
             || event.pointingDeviceType == .eraser
             || activeContext?.livePoint?.eraser == true
