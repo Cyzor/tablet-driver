@@ -72,6 +72,8 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
             MainActor.assumeIsolated { self?.transport?.reawaken() }
         }
         if Thread.isMainThread { send() } else { DispatchQueue.main.async(execute: send) }
+        let handler = handler
+        HIDThread.shared.perform { handler.systemWoke() }
     }
 
     @MainActor
@@ -140,6 +142,11 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
         self.isWireless = isWireless
         self.callbacks = callbacks
         self.keyDisplayClock = keyDisplayClock
+    }
+
+    /// After system sleep, key displays start awake, as after input.
+    func systemWoke() {
+        keyDisplayClock?.noteInput()
     }
 
     // MARK: - From the session
