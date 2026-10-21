@@ -413,27 +413,6 @@ final class ToolSettings: ObservableObject {
         pressureCurveLoadFailed = false
         pressureCurve = curve
     }
-
-    // MARK: - Undo/Redo support
-
-    /// Registers an undo action with the shared undoManager.
-    /// See `TabletSettings.record` — same redo-via-re-registration mechanism.
-    func record(_ actionName: String, undo: @escaping () -> Void) {
-        guard let um = undoManager else { return }
-        um.setActionName(actionName)
-        um.registerUndo(withTarget: self) { [weak self] target in
-            // Liveness check only — don't replay undo against a deallocated
-            // settings object. `self` itself is deliberately unused.
-            guard self != nil else { return }
-            undo()
-        }
-    }
-
-    /// See `TabletSettings.recordToggle` — same single-value undo/redo shorthand.
-    func recordToggle<T>(_ actionName: String, from oldValue: T, to newValue: T, apply: @escaping (T) -> Void) {
-        record(actionName) { [weak self] in
-            apply(oldValue)
-            self?.recordToggle(actionName, from: newValue, to: oldValue, apply: apply)
-        }
-    }
 }
+
+extension ToolSettings: UndoRecording {}

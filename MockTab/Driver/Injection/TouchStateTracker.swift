@@ -1270,41 +1270,10 @@ struct TouchStateTracker {
         {
             return .none
         }
-        // Pinch and rotate are evaluated independently — each
-        // just needs to beat pan's translation by
-        // `pinchDominanceRatio` (the bar that matters for "pan
-        // wins on ambiguity", including the anchored-finger-arc
-        // case — documented, intentional limitation, not a bug)
-        // and clear its own absolute noise floor. No *exclusive*
-        // bar between them: a real trackpad can magnify and
-        // rotate at once (see `TwoFingerKind`'s doc comment), so
-        // both may qualify together here.
-        var pinchQualifies = pinchZoom
-            && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
-            && totalScaleChange >= Self.pinchNoiseFloor
-        var rotateQualifies = rotate && rotateEligible
-            && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
-            && totalTangentialMotion >= Self.rotateNoiseFloor
-        // Independent floors alone let a much smaller companion
-        // signal ride along with a much larger dominant one — a
-        // real pinch's incidental angle jitter (or a real
-        // twist's incidental separation drift) can each clear
-        // their own floor without being a genuine second
-        // gesture. Suppress whichever signal is small relative
-        // to the other (below `companionSuppressionRatio` of
-        // it); comparable signals still both survive, which is
-        // what makes true concurrent pinch+rotate possible here.
-        // Symmetric and gentler than the exclusive dominance
-        // rule it replaced — a near-tie (say tangential 25 vs
-        // scale 26, which used to hand pinch an outright win)
-        // now clears suppression on both sides and fires both.
-        if pinchQualifies, rotateQualifies {
-            if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
-                rotateQualifies = false
-            } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
-                pinchQualifies = false
-            }
-        }
+        let (pinchQualifies, rotateQualifies) = Self.qualifyingComponents(
+            translation: totalTranslation, scale: totalScaleChange,
+            tangential: totalTangentialMotion,
+            pinchZoom: pinchZoom, rotate: rotate && rotateEligible)
         if pinchQualifies || rotateQualifies {
             twoFingerKind = .gesture
             pinchInGesture = pinchQualifies
@@ -1325,6 +1294,39 @@ struct TouchStateTracker {
         pendingBeganDx = 0
         pendingBeganDy = 0
         return .none
+    }
+
+    /// Which of pinch and rotate the accumulated motion supports.
+    ///
+    /// Each is tested on its own: it must beat pan's translation by
+    /// `pinchDominanceRatio` (pan wins on ambiguity, including the
+    /// anchored-finger arc, a known limitation) and clear its own noise
+    /// floor. There's no exclusive bar between them, since a trackpad can
+    /// magnify and rotate at once (see `TwoFingerKind`).
+    ///
+    /// Independent floors alone would let a real pinch's angle jitter, or a
+    /// real twist's separation drift, ride along as a second gesture. So when
+    /// both qualify, the one below `companionSuppressionRatio` of the other
+    /// drops out. Comparable signals both survive: tangential 25 against
+    /// scale 26 fires both.
+    private static func qualifyingComponents(
+        translation: Double, scale: Double, tangential: Double,
+        pinchZoom: Bool, rotate: Bool
+    ) -> (pinch: Bool, rotate: Bool) {
+        var pinch = pinchZoom
+            && scale > translation * pinchDominanceRatio
+            && scale >= pinchNoiseFloor
+        var rotation = rotate
+            && tangential > translation * pinchDominanceRatio
+            && tangential >= rotateNoiseFloor
+        if pinch, rotation {
+            if tangential < scale * companionSuppressionRatio {
+                rotation = false
+            } else if scale < tangential * companionSuppressionRatio {
+                pinch = false
+            }
+        }
+        return (pinch, rotation)
     }
 
     /// One frame of a committed pinch, rotate, or both, including a late-joining second component.
@@ -1400,25 +1402,16 @@ struct TouchStateTracker {
             let totalTangentialMotion = (rotate && rotateEligible)
                 ? recentGestureDeltas.reduce(0) { $0 + $1.tangential }
                 : 0
-            var pinchQualifies = pinchZoom
-                && totalScaleChange > totalTranslation * Self.pinchDominanceRatio
-                && totalScaleChange >= Self.pinchNoiseFloor
-            var rotateQualifies = rotate && rotateEligible
-                && totalTangentialMotion > totalTranslation * Self.pinchDominanceRatio
-                && totalTangentialMotion >= Self.rotateNoiseFloor
-            // Same companion suppression as at commit, and it is
-            // what keeps this from firing on drift: over a long
-            // pinch the incidental angle wobble does eventually
-            // clear `rotateNoiseFloor` in absolute terms, but it
-            // stays far below `companionSuppressionRatio` of the
-            // scale change unless the user is really twisting.
-            if pinchQualifies, rotateQualifies {
-                if totalTangentialMotion < totalScaleChange * Self.companionSuppressionRatio {
-                    rotateQualifies = false
-                } else if totalScaleChange < totalTangentialMotion * Self.companionSuppressionRatio {
-                    pinchQualifies = false
-                }
-            }
+            // The same test as at commit. Its companion suppression is
+            // what keeps this from firing on drift: over a long pinch
+            // the incidental angle wobble does eventually clear
+            // `rotateNoiseFloor` in absolute terms, but it stays far
+            // below `companionSuppressionRatio` of the scale change
+            // unless the user is really twisting.
+            let (pinchQualifies, rotateQualifies) = Self.qualifyingComponents(
+                translation: totalTranslation, scale: totalScaleChange,
+                tangential: totalTangentialMotion,
+                pinchZoom: pinchZoom, rotate: rotate && rotateEligible)
             let joinPinch = !pinchInGesture && pinchQualifies
             let joinRotate = !rotateInGesture && rotateQualifies
             if joinPinch || joinRotate {

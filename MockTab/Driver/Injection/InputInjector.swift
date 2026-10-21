@@ -515,13 +515,13 @@ final class InputInjector: @unchecked Sendable {
     /// Momentum tail after a Pan View release in Momentum mode; see
     /// MomentumTail.swift. `[weak self]` avoids a retain cycle.
     lazy var panMomentumTail = MomentumTail { [weak self] dx, dy, phase in
-        self?.postPanScrollMomentum(dx: dx, dy: dy, phase: phase)
+        self?.postScrollMomentum(dx: dx, dy: dy, phase: phase)
     }
 
     /// A separate instance, so a touch scroll's tail can't cancel or blend with
     /// a Pan View tail.
     lazy var touchMomentumTail = MomentumTail { [weak self] dx, dy, phase in
-        self?.postTouchScrollMomentum(dx: dx, dy: dy, phase: phase)
+        self?.postScrollMomentum(dx: dx, dy: dy, phase: phase)
     }
 
     /// Which gesture a zoom or rotate ring mode drives, on rings and dials alike.

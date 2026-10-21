@@ -1111,46 +1111,6 @@ final class TabletSettings: ObservableObject {
         var h: Double
     }
 
-    /// Registers an undoable action with the current undoManager.
-    ///
-    /// `NSUndoManager` treats any `registerUndo` call made while it is
-    /// actively undoing as belonging to the *redo* stack — so an `undo`
-    /// closure that itself calls `record(...)` again (typically by calling
-    /// the same mutating method with before/after swapped, as
-    /// `recordAreaDrag` and `renameAppOverride` already do) gets real,
-    /// indefinite undo/redo toggling for free. Call sites whose `undo`
-    /// closure is a one-shot "restore to the old value" (most property
-    /// setters) won't redo unless they're written the same self-recursive
-    /// way. The undo block is responsible for restoring state; `persist()`
-    /// fires normally either way.
-    func record(_ actionName: String, undo: @escaping () -> Void) {
-        guard let um = undoManager else { return }
-        um.setActionName(actionName)
-        um.registerUndo(withTarget: self) { [weak self] target in
-            // Liveness check only — don't replay undo against a deallocated
-            // settings object. `self` itself is deliberately unused.
-            guard self != nil else { return }
-            undo()
-        }
-    }
-
-    /// Records an undoable/redoable change to a single value, given its old
-    /// and new states and a closure that applies either one. Each invocation
-    /// (by Undo or by Redo) re-registers itself with the two values swapped,
-    /// so the change toggles back and forth indefinitely — the mechanical
-    /// shape most `record(...)` call sites in this codebase already have
-    /// (`let old = x; x = new; record("Name") { self.x = old }`), just
-    /// generalized so it also supports redo. Prefer this over calling
-    /// `record` directly for a plain property swap; use `record` directly
-    /// when the change touches more than one value (see e.g.
-    /// `importAppOverride`, `removeAppOverride`).
-    func recordToggle<T>(_ actionName: String, from oldValue: T, to newValue: T, apply: @escaping (T) -> Void) {
-        record(actionName) { [weak self] in
-            apply(oldValue)
-            self?.recordToggle(actionName, from: newValue, to: oldValue, apply: apply)
-        }
-    }
-
     /// Records a coalesced tablet area drag (one undo entry per completed gesture, not per frame).
     /// Call this once in DragGesture.onEnded with a snapshot captured at drag-start.
     func recordAreaDrag(before snap: AreaSnapshot) {
@@ -1231,4 +1191,57 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+}
+
+extension TabletSettings: UndoRecording {}
+
+// MARK: - Undo registration
+
+/// Undo and redo for a settings object, shared by `TabletSettings` and
+/// `ToolSettings`, which each hold the device's undo manager.
+@MainActor
+protocol UndoRecording: AnyObject {
+    var undoManager: UndoManager? { get }
+}
+
+extension UndoRecording {
+    /// Registers an undoable action with the current undoManager.
+    ///
+    /// `NSUndoManager` treats any `registerUndo` call made while it is
+    /// actively undoing as belonging to the *redo* stack — so an `undo`
+    /// closure that itself calls `record(...)` again (typically by calling
+    /// the same mutating method with before/after swapped, as
+    /// `recordAreaDrag` and `renameAppOverride` already do) gets real,
+    /// indefinite undo/redo toggling for free. Call sites whose `undo`
+    /// closure is a one-shot "restore to the old value" (most property
+    /// setters) won't redo unless they're written the same self-recursive
+    /// way. The undo block is responsible for restoring state; `persist()`
+    /// fires normally either way.
+    func record(_ actionName: String, undo: @escaping () -> Void) {
+        guard let um = undoManager else { return }
+        um.setActionName(actionName)
+        um.registerUndo(withTarget: self) { [weak self] target in
+            // Liveness check only — don't replay undo against a deallocated
+            // settings object. `self` itself is deliberately unused.
+            guard self != nil else { return }
+            undo()
+        }
+    }
+
+    /// Records an undoable/redoable change to a single value, given its old
+    /// and new states and a closure that applies either one. Each invocation
+    /// (by Undo or by Redo) re-registers itself with the two values swapped,
+    /// so the change toggles back and forth indefinitely — the mechanical
+    /// shape most `record(...)` call sites in this codebase already have
+    /// (`let old = x; x = new; record("Name") { self.x = old }`), just
+    /// generalized so it also supports redo. Prefer this over calling
+    /// `record` directly for a plain property swap; use `record` directly
+    /// when the change touches more than one value (see e.g.
+    /// `importAppOverride`, `removeAppOverride`).
+    func recordToggle<T>(_ actionName: String, from oldValue: T, to newValue: T, apply: @escaping (T) -> Void) {
+        record(actionName) { [weak self] in
+            apply(oldValue)
+            self?.recordToggle(actionName, from: newValue, to: oldValue, apply: apply)
+        }
+    }
 }

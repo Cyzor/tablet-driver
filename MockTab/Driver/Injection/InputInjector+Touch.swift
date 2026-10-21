@@ -876,34 +876,4 @@ extension InputInjector {
         postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1, snapshot: snapshot)
         postMouseUp(button: .right, at: loc, clickCount: 1, snapshot: snapshot)
     }
-
-    // MARK: - Touch scroll momentum tail
-
-    /// Sole event-construction site for the touch-scroll momentum tail; the
-    /// decay itself lives in `touchMomentumTail` (see MomentumTail.swift).
-    ///
-    /// `postTouchScroll`'s phased began/changed/ended stream is enough for
-    /// `NSScrollView` apps to synthesize their own coast, but apps that read
-    /// gesture-scroll deltas directly and build their own physics (Safari,
-    /// Firefox, Affinity — confirmed by hardware test 2026-08-05) never see
-    /// one, because `CGEventPost` carries no real trackpad hardware behind it
-    /// to generate a `kCGMomentumScrollPhase` stream.
-    func postTouchScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
-        guard
-            let e = CGEvent(
-                scrollWheelEvent2Source: sessionSource,
-                units: .pixel,
-                wheelCount: 2,
-                wheel1: Int32(dy),
-                wheel2: Int32(dx),
-                wheel3: 0)
-        else { return }
-        e.location = currentCursorPosition()
-        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: 0)
-        e.setIntegerValueField(.scrollWheelEventMomentumPhase, value: phase.rawValue)
-        applyTrackpadDeltaFields(e, dx: dx, dy: dy)
-        e.flags = moveSafeEventFlags
-        finalizeAndPost(e)
-    }
 }

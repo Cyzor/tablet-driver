@@ -1310,12 +1310,18 @@ extension InputInjector {
         e.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(dx.rounded()))
     }
 
-    // MARK: - Scroll Drag momentum tail (Natural mode)
+    // MARK: - Momentum tail
 
-    /// Builds the Pan View momentum tail; the decay lives in `panMomentumTail`.
-    /// Scroll phase stays 0 while momentum phase runs: both nonzero confuses
-    /// AppKit and WebKit.
-    func postPanScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
+    /// Posts one frame of a momentum tail, for Pan View and touch scrolling
+    /// alike; the decay lives in `panMomentumTail` and `touchMomentumTail`.
+    ///
+    /// A phased began/changed/ended stream is enough for `NSScrollView` apps
+    /// to coast on their own, but apps that build their own physics from
+    /// gesture deltas (Safari, Firefox, Affinity — confirmed by hardware test
+    /// 2026-08-05) need a momentum stream, which `CGEventPost` gets from no
+    /// trackpad hardware. Scroll phase stays 0 while momentum phase runs: both
+    /// nonzero confuses AppKit and WebKit.
+    func postScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
         guard
             let e = CGEvent(
                 scrollWheelEvent2Source: sessionSource,
