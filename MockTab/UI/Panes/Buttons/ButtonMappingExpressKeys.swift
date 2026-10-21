@@ -12,16 +12,14 @@ import TabletKit
 extension ButtonMappingView {
     @ViewBuilder
     func singleSidedSection(lb: LiveButtonState) -> some View {
-        // DeviceNameLabel heads this section so it sits between the pen section
-        // and the hardware button rows, matching the original visual intent.
-        // Xencelabs tablets/displays report 0 here — their express keys live
-        // on the puck/dongle companion instead (see quickKeysSection below) —
-        // so skip an empty section rather than showing a header with no rows.
+        // The device line heads this section unless the tablet section above
+        // carries it. Xencelabs tablets and displays report 0 keys here, since
+        // theirs live on the puck or dongle companion (see quickKeysSection
+        // below), so an empty section is skipped rather than shown bare.
         if isRemote {
             remoteKeySections(lb: lb)
         } else if expressKeyCount > 0 {
             Section {
-                tabletDiagramRow(lb: lb)
                 ForEach(0..<expressKeyCount, id: \.self) { i in
                     expressKeyRow(
                         index: i,
@@ -29,9 +27,7 @@ extension ButtonMappingView {
                         lb: lb)
                 }
             } header: {
-                PaneSectionHeader("Express Keys") {
-                    DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-                }
+                PaneSectionHeader("Express Keys") { deviceLineUnlessTabletSection }
             }
         }
 
@@ -275,14 +271,11 @@ extension ButtonMappingView {
     @ViewBuilder
     func dualSidedSection(lb: LiveButtonState) -> some View {
         Section {
-            tabletDiagramRow(lb: lb)
             ForEach(0..<3, id: \.self) { i in
                 expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
         } header: {
-            PaneSectionHeader("Toggle Buttons — Left") {
-                DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
-            }
+            PaneSectionHeader("Toggle Buttons — Left") { deviceLineUnlessTabletSection }
         }
 
         Section("Express Keys — Left") {
@@ -328,8 +321,6 @@ extension ButtonMappingView {
     @ViewBuilder
     func bezelButtonsSection(lb: LiveButtonState) -> some View {
         Section {
-            // A model whose only keys are on its bezel shows its diagram here.
-            if expressKeyCount == 0 && !hasSplitPadLayout { tabletDiagramRow(lb: lb) }
             ForEach(0..<bezelButtonCount, id: \.self) { i in
                 bezelButtonRow(
                     index: i,
@@ -419,15 +410,30 @@ extension ButtonMappingView {
 
     // MARK: - Tablet diagram
 
-    /// The tablet drawn above its key rows, once its family's key order is verified.
+    /// The tablet drawn in its own section below the pen's, with the device
+    /// line the first key section would otherwise carry.
     @ViewBuilder
-    func tabletDiagramRow(lb: LiveButtonState) -> some View {
+    func tabletSection(lb: LiveButtonState) -> some View {
         if let figure = tabletDiagramFigure {
-            TabletDiagramView(figure: figure, lit: diagramLit(lb), enabled: diagramEnabled, onTap: { diagramTap($0) })
-                .frame(maxWidth: .infinity)
-                .frame(height: TabletBezelFrame<EmptyView>.height(.landscape))
-                .listRowInsets(EdgeInsets(top: 10, leading: 8, bottom: 10, trailing: 8))
-                .listRowBackground(Color.clear)
+            Section {
+                TabletDiagramView(figure: figure, lit: diagramLit(lb), enabled: diagramEnabled, onTap: { diagramTap($0) })
+                    .frame(maxWidth: .infinity)
+                    .frame(height: TabletBezelFrame<EmptyView>.height(.landscape))
+                    .listRowInsets(EdgeInsets(top: 10, leading: 8, bottom: 10, trailing: 8))
+                    .listRowBackground(Color.clear)
+            } header: {
+                PaneSectionHeader("Tablet") {
+                    DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
+                }
+            }
+        }
+    }
+
+    /// The device line for the first key section, unless the tablet section above carries it.
+    @ViewBuilder
+    var deviceLineUnlessTabletSection: some View {
+        if tabletDiagramFigure == nil {
+            DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
         }
     }
 

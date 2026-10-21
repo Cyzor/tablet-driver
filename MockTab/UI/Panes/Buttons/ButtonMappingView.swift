@@ -227,6 +227,7 @@ struct ButtonMappingView: View {
                 singleSidedSection(lb: liveButtons)
             } else {
                 penButtonsSection(lb: liveButtons)
+                tabletSection(lb: liveButtons)
                 if hasSplitPadLayout {
                     dualSidedSection(lb: liveButtons)
                 } else {
