@@ -83,10 +83,10 @@ struct TabletLayoutIdentity: Equatable {
 // MARK: - Parsing
 
 extension TabletLayoutIdentity {
-    /// Identities by product ID, read once from the generated table.
+    /// Identities by product ID, read once from the generated table and its extras.
     static let all: [Int: TabletLayoutIdentity] = {
         var all: [Int: TabletLayoutIdentity] = [:]
-        for line in TabletLayoutTable.identity.split(separator: "\n") {
+        for line in (TabletLayoutTable.identity + "\n" + TabletLayoutExtras.identity).split(separator: "\n") {
             guard let (ids, identity) = parse(line: line) else { continue }
             for id in ids { all[id] = identity }
         }
@@ -267,4 +267,25 @@ enum ControlTarget: Hashable {
         case let .strip(i): return 25 + i
         }
     }
+}
+
+// MARK: - Layouts libwacom lacks
+
+/// Layouts libwacom doesn't carry, in the generated table's formats. Their
+/// product IDs stay clear of Wacom's; the figure tests check it.
+enum TabletLayoutExtras {
+    /// Xencelabs Pen Display 24: three round buttons in a row toward the
+    /// right end of the top bezel, placed from the product's photos.
+    static let packed = "520D: k3oT0 800-898"
+    static let identity = "520D: k ABC"
+
+    /// Parts libwacom leaves out of a layout it has, drawn but not driven:
+    /// the Cintiq 24HD's three display buttons on the top bezel, toward the
+    /// right, placed from the product's photos.
+    static let addedParts = "00F4 00F8: k3oT0 680-760"
+
+    /// The models listed here.
+    static let productIDs: Set<Int> = Set(packed.split(separator: "\n").flatMap { line in
+        line.prefix(while: { $0 != ":" }).split(separator: " ").compactMap { Int($0, radix: 16) }
+    })
 }

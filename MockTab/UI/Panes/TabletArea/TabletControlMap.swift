@@ -67,17 +67,22 @@ struct TabletControlMap: Equatable {
         guard let identity = TabletLayoutIdentity.all[productID],
               Set(identity.letters).count == identity.letters.count
         else { return nil }
-        return make(identity, family: family(for: spec), hasCenterRow: hasCenterRow(spec))
+        return make(identity, family: family(for: spec), hasCenterRow: hasCenterRow(spec),
+                    keysAreBezel: spec.buttonCount == 0 && spec.bezelButtonCount > 0)
     }
 
-    /// The figure parts for a Wacom model by product ID, for drawing it in
-    /// the diagram's style; a Bluetooth ID without its own row reads as its
+    /// The figure parts for a model by product ID, for drawing it in the
+    /// diagram's style; a Wacom Bluetooth ID without its own row reads as its
     /// USB model. Nil without a layout.
     static func figureControls(productID: Int) -> [Part]? {
         let model = WacomDeviceRegistry.spec(for: productID) != nil ? productID
             : WacomDeviceRegistry.canonicalProductID(for: productID)
-        guard let spec = WacomDeviceRegistry.spec(for: model) else { return nil }
-        return forDevice(productID: model, spec: spec)?.parts
+        if let spec = WacomDeviceRegistry.spec(for: model) { return forDevice(productID: model, spec: spec)?.parts }
+        // Another brand's model with a layout of its own: its keys are bezel buttons.
+        guard let identity = TabletLayoutIdentity.all[productID],
+              (VendorDeviceRegistry.profile(forProductID: productID)?.bezelButtonCount ?? 0) > 0
+        else { return nil }
+        return make(identity, family: .other, hasCenterRow: false, keysAreBezel: true).parts
     }
 
     /// The family whose rule fits a model, told apart by what the registry
@@ -118,7 +123,9 @@ struct TabletControlMap: Equatable {
     /// and a strip's mode key as the bezel slot the decoder reports it in.
     /// Every other key takes an ExpressKey index: by the decoder's evdev
     /// order where libwacom lists codes, else in letter order.
-    static func make(_ identity: TabletLayoutIdentity, family: Family, hasCenterRow: Bool) -> TabletControlMap {
+    /// `keysAreBezel`: a model whose only keys are bezel buttons, which they drive.
+    static func make(_ identity: TabletLayoutIdentity, family: Family, hasCenterRow: Bool,
+                     keysAreBezel: Bool = false) -> TabletControlMap {
         var special: [Character: ControlTarget] = [:]
         if hasCenterRow && family != .intuosPro3 {
             for entry in identity.entries {
@@ -147,7 +154,7 @@ struct TabletControlMap: Equatable {
                 }
             }
         } else {
-            for (index, letter) in plain.enumerated() { targets[letter] = .expressKey(index) }
+            for (index, letter) in plain.enumerated() { targets[letter] = keysAreBezel ? .bezel(index) : .expressKey(index) }
         }
 
         let parts = identity.entries.map { entry -> Part in

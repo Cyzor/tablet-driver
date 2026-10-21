@@ -84,13 +84,15 @@ struct TabletAreaView: View {
         let vendorID = tabletManager.context(forKey: boundKey)?.vendorID
             ?? registry.knownTablets.first { $0.productID == pid }?.vendorID ?? 0x056A
         let isWacom = vendorID == 0x056A && VendorDeviceRegistry.profile(forProductID: pid) == nil
+        // Other brands' product IDs can match a Wacom model's, so only their own layouts count.
+        let hasLayout = isWacom || TabletLayoutExtras.productIDs.contains(pid)
         var figure = TabletFigure(
-            layoutProductID: isWacom ? pid : nil,
+            layoutProductID: hasLayout ? pid : nil,
             surfaceMM: tabletManager.surfaceSizeMM(for: boundKey),
             aspect: activeAspectRatio,
             isPenDisplay: activeDeviceIsPenDisplay)
         // Drawn like the Buttons pane's diagram, at low contrast.
-        if isWacom { figure.controls = TabletControlMap.figureControls(productID: pid) }
+        if hasLayout { figure.controls = TabletControlMap.figureControls(productID: pid) }
         return figure
     }
 

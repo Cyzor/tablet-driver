@@ -142,7 +142,7 @@ enum TabletFigureInk {
                 let r = shape.rect
                 let path: Path
                 switch shape.kind {
-                case .ring, .dial, .center, .wedge:
+                case .ring, .dial, .center, .wedge, .button:
                     path = Path(ellipseIn: r)
                 case .strip:
                     path = Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
@@ -289,7 +289,7 @@ enum TabletDiagramInk {
     private static func path(_ shape: TabletFigure.Shape, outset: CGFloat = 0, corner: CGFloat) -> Path {
         let r = shape.rect.insetBy(dx: -outset, dy: -outset)
         switch shape.kind {
-        case .ring, .dial, .center, .wedge: return Path(ellipseIn: r)
+        case .ring, .dial, .center, .wedge, .button: return Path(ellipseIn: r)
         case .strip: return Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
         case .key, .cluster, .mark:
             return Path(roundedRect: r, cornerRadius: min(corner, min(r.width, r.height) / 2) + outset, style: .continuous)

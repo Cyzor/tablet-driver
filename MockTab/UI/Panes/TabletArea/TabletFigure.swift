@@ -18,9 +18,12 @@ struct TabletFigure: Equatable {
     enum Side: Equatable, CaseIterable { case left, right, top, bottom }
 
     /// How long each key in a run is along its edge, next to how deep it is.
-    enum KeyShape: Equatable { case short, square, long }
+    /// `round` keys are small separate circles, like capacitive bezel buttons.
+    enum KeyShape: Equatable { case short, square, long, round }
 
     enum Control: Equatable {
+        var isRoundKeys: Bool { if case .keys(_, shape: .round) = self { true } else { false } }
+
         case keys(count: Int, shape: KeyShape)
         /// Keys packed in two directions, like a rocker or a four-way pad.
         case cluster
@@ -83,8 +86,12 @@ extension TabletFigure {
             chin: parts.isEmpty ? .bottom : nil)
     }
 
-    /// Parts by product ID, read once from the generated table.
-    static let layouts: [Int: [Part]] = parseLayouts(TabletLayoutTable.packed)
+    /// Parts by product ID, read once from the generated table and its extras.
+    static let layouts: [Int: [Part]] = {
+        var layouts = parseLayouts(TabletLayoutTable.packed + "\n" + TabletLayoutExtras.packed)
+        for (id, parts) in parseLayouts(TabletLayoutExtras.addedParts) { layouts[id]? += parts }
+        return layouts
+    }()
 
     static func parseLayouts(_ text: String) -> [Int: [Part]] {
         var layouts: [Int: [Part]] = [:]
@@ -116,6 +123,7 @@ extension TabletFigure.Part {
             case "f": control = .keys(count: count, shape: .short)
             case "s": control = .keys(count: count, shape: .square)
             case "w": control = .keys(count: count, shape: .long)
+            case "o": control = .keys(count: count, shape: .round)
             default: return nil
             }
         case "c": control = .cluster
@@ -219,6 +227,8 @@ extension TabletFigure {
     struct Shape: Equatable {
         enum Kind: Equatable {
             case key, cluster, ring, dial, strip, mark
+            /// A round key, on its own.
+            case button
             /// A ring's center button, inside the ring's hole.
             case center
             /// One of a round pad's four keys, a quarter ring centered on
@@ -306,7 +316,7 @@ extension TabletFigure.Drawing {
     /// Rings, dials, and a pad's keys answer by where in their circle a click lands.
     static func isRound(_ kind: TabletFigure.Shape.Kind) -> Bool {
         switch kind {
-        case .ring, .dial, .wedge: return true
+        case .ring, .dial, .wedge, .button: return true
         default: return false
         }
     }
@@ -393,8 +403,11 @@ extension TabletFigure {
             // A band is about 1.7 rings deep, so every control keeps a margin
             // toward the edge and the surface; proportions give way to it.
             let key = band * 0.36
+            // A screen sits in a frame, so a pen display's bare edges are as
+            // deep as a band of keys, and its controls keep clear of the edge.
+            let bare = isPenDisplay ? max(margin, Self.fingerBand) : margin
             return Metrics(
-                margin: margin, inset: margin / 2, band: band, wideBand: band * 1.45, chin: margin * 1.2,
+                margin: bare, inset: isPenDisplay ? max(bare / 3, band * 0.2) : margin / 2, band: band, wideBand: band * 1.45, chin: margin * 1.2,
                 gutter: margin / 2, keyDepth: key, keyGap: key * 0.2, partGap: key * 0.35, round: band * 0.6,
                 stripDepth: band * 0.15, short: key * 0.75, square: key, long: key * 2.2)
         }
@@ -413,24 +426,32 @@ extension TabletFigure {
     /// The least a ring, dial, or pad measures in the panes' standard row, in
     /// points. Below it, bands deepen until controls read.
     static let leastRound = 26.0
-    /// The panes' standard row, landscape, where `leastRound` applies.
+    /// The same for a round key, which needs less.
+    static let leastButton = 13.0
+    /// A round key's diameter, as a share of its band.
+    static let buttonShare = 0.42
+    /// The panes' standard row, landscape, where those floors apply.
     private static let referenceRow = CGSize(width: 516, height: 196)
 
     /// Metrics for a figure with controls: finger-sized bands, deepened
-    /// until round controls reach `leastRound`. Solved in the standard row
+    /// until round controls reach `leastRound` and round keys `leastButton`.
+    /// Solved in the standard row
     /// whichever way the figure faces, so every pane and orientation draws
     /// the same proportions.
     private var controlMetrics: Metrics {
         var band = Self.fingerBand
         var m = metrics(band: band)
-        guard hasRoundControls else { return m }
+        let hasRound = parts.contains { $0.control == .ring || $0.control == .dial } || hasPads
+        let hasButtons = parts.indices.contains { parts[$0].control.isRoundKeys && !isAdded($0) }
+        guard hasRound || hasButtons else { return m }
         let row = Self.referenceRow
         // Deeper bands shrink the scale, so settle the two together.
         for _ in 0..<8 {
             let size = bodyMM(m)
             let unit = min(row.width / max(size.width, size.height), row.height / min(size.width, size.height))
             guard unit > 0, unit.isFinite else { break }
-            let needed = max(Self.fingerBand, Self.leastRound / 0.6 / unit)
+            let needed = max(Self.fingerBand, hasRound ? Self.leastRound / 0.6 / unit : 0,
+                             hasButtons ? Self.leastButton / Self.buttonShare / unit : 0)
             if abs(needed - band) < 0.05 { break }
             band = needed
             m = metrics(band: band)
@@ -438,12 +459,17 @@ extension TabletFigure {
         return m
     }
 
-    private var hasRoundControls: Bool {
-        parts.contains { $0.control == .ring || $0.control == .dial }
-            || (controls ?? []).contains { part in
-                if case let .cluster(grid) = part.entry { return Self.pad(grid) != nil }
-                return false
-            }
+    /// A part added to a libwacom layout, which drives nothing.
+    private func isAdded(_ index: Int) -> Bool {
+        guard let controls else { return false }
+        return !controls.indices.contains(index)
+    }
+
+    private var hasPads: Bool {
+        (controls ?? []).contains { part in
+            if case let .cluster(grid) = part.entry { return Self.pad(grid) != nil }
+            return false
+        }
     }
 
     private func laneCount(_ side: Side) -> Int {
@@ -454,6 +480,10 @@ extension TabletFigure {
         var depths: [Side: Double] = [:]
         for side in Side.allCases where laneCount(side) > 0 {
             depths[side] = laneCount(side) > 1 ? m.wideBand : m.band
+            // Small buttons that drive nothing ride in a bare edge's depth.
+            if parts.indices.allSatisfy({ parts[$0].side != side || isAdded($0) }) {
+                depths[side] = max(m.margin - m.inset - m.gutter, m.keyDepth)
+            }
         }
         return depths
     }
@@ -574,8 +604,12 @@ extension TabletFigure {
             case .bottom: laneCenter = band.maxY - fromEdge
             }
             let items = edgeParts.filter { $0.part.lane == lane }.sorted { $0.part.start < $1.part.start }
-                .map { size($0.part, controls: controls?[$0.index], edgeLength: edgeLength,
-                            laneDepth: laneDepth / unit, metrics: m) }
+                .map { edgePart in
+                    // Parts added to a libwacom layout have no controls.
+                    let partControls = controls.flatMap { $0.indices.contains(edgePart.index) ? $0[edgePart.index] : nil }
+                    return size(edgePart.part, controls: partControls, edgeLength: edgeLength,
+                                laneDepth: laneDepth / unit, metrics: m)
+                }
             var placed = controls == nil ? arrange(items, lo: lo, hi: hi, edgeLength: edgeLength, metrics: m)
                 : symmetricArrange(items, lo: lo, hi: hi, edgeLength: edgeLength, metrics: m)
             if controls != nil { placed = mirrored(placed, lo: lo, hi: hi, gap: m.partGap) }
@@ -630,7 +664,8 @@ extension TabletFigure {
         func drawnLength(pixels: (Double) -> Double) -> Double {
             guard case .keys = part.control else { return pixels(length) }
             let total = Double(keyCount) * pixels(keyLength) + Double(keyCount - 1) * pixels(keyGap)
-            guard case .run? = controls?.entry else { return total }
+            guard case .run? = controls?.entry, case .keys(_, shape: let shape) = part.control, shape != .round
+            else { return total }
             // A diagram's run, as `shapes` draws it: keys one grid step apart.
             let grid = pixels(0), gaps = Double(keyCount - 1) * grid
             return Double(keyCount) * max(((total - gaps) / Double(keyCount) / grid).rounded() * grid, grid) + gaps
@@ -650,6 +685,15 @@ extension TabletFigure {
             }
             let keyDepth = pixels(min(m.keyDepth, laneDepth * 0.8))
             switch (part.control, controls?.entry) {
+            case let (.keys(_, shape: .round), entry):
+                // Each its own circle, where the layout spaces it.
+                let length = pixels(keyLength), gap = pixels(keyGap), d = min(length, pixels(laneDepth * 0.8))
+                let letters: [Character] = if case let .run(letters)? = entry { letters } else { [] }
+                return (0..<keyCount).map { i in
+                    let slot = start + Double(i) * (length + gap)
+                    return Shape(kind: .button, rect: rect(from: snap(slot + (length - d) / 2), length: d, depth: d),
+                                 target: i < letters.count ? controls?.keys[letters[i]] : nil)
+                }
             case let (.keys, .run(letters)?):
                 // The keys one grid step apart so the run reads as a block,
                 // filling `drawnLength` exactly.
@@ -812,6 +856,12 @@ extension TabletFigure {
                       metrics m: Metrics) -> Item {
         var item = size(part, keepEveryKey: controls != nil, edgeLength: edgeLength, laneDepth: laneDepth, metrics: m)
         item.controls = controls
+        if self.controls != nil, controls == nil, part.control.isRoundKeys {
+            // An added button drives nothing, so it draws as small as a ring's mode key.
+            item.keyLength = m.keyDepth * 0.6
+            item.keyGap = max(item.keyGap, item.keyLength * 0.6)
+            item.length = Double(item.keyCount) * item.keyLength + Double(item.keyCount - 1) * item.keyGap
+        }
         switch (part.control, controls?.entry) {
         case let (.cluster, .cluster(grid)?) where Self.pad(grid) != nil,
              let (.ring, .ring(_, .beside(grid))?) where Self.pad(grid) != nil:
@@ -837,6 +887,7 @@ extension TabletFigure {
             switch shape {
             case .short: longest = m.short
             case .square: longest = m.square
+            case .round: longest = m.band * Self.buttonShare
             case .long: longest = m.long
             }
             // Keys spread across their span, no longer than their shape allows.
@@ -844,8 +895,14 @@ extension TabletFigure {
             // A diagram keeps every key, so each lines up with its target.
             var shown = count
             while !keepEveryKey, shown > 1, Double(shown) * shortest + Double(shown - 1) * m.keyGap > span { shown -= 1 }
-            let length = max(min(longest, (span - Double(shown - 1) * m.keyGap) / Double(shown)), shortest)
-            let gap = shown > 1 ? max(m.keyGap, (span - Double(shown) * length) / Double(shown - 1)) : 0
+            var length = max(min(longest, (span - Double(shown - 1) * m.keyGap) / Double(shown)), shortest)
+            var gap = shown > 1 ? max(m.keyGap, (span - Double(shown) * length) / Double(shown - 1)) : 0
+            if shape == .round {
+                // Separate buttons read as separate only with room between them,
+                // even where the hardware's are small and close.
+                length = longest
+                gap = shown > 1 ? max(gap, length * 0.6) : 0
+            }
             return Item(part: part, length: Double(shown) * length + Double(shown - 1) * gap,
                         keyCount: shown, keyLength: length, keyGap: gap)
         case .cluster:
@@ -1040,6 +1097,7 @@ extension TabletFigure {
             case .short: size = (4, column)
             case .square: size = (column - 2, column - 2)
             case .long: size = (14, column - 2)
+            case .round: size = (4, 4)
             }
             // As many keys as the span holds, with some slack, and never
             // fewer than two, so a family reads alike at any size.
@@ -1361,7 +1419,7 @@ extension TabletFigure {
                 case .strip: return IconItem(part: part, kind: .strip, along: 12)
                 case let .keys(count, shape):
                     switch shape {
-                    case .short: return IconItem(part: part, kind: .key, count: min(count, 2), along: 2)
+                    case .short, .round: return IconItem(part: part, kind: .key, count: min(count, 2), along: 2)
                     case .square: return IconItem(part: part, kind: .cluster, count: min(count, 2), along: g.shape)
                     case .long: return IconItem(part: part, kind: .key, count: min(count, 4), along: 8)
                     }

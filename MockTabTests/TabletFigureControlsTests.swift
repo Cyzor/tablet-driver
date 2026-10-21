@@ -143,6 +143,37 @@ struct TabletFigureControlsTests {
         }
     }
 
+    @Test("Layouts libwacom lacks stay clear of Wacom's product IDs")
+    func extrasStayClear() {
+        let wacom = TabletFigure.parseLayouts(TabletLayoutTable.packed)
+        for id in TabletLayoutExtras.productIDs {
+            #expect(WacomDeviceRegistry.spec(for: id) == nil && wacom[id] == nil, "\(String(id, radix: 16)) is Wacom's")
+            #expect(TabletFigure.layouts[id] != nil && TabletLayoutIdentity.all[id] != nil, "\(String(id, radix: 16)) reads")
+        }
+    }
+
+    @Test("The Xencelabs Pen Display 24 draws its three bezel buttons")
+    func xencelabsBezelButtons() throws {
+        let parts = try #require(TabletControlMap.figureControls(productID: 0x520D))
+        var figure = TabletFigure(layoutProductID: 0x520D, surfaceMM: CGSize(width: 527.04, height: 296.46),
+                                  aspect: 105_000 / 59_000, isPenDisplay: true)
+        figure.controls = parts
+        for frame in Self.frames {
+            for scale in [1.0, 2.0] {
+                let d = figure.drawing(.bezel, in: frame, scale: scale)
+                let buttons = d.shapes.filter { $0.kind == .button }
+                #expect(buttons.map(\.target) == [.bezel(0), .bezel(1), .bezel(2)], "left to right")
+                for b in buttons {
+                    #expect(b.rect.width == b.rect.height, "round")
+                    #expect(b.rect.maxY <= d.surface.minY && d.body.contains(b.rect), "on the top bezel")
+                    #expect(d.target(at: CGPoint(x: b.rect.midX, y: b.rect.midY)) == b.target)
+                }
+                #expect(zip(buttons, buttons.dropFirst()).allSatisfy { $1.rect.minX - $0.rect.maxX >= d.grid },
+                        "apart, not a block")
+            }
+        }
+    }
+
     @Test("Turning a figure keeps each key on its own spot")
     func turnKeepsKeys() throws {
         for name in ["PTK-870", "PTH-850", "DTK-2400", "PTZ-631W"] {

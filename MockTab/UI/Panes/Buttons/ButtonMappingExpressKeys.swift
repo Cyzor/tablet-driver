@@ -328,6 +328,8 @@ extension ButtonMappingView {
     @ViewBuilder
     func bezelButtonsSection(lb: LiveButtonState) -> some View {
         Section {
+            // A model whose only keys are on its bezel shows its diagram here.
+            if expressKeyCount == 0 && !hasSplitPadLayout { tabletDiagramRow(lb: lb) }
             ForEach(0..<bezelButtonCount, id: \.self) { i in
                 bezelButtonRow(
                     index: i,
@@ -385,8 +387,10 @@ extension ButtonMappingView {
                     settings.bezelButtonBindings = updated
                 }
             ),
-            modeNames: ringModeNames
+            modeNames: ringModeNames,
+            recordRequestToken: bezelRecordTokens[index]
         )
+        .id(ControlTarget.bezel(index))
     }
 
     // MARK: - Express key row helper
@@ -440,7 +444,10 @@ extension ButtonMappingView {
     private static var diagramFigures: [Int: TabletFigure?] = [:]
 
     private static func diagramFigure(for spec: TabletSpec) -> TabletFigure? {
-        guard spec.maxX > 0, spec.maxY > 0,
+        // Other brands' product IDs can match a Wacom model's, so only their own layouts count.
+        guard VendorDeviceRegistry.profile(forProductID: spec.productID) == nil
+                || TabletLayoutExtras.productIDs.contains(spec.productID),
+              spec.maxX > 0, spec.maxY > 0,
               let map = TabletControlMap.forDevice(productID: spec.productID, spec: spec)
         else { return nil }
         let mm = spec.activeWidthMM.flatMap { w in spec.activeHeightMM.map { CGSize(width: w, height: $0) } }
@@ -471,7 +478,8 @@ extension ButtonMappingView {
     }
 
     /// The controls with a row below, which answer clicks: the rows
-    /// `singleSidedSection`, `dualSidedSection`, and `touchRingBlock` show.
+    /// `singleSidedSection`, `dualSidedSection`, `touchRingBlock`, and
+    /// `bezelButtonsSection` show.
     var diagramEnabled: UInt64 {
         var bits: UInt64 = 0
         for i in 0..<(hasSplitPadLayout ? 16 : expressKeyCount) { bits |= 1 << UInt64(i) }
@@ -479,6 +487,7 @@ extension ButtonMappingView {
         if hasTouchRing && hasDualRings && hasMechanicalDial && !hasSplitPadLayout {
             bits |= 1 << UInt64(ControlTarget.ringCenter(1).bit)
         }
+        for i in 0..<min(bezelButtonCount, 3) { bits |= 1 << UInt64(ControlTarget.bezel(i).bit) }
         return bits
     }
 
@@ -495,6 +504,7 @@ extension ButtonMappingView {
         case let .expressKey(i) where i < keyRecordTokens.count: keyRecordTokens[i] += 1
         case .ringCenter(0): centerRecordToken += 1
         case .ringCenter(1): dial2RecordToken += 1
+        case let .bezel(i) where i < bezelRecordTokens.count: bezelRecordTokens[i] += 1
         default: break
         }
     }

@@ -33,7 +33,7 @@ private func figure(_ parts: [Part], mm: CGSize = CGSize(width: 224, height: 148
 // MARK: - Table
 
 private func testTableParses() {
-    let text = TabletLayoutTable.packed
+    let text = TabletLayoutTable.packed + "\n" + TabletLayoutExtras.packed
     var ids = 0
     for line in text.split(separator: "\n") {
         let halves = line.split(separator: ":", maxSplits: 1)
@@ -376,7 +376,7 @@ private let doubledKeys: [Int: Set<Character>] = [0x003A: ["B"]]
 
 private func testIdentityTable() {
     var ids: [Int] = []
-    for line in TabletLayoutTable.identity.split(separator: "\n") {
+    for line in (TabletLayoutTable.identity + "\n" + TabletLayoutExtras.identity).split(separator: "\n") {
         let parsed = Identity.parse(line: line)
         expect(parsed != nil, "identity line parses: \(line)")
         ids += parsed?.ids ?? []
@@ -388,7 +388,9 @@ private func testIdentityTable() {
     for (pid, identity) in Identity.all.sorted(by: { $0.key < $1.key }) {
         let name = String(format: "%04X", pid)
         guard let parts = TabletFigure.layouts[pid] else { continue }
-        expect(identity.entries.count == parts.count, "\(name): one entry per part")
+        // Parts added to a libwacom layout come last and drive nothing.
+        let added = TabletFigure.parseLayouts(TabletLayoutExtras.addedParts)[pid]?.count ?? 0
+        expect(identity.entries.count + added == parts.count, "\(name): one entry per part")
         var numbers: [String: Set<Int>] = [:]
         for (entry, part) in zip(identity.entries, parts) {
             switch (entry, part.control) {
@@ -481,7 +483,7 @@ private func testGoldenDrawings(directory: String) {
 
     // One figure per distinct layout, named by its first product ID, then plain bodies.
     var figures: [(String, TabletFigure)] = []
-    for row in TabletLayoutTable.packed.split(separator: "\n") {
+    for row in (TabletLayoutTable.packed + "\n" + TabletLayoutExtras.packed).split(separator: "\n") {
         guard let first = row.split(separator: ":").first?.split(separator: " ").first,
               let pid = Int(first, radix: 16), let parts = TabletFigure.layouts[pid] else { continue }
         for display in [false, true] {
