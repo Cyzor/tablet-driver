@@ -15,10 +15,41 @@ struct OrientationPickerView: View {
     /// Its ring has a lamp at each corner; see `TabletControlMap.ringLampsTurn`.
     var ringLampsTurn = false
 
+    @State private var windowRef = WindowRef()
+    @State private var keyMonitor: Any?
+
     var body: some View {
         ForEach(TabletOrientation.allCases, id: \.rawValue) { orientation in
             orientationRow(orientation)
         }
+        .background(WindowReader(ref: windowRef))
+        .onAppear(perform: startShortcuts)
+        .onDisappear(perform: stopShortcuts)
+    }
+
+    // MARK: - Shortcuts
+
+    /// ⌘⌥1–4 pick the rows in order, a quick way back from a wrong pick. A
+    /// key monitor, because SwiftUI drops keyboard shortcuts on buttons in
+    /// form rows. Matched by physical key, so layouts that need Shift for
+    /// digits work too.
+    private static let digitKeys: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4]
+
+    private func startShortcuts() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [windowRef] event in
+            guard event.window === windowRef.window,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.command, .option],
+                  let number = Self.digitKeys[event.keyCode]
+            else { return event }
+            selectOrientation(TabletOrientation.allCases[number - 1])
+            return nil
+        }
+    }
+
+    private func stopShortcuts() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
     }
 
     // MARK: - Row builder
@@ -42,7 +73,13 @@ struct OrientationPickerView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(orientation.helpText)
+        .help(Text(orientation.helpText) + Text(verbatim: "  ⌘⌥\(shortcutNumber(orientation))"))
+        // VoiceOver reads the shortcut on its own; the hint stays in words.
+        .accessibilityHint(Text(orientation.helpText))
+    }
+
+    private func shortcutNumber(_ orientation: TabletOrientation) -> Int {
+        (TabletOrientation.allCases.firstIndex(of: orientation) ?? 0) + 1
     }
 
     // MARK: - Action
