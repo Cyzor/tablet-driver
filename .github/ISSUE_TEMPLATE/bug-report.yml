@@ -45,7 +45,7 @@ body:
     id: capture
     attributes:
       label: Capture
-      description: The zip from Collect Device Data. Skip for purely visual or menu problems.
+      description: The zip from Collect Device Data, dragged into this box. Skip for purely visual or menu problems.
       placeholder: Drop the zip here.
     validations:
       required: false

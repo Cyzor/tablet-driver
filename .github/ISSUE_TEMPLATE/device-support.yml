@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Run **Help › Collect Device Data…** in MockTab with the tablet connected, then attach the zip below.
+        Run **Help › Collect Device Data…** in MockTab with the tablet connected, then attach the zip below. Attach it on this page: files sent by email reply may not reach GitHub.
 
   - type: input
     id: model
@@ -47,7 +47,7 @@ body:
     id: capture
     attributes:
       label: Capture
-      description: The zip from Collect Device Data. Drag it into this box.
+      description: The zip from Collect Device Data. Drag it into this box and wait for its link to appear.
       placeholder: Drop the zip here.
     validations:
       required: true
