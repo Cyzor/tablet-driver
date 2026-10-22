@@ -1,0 +1,28 @@
+name: Attachment check
+
+# Reminds a reporter when a device-support issue's capture zip never arrived,
+# including zips sent by email reply, which GitHub may drop. Bug reports and
+# feature requests are left alone. Logic and tests: .github/scripts/
+# attachment_check.py and tools/tests/attachment-check-tests/.
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check:
+    if: github.event.issue.pull_request == null && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - name: Post a reminder if the capture is missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I .github/scripts/attachment_check.py
