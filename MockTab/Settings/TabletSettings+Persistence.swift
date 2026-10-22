@@ -196,17 +196,23 @@ extension TabletSettings {
     /// All `load*` helpers below must go through this function. Adding a new
     /// inheritance layer requires editing this method and nowhere else.
     private func resolveLayer(for key: String) -> String? {
-        if let override = effectiveOverride,
+        resolveLayer(for: key, override: effectiveOverride, profile: activeProfile)
+    }
+
+    /// `resolveLayer(for:)` for any app override and profile, not only the
+    /// live ones: where `key` reads from in that context.
+    func resolveLayer(for key: String, override: AppOverride?, profile: Profile?) -> String? {
+        if let override,
             override.overriddenKeys.contains(key),
             ud.object(forKey: appOverrideKeyPrefix(override) + key) != nil
         {
             return appOverrideKeyPrefix(override)
         }
-        if let preset = activeProfile,
-            preset.overriddenKeys.contains(key),
-            ud.object(forKey: profileKeyPrefix(preset) + key) != nil
+        if let profile,
+            profile.overriddenKeys.contains(key),
+            ud.object(forKey: profileKeyPrefix(profile) + key) != nil
         {
-            return profileKeyPrefix(preset)
+            return profileKeyPrefix(profile)
         }
         if ud.object(forKey: devicePrefix + key) != nil {
             return devicePrefix
@@ -382,22 +388,8 @@ extension TabletSettings {
     /// (a touch-ring tablet set up before its rings went independent), every
     /// control starts as a copy of it. Nothing is written until an edit.
     func loadRotaries(controlCount: Int) {
-        let key = "rotariesJSON", sharedKey = "touchRingSlotsJSON"
-        let seeds = rotariesSeedFromSharedModes
-        var data: Data?
-        var seedFromShared = false
-        if let override = effectiveOverride,
-           override.overriddenKeys.contains(key) || (seeds && override.overriddenKeys.contains(sharedKey)) {
-            data = ud.data(forKey: appOverrideKeyPrefix(override) + key)
-            seedFromShared = data == nil
-        } else if let preset = activeProfile,
-                  preset.overriddenKeys.contains(key) || (seeds && preset.overriddenKeys.contains(sharedKey)) {
-            data = ud.data(forKey: profileKeyPrefix(preset) + key)
-            seedFromShared = data == nil
-        } else {
-            data = ud.data(forKey: devicePrefix + key)
-            seedFromShared = data == nil && seeds && ud.data(forKey: devicePrefix + sharedKey) != nil
-        }
+        let (prefix, seedFromShared) = rotariesLayer(override: effectiveOverride, profile: activeProfile)
+        let data = ud.data(forKey: prefix + "rotariesJSON")
 
         let wasIndependent = rotaries.controlsAreIndependent
         var loaded: RotarySet
@@ -426,6 +418,25 @@ extension TabletSettings {
         isApplyingRotaryCapability = false
     }
 
+    /// The level `loadRotaries` reads in a context, and whether that level has
+    /// only the shared ring modes to start both controls from.
+    func rotariesLayer(override: AppOverride?, profile: Profile?) -> (prefix: String, seedsFromShared: Bool) {
+        let key = "rotariesJSON", sharedKey = "touchRingSlotsJSON"
+        let seeds = rotariesSeedFromSharedModes
+        if let override,
+           override.overriddenKeys.contains(key) || (seeds && override.overriddenKeys.contains(sharedKey)) {
+            let prefix = appOverrideKeyPrefix(override)
+            return (prefix, ud.data(forKey: prefix + key) == nil)
+        }
+        if let profile,
+           profile.overriddenKeys.contains(key) || (seeds && profile.overriddenKeys.contains(sharedKey)) {
+            let prefix = profileKeyPrefix(profile)
+            return (prefix, ud.data(forKey: prefix + key) == nil)
+        }
+        let seed = ud.data(forKey: devicePrefix + key) == nil && seeds && ud.data(forKey: devicePrefix + sharedKey) != nil
+        return (devicePrefix, seed)
+    }
+
     /// Applies the tablet's rotary layout at connect time and reloads under
     /// it; the stored blob's device prefix isn't known any earlier.
     /// `seedFromSharedModes` is for touch-ring tablets, whose modes used to
@@ -440,16 +451,18 @@ extension TabletSettings {
         loadRotaries(controlCount: max(1, controlCount))
     }
 
+    /// The level `loadTouchRingSlots` reads in a context. Unlike other keys it
+    /// never falls through to a global `defaults` value.
+    func touchRingSlotsLayer(override: AppOverride?, profile: Profile?) -> String {
+        if let override, override.overriddenKeys.contains("touchRingSlotsJSON") { return appOverrideKeyPrefix(override) }
+        if let profile, profile.overriddenKeys.contains("touchRingSlotsJSON") { return profileKeyPrefix(profile) }
+        return devicePrefix
+    }
+
     /// Loads touchRingSlots from the override, profile, or device layer.
     private func loadTouchRingSlots() {
-        var data: Data?
-        if let override = effectiveOverride, override.overriddenKeys.contains("touchRingSlotsJSON") {
-            data = ud.data(forKey: appOverrideKeyPrefix(override) + "touchRingSlotsJSON")
-        } else if let preset = activeProfile, preset.overriddenKeys.contains("touchRingSlotsJSON") {
-            data = ud.data(forKey: profileKeyPrefix(preset) + "touchRingSlotsJSON")
-        } else {
-            data = ud.data(forKey: devicePrefix + "touchRingSlotsJSON")
-        }
+        let data = ud.data(forKey: touchRingSlotsLayer(override: effectiveOverride, profile: activeProfile)
+                                   + "touchRingSlotsJSON")
 
         if let data {
             guard let slots = try? JSONDecoder().decode([ControlSlot].self, from: data) else {

@@ -12,6 +12,8 @@ struct OrientationPickerView: View {
     @ObservedObject var settings: TabletSettings
     /// The bound tablet, drawn turned to each orientation.
     let figure: TabletFigure
+    /// Its ring has a lamp at each corner; see `TabletControlMap.ringLampsTurn`.
+    var ringLampsTurn = false
 
     var body: some View {
         ForEach(TabletOrientation.allCases, id: \.rawValue) { orientation in
@@ -45,11 +47,11 @@ struct OrientationPickerView: View {
 
     // MARK: - Action
 
+    /// Turning the tablet moves its assignments with it, so every place keeps
+    /// its action; undo reverts both.
     private func selectOrientation(_ orientation: TabletOrientation) {
-        let oldValue = settings.tabletOrientation
-        settings.tabletOrientation = orientation
-        settings.recordToggle(String(localized: "Orientation"), from: oldValue, to: orientation) {
-            settings.tabletOrientation = $0
+        settings.turn(to: orientation) { [figure, ringLampsTurn] old, new in
+            figure.turnCarry(from: old, to: new, ringLampsTurn: ringLampsTurn)
         }
     }
 }

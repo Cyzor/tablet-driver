@@ -120,6 +120,130 @@ expect(equivalents(0x03F9, .landscapeFlipped)[.ringCenter(1)] == .ringCenter(0),
 expect(keys(equivalents(0x00B1, .landscapeFlipped), 8) == Array((0..<8).reversed()), "Intuos3 flipped reverses keys")
 expect(equivalents(0x00B1, .landscapeFlipped)[.strip(1)] == .strip(0), "Intuos3 flipped trades strips")
 
+// MARK: - The carry
+
+/// Assignments that tell every key, button, and mode apart.
+private func distinctAssignments(rotaries: Bool) -> TurnAssignments {
+    func key(_ i: Int) -> ButtonBinding { ButtonBinding(kind: .keyCombo, keyCode: UInt16(i + 1)) }
+    let slots = ControlSlot.defaults.enumerated().map { i, slot -> ControlSlot in
+        var slot = slot
+        slot.speed = Double(i + 1)
+        return slot
+    }
+    return TurnAssignments(
+        expressKeys: (0..<16).map(key), bezelButtons: (16..<19).map(key),
+        center: ButtonBinding(kind: .ringCycle), center2: ButtonBinding(kind: .ringCycle2),
+        sharedSlots: slots, activeSlot: 1, activeSlot2: 2,
+        rotaries: rotaries ? [RotaryConfig(slots: slots, activeSlotIndex: 0), RotaryConfig(slots: slots.reversed(), activeSlotIndex: 3)] : nil,
+        reverseDirection: false)
+}
+
+private func lampsTurn(_ id: Int) -> Bool {
+    WacomDeviceRegistry.spec(for: id).map(TabletControlMap.ringLampsTurn) ?? false
+}
+
+// Every model, every pair of orientations: each place keeps its key's
+// action, and turning back undoes the turn.
+for id in ids {
+    guard let figure = figure(id) else { continue }
+    let lamps = lampsTurn(id)
+    let original = distinctAssignments(rotaries: true)
+    for from in TabletOrientation.allCases {
+        guard let seenFrom = figure.landscapeEquivalents(turnedTo: from) else { continue }
+        for to in TabletOrientation.allCases {
+            guard let seenTo = figure.landscapeEquivalents(turnedTo: to) else { continue }
+            let carry = figure.turnCarry(from: from, to: to, ringLampsTurn: lamps)
+            let turned = carry.carried(original)
+            let atPlace = Dictionary(seenTo.map { ($0.value, $0.key) }, uniquingKeysWith: { a, _ in a })
+            for (control, place) in seenFrom {
+                guard case let .expressKey(before) = control, case let .expressKey(after)? = atPlace[place] else { continue }
+                expect(turned.expressKeys[after] == original.expressKeys[before],
+                       "\(hex(id)) \(from)→\(to): key \(after) holds key \(before)'s action")
+            }
+            let back = figure.turnCarry(from: to, to: from, ringLampsTurn: lamps).carried(turned)
+            expect(back == original, "\(hex(id)) \(from)→\(to)→\(from) restores everything")
+            if from == to { expect(carry.isIdentity, "\(hex(id)) \(from) to itself moves nothing") }
+        }
+    }
+    // Four quarter turns come back around.
+    let path: [TabletOrientation] = [.landscape, .portrait, .landscapeFlipped, .portraitFlipped, .landscape]
+    var walked = original
+    for (from, to) in zip(path, path.dropFirst()) {
+        walked = figure.turnCarry(from: from, to: to, ringLampsTurn: lamps).carried(walked)
+    }
+    expect(walked == original, "\(hex(id)) four quarter turns restore everything")
+}
+
+// PTH-860 flipped: keys reverse, the corner lamps' modes move two places, and
+// a key that jumps to a mode follows it. Its center stays put.
+do {
+    let carry = figure(0x0358)!.turnCarry(from: .landscape, to: .landscapeFlipped, ringLampsTurn: lampsTurn(0x0358))
+    expect(carry.lampShift == 2 && !carry.tradesRotaries, "PTH-860 flip moves lamps two places")
+    var old = distinctAssignments(rotaries: false)
+    old.expressKeys[0] = ButtonBinding(kind: .ringSelectSlot, keyCode: 0)
+    let new = carry.carried(old)
+    expect(new.sharedSlots[2] == old.sharedSlots[0] && new.sharedSlots[0] == old.sharedSlots[2], "PTH-860 modes move two places")
+    expect(new.activeSlot == 3, "PTH-860 active mode moves with its lamp")
+    expect(new.expressKeys[7] == ButtonBinding(kind: .ringSelectSlot, keyCode: 2), "PTH-860 jump-to-mode key follows its mode")
+    expect(new.center == old.center, "PTH-860 center stays")
+    let portrait = figure(0x0358)!.turnCarry(from: .landscape, to: .portrait, ringLampsTurn: true)
+    expect(portrait.keys.isEmpty && portrait.lampShift == 1, "PTH-860 Portrait keeps keys, moves lamps one place")
+}
+
+// PTK-870 flipped: the dials trade modes and toggle keys, and a key that
+// cycles the left dial still does.
+do {
+    let carry = figure(0x03F9)!.turnCarry(from: .landscape, to: .landscapeFlipped, ringLampsTurn: lampsTurn(0x03F9))
+    expect(carry.tradesRotaries && carry.lampShift == 0, "PTK-870 flip trades dials, no lamps")
+    var old = distinctAssignments(rotaries: true)
+    old.expressKeys[0] = ButtonBinding(kind: .ringCycle)
+    let new = carry.carried(old)
+    expect(new.rotaries?[0] == old.rotaries?[1] && new.rotaries?[1] == old.rotaries?[0], "PTK-870 dials trade modes")
+    expect(new.center == ButtonBinding(kind: .ringCycle) && new.center2 == ButtonBinding(kind: .ringCycle2),
+           "PTK-870 default toggles stay as they were")
+    expect(new.expressKeys[6] == ButtonBinding(kind: .ringCycle2), "PTK-870 key cycling the left dial follows it")
+}
+
+// Intuos3: a half turn reverses the strips' direction; a quarter turn doesn't.
+expect(figure(0x00B1)!.turnCarry(from: .landscape, to: .landscapeFlipped, ringLampsTurn: false).invertsStrips,
+       "Intuos3 flip reverses strips")
+expect(!figure(0x00B1)!.turnCarry(from: .landscape, to: .portrait, ringLampsTurn: false).invertsStrips,
+       "Intuos3 Portrait keeps strip direction")
+
+// MARK: - Where carried values are written
+
+do {
+    let a = "com.example.a", p = UUID(), q = UUID()
+    // Tablet only: the tablet's own value changes.
+    let solo = LayeredSetting(device: 1).rewritten(overrideIDs: [], profileIDs: [], preferredProfile: nil) { _, _ in 2 }
+    expect(solo == LayeredSetting(device: 2), "tablet alone rewrites its own value")
+
+    // An override that kept its orientation, sharing the tablet's value: the
+    // tablet's value turns, and the override keeps the old one as its own.
+    let shared = LayeredSetting(device: 1).rewritten(overrideIDs: [a], profileIDs: [], preferredProfile: nil) { o, _ in
+        o == nil ? 2 : 1
+    }
+    expect(shared.device == 2 && shared.overrides[a] == 1, "unturned override keeps the old value as its own")
+
+    // A profile with its own value turns in place; nothing new is written.
+    let profiled = LayeredSetting(device: 1, profiles: [p: 5]).rewritten(
+        overrideIDs: [], profileIDs: [p, q], preferredProfile: p
+    ) { _, profile in profile == p ? 6 : 1 }
+    expect(profiled.device == 1 && profiled.profiles == [p: 6], "a profile's own value turns in place")
+
+    // Nothing turned: nothing changes.
+    let still = LayeredSetting(device: 1, profiles: [p: 5], overrides: [a: 7])
+    let same = still.rewritten(overrideIDs: [a], profileIDs: [p], preferredProfile: nil) { still.value(override: $0, profile: $1) }
+    expect(same == still, "no turn writes nothing")
+
+    // An override serving two profiles that want different values keeps the
+    // preferred profile's.
+    let split = LayeredSetting(device: 1, overrides: [a: 1]).rewritten(
+        overrideIDs: [a], profileIDs: [p], preferredProfile: p
+    ) { o, profile in o == nil ? 1 : (profile == p ? 3 : 4) }
+    expect(split.overrides[a] == 3, "override keeps the preferred profile's value")
+}
+
 print("tablet-position-tests: \(models) models line up in every orientation (\(readOutOfOrder) read out of numbering order)")
 print("tablet-position-tests: \(checks - failures) of \(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

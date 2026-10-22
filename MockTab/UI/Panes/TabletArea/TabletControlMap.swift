@@ -178,4 +178,37 @@ struct TabletControlMap: Equatable {
     var targets: [ControlTarget] {
         parts.flatMap { part in (part.control.map { [$0] } ?? []) + part.keys.values }
     }
+
+    /// Whether a model's ring has a lamp at each corner, so the mode lit at
+    /// the upper left changes as the tablet turns: the Intuos5 and Intuos
+    /// Pro gen 1 and 2. Other rings' lamps keep their order.
+    static func ringLampsTurn(_ spec: TabletSpec) -> Bool {
+        spec.ringSlotCount == 4 && [.intuos5, .intuosPro2].contains(family(for: spec))
+    }
+}
+
+extension TabletFigure {
+    /// What turning this Landscape figure from `old` to `new` does to saved
+    /// assignments: each control's moves to the control now in its place.
+    /// Needs `controls`; without them only lamps and strips move.
+    func turnCarry(from old: TabletOrientation, to new: TabletOrientation, ringLampsTurn: Bool) -> TurnCarry {
+        var carry = TurnCarry()
+        guard old != new else { return carry }
+        if let before = landscapeEquivalents(turnedTo: old), let after = landscapeEquivalents(turnedTo: new) {
+            let atPlace = Dictionary(after.map { ($0.value, $0.key) }, uniquingKeysWith: { first, _ in first })
+            for (control, place) in before {
+                guard let moved = atPlace[place], moved != control else { continue }
+                switch (control, moved) {
+                case let (.expressKey(a), .expressKey(b)): carry.keys[a] = b
+                case let (.bezel(a), .bezel(b)): carry.bezelButtons[a] = b
+                case (.ring(0), .ring(1)), (.dial(0), .dial(1)): carry.tradesRotaries = true
+                default: break
+                }
+            }
+        }
+        if ringLampsTurn { carry.lampShift = (new.counterclockwiseTurns - old.counterclockwiseTurns + 4) % 4 }
+        let hasStrips = parts.contains { $0.control == .strip }
+        carry.invertsStrips = hasStrips && old.isHalfTurn != new.isHalfTurn
+        return carry
+    }
 }

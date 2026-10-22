@@ -15,7 +15,10 @@ BIN="$T/tablet-position-tests"
 # tools/tests/build-tabletkit.sh.
 KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
 
+SETTINGS="$ROOT/MockTab/Settings"
 swiftc -O -I "$KIT" "$AREA/TabletFigure.swift" "$AREA/TabletLayoutTable.swift" "$AREA/TabletLayoutIdentity.swift" \
-    "$AREA/TabletControlMap.swift" "$ROOT/MockTab/Settings/Model/TabletOrientation.swift" "$TEST" \
+    "$AREA/TabletControlMap.swift" "$SETTINGS/Model/TabletOrientation.swift" "$SETTINGS/Model/TurnCarry.swift" \
+    "$SETTINGS/Model/ButtonBinding.swift" "$SETTINGS/Model/ControlSlot.swift" "$SETTINGS/Model/RotaryConfig.swift" \
+    "$SETTINGS/Model/BezierCurve.swift" "$SETTINGS/Serialization/UnknownFieldsCodable.swift" "$TEST" \
     "$KIT/libTabletKit.a" -o "$BIN"
 "$BIN"

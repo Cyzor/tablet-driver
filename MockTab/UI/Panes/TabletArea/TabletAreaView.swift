@@ -363,7 +363,10 @@ struct TabletAreaView: View {
                 }
 
                 Section("Orientation") {
-                    OrientationPickerView(settings: settings, figure: tabletFigure)
+                    OrientationPickerView(
+                        settings: settings, figure: tabletFigure,
+                        ringLampsTurn: boundProductID.flatMap(WacomDeviceRegistry.spec(for:))
+                            .map(TabletControlMap.ringLampsTurn) ?? false)
                 }
         }
     }

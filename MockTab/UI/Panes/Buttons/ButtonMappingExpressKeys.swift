@@ -445,14 +445,10 @@ extension ButtonMappingView {
             lampShift: ringLampShift)
     }
 
-    /// Places a ring's lamps have moved as the tablet turns. On the Intuos5
-    /// and Intuos Pro gen 1 and 2, four lamps sit at the ring's corners, so
-    /// the mode lit at the upper left changes with each quarter turn. Other
-    /// rings' lamps keep their order.
+    /// Places a ring's lamps have moved as the tablet turns; see
+    /// `TabletControlMap.ringLampsTurn`.
     var ringLampShift: Int {
-        guard let spec, !isRemote, spec.ringSlotCount == 4,
-              [.intuos5, .intuosPro2].contains(TabletControlMap.family(for: spec))
-        else { return 0 }
+        guard let spec, !isRemote, TabletControlMap.ringLampsTurn(spec) else { return 0 }
         return settings.tabletOrientation.counterclockwiseTurns
     }
 
