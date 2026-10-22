@@ -393,6 +393,8 @@ final class InputInjector: @unchecked Sendable {
         case 0x00B8...0x00BD: return 6
         // Intuos3: 6 still flickers now and then.
         case 0x00B0...0x00B7: return 8
+        // Graphire 3 and 4, Bamboo Fun, and CTE-460/660.
+        case 0x0013...0x0018, 0x006A, 0x006B: return 5
         default: return 0
         }
     }
