@@ -119,6 +119,16 @@ final class DeviceContext: ObservableObject, Identifiable {
         driverSlots.removeValue(forKey: rawPID)
     }
 
+    /// After system sleep an Intuos4 has lost its key images and LED levels,
+    /// and resending the mode switch leaves its displays dark. Forgets what
+    /// was sent, then sends the LED report and every label again.
+    func restoreKeyDisplaysAfterSystemWake() {
+        guard resolvedSpec?.hasKeyOLEDs == true, let device = tabletDevice as? WacomKnownDevice else { return }
+        onHIDThread { device.resetKeyDisplaysAfterSystemWake() }
+        resyncActiveDriverDisplayState()
+        pushDeviceDisplayState()
+    }
+
     /// Re-applies every persisted display-affecting setting directly to the
     /// current winning driver. `observeRingLED`'s Combine sinks only reach
     /// whatever `tabletDevice` resolves to *at the moment a setting changes*
@@ -128,7 +138,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// it never received them. Call once, right after the winner changes.
     func resyncActiveDriverDisplayState() {
         guard let device = tabletDevice else { return }
-        let activeSlotIndex = settings.touchRingActiveSlotIndex
+        let activeSlotIndex = ringIndicatorSlot(for: settings.touchRingActiveSlotIndex)
         let activeSlotIndex2 = settings.touchRingActiveSlotIndex2
         let displayBrightness = settings.displayBrightness
         let displayColorMode = settings.displayColorMode
@@ -366,13 +376,46 @@ final class DeviceContext: ObservableObject, Identifiable {
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
     }
 
+    /// The tablet's spec: the built-in registry first, then any vendor plugin.
+    private var resolvedSpec: TabletSpec? {
+        WacomDeviceRegistry.spec(for: productID)
+            ?? TabletManager.vendorDeviceSpec(forVendorID: vendorID, productID: productID)
+    }
+
+    /// How many leading express-key bindings make up the tablet's key column,
+    /// which swaps ends when the tablet is flipped 180°. 0 means "don't
+    /// reorder": no express keys, or keys that don't travel with
+    /// `tabletOrientation` — the Xencelabs Quick Keys is a separate puck with
+    /// its own orientation setting. Restricted to the Intuos4 family, on
+    /// every transport and with or without key displays: the only bodies
+    /// whose key column and ring indicator we've confirmed turn with the tablet.
+    private var flippingExpressKeyCount: Int {
+        guard let spec = resolvedSpec, spec.family == .intuos4 else { return 0 }
+        return spec.buttonCount
+    }
+
+    /// Physical ring lamp that should light for mode `index`. The lamps read as
+    /// a line running along the tablet body, so a 180° flip reverses them the
+    /// same way it reverses the key column: `slots - 1 - index`.
+    private func ringIndicatorSlot(for index: Int) -> Int {
+        guard settings.tabletOrientation == .landscapeFlipped,
+            flippingExpressKeyCount > 0,
+            let slots = resolvedSpec?.ringSlotCount, slots > 0
+        else { return index }
+        return (slots - 1) - (index % slots)
+    }
+
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.
     func observeRingLED() {
         settings.$touchRingActiveSlotIndex
             .sink { [weak self] index in
                 guard let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.ringLED?.setRingLED(index: index) }
+                // Logical slot for the mode label; physical lamp for the LED.
+                let lamp = self.ringIndicatorSlot(for: index)
+                self.onHIDThread {
+                    device.controls.ringLED?.setRingLED(index: lamp)
+                }
                 self.pushDeviceDisplayState(activeSlotIndex: index)
             }
             .store(in: &cancellables)
@@ -382,13 +425,20 @@ final class DeviceContext: ObservableObject, Identifiable {
                 self.onHIDThread { device.setRingLED2(index: index) }
             }
             .store(in: &cancellables)
-        // Intuos4 key OLEDs turn with the tablet.
+        // Intuos4 key OLEDs turn with the tablet, and its key column and ring
+        // indicator swap ends — see `flippingExpressKeyCount`.
         settings.$tabletOrientation
             .dropFirst()
             .sink { [weak self] _ in
                 guard let self else { return }
                 // `@Published` fires before the stored value changes.
-                DispatchQueue.main.async { self.pushDeviceDisplayState() }
+                DispatchQueue.main.async {
+                    if let device = self.tabletDevice {
+                        let lamp = self.ringIndicatorSlot(for: self.settings.touchRingActiveSlotIndex)
+                        self.onHIDThread { device.controls.ringLED?.setRingLED(index: lamp) }
+                    }
+                    self.pushDeviceDisplayState()
+                }
             }
             .store(in: &cancellables)
         // Panel brightness (Xencelabs pen displays). Fires once on subscribe,
@@ -503,11 +553,17 @@ final class DeviceContext: ObservableObject, Identifiable {
             }
         }
         let modeNames = settings.rotaryModeNames
-        let isMechanicalDial = (WacomDeviceRegistry.spec(for: productID)
-            ?? TabletManager.vendorDeviceSpec(forVendorID: vendorID, productID: productID))?.hasMechanicalDial ?? false
-        let keyLabels = settings.expressKeyBindings.map {
-            $0.modeFunctionLabel(modeNames: modeNames, isMechanicalDial: isMechanicalDial) ?? $0.displayLabel
-        }
+        let isMechanicalDial = resolvedSpec?.hasMechanicalDial ?? false
+        // ExpressKeys are a column on the tablet body: a 180° flip swaps its
+        // ends, so the labels have to be read from the far end to stay top
+        // to bottom on the tablet (matching the Buttons pane, which lists them
+        // that way).
+        let keyLabels = settings.tabletOrientation
+            .expressKeys(inOrder: settings.expressKeyBindings, count: flippingExpressKeyCount)
+            .map {
+                $0.modeFunctionLabel(modeNames: modeNames, isMechanicalDial: isMechanicalDial)
+                    ?? $0.displayLabel
+            }
         let keyOLEDsRotated = settings.tabletOrientation == .landscapeFlipped
         // See `onHIDThread`'s header comment: every TabletDevice write is
         // confined to HIDThread, so this hops rather than calling inline.
@@ -535,7 +591,8 @@ final class DeviceContext: ObservableObject, Identifiable {
     func observeInjectionSnapshot() {
         // Seed at once. Only on HIDThread: reports may already be arriving,
         // and a write from main could tear the snapshot mid-read.
-        let initial = settings.makeInjectionSnapshot(pairedProductID: pairedProductID)
+        let initial = settings.makeInjectionSnapshot(
+            pairedProductID: pairedProductID, expressKeyCount: flippingExpressKeyCount)
         let injectorRef = injector
         CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
             injectorRef.injectionSnapshot = initial
@@ -545,7 +602,9 @@ final class DeviceContext: ObservableObject, Identifiable {
 
         let rebuild: () -> Void = { [weak self] in
             guard let self else { return }
-            let snap = self.settings.makeInjectionSnapshot(pairedProductID: self.pairedProductID)
+            let snap = self.settings.makeInjectionSnapshot(
+                pairedProductID: self.pairedProductID,
+                expressKeyCount: self.flippingExpressKeyCount)
             let injectorRef = self.injector
             CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
                 injectorRef.injectionSnapshot = snap

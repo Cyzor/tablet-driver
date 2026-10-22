@@ -106,23 +106,21 @@ extension WacomKnownDevice {
                                tag: "\(name) Intuos5 LED slot=\(index)",
                                severity: capableInterfaceDevice == nil ? .bestEffort : .required)
             } else {
-                // Intuos4, wired: 0x20, 9 bytes, [0x20, 0x04 | slot, ring
-                // luminance, pressed-key luminance, key OLED brightness, 0…],
-                // with the kernel's defaults. A zero OLED brightness can
-                // leave the key displays dark.
+                // Intuos4, wired: report 0x20 with the slot and the
+                // luminances for the current sleep state.
                 //
                 // Best effort until the interface that declares feature
                 // reports registers: a connect-time resync can reach a
                 // sibling first, and the retry in `registerDevice()` fixes it.
-                var buf = [UInt8](repeating: 0, count: 9)
-                buf[0] = 0x20
-                buf[1] = 0x04 | UInt8(index & 0x03)
-                buf[2] = Self.intuos4RingLuminance
-                buf[3] = Self.intuos4PressedLuminance
-                buf[4] = Self.intuos4OLEDBrightness
+                let buf = Intuos4DisplayProperties.displayProperties(
+                    slot: index, sleepState: sleepState, productID: deviceSpec.productID)
                 queueSetReport(capableInterfaceDevice ?? device, buf,
                                tag: "\(name) Intuos4 LED slot=\(index)",
                                severity: capableInterfaceDevice == nil ? .bestEffort : .required)
+                // The connect-time write starts the idle clock.
+                if sleepTimer == nil {
+                    armSleepTimer()
+                }
             }
 
         case .xencelabs:

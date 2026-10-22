@@ -27,7 +27,6 @@ extension InputInjector {
         ThreadContract.expectPenThread()
         rearmWatchdog()
         guard let snap = injectionSnapshot else { return }
-        let bindings = snap.expressKeyBindings
         let cursorPos = currentCursorPosition()
 
         // Positions as the tracking state below holds them: 0x7F (ring) and
@@ -43,18 +42,20 @@ extension InputInjector {
         for i in 0..<16 {
             let down = pad.button(i)
             let hasMechanicalPulse = pad.pressedThisReport.contains(i)
+            guard down != lastAuxButtons[i] || (down && hasMechanicalPulse) else { continue }
+            let binding = snap.expressKeyBinding(atPhysicalIndex: i)
             if down != lastAuxButtons[i] {
                 // Update first so fireButtonAction's quiescent check sees the new state.
                 lastAuxButtons[i] = down
-                fireButtonAction(bindings[i], down: down, at: cursorPos,
+                fireButtonAction(binding, down: down, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
-            } else if down && hasMechanicalPulse && bindings[i].kind != .clickLock {
+            } else if down && hasMechanicalPulse && binding.kind != .clickLock {
                 // A re-press arrived before its release: force up then down so
                 // it isn't swallowed. Click Lock skips this, since some decoders
                 // flag every held frame as a new press and each would toggle it.
-                fireButtonAction(bindings[i], down: false, at: cursorPos,
+                fireButtonAction(binding, down: false, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
-                fireButtonAction(bindings[i], down: true, at: cursorPos,
+                fireButtonAction(binding, down: true, at: cursorPos,
                                  snapshot: snap, settings: settings, isAux: true)
             }
         }

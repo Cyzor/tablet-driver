@@ -488,7 +488,8 @@ final class TabletManager: ObservableObject {
 
         // A tablet that stays connected through sleep may lose its mode, and
         // the Linux driver resends the mode switch on resume. The writes are
-        // idempotent, so resend them a second after every wake.
+        // idempotent, so resend them a second after every wake. An Intuos4
+        // also loses its key images and LED levels, so those go out again too.
         _ = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -496,7 +497,10 @@ final class TabletManager: ObservableObject {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self else { return }
                 logger.info("TabletManager: woke from sleep, resending init to \(self.contexts.count, privacy: .public) device(s)")
-                for context in self.contexts.values { context.tabletDevice?.reawaken() }
+                for context in self.contexts.values {
+                    context.tabletDevice?.reawaken()
+                    context.restoreKeyDisplaysAfterSystemWake()
+                }
             }
         }
     }
