@@ -1498,3 +1498,118 @@ extension TabletFigure {
         return placed
     }
 }
+
+// MARK: - Positions
+
+extension TabletFigure {
+    /// The figure's controls as drawn, in the order you read them: edges
+    /// left, top, right, then bottom; parts along each edge from its top or
+    /// left; and each part's controls along the edge, then inward. A four-way
+    /// pad reads clockwise from its top key, then its center. Empty without
+    /// `controls`.
+    func controlsInReadingOrder() -> [ControlTarget] {
+        guard let controls else { return [] }
+        // Big enough that every key and center button is drawn.
+        let d = drawing(.bezel, in: CGRect(x: 0, y: 0, width: 1000, height: 1000), scale: 2)
+        var sums: [ControlTarget: (x: Double, y: Double, n: Double)] = [:]
+        for shape in d.shapes {
+            guard let target = shape.target else { continue }
+            var x = shape.rect.midX, y = shape.rect.midY
+            if case let .wedge(direction) = shape.kind {
+                // A pad's key sits partway out from its middle, toward its direction.
+                x += shape.rect.width / 4 * cos(direction)
+                y += shape.rect.width / 4 * sin(direction)
+            }
+            let s = sums[target] ?? (0, 0, 0)
+            sums[target] = (s.x + x, s.y + y, s.n + 1)
+        }
+        let center = sums.mapValues { CGPoint(x: $0.x / $0.n, y: $0.y / $0.n) }
+
+        func along(_ p: CGPoint, _ side: Side) -> Double { (side == .left || side == .right ? p.y : p.x).rounded() }
+        func inward(_ p: CGPoint, _ side: Side) -> Double {
+            switch side {
+            case .left: return p.x.rounded()
+            case .right: return -p.x.rounded()
+            case .top: return p.y.rounded()
+            case .bottom: return -p.y.rounded()
+            }
+        }
+        let sideOrder: [Side] = [.left, .top, .right, .bottom]
+
+        var groups: [(side: Int, along: Double, lane: Int, targets: [ControlTarget])] = []
+        for (part, list) in zip(parts, controls) {
+            let targets = ((list.control.map { [$0] } ?? []) + list.keys.values).filter { center[$0] != nil }
+            guard !targets.isEmpty else { continue }
+            let points = targets.map { center[$0]! }
+            let mid = CGPoint(x: points.map(\.x).reduce(0, +) / Double(points.count),
+                              y: points.map(\.y).reduce(0, +) / Double(points.count))
+            let ordered: [ControlTarget]
+            if let letter = Self.padCenter(list.entry), let hub = list.keys[letter].flatMap({ center[$0] }) {
+                // Clockwise from the top as you see it, then the center.
+                func turn(_ t: ControlTarget) -> Double {
+                    guard t != list.keys[letter] else { return .infinity }
+                    let p = center[t]!
+                    let a = atan2(p.y - hub.y, p.x - hub.x) + .pi / 2
+                    return a < -1e-6 ? a + 2 * .pi : a
+                }
+                ordered = targets.sorted { turn($0) < turn($1) }
+            } else {
+                ordered = targets.sorted {
+                    let a = center[$0]!, b = center[$1]!
+                    return (along(a, part.side), inward(a, part.side)) < (along(b, part.side), inward(b, part.side))
+                }
+            }
+            groups.append((sideOrder.firstIndex(of: part.side)!, along(mid, part.side), part.lane, ordered))
+        }
+        return groups.sorted { ($0.side, $0.along, $0.lane) < ($1.side, $1.along, $1.lane) }.flatMap(\.targets)
+    }
+
+    /// For each control on this Landscape figure turned to `orientation`, the
+    /// control that reads in the same place in Landscape. A control is known
+    /// by where it sits: the key you read first is Key 1 in any orientation.
+    /// Nil when the turned figure's controls don't line up with Landscape's.
+    func landscapeEquivalents(turnedTo orientation: TabletOrientation) -> [ControlTarget: ControlTarget]? {
+        let upright = Dictionary(grouping: controlsInReadingOrder(), by: \.kind)
+        let turned = Dictionary(grouping: oriented(orientation).controlsInReadingOrder(), by: \.kind)
+        guard upright.mapValues(\.count) == turned.mapValues(\.count) else { return nil }
+        var equivalents: [ControlTarget: ControlTarget] = [:]
+        for (kind, controls) in turned {
+            for (seen, place) in zip(controls, upright[kind]!) { equivalents[seen] = place }
+        }
+        return equivalents
+    }
+
+    /// A four-way pad's center key, for an entry shaped like one.
+    private static func padCenter(_ entry: TabletLayoutIdentity.Entry) -> Character? {
+        switch entry {
+        case let .cluster(grid), let .ring(_, .beside(grid)), let .dial(_, .beside(grid)):
+            return pad(grid)?.center
+        default:
+            return nil
+        }
+    }
+}
+
+extension ControlTarget {
+    /// Which kind of control, whichever one of that kind.
+    enum Kind: Hashable { case expressKey, bezel, ringCenter, ring, dial, strip }
+
+    var kind: Kind {
+        switch self {
+        case .expressKey: return .expressKey
+        case .bezel: return .bezel
+        case .ringCenter: return .ringCenter
+        case .ring: return .ring
+        case .dial: return .dial
+        case .strip: return .strip
+        }
+    }
+
+    /// Its number among controls of its kind, from 0.
+    var index: Int {
+        switch self {
+        case let .expressKey(i), let .bezel(i), let .ringCenter(i), let .ring(i), let .dial(i), let .strip(i):
+            return i
+        }
+    }
+}
