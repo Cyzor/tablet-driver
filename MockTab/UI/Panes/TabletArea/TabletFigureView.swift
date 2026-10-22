@@ -138,7 +138,8 @@ enum TabletFigureInk {
                 layer.fill(Path(roundedRect: panel, cornerRadius: radii.panel, style: .continuous), with: .color(ink))
             }
             layer.blendMode = .destinationOut
-            for shape in d.shapes {
+            // Parts on the back stay out of the small drawings.
+            for shape in d.shapes where !shape.isBehind {
                 let r = shape.rect
                 let path: Path
                 switch shape.kind {
@@ -232,7 +233,7 @@ enum TabletDiagramInk {
                           style: .continuous))
         if palette.knockout {
             // Each face cut once; a pad's wedges and a block's keys don't overlap.
-            for shape in d.shapes where shape.kind != .mark {
+            for shape in d.shapes where shape.kind != .mark && !shape.isBehind {
                 body.addPath(Self.face(shape, scale: scale, gap: gap, corner: u))
             }
             context.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))

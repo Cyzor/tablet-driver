@@ -56,6 +56,20 @@ private func testTableParses() {
         }
     }
     expect(TabletFigure.layouts[TabletFigure.fallbackProductID] != nil, "fallback model has a layout")
+
+    // Redrawn Wacom layouts parse whole and take the generated row's place.
+    for line in TabletLayoutExtras.replaced.split(separator: "\n") {
+        let halves = line.split(separator: ":", maxSplits: 1)
+        let tokens = halves.count == 2 ? halves[1].split(separator: ",") : []
+        expect(!tokens.isEmpty && tokens.compactMap(Part.init(token:)).count == tokens.count,
+               "every redrawn part parses: \(line)")
+        for id in halves.first?.split(separator: " ") ?? [] {
+            let pid = Int(id, radix: 16) ?? -1
+            expect(TabletFigure.layouts[pid] == tokens.compactMap(Part.init(token:)), "\(id) takes the redrawn layout")
+        }
+    }
+    let strips = TabletFigure.layouts[0x00CC]?.filter { $0.control == .strip } ?? []
+    expect(strips.count == 2 && strips.allSatisfy(\.isBehind), "21UX2 strips sit on the back")
 }
 
 private func testTokens() {

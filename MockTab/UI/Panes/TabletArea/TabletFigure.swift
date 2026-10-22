@@ -40,6 +40,9 @@ struct TabletFigure: Equatable {
         /// Span along the edge as fractions of it, from the top or left.
         var start: Double
         var end: Double
+        /// On the back of the tablet, as the 21UX2's strips are: drawn on the
+        /// rim, in a narrower lane, and left out of the small drawings.
+        var isBehind = false
     }
 
     var parts: [Part]
@@ -89,6 +92,7 @@ extension TabletFigure {
     /// Parts by product ID, read once from the generated table and its extras.
     static let layouts: [Int: [Part]] = {
         var layouts = parseLayouts(TabletLayoutTable.packed + "\n" + TabletLayoutExtras.packed)
+        layouts.merge(parseLayouts(TabletLayoutExtras.replaced)) { _, redrawn in redrawn }
         for (id, parts) in parseLayouts(TabletLayoutExtras.addedParts) { layouts[id]? += parts }
         return layouts
     }()
@@ -140,12 +144,15 @@ extension TabletFigure.Part {
         case "B": side = .bottom
         default: return nil
         }
+        // A trailing `b` puts the part on the tablet's back.
+        let isBehind = code.last == "b"
+        if isBehind { code = code.dropLast() }
         let span = fields[1].split(separator: "-")
         guard let lane = Int(code), span.count == 2,
               let start = Int(span[0]), let end = Int(span[1]), start < end
         else { return nil }
         self.init(control: control, side: side, lane: lane,
-                  start: Double(start) / 1000, end: Double(end) / 1000)
+                  start: Double(start) / 1000, end: Double(end) / 1000, isBehind: isBehind)
     }
 }
 
@@ -233,6 +240,8 @@ extension TabletFigure {
         var rect: CGRect
         /// The control it stands for, on a figure with `controls`.
         var target: ControlTarget? = nil
+        /// On the tablet's back: left out of the small drawings.
+        var isBehind = false
     }
 
     /// The figure laid out in points.
@@ -469,10 +478,22 @@ extension TabletFigure {
         (parts.filter { $0.side == side }.map(\.lane).max() ?? -1) + 1
     }
 
+    /// A lane given over to parts on the tablet's back.
+    private static func isBackLane(_ laneParts: [Part]) -> Bool {
+        !laneParts.isEmpty && laneParts.allSatisfy(\.isBehind)
+    }
+
+    /// A band's depth over a single lane's when its other lanes hold only
+    /// parts on the back, which draw thin.
+    static let backLaneBand = 1.3
+
     private func depths(_ m: Metrics) -> [Side: Double] {
         var depths: [Side: Double] = [:]
         for side in Side.allCases where laneCount(side) > 0 {
-            depths[side] = laneCount(side) > 1 ? m.wideBand : m.band
+            let lanes = (0..<laneCount(side)).map { lane in parts.filter { $0.side == side && $0.lane == lane } }
+            let frontLanes = lanes.filter { !Self.isBackLane($0) }.count
+            depths[side] = frontLanes > 1 ? m.wideBand
+                : laneCount(side) > 1 ? m.band * Self.backLaneBand : m.band
             // Small buttons that drive nothing ride in a bare edge's depth.
             if parts.indices.allSatisfy({ parts[$0].side != side || isAdded($0) }) {
                 depths[side] = max(m.margin - m.inset - m.gutter, m.keyDepth)
@@ -566,9 +587,12 @@ extension TabletFigure {
     ) -> [Shape] {
         let vertical = side == .left || side == .right
         let laneCount = (edgeParts.map(\.part.lane).max() ?? 0) + 1
-        // A lane of strips needs half the depth of one with keys.
+        // A lane of strips needs half the depth of one with keys; a lane on
+        // the back takes what's left of its narrower band.
         let weights = (0..<laneCount).map { lane in
-            edgeParts.filter { $0.part.lane == lane }.allSatisfy { $0.part.control == .strip } ? 1.0 : 2.0
+            let laneParts = edgeParts.filter { $0.part.lane == lane }.map(\.part)
+            if Self.isBackLane(laneParts) { return 2.0 * (Self.backLaneBand - 1) }
+            return laneParts.allSatisfy { $0.control == .strip } ? 1.0 : 2.0
         }
         let bandDepth = vertical ? band.width : band.height
         let totalWeight = laneCount > 1 ? weights.reduce(0, +) : 1
@@ -744,7 +768,7 @@ extension TabletFigure {
             case (.strip, _):
                 let depth = pixels(min(m.stripDepth, laneDepth * 0.6))
                 return [Shape(kind: .strip, rect: rect(from: start, length: pixels(length), depth: depth),
-                              target: controls?.control)]
+                              target: controls?.control, isBehind: part.isBehind)]
             }
         }
 

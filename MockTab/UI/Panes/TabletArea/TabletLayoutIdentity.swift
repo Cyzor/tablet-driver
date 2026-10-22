@@ -86,7 +86,8 @@ extension TabletLayoutIdentity {
     /// Identities by product ID, read once from the generated table and its extras.
     static let all: [Int: TabletLayoutIdentity] = {
         var all: [Int: TabletLayoutIdentity] = [:]
-        for line in (TabletLayoutTable.identity + "\n" + TabletLayoutExtras.identity).split(separator: "\n") {
+        let lines = [TabletLayoutTable.identity, TabletLayoutExtras.identity, TabletLayoutExtras.replacedIdentity]
+        for line in lines.joined(separator: "\n").split(separator: "\n") {
             guard let (ids, identity) = parse(line: line) else { continue }
             for id in ids { all[id] = identity }
         }
@@ -283,6 +284,15 @@ enum TabletLayoutExtras {
     /// the Cintiq 24HD's three display buttons on the top bezel, toward the
     /// right, placed from the product's photos.
     static let addedParts = "00F4 00F8: k3oT0 680-760"
+
+    /// Wacom layouts redrawn where libwacom's differs from the hardware,
+    /// read after the generated table so they take its place. The Cintiq
+    /// 21UX2 has four keys, a round strip toggle, and four more keys on each
+    /// side, placed from the product's photos and manual, with its strips on
+    /// the back (`b`).
+    static let replaced = "00CC: sL0b 450-640, k4fL1 336-450, k1oL1 474-529, k4fL1 551-666, "
+        + "sR0b 450-640, k4fR1 336-450, k1oR1 474-529, k4fR1 551-666"
+    static let replacedIdentity = "00CC: s 1; k BCDE; k A; k FGHI; s 2; k KLMN; k J; k OPQR | m A=s1 J=s2"
 
     /// The models listed here.
     static let productIDs: Set<Int> = Set(packed.split(separator: "\n").flatMap { line in

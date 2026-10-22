@@ -38,6 +38,7 @@
 ///   cluster of keys; `r` for a ring; `d` for a dial; `s` for a strip.
 /// - side: `L`, `R`, `T`, or `B`, the edge it sits on in landscape.
 /// - lane: 0 nearest the edge, counting inward.
+///   A trailing `b` marks a part on the tablet's back.
 /// - start-end: its span along that edge in thousandths, from the top or left.
 enum TabletLayoutTable {
     static let packed = """
