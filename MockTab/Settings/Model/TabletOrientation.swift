@@ -17,6 +17,17 @@ enum TabletOrientation: Int, CaseIterable {
     /// Whether this orientation swaps the X and Y hardware axes.
     var swapsAxes: Bool { self == .portrait || self == .portraitFlipped }
 
+    /// Quarter turns counterclockwise from Landscape, as the tablet looks on
+    /// the desk. Drawings of the tablet turn by this much.
+    var counterclockwiseTurns: Int {
+        switch self {
+        case .landscape: return 0
+        case .portrait: return 1
+        case .landscapeFlipped: return 2
+        case .portraitFlipped: return 3
+        }
+    }
+
     /// Adjusts a raw-space aspect ratio (width/height) for this orientation —
     /// swapped for `portrait`/`portraitFlipped`, unchanged otherwise. Shared
     /// by `TabletAreaView` and `TouchView`'s crop-editor preview boxes so

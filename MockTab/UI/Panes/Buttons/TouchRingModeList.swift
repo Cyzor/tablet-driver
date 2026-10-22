@@ -128,6 +128,9 @@ struct TouchRingModeListView: View {
     let centerDown: Bool
     /// Rings show the schematic diagram; strips have no round diagram.
     let showsDiagram: Bool
+    /// Quarter turns counterclockwise for the diagram, so its modes sit where
+    /// the tablet's own lights do; see `TabletOrientation.counterclockwiseTurns`.
+    var diagramTurns: Int = 0
     /// Mechanical dials show the active mode's glyph in the diagram's column
     /// instead — they have neither a ring to draw nor a mode LED. Ignored
     /// when `showsDiagram` is set; strips leave both off.
@@ -180,6 +183,7 @@ struct TouchRingModeListView: View {
             activeSlotIndex: activeSlotIndex,
             centerDown: centerDown,
             showsDiagram: showsDiagram,
+            diagramTurns: diagramTurns,
             showsModeBadge: showsModeBadge,
             selected: selected,
             setSelected: { selected = $0 },
@@ -213,6 +217,7 @@ private struct TouchRingModeListCore: View, Equatable {
     let activeSlotIndex: Int
     let centerDown: Bool
     let showsDiagram: Bool
+    let diagramTurns: Int
     let showsModeBadge: Bool
     let selected: Int?
     let setSelected: (Int?) -> Void
@@ -237,6 +242,7 @@ private struct TouchRingModeListCore: View, Equatable {
                 && lhs.activeSlotIndex == rhs.activeSlotIndex
                 && lhs.centerDown == rhs.centerDown
                 && lhs.showsDiagram == rhs.showsDiagram
+                && lhs.diagramTurns == rhs.diagramTurns
                 && lhs.showsModeBadge == rhs.showsModeBadge
                 && lhs.selected == rhs.selected
                 && lhs.pressed == rhs.pressed
@@ -581,6 +587,7 @@ private struct TouchRingModeListCore: View, Equatable {
                 centerPressed: pressed == .center
             )
             .equatable()
+            .rotationEffect(.degrees(-90 * Double(diagramTurns)))
             .frame(width: 88, height: 88)
             .overlay {
                 GeometryReader { geo in
@@ -791,9 +798,19 @@ private struct TouchRingModeListCore: View, Equatable {
     /// dispatch. The center only counts when a center action exists, so an
     /// actionless disc never darkens as if it were pushable.
     private func region(at point: CGPoint, in size: CGSize) -> RingDiagramRegion? {
+        let point = unturned(point, in: size)
         if let idx = wedgeIndex(at: point, in: size) { return .wedge(idx) }
         if onCenterTap != nil, isCenter(point, in: size) { return .center }
         return nil
+    }
+
+    /// `point` in the drawing's own frame, before `diagramTurns` turned it:
+    /// one clockwise quarter turn about the center per counterclockwise turn.
+    private func unturned(_ point: CGPoint, in size: CGSize) -> CGPoint {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        var dx = point.x - center.x, dy = point.y - center.y
+        for _ in 0..<((diagramTurns % 4 + 4) % 4) { (dx, dy) = (-dy, dx) }
+        return CGPoint(x: center.x + dx, y: center.y + dy)
     }
 }
 

@@ -403,6 +403,8 @@ struct ButtonMappingView: View {
             // regardless of whatever `touchRingButtonDown` happens to read.
             centerDown: hasMechanicalDial ? false : liveButtons.touchRingButtonDown,
             showsDiagram: showsDiagram,
+            // The remote has no orientation; it sits however it's held.
+            diagramTurns: isRemote ? 0 : settings.tabletOrientation.counterclockwiseTurns,
             showsModeBadge: showsModeBadge,
             actionBinding: { self.slotActionBinding(control: control, at: $0) },
             speedBinding: { self.slotSpeedBinding(control: control, at: $0) },

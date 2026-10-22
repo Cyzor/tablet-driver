@@ -155,15 +155,8 @@ extension TabletFigure {
     /// The figure as it looks with the tablet turned to `orientation`. Matches
     /// `DisplayMapper.orient`: portrait is a quarter turn counterclockwise.
     func oriented(_ orientation: TabletOrientation) -> TabletFigure {
-        let turns: Int
-        switch orientation {
-        case .landscape: turns = 0
-        case .portrait: turns = 1
-        case .landscapeFlipped: turns = 2
-        case .portraitFlipped: turns = 3
-        }
         var figure = self
-        for _ in 0..<turns { figure = figure.turnedCounterclockwise() }
+        for _ in 0..<orientation.counterclockwiseTurns { figure = figure.turnedCounterclockwise() }
         return figure
     }
 

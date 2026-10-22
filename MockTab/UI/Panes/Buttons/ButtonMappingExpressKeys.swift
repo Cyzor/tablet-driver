@@ -418,7 +418,7 @@ extension ButtonMappingView {
             Section {
                 TabletDiagramView(figure: figure, lit: diagramLit(lb), enabled: diagramEnabled, onTap: { diagramTap($0) })
                     .frame(maxWidth: .infinity)
-                    .frame(height: TabletBezelFrame<EmptyView>.height(.landscape))
+                    .frame(height: TabletBezelFrame<EmptyView>.height(settings.tabletOrientation))
                     .listRowInsets(EdgeInsets(top: 10, leading: 8, bottom: 10, trailing: 8))
                     .listRowBackground(Color.clear)
             } header: {
@@ -437,17 +437,24 @@ extension ButtonMappingView {
         }
     }
 
+    /// The tablet as it sits on the desk, turned like the Tablet Area figure.
     var tabletDiagramFigure: TabletFigure? {
         guard let spec else { return nil }
-        if let cached = Self.diagramFigures[spec.productID] { return cached }
-        let figure = Self.diagramFigure(for: spec)
-        Self.diagramFigures[spec.productID] = .some(figure)
+        let key = DiagramFigureKey(productID: spec.productID, orientation: settings.tabletOrientation)
+        if let cached = Self.diagramFigures[key] { return cached }
+        let figure = Self.diagramFigure(for: spec)?.oriented(key.orientation)
+        Self.diagramFigures[key] = .some(figure)
         return figure
     }
 
-    /// Figures by product ID, nil for a model without one. A figure depends
-    /// only on the model, so each pane update costs a lookup.
-    private static var diagramFigures: [Int: TabletFigure?] = [:]
+    private struct DiagramFigureKey: Hashable {
+        let productID: Int
+        let orientation: TabletOrientation
+    }
+
+    /// Figures by model and orientation, nil for a model without one. A
+    /// figure depends on nothing else, so each pane update costs a lookup.
+    private static var diagramFigures: [DiagramFigureKey: TabletFigure?] = [:]
 
     private static func diagramFigure(for spec: TabletSpec) -> TabletFigure? {
         // Other brands' product IDs can match a Wacom model's, so only their own layouts count.

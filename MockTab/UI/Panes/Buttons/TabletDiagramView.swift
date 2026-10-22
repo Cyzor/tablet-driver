@@ -6,15 +6,16 @@ import SwiftUI
 
 // MARK: - TabletDiagramView
 
-/// The tablet drawn in the Buttons pane: its keys, rings, and strips light
-/// while in use, and clicking one starts recording in its row, as the pen
-/// diagram does. Drawn from the bezel layout with a verified control map.
+/// The tablet drawn in the Buttons pane as it sits on the desk: its keys,
+/// rings, and strips light while in use, and clicking one starts recording
+/// in its row, as the pen diagram does. Drawn from the bezel layout with a
+/// verified control map.
 ///
 /// Thin non-equatable wrapper owning the pressed control, for the same
 /// reason as `PenDiagramView`: a Form row swallows @State-driven re-renders
 /// inside an EquatableView.
 struct TabletDiagramView: View {
-    /// Landscape, with `controls` set.
+    /// Turned to the tablet's orientation, with `controls` set.
     let figure: TabletFigure
     /// Bits of the controls in use; see `ControlTarget.bit`.
     let lit: UInt64
