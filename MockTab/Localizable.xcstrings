@@ -8317,6 +8317,7 @@
     },
     "Express Keys — Left" : {
       "comment" : "Section header in Buttons tab — Cintiq left express keys",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8346,6 +8347,7 @@
     },
     "Express Keys — Right" : {
       "comment" : "Section header in Buttons tab — Cintiq right express keys",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20412,8 +20414,32 @@
         }
       }
     },
+    "Toggle Buttons" : {
+      "comment" : "Section header for the Cintiq 24HD's ring mode keys on one side",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umschalttasten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botones de alternancia"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トグルボタン"
+          }
+        }
+      }
+    },
     "Toggle Buttons — Left" : {
       "comment" : "Section header in Buttons tab — Cintiq left-side toggle buttons",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20443,6 +20469,7 @@
     },
     "Toggle Buttons — Right" : {
       "comment" : "Section header in Buttons tab — Cintiq right-side toggle buttons",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20925,6 +20952,7 @@
     },
     "Touch Ring — Left" : {
       "comment" : "Section header in Buttons tab — Cintiq left touch ring",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20954,6 +20982,7 @@
     },
     "Touch Ring — Right" : {
       "comment" : "Section header in Buttons tab — Cintiq right touch ring",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

@@ -40,16 +40,20 @@ extension ButtonMappingView {
             : String(localized: "Touch Ring", comment: "Section header / row label for touch ring")
         if hasTouchRing {
             if hasDualRings {
-                Section(sideTitle(ringSectionLabel, place: 0)) {
+                Section {
                     touchRingBlock(lb: lb)
+                } header: {
+                    sideHeader(ringSectionLabel, place: 0)
                 }
-                Section(sideTitle(ringSectionLabel, place: 1)) {
+                Section {
                     if hasMechanicalDial { dialToggleBlock2(lb: lb) }
                     touchRingSlotsSection(
                         ringSectionLabel,
                         isActive: rotaryActive(place: 1, lb: lb), showsDiagram: !hasMechanicalDial,
                         showsModeBadge: hasMechanicalDial,
                         ring: .secondary)
+                } header: {
+                    sideHeader(ringSectionLabel, place: 1)
                 }
                 if !hasTouchStrips { bothRingsDirectionSection }
             } else {
@@ -66,7 +70,8 @@ extension ButtonMappingView {
                     let strip = placed(.strip(place)).index
                     touchRingSlotsSection(
                         sideName(place: place),
-                        isActive: strip == 0 ? lb.touchStrip1Active : lb.touchStrip2Active)
+                        isActive: strip == 0 ? lb.touchStrip1Active : lb.touchStrip2Active,
+                        side: sideSymbol(place: place))
                 }
                 reverseRingDirectionToggle
             }
@@ -277,39 +282,46 @@ extension ButtonMappingView {
                 expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
         } header: {
-            PaneSectionHeader("Toggle Buttons — Left") { deviceLineUnlessTabletSection }
+            VStack(alignment: .leading, spacing: 2) {
+                sideHeader(String(localized: "Toggle Buttons", comment: "Section header for the Cintiq 24HD's ring mode keys on one side"), place: 0).appFont(.headline)
+                deviceLineUnlessTabletSection
+            }
         }
 
-        Section("Express Keys — Left") {
+        Section {
             ForEach(3..<8, id: \.self) { i in
                 expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
+        } header: {
+            sideHeader(String(localized: "Express Keys"), place: 0)
         }
 
-        Section("Touch Ring — Left") {
-            touchRingSlotsSection(
-                String(
-                    localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRingActive, showsDiagram: true)
+        Section {
+            touchRingSlotsSection(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRingActive, showsDiagram: true)
+        } header: {
+            sideHeader(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), place: 0)
         }
 
-        Section("Toggle Buttons — Right") {
+        Section {
             ForEach(8..<11, id: \.self) { i in
                 expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
+        } header: {
+            sideHeader(String(localized: "Toggle Buttons", comment: "Section header for the Cintiq 24HD's ring mode keys on one side"), place: 1)
         }
 
-        Section("Express Keys — Right") {
+        Section {
             ForEach(11..<16, id: \.self) { i in
                 expressKeyRow(index: i, label: Self.splitPadKeyLabel(slot: i).label, lb: lb)
             }
+        } header: {
+            sideHeader(String(localized: "Express Keys"), place: 1)
         }
 
-        Section("Touch Ring — Right") {
-            touchRingSlotsSection(
-                String(
-                    localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-                isActive: lb.touchRing2Active, showsDiagram: true)
+        Section {
+            touchRingSlotsSection(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRing2Active, showsDiagram: true)
+        } header: {
+            sideHeader(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), place: 1)
         }
         bothRingsDirectionSection
     }
@@ -492,6 +504,31 @@ extension ButtonMappingView {
         case (true, 0): return String(localized: "\(label) — Top")
         case (true, _): return String(localized: "\(label) — Bottom")
         }
+    }
+
+    /// The side of `place` as you see it, as a symbol: left or right, or top
+    /// or bottom with the tablet upright. Place 0 reads first.
+    func sideSymbol(place: Int) -> Image {
+        let name: String
+        switch (settings.tabletOrientation.swapsAxes, place) {
+        case (false, 0): name = "rectangle.lefthalf.inset.filled"
+        case (false, _): name = "rectangle.righthalf.inset.filled"
+        case (true, 0): name = "rectangle.tophalf.inset.filled"
+        case (true, _): name = "rectangle.bottomhalf.inset.filled"
+        }
+        return Image(systemName: name)
+    }
+
+    /// A section title for one side's controls: the side as a symbol, then
+    /// `label`. VoiceOver reads the side in words.
+    func sideHeader(_ label: String, place: Int) -> some View {
+        HStack(spacing: 6) {
+            sideSymbol(place: place)
+            Text(label)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(sideTitle(label, place: place))
+        .accessibilityAddTraits(.isHeader)
     }
 
     /// The side of `place` as you see it, on its own.

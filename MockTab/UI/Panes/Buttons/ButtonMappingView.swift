@@ -380,12 +380,21 @@ struct ButtonMappingView: View {
         showsModeBadge: Bool = false,
         ring: RingIdentity = .primary,
         onCenterTap: (() -> Void)? = nil,
-        centerBinding: Binding<ButtonBinding>? = nil
+        centerBinding: Binding<ButtonBinding>? = nil,
+        side: Image? = nil
     ) -> some View {
-        // Label row — shows "Touch Ring", "Left", or "Right" with live-active indicator.
+        // Label row — "Touch Ring", or a strip's side, with live-active
+        // indicator. A strip's side shows as a symbol, with its words for VoiceOver.
         HStack(spacing: 6) {
             activeIndicator(isActive)
-            labelText(label, isActive: isActive)
+            if let side {
+                side
+                    .foregroundStyle(isActive ? .primary : .secondary)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(label)
+            } else {
+                labelText(label, isActive: isActive)
+            }
             Spacer(minLength: 0)
         }
 
