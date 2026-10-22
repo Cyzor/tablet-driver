@@ -216,7 +216,11 @@ struct DiscoveryResult: Codable {
     ///
     /// v27 adds `initReads`: the replies to the driver's setup reads.
     /// Optional, so v26 readers and files still decode.
-    var captureVersion: Int = 27
+    ///
+    /// v28 adds `appEnvironment.otherMockTabCopies` and
+    /// `appEnvironment.competingDrivers`. Optional, so v27 readers and files
+    /// still decode.
+    var captureVersion: Int = 28
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -646,6 +650,23 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                     detail: "macOS had not granted \(missing.joined(separator: " or ")) while "
                         + "recording."))
         }
+        if let copies = env.otherMockTabCopies, copies > 0 {
+            found.append(
+                DiscoveryFinding(
+                    kind: "otherMockTabRunning",
+                    productID: nil,
+                    detail: (copies == 1
+                        ? "Another copy of MockTab ran while recording."
+                        : "\(copies) other copies of MockTab ran while recording.")
+                        + " Each one clicks, so a tap can click twice."))
+        }
+        if let drivers = env.competingDrivers, !drivers.isEmpty {
+            found.append(
+                DiscoveryFinding(
+                    kind: "competingDriverRunning",
+                    productID: nil,
+                    detail: "Also running while recording: \(drivers.joined(separator: ", "))."))
+        }
         if env.installLocation == "translocated" {
             found.append(
                 DiscoveryFinding(
@@ -770,6 +791,10 @@ struct DiscoveryAppEnvironment: Codable {
     /// "applications", "translocated" (run from a quarantined download), or
     /// "other". Never the path itself, which names the user.
     let installLocation: String
+    /// Other running copies of MockTab. Each reads the tablet and clicks too.
+    var otherMockTabCopies: Int? = nil
+    /// Other tablet drivers running, by the Conflicts row's labels.
+    var competingDrivers: [String]? = nil
 }
 
 struct DiscoveryAppSettings: Codable {

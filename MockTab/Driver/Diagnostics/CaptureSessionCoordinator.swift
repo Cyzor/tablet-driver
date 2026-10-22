@@ -321,11 +321,19 @@ final class CaptureSessionCoordinator: ObservableObject {
         let location =
             path.contains("/AppTranslocation/") ? "translocated"
             : (path.hasPrefix("/Applications/") ? "applications" : "other")
+        let running = NSWorkspace.shared.runningApplications
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let otherCopies = running.filter {
+            $0.bundleIdentifier == Bundle.main.bundleIdentifier && $0.processIdentifier != ownPID
+        }.count
+        let names = Set(running.compactMap(\.localizedName) + running.compactMap(\.bundleIdentifier))
         return DiscoveryAppEnvironment(
             accessibilityGranted: AXIsProcessTrusted(),
             inputMonitoringGranted:
                 IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted,
-            installLocation: location)
+            installLocation: location,
+            otherMockTabCopies: otherCopies,
+            competingDrivers: ConflictProcessMatcher.matchedLabels(liveNames: names))
     }
 
     private func touchSettingsSnapshot(_ source: DeviceContext?) -> DiscoveryTouchSettings? {

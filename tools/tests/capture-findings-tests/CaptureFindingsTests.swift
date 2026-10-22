@@ -286,6 +286,22 @@ do {
         check(kinds.contains(kind), "\(kind) is surfaced")
     }
     check(!kinds.contains("collectedFromOtherWindow"), "own window is not flagged")
+    check(!kinds.contains("otherMockTabRunning"), "unrecorded copies aren't flagged")
+    result.appEnvironment?.otherMockTabCopies = 0
+    result.appEnvironment?.competingDrivers = []
+    let quiet = Set(discoveryFindings(for: result).map(\.kind))
+    check(
+        !quiet.contains("otherMockTabRunning") && !quiet.contains("competingDriverRunning"),
+        "no other copies or drivers, no finding")
+    result.appEnvironment?.otherMockTabCopies = 1
+    result.appEnvironment?.competingDrivers = ["Wacom Tablet Driver"]
+    let busy = discoveryFindings(for: result)
+    check(
+        busy.contains { $0.kind == "otherMockTabRunning" && $0.detail.hasPrefix("Another copy") },
+        "another running copy is flagged")
+    check(
+        busy.contains { $0.kind == "competingDriverRunning" && $0.detail.contains("Wacom Tablet Driver") },
+        "a competing driver is flagged")
     result.settingsIdentity?.windowProductID = "0x0357"
     check(
         discoveryFindings(for: result).contains {
