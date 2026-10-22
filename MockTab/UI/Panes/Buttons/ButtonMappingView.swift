@@ -102,6 +102,8 @@ struct ButtonMappingView: View {
     var hasTouchRing: Bool { spec?.hasTouchRing == true }
     var hasDualRings: Bool { spec?.hasDualRings == true }
     var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
+    /// Each strip has its own toggle and modes (Cintiq 21UX2).
+    var hasStripToggles: Bool { spec?.hasStripToggles == true }
     /// True for PTK-470/670/870 (Intuos Pro gen 3): mechanical rotate-only
     /// dials rather than a capacitive touch ring. Drives the "Dial" vs.
     /// "Touch Ring" section label and hides the nonexistent center-click row
@@ -381,7 +383,8 @@ struct ButtonMappingView: View {
         ring: RingIdentity = .primary,
         onCenterTap: (() -> Void)? = nil,
         centerBinding: Binding<ButtonBinding>? = nil,
-        side: Image? = nil
+        side: Image? = nil,
+        strip: Int? = nil
     ) -> some View {
         // Label row — "Touch Ring", or a strip's side, with live-active
         // indicator. A strip's side shows as a symbol, with its words for VoiceOver.
@@ -400,8 +403,10 @@ struct ButtonMappingView: View {
 
         // Show only as many slots as the spec declares (default 4); model always stores 4.
         let ringSlotCount = spec?.ringSlotCount ?? 4
-        let place = ring == .primary ? 0 : 1
-        let physical = placed(hasMechanicalDial ? .dial(place) : .ring(place)).index
+        // A strip with modes of its own is the rotary in its place.
+        let place = strip ?? (ring == .primary ? 0 : 1)
+        let physical = placed(strip != nil && hasStripToggles ? .strip(place)
+            : hasMechanicalDial ? .dial(place) : .ring(place)).index
         let control: RotaryIndex = physical == 0 ? .first : .second
         let rotary = settings.rotary(control)
         // Mode m as you see it is saved slot `saved(m)`: only a ring with

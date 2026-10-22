@@ -68,6 +68,9 @@ struct ButtonBindingControl: View, Equatable {
     /// The hardware has a mechanical dial, not a touch ring. Picks "Dial"
     /// or "Ring" wording. See `ButtonMappingView.hasMechanicalDial`.
     var isMechanicalDialHardware: Bool = false
+    /// The rotaries are touch strips with modes of their own (Cintiq 21UX2).
+    /// Picks "Strip" wording.
+    var isStripHardware: Bool = false
     /// Set on a PTK dial's own toggle key. The mode submenu then collapses to
     /// one flat Cycle item aimed at this dial.
     var dialToggleControl: RotaryIndex? = nil
@@ -100,6 +103,7 @@ struct ButtonBindingControl: View, Equatable {
                 && lhs.offersEraser == rhs.offersEraser
                 && lhs.modeNames == rhs.modeNames
                 && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
+                && lhs.isStripHardware == rhs.isStripHardware
                 && lhs.dialToggleControl == rhs.dialToggleControl
                 && lhs.placement == rhs.placement
                 && lhs.offersRingModes == rhs.offersRingModes
@@ -204,8 +208,11 @@ struct ButtonBindingControl: View, Equatable {
             } else if offersRingModes {
                 // Items name rings, dials, and modes where you see them;
                 // `placement` turns each into what to save.
-                Menu(isMechanicalDialHardware ? "Dial Mode" : "Touch Ring Mode") {
-                    if hasTwoRings {
+                Menu(isMechanicalDialHardware ? "Dial Mode" : isStripHardware ? "Touch Strip Mode" : "Touch Ring Mode") {
+                    if hasTwoStrips {
+                        Button("Cycle (Left Strip)") { binding = placement.saved(ButtonBinding(kind: .ringCycle)) }
+                            .help("Cycle through the left strip's modes")
+                    } else if hasTwoRings {
                         Button("Cycle (Left Ring)") { binding = placement.saved(ButtonBinding(kind: .ringCycle)) }
                             .help("Cycle through the left ring's modes")
                     } else {
@@ -227,7 +234,10 @@ struct ButtonBindingControl: View, Equatable {
                     }
                     if offersSecondDial {
                         Divider()
-                        if hasTwoRings {
+                        if hasTwoStrips {
+                            Button("Cycle (Right Strip)") { binding = placement.saved(ButtonBinding(kind: .ringCycle2)) }
+                                .help("Cycle through the right strip's modes")
+                        } else if hasTwoRings {
                             Button("Cycle (Right Ring)") { binding = placement.saved(ButtonBinding(kind: .ringCycle2)) }
                                 .help("Cycle through the right ring's modes")
                         } else {
@@ -278,7 +288,10 @@ struct ButtonBindingControl: View, Equatable {
 
     /// Two touch rings, as on the Cintiq 24HD: menus and labels say left and
     /// right instead of first and second.
-    private var hasTwoRings: Bool { offersSecondDial && !isMechanicalDialHardware }
+    private var hasTwoRings: Bool { offersSecondDial && !isMechanicalDialHardware && !isStripHardware }
+
+    /// Two touch strips with modes of their own, as on the Cintiq 21UX2.
+    private var hasTwoStrips: Bool { offersSecondDial && isStripHardware }
 
     private var modeFunctionText: String? {
         placement.shown(binding).modeFunctionLabel(
@@ -308,6 +321,15 @@ struct ButtonBindingControl: View, Equatable {
             return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
         }
         let shown = placement.shown(binding)
+        if hasTwoStrips {
+            switch shown.kind {
+            case .ringCycle:
+                return String(localized: "Left Strip: Cycle", comment: "Button action: cycle the left touch strip's mode")
+            case .ringCycle2:
+                return String(localized: "Right Strip: Cycle", comment: "Button action: cycle the right touch strip's mode")
+            default: break
+            }
+        }
         if hasTwoRings {
             switch shown.kind {
             case .ringCycle:

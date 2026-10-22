@@ -190,6 +190,7 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     }
 
     /// Cintiq 24HD rings: three modes, each with its own key beside the ring.
+    /// The 21UX2's strips start with the same modes.
     static let splitPadDefaults: [ControlSlot] = [
         ControlSlot(label: String(localized: "Scroll", comment: "Default ring slot label"), action: .scroll),
         ControlSlot(label: String(localized: "Zoom", comment: "Ring/strip action: analog pinch-zoom"), action: .zoom),

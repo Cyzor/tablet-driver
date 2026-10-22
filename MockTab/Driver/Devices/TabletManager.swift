@@ -1637,6 +1637,10 @@ extension TabletSpec {
     var isAuxOnly: Bool {
         maxX == 0 && (format == .xencelabs || format == .expressKeyRemote)
     }
+
+    /// Each touch strip has its own mode toggle and its own modes, as on the
+    /// Cintiq 21UX2. The toggles arrive in bezel slots 0 and 1.
+    var hasStripToggles: Bool { format == .cintiqV1 && hasTouchStrips }
 }
 
 /// Accessories folded into a pen tablet's window while both are connected:

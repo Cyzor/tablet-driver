@@ -119,11 +119,16 @@ final class DeviceContext: ObservableObject, Identifiable {
     private func applyRotaryHardware() {
         // Registry, not `tabletDevice.spec`: `DigitizerSpec` lacks these flags.
         guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
+        let twoRotaries = spec.hasDualRings || spec.hasStripToggles
+        settings.defaultBezelButtonBindings = spec.hasStripToggles
+            ? [ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2), .none]
+            : TabletSettings.noBezelButtonBindings
         settings.applyRotaryHardware(
-            controlCount: spec.hasDualRings ? 2 : 1,
-            independent: spec.hasDualRings,
+            controlCount: twoRotaries ? 2 : 1,
+            independent: twoRotaries,
             seedFromSharedModes: !spec.hasMechanicalDial,
-            defaultSlots: ButtonMappingView.hasSplitPadLayout(spec) ? ControlSlot.splitPadDefaults : ControlSlot.defaults)
+            defaultSlots: ButtonMappingView.hasSplitPadLayout(spec) || spec.hasStripToggles
+                ? ControlSlot.splitPadDefaults : ControlSlot.defaults)
     }
 
     /// Removes and returns the driver for a departing transport, if any.

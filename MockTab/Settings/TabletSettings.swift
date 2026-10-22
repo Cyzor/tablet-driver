@@ -805,6 +805,12 @@ final class TabletSettings: ObservableObject {
         }
     }
     private var _bezelButtonCache: [ButtonBinding]?
+    /// What the bezel slots do until set: the 21UX2's strip toggles cycle
+    /// their own strip. `DeviceContext` sets it from the model.
+    @Published var defaultBezelButtonBindings = TabletSettings.noBezelButtonBindings {
+        didSet { _bezelButtonCache = nil }
+    }
+    static let noBezelButtonBindings = [ButtonBinding](repeating: .none, count: 3)
     @Published var touchRingButtonRaw: String = "" {
         didSet { persist("touchRingButtonBinding", touchRingButtonRaw) }
     }
@@ -877,7 +883,7 @@ final class TabletSettings: ObservableObject {
                 while r.count < 3 { r.append(.none) }
                 result = Array(r.prefix(3))
             } else {
-                result = Array(repeating: .none, count: 3)
+                result = defaultBezelButtonBindings
             }
             _bezelButtonCache = result
             return result

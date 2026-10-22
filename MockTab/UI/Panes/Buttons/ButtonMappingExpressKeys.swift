@@ -64,7 +64,25 @@ extension ButtonMappingView {
             }
         }
 
-        if hasTouchStrips {
+        if hasStripToggles {
+            // Each strip has its own toggle and modes, so a section per side.
+            let stripLabel = String(localized: "Touch Strip", comment: "Section header for one of a tablet's touch strips")
+            ForEach(0..<2, id: \.self) { place in
+                let strip = placed(.strip(place)).index
+                Section {
+                    stripToggleRow(place: place, lb: lb)
+                    touchRingSlotsSection(
+                        stripLabel,
+                        isActive: strip == 0 ? lb.touchStrip1Active : lb.touchStrip2Active,
+                        strip: place)
+                } header: {
+                    sideHeader(stripLabel, place: place)
+                }
+            }
+            Section(String(localized: "Both Touch Strips", comment: "Section header for a setting shared by a tablet's two touch strips")) {
+                reverseRingDirectionToggle
+            }
+        } else if hasTouchStrips {
             Section("Touch Strips") {
                 ForEach(0..<2, id: \.self) { place in
                     let strip = placed(.strip(place)).index
@@ -159,6 +177,33 @@ extension ButtonMappingView {
             placed(.ringCenter(1)).index,
             undoName: String(localized: "Dial 2 Toggle", comment: "Undo action name: second dial toggle key binding in the Buttons pane"),
             lb: lb)
+    }
+
+    /// The toggle beside strip `place`, which cycles that strip's modes. It
+    /// reports in the bezel slot of its side, so its binding lives there.
+    @ViewBuilder
+    func stripToggleRow(place: Int, lb: LiveButtonState) -> some View {
+        let button = placed(.bezel(place)).index
+        let label = String(localized: "Strip Toggle", comment: "Row label for the button that cycles a touch strip's modes")
+        buttonRow(
+            label,
+            isActive: lb.bezelButtons[button],
+            binding: settings.recordingBinding(
+                label,
+                get: { settings.bezelButtonBindings[button] },
+                set: { newValue in
+                    var updated = settings.bezelButtonBindings
+                    updated[button] = newValue
+                    settings.bezelButtonBindings = updated
+                }),
+            ringSlotCount: spec?.ringSlotCount ?? 4,
+            offersSecondDial: true,
+            modeNames: ringModeNames,
+            isStripHardware: true,
+            placement: rotaryPlacement,
+            offersRingModes: offersRingModes,
+            recordRequestToken: bezelRecordTokens[button])
+        .id(ControlTarget.bezel(button))
     }
 
     /// The key at the middle of a PTK dial's cluster, which cycles dial
@@ -422,8 +467,9 @@ extension ButtonMappingView {
                 }
             ),
             ringSlotCount: spec?.ringSlotCount ?? 4,
-            offersSecondDial: hasDualRings,
+            offersSecondDial: hasDualRings || hasStripToggles,
             modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
+            isStripHardware: hasStripToggles,
             placement: rotaryPlacement,
             offersRingModes: offersRingModes, offersModeJumps: offersModeJumps,
             recordRequestToken: keyRecordTokens[key]
@@ -478,7 +524,7 @@ extension ButtonMappingView {
     /// Rings, dials, and modes named by where they sit now.
     var rotaryPlacement: RotaryPlacement {
         RotaryPlacement(
-            tradesRotaries: placed(hasMechanicalDial ? .dial(0) : .ring(0)).index == 1,
+            tradesRotaries: placed(hasStripToggles ? .strip(0) : hasMechanicalDial ? .dial(0) : .ring(0)).index == 1,
             lampShift: ringLampShift)
     }
 
@@ -651,6 +697,9 @@ extension ButtonMappingView {
             bits |= 1 << UInt64(ControlTarget.ringCenter(1).bit)
         }
         for i in 0..<min(bezelButtonCount, 3) { bits |= 1 << UInt64(ControlTarget.bezel(i).bit) }
+        if hasStripToggles {
+            for i in 0..<2 { bits |= 1 << UInt64(ControlTarget.bezel(i).bit) }
+        }
         return bits
     }
 

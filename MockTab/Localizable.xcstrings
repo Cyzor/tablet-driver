@@ -3240,6 +3240,29 @@
         }
       }
     },
+    "Both Touch Strips" : {
+      "comment" : "Section header for a setting shared by a tablet's two touch strips",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Berührungsleisten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambas franjas táctiles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "両方のタッチストリップ"
+          }
+        }
+      }
+    },
     "Bottom" : {
       "comment" : "Bottom touch strip row label\nExpressKey Remote key position",
       "localizations" : {
@@ -5743,6 +5766,28 @@
         }
       }
     },
+    "Cycle (Left Strip)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln (linke Leiste)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo (franja izquierda)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り替え（左ストリップ）"
+          }
+        }
+      }
+    },
     "Cycle (Right Ring)" : {
       "localizations" : {
         "de" : {
@@ -5761,6 +5806,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "切り替え（右リング）"
+          }
+        }
+      }
+    },
+    "Cycle (Right Strip)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln (rechte Leiste)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo (franja derecha)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り替え（右ストリップ）"
           }
         }
       }
@@ -5883,6 +5950,28 @@
         }
       }
     },
+    "Cycle through the left strip's modes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modi der linken Leiste durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos de la franja izquierda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左ストリップのモードを切り替える"
+          }
+        }
+      }
+    },
     "Cycle through the right ring's modes" : {
       "localizations" : {
         "de" : {
@@ -5901,6 +5990,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "右リングのモードを切り替える"
+          }
+        }
+      }
+    },
+    "Cycle through the right strip's modes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modi der rechten Leiste durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos de la franja derecha"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右ストリップのモードを切り替える"
           }
         }
       }
@@ -11147,6 +11258,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "左リング：モード %u"
+          }
+        }
+      }
+    },
+    "Left Strip: Cycle" : {
+      "comment" : "Button action: cycle the left touch strip's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linke Leiste: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Franja izquierda: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左ストリップ：切り替え"
           }
         }
       }
@@ -16804,6 +16938,29 @@
         }
       }
     },
+    "Right Strip: Cycle" : {
+      "comment" : "Button action: cycle the right touch strip's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechte Leiste: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Franja derecha: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右ストリップ：切り替え"
+          }
+        }
+      }
+    },
     "Ring — Left" : {
       "comment" : "Live Input table row label — left touch ring on dual-ring tablets",
       "localizations" : {
@@ -19296,6 +19453,29 @@
         }
       }
     },
+    "Strip Toggle" : {
+      "comment" : "Row label for the button that cycles a touch strip's modes",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leiste umschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar franja"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストリップ切り替え"
+          }
+        }
+      }
+    },
     "Stylus Name" : {
       "comment" : "Live Input table row label",
       "localizations" : {
@@ -21059,6 +21239,51 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タッチリングモード"
+          }
+        }
+      }
+    },
+    "Touch Strip" : {
+      "comment" : "Section header for one of a tablet's touch strips",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Berührungsleiste"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Franja táctil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチストリップ"
+          }
+        }
+      }
+    },
+    "Touch Strip Mode" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leistenmodus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo de franja táctil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチストリップモード"
           }
         }
       }

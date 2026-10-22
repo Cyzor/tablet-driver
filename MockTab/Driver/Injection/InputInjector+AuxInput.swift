@@ -38,6 +38,10 @@ extension InputInjector {
         let touchRing2Active = ring2?.position != nil
         let touchStrip1Active = pad.strips.first?.position != nil
         let touchStrip2Active = pad.strips.dropFirst().first?.position != nil
+        // Strips with modes of their own open zoom and rotate gestures as
+        // rings do.
+        let rotary1Touched = touchRingActive || (stripsHaveOwnModes && touchStrip1Active)
+        let rotary2Touched = touchRing2Active || (stripsHaveOwnModes && touchStrip2Active)
 
         // ── Express keys ───────────────────────────────────────────────────────
         for i in 0..<16 {
@@ -115,11 +119,11 @@ extension InputInjector {
         // Keyed on contact alone; see `ring1GestureOpen`.
         if !hasMechanicalDial, let slot = activeSlot, slot.action == .zoom || slot.action == .rotate {
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
-            if touchRingActive, !ring1GestureOpen {
+            if rotary1Touched, !ring1GestureOpen {
                 ring1GestureOpen = true
                 ring1GestureKind = kind
                 postRingGesture(delta: 0, phase: .began, kind: kind)
-            } else if !touchRingActive, ring1GestureOpen {
+            } else if !rotary1Touched, ring1GestureOpen {
                 ring1GestureOpen = false
                 postRingGesture(delta: 0, phase: .ended, kind: ring1GestureKind)
             }
@@ -166,11 +170,11 @@ extension InputInjector {
         let ring2Slot = snap.rotary(.second).activeSlot
         if !hasMechanicalDial, let slot = ring2Slot, slot.action == .zoom || slot.action == .rotate {
             let kind: RingGestureKind = slot.action == .zoom ? .zoom : .rotate
-            if touchRing2Active, !ring2GestureOpen {
+            if rotary2Touched, !ring2GestureOpen {
                 ring2GestureOpen = true
                 ring2GestureKind = kind
                 postRingGesture(delta: 0, phase: .began, kind: kind)
-            } else if !touchRing2Active, ring2GestureOpen {
+            } else if !rotary2Touched, ring2GestureOpen {
                 ring2GestureOpen = false
                 postRingGesture(delta: 0, phase: .ended, kind: ring2GestureKind)
             }
@@ -193,7 +197,8 @@ extension InputInjector {
         if !touchRing2Active { ring2Accum = 0 }
         lastRing2Pos = touchRing2Active ? ring2Pos : 0x7F
 
-        // ── Touch strips (Intuos3): ring 1's modes, no wrap ─────────────────
+        // ── Touch strips, no wrap: Intuos3 strips share ring 1's modes, ─────
+        // the 21UX2's each have their own.
 
         // Strip 1 (left).
         let s1pos = pad.strips.first?.position.map { UInt8($0) } ?? 0xFF
@@ -211,7 +216,7 @@ extension InputInjector {
         let s2pos = pad.strips.dropFirst().first?.position.map { UInt8($0) } ?? 0xFF
         if touchStrip2Active, lastStrip2Pos != 0xFF {
             let delta = Int(s2pos) - Int(lastStrip2Pos)
-            if delta != 0, let slot = activeSlot {
+            if delta != 0, let slot = stripsHaveOwnModes ? ring2Slot : activeSlot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &strip2Accum,
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
