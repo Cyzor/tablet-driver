@@ -21,6 +21,16 @@ enum TabletOrientation: Int, CaseIterable {
     /// tablet now runs down it.
     var isHalfTurn: Bool { self == .landscapeFlipped || self == .portraitFlipped }
 
+    /// This orientation turned a half turn.
+    var halfTurned: TabletOrientation {
+        switch self {
+        case .landscape: return .landscapeFlipped
+        case .portrait: return .portraitFlipped
+        case .landscapeFlipped: return .landscape
+        case .portraitFlipped: return .portrait
+        }
+    }
+
     /// Quarter turns counterclockwise from Landscape, as the tablet looks on
     /// the desk. Drawings of the tablet turn by this much.
     var counterclockwiseTurns: Int {

@@ -23,6 +23,13 @@ struct TurnCarry: Equatable {
     /// Touch strips now run the other way as you see them.
     var invertsStrips = false
 
+    /// The command that applies a half turn's carry without turning the
+    /// tablet, and its undo name.
+    static var turnAroundTitle: String {
+        String(localized: "Turn Assignments Around",
+               comment: "Tablet diagram right-click command and its undo name: moves each key's assignment to the key in the opposite place, as a half turn would, without turning the tablet")
+    }
+
     var isIdentity: Bool {
         keys.allSatisfy { $0.key == $0.value } && bezelButtons.allSatisfy { $0.key == $0.value }
             && !tradesRotaries && lampShift % 4 == 0 && !invertsStrips

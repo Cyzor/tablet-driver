@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import AppKit
 import SwiftUI
 
 // MARK: - TabletDiagramView
@@ -22,6 +23,9 @@ struct TabletDiagramView: View {
     /// Bits of the controls that have a row, so they answer clicks.
     let enabled: UInt64
     var onTap: ((ControlTarget) -> Void)? = nil
+    /// Offered by right-clicking the surface: turns the assignments around
+    /// without turning the tablet.
+    var onTurnAround: (() -> Void)? = nil
 
     /// The control under a mouse press that started on it, darkened like a
     /// pushed button; dragging off it cancels.
@@ -56,16 +60,52 @@ struct TabletDiagramView: View {
                     }
                 }
             }
-            // Sighted-only affordance: highlights and clicks are both
-            // redundant with the binding rows, which carry the accessible
-            // interface for this section.
-            .accessibilityHidden(true)
+            .overlay {
+                if let onTurnAround {
+                    GeometryReader { geo in
+                        RightClickMenuHost { point in turnAroundMenu(at: point, in: geo.size, onTurnAround) }
+                    }
+                }
+            }
+            .modifier(DiagramAccessibility(onTurnAround: onTurnAround))
+    }
+
+    /// The surface's right-click menu; a right-click on a control offers nothing.
+    private func turnAroundMenu(at point: CGPoint, in size: CGSize, _ action: @escaping () -> Void) -> NSMenu? {
+        let d = figure.drawing(.bezel, in: TabletDiagramCore.bounds(size), scale: displayScale)
+        guard d.surface.contains(point), d.target(at: point) == nil else { return nil }
+        let menu = NSMenu()
+        let item = NSMenuItem(title: TurnCarry.turnAroundTitle,
+                              action: #selector(RingMenuTarget.selectAction(_:)), keyEquivalent: "")
+        item.target = RingMenuTarget.shared
+        item.representedObject = RingMenuAction(action)
+        menu.addItem(item)
+        return menu
     }
 
     private func target(at point: CGPoint, in size: CGSize) -> ControlTarget? {
         let d = figure.drawing(.bezel, in: TabletDiagramCore.bounds(size), scale: displayScale)
         guard let hit = d.target(at: point), enabled & (1 << UInt64(hit.bit)) != 0 else { return nil }
         return hit
+    }
+}
+
+/// Highlights and clicks are sighted-only, redundant with the binding rows,
+/// which carry the accessible interface for this section. Only the
+/// surface's command isn't anywhere else, so with one the drawing is a
+/// single element offering it.
+private struct DiagramAccessibility: ViewModifier {
+    let onTurnAround: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if let onTurnAround {
+            content
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("Tablet"))
+                .accessibilityAction(named: Text(TurnCarry.turnAroundTitle)) { onTurnAround() }
+        } else {
+            content.accessibilityHidden(true)
+        }
     }
 }
 

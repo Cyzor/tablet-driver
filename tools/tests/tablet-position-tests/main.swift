@@ -172,6 +172,18 @@ for id in ids {
         walked = figure.turnCarry(from: from, to: to, ringLampsTurn: lamps).carried(walked)
     }
     expect(walked == original, "\(hex(id)) four quarter turns restore everything")
+
+    // The escape hatch: a half turn's carry without turning, twice, puts
+    // everything back in any orientation. Pen displays whose two sides
+    // differ pair places in cycles instead, so twice doesn't come back
+    // around there; undo does. Three of them can't turn on their stands.
+    let asymmetric: Set<Int> = [0x00C5, 0x00F4, 0x00F8, 0x03F0]  // 20WSX, 24HD, 24HD Touch, Movink 13
+    for orientation in TabletOrientation.allCases {
+        let around = figure.turnCarry(from: orientation, to: orientation.halfTurned, ringLampsTurn: lamps)
+        let restores = around.carried(around.carried(original)) == original
+        expect(restores != asymmetric.contains(id),
+               "\(hex(id)) turning assignments around twice in \(orientation) \(restores ? "restores" : "doesn't restore") everything")
+    }
 }
 
 // PTH-860 flipped: keys reverse, the corner lamps' modes move two places, and

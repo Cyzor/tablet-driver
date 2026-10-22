@@ -416,6 +416,16 @@ extension ButtonMappingView {
         .id(ControlTarget.expressKey(key))
     }
 
+    /// The escape hatch: what a half turn would do to the assignments, done
+    /// without turning the tablet, on the settings the pane shows.
+    func turnAssignmentsAround() {
+        guard let spec, let figure = Self.diagramFigure(for: spec) else { return }
+        let orientation = settings.tabletOrientation
+        settings.turnAssignmentsAround(
+            figure.turnCarry(from: orientation, to: orientation.halfTurned,
+                             ringLampsTurn: TabletControlMap.ringLampsTurn(spec)))
+    }
+
     // MARK: - Places
 
     /// The control in `place`'s Landscape place as the tablet sits now. The
@@ -503,7 +513,8 @@ extension ButtonMappingView {
     func tabletSection(lb: LiveButtonState) -> some View {
         if let figure = tabletDiagramFigure {
             Section {
-                TabletDiagramView(figure: figure, lit: diagramLit(lb), enabled: diagramEnabled, onTap: { diagramTap($0) })
+                TabletDiagramView(figure: figure, lit: diagramLit(lb), enabled: diagramEnabled, onTap: { diagramTap($0) },
+                                  onTurnAround: { turnAssignmentsAround() })
                     .frame(maxWidth: .infinity)
                     .frame(height: TabletBezelFrame<EmptyView>.height(settings.tabletOrientation))
                     .listRowInsets(EdgeInsets(top: 10, leading: 8, bottom: 10, trailing: 8))

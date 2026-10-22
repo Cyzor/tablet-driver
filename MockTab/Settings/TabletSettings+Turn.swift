@@ -39,7 +39,35 @@ extension TabletSettings {
         }
         writeTurned(old: old, new: new, contexts: contexts, skipping: unreadable)
         reloadAll()
-        recordTurn(from: before, to: turnSnapshot())
+        recordTurn(String(localized: "Orientation"), from: before, to: turnSnapshot())
+    }
+
+    /// Moves the assignments as `carry` would without turning the tablet:
+    /// for a setup a turn didn't carry, or one whose keys should stay put.
+    /// Edits the settings the pane shows, like any other edit there. Doing
+    /// it twice puts everything back.
+    func turnAssignmentsAround(_ carry: TurnCarry) {
+        var unreadable: Set<String> = []
+        let old = turnAssignments(in: TurnContext(override: effectiveOverride, profile: activeProfile),
+                                  unreadable: &unreadable)
+        let new = carry.carried(old)
+        guard new != old else { return }
+        let before = turnSnapshot()
+        func changed<Value: Equatable>(_ field: KeyPath<TurnAssignments, Value>, _ key: String) -> Bool {
+            new[keyPath: field] != old[keyPath: field] && !unreadable.contains(key)
+        }
+        if changed(\.expressKeys, "expressKeyBindings") { expressKeyBindings = new.expressKeys }
+        if changed(\.bezelButtons, "bezelButtonBindings") { bezelButtonBindings = new.bezelButtons }
+        if changed(\.center, "touchRingButtonBinding") { touchRingButtonBinding = new.center }
+        if changed(\.center2, "touchRingButtonBinding2") { touchRingButtonBinding2 = new.center2 }
+        if changed(\.sharedSlots, "touchRingSlotsJSON") { touchRingSlots = new.sharedSlots }
+        if changed(\.rotaries, "rotariesJSON"), let controls = new.rotaries {
+            rotaries = RotarySet(controls: controls, controlsAreIndependent: rotaries.controlsAreIndependent)
+        }
+        if changed(\.activeSlot, "touchRingActiveSlotIndex") { touchRingActiveSlotIndex = new.activeSlot }
+        if changed(\.activeSlot2, "touchRingActiveSlotIndex2") { touchRingActiveSlotIndex2 = new.activeSlot2 }
+        if changed(\.reverseDirection, "reverseRingDirection") { reverseRingDirection = new.reverseDirection }
+        recordTurn(TurnCarry.turnAroundTitle, from: before, to: turnSnapshot())
     }
 
     // MARK: - Contexts
@@ -260,10 +288,10 @@ extension TabletSettings {
     }
 
     /// Undo puts every layer back as it was before the turn; redo, after.
-    private func recordTurn(from before: TurnSnapshot, to after: TurnSnapshot) {
-        record(String(localized: "Orientation")) { [weak self] in
+    private func recordTurn(_ name: String, from before: TurnSnapshot, to after: TurnSnapshot) {
+        record(name) { [weak self] in
             self?.restore(before)
-            self?.recordTurn(from: after, to: before)
+            self?.recordTurn(name, from: after, to: before)
         }
     }
 }

@@ -21093,6 +21093,29 @@
         }
       }
     },
+    "Turn Assignments Around" : {
+      "comment" : "Tablet diagram right-click command and its undo name: moves each key's assignment to the key in the opposite place, as a half turn would, without turning the tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Belegung umdrehen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invertir asignaciones"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "割り当てを反転"
+          }
+        }
+      }
+    },
     "Two fingers held well apart rotate as they swivel about their center, the same as a trackpad rotate gesture. Scroll, pinch, and rotate each read the same two-finger gesture, so each can be on or off on its own." : {
       "comment" : "Tooltip on the Rotate switch",
       "localizations" : {
