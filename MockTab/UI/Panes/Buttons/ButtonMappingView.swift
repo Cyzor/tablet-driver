@@ -368,8 +368,10 @@ struct ButtonMappingView: View {
     /// The mode block for a ring or strip: label row, then the mode list,
     /// with the clickable ring diagram when `showsDiagram` is set.
     ///
-    /// `ring` picks the control: `.primary` for a single ring, a strip, or
-    /// the left ring or dial; `.secondary` for the right one.
+    /// `ring` picks the control by where you see it: `.primary` for a single
+    /// ring, a strip, or the first of two rings or dials; `.secondary` for
+    /// the second. Modes are numbered by place too, so Mode 1 is always the
+    /// diagram's upper left, where the tablet lights it.
     enum RingIdentity { case primary, secondary }
 
     @ViewBuilder
@@ -389,11 +391,18 @@ struct ButtonMappingView: View {
 
         // Show only as many slots as the spec declares (default 4); model always stores 4.
         let ringSlotCount = spec?.ringSlotCount ?? 4
-        let control: RotaryIndex = ring == .primary ? .first : .second
+        let place = ring == .primary ? 0 : 1
+        let physical = placed(hasMechanicalDial ? .dial(place) : .ring(place)).index
+        let control: RotaryIndex = physical == 0 ? .first : .second
         let rotary = settings.rotary(control)
-        let activeIndex = rotary.activeSlotIndex
+        // Mode m as you see it is saved slot `saved(m)`: only a ring with
+        // lamps at its corners moves them as the tablet turns.
+        let shift = showsDiagram && rotary.slots.count == 4 ? ringLampShift : 0
+        let saved: (Int) -> Int = { ($0 + shift) % 4 }
+        let slots = shift == 0 ? rotary.slots : rotary.slots.indices.map { rotary.slots[saved($0)] }
+        let activeIndex = shift == 0 ? rotary.activeSlotIndex : (rotary.activeSlotIndex - shift + 4) % 4
         TouchRingModeListView(
-            slots: rotary.slots,
+            slots: slots,
             shownSlotCount: min(rotary.slots.count, ringSlotCount),
             ringSlotCount: ringSlotCount,
             isRingActive: isActive,
@@ -401,15 +410,13 @@ struct ButtonMappingView: View {
             // No physical center action on mechanical-dial hardware (see
             // `hasMechanicalDial`), so the diagram's center dot never lights
             // regardless of whatever `touchRingButtonDown` happens to read.
-            centerDown: hasMechanicalDial ? false : liveButtons.touchRingButtonDown,
+            centerDown: hasMechanicalDial ? false : centerDown(physical, lb: liveButtons),
             showsDiagram: showsDiagram,
-            // The remote has no orientation; it sits however it's held.
-            diagramTurns: isRemote ? 0 : settings.tabletOrientation.counterclockwiseTurns,
             showsModeBadge: showsModeBadge,
-            actionBinding: { self.slotActionBinding(control: control, at: $0) },
-            speedBinding: { self.slotSpeedBinding(control: control, at: $0) },
-            cwBinding: { self.slotBinding(control: control, for: $0, direction: .cw) },
-            ccwBinding: { self.slotBinding(control: control, for: $0, direction: .ccw) },
+            actionBinding: { self.slotActionBinding(control: control, at: shift == 0 ? $0 : saved($0)) },
+            speedBinding: { self.slotSpeedBinding(control: control, at: shift == 0 ? $0 : saved($0)) },
+            cwBinding: { self.slotBinding(control: control, for: shift == 0 ? $0 : saved($0), direction: .cw) },
+            ccwBinding: { self.slotBinding(control: control, for: shift == 0 ? $0 : saved($0), direction: .ccw) },
             onCenterTap: onCenterTap,
             centerBinding: centerBinding
         )

@@ -478,6 +478,28 @@
         }
       }
     },
+    "%@ — Bottom" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Unten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Abajo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — 下"
+          }
+        }
+      }
+    },
     "%@ — Left" : {
       "localizations" : {
         "de" : {
@@ -518,6 +540,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ — 右"
+          }
+        }
+      }
+    },
+    "%@ — Top" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Oben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Arriba"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — 上"
           }
         }
       }
@@ -3197,7 +3241,7 @@
       }
     },
     "Bottom" : {
-      "comment" : "ExpressKey Remote key position",
+      "comment" : "Bottom touch strip row label\nExpressKey Remote key position",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20644,6 +20688,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ツール (すべてのタブレット)"
+          }
+        }
+      }
+    },
+    "Top" : {
+      "comment" : "Top touch strip row label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arriba"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上"
           }
         }
       }

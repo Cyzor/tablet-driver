@@ -31,23 +31,23 @@ extension ButtonMappingView {
             }
         }
 
-        // Two rotaries (Cintiq 24HD rings, PTK-670/870 dials) get a Left and
-        // a Right section, each with its own modes. The direction toggle is
-        // device-wide, so it goes after the last section. Mechanical dials
-        // say "Dial" instead of "Touch Ring".
+        // Two rotaries (Cintiq 24HD rings, PTK-670/870 dials) get a section
+        // for each side as you see it, each with its own modes. The direction
+        // toggle is device-wide, so it goes after the last section. Mechanical
+        // dials say "Dial" instead of "Touch Ring".
         let ringSectionLabel = hasMechanicalDial
             ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
             : String(localized: "Touch Ring", comment: "Section header / row label for touch ring")
         if hasTouchRing {
             if hasDualRings {
-                Section("\(ringSectionLabel) — Left") {
+                Section(sideTitle(ringSectionLabel, place: 0)) {
                     touchRingBlock(lb: lb)
                 }
-                Section("\(ringSectionLabel) — Right") {
+                Section(sideTitle(ringSectionLabel, place: 1)) {
                     if hasMechanicalDial { dialToggleBlock2(lb: lb) }
                     touchRingSlotsSection(
                         ringSectionLabel,
-                        isActive: hasMechanicalDial ? dialsTurning[1] : lb.touchRing2Active, showsDiagram: !hasMechanicalDial,
+                        isActive: rotaryActive(place: 1, lb: lb), showsDiagram: !hasMechanicalDial,
                         showsModeBadge: hasMechanicalDial,
                         ring: .secondary)
                 }
@@ -62,12 +62,12 @@ extension ButtonMappingView {
 
         if hasTouchStrips {
             Section("Touch Strips") {
-                touchRingSlotsSection(
-                    String(localized: "Left", comment: "Left touch strip row label"),
-                    isActive: lb.touchStrip1Active)
-                touchRingSlotsSection(
-                    String(localized: "Right", comment: "Right touch strip row label"),
-                    isActive: lb.touchStrip2Active)
+                ForEach(0..<2, id: \.self) { place in
+                    let strip = placed(.strip(place)).index
+                    touchRingSlotsSection(
+                        sideName(place: place),
+                        isActive: strip == 0 ? lb.touchStrip1Active : lb.touchStrip2Active)
+                }
                 reverseRingDirectionToggle
             }
         }
@@ -114,66 +114,62 @@ extension ButtonMappingView {
     @ViewBuilder
     func touchRingBlock(lb: LiveButtonState) -> some View {
         let hasCenterButton = !hasMechanicalDial && !isRemote && !hasSplitPadLayout
+        // The first ring or dial as you see it, and its center or toggle.
+        let center = placed(.ringCenter(0)).index
         if hasMechanicalDial {
-            buttonRow(
-                String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes"),
-                isActive: lb.touchRingButtonDown,
-                binding: settings.recordingBinding(
-                    String(localized: "Dial Toggle", comment: "Undo action name: dial toggle key binding in the Buttons pane"),
-                    get: { settings.touchRingButtonBinding },
-                    set: { settings.touchRingButtonBinding = $0 }),
-                ringSlotCount: spec?.ringSlotCount ?? 4,
-                modeNames: ringModeNames,
-                isMechanicalDialHardware: true,
-                dialToggleControl: .first,
-                recordRequestToken: centerRecordToken)
-            .id(ControlTarget.ringCenter(0))
+            dialToggleRow(
+                center, undoName: String(localized: "Dial Toggle", comment: "Undo action name: dial toggle key binding in the Buttons pane"),
+                lb: lb)
         } else if hasCenterButton {
             buttonRow(
                 String(localized: "Center", comment: "Touch ring center button row label"),
-                isActive: lb.touchRingButtonDown,
-                binding: settings.recordingBinding(
-                    String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
-                    get: { settings.touchRingButtonBinding },
-                    set: { settings.touchRingButtonBinding = $0 }),
+                isActive: centerDown(center, lb: lb),
+                binding: centerBinding(center, undoName: String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane")),
                 ringSlotCount: spec?.ringSlotCount ?? 4,
                 modeNames: ringModeNames,
-                recordRequestToken: centerRecordToken)
-            .id(ControlTarget.ringCenter(0))
+                placement: rotaryPlacement,
+                recordRequestToken: centerToken(center))
+            .id(ControlTarget.ringCenter(center))
         }
         touchRingSlotsSection(
             hasMechanicalDial
                 ? String(localized: "Dial", comment: "Section header / row label for a mechanical rotate-only dial")
                 : String(localized: "Touch Ring", comment: "Section header / row label for touch ring"),
-            isActive: hasMechanicalDial ? dialsTurning[0] : lb.touchRingActive, showsDiagram: !hasMechanicalDial,
+            isActive: rotaryActive(place: 0, lb: lb), showsDiagram: !hasMechanicalDial,
             showsModeBadge: hasMechanicalDial,
-            onCenterTap: hasCenterButton ? { centerRecordToken += 1 } : nil,
-            centerBinding: !hasCenterButton ? nil : settings.recordingBinding(
-                String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane"),
-                get: { settings.touchRingButtonBinding },
-                set: { settings.touchRingButtonBinding = $0 }))
+            onCenterTap: hasCenterButton ? { bumpCenterToken(center) } : nil,
+            centerBinding: !hasCenterButton ? nil : centerBinding(
+                center, undoName: String(localized: "Touch Ring Button", comment: "Undo action name: touch ring center-click binding in the Buttons pane")))
     }
 
-    /// Second dial's own "Dial Toggle" row (PTK-670/870's right cluster
-    /// center key) — the counterpart to `touchRingBlock`'s row, but for
-    /// `touchRingButtonBinding2`. Only ever shown alongside
+    /// The second dial's own "Dial Toggle" row (PTK-670/870), for the dial
+    /// you see second. Only ever shown alongside
     /// `touchRingSlotsSection(ring: .secondary)` for `hasMechanicalDial`
     /// devices; capacitive dual-ring hardware (Cintiq 24HD) has no
     /// equivalent second toggle key and never calls this.
     @ViewBuilder
     func dialToggleBlock2(lb: LiveButtonState) -> some View {
+        dialToggleRow(
+            placed(.ringCenter(1)).index,
+            undoName: String(localized: "Dial 2 Toggle", comment: "Undo action name: second dial toggle key binding in the Buttons pane"),
+            lb: lb)
+    }
+
+    /// The key at the middle of a PTK dial's cluster, which cycles dial
+    /// `center`'s modes.
+    @ViewBuilder
+    func dialToggleRow(_ center: Int, undoName: String, lb: LiveButtonState) -> some View {
         buttonRow(
             String(localized: "Dial Toggle", comment: "Row label for the ExpressKey that cycles a mechanical dial's modes"),
-            isActive: lb.touchRing2ButtonDown,
-            binding: settings.recordingBinding(
-                String(localized: "Dial 2 Toggle", comment: "Undo action name: second dial toggle key binding in the Buttons pane"),
-                get: { settings.touchRingButtonBinding2 },
-                set: { settings.touchRingButtonBinding2 = $0 }),
+            isActive: centerDown(center, lb: lb),
+            binding: centerBinding(center, undoName: undoName),
             ringSlotCount: spec?.ringSlotCount ?? 4,
+            modeNames: ringModeNames,
             isMechanicalDialHardware: true,
-            dialToggleControl: .second,
-            recordRequestToken: dial2RecordToken)
-        .id(ControlTarget.ringCenter(1))
+            dialToggleControl: center == 0 ? .first : .second,
+            placement: rotaryPlacement,
+            recordRequestToken: centerToken(center))
+        .id(ControlTarget.ringCenter(center))
     }
 
     /// Direction preference for every ring/dial/strip on the device — one
@@ -205,18 +201,23 @@ extension ButtonMappingView {
 
     @ViewBuilder
     var reverseRingDirectionToggle: some View {
+        // A strip turned a half turn runs the other way as you see it, so the
+        // switch shows the direction as seen. Turning a ring over keeps its
+        // direction, so a ring's switch shows the saved value.
+        let turnedOver = hasTouchStrips && settings.tabletOrientation.isHalfTurn
+        let reversed = settings.reverseRingDirection != turnedOver
         DescribedToggle(
             "Reverse Direction",
             isOn: settings.recordingBinding(
                 String(localized: "Ring Direction", comment: "Undo action name: touch ring/dial direction toggle in the Buttons pane"),
-                get: { settings.reverseRingDirection },
-                set: { settings.reverseRingDirection = $0 }),
+                get: { settings.reverseRingDirection != turnedOver },
+                set: { settings.reverseRingDirection = $0 != turnedOver }),
             currentIcon: hasTouchStrips
-                ? (settings.reverseRingDirection ? "arrow.up" : "arrow.down")
-                : (settings.reverseRingDirection ? "arrow.counterclockwise" : "arrow.clockwise"),
+                ? (reversed ? "arrow.up" : "arrow.down")
+                : (reversed ? "arrow.counterclockwise" : "arrow.clockwise"),
             current: hasTouchStrips
-                ? (settings.reverseRingDirection ? " Reversed." : " Forward.")
-                : (settings.reverseRingDirection ? " Counter-clockwise." : " Clockwise."),
+                ? (reversed ? " Reversed." : " Forward.")
+                : (reversed ? " Counter-clockwise." : " Clockwise."),
             help: "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
     }
 
@@ -364,49 +365,139 @@ extension ButtonMappingView {
     }
 
 
+    /// `index` is the button's place, like `expressKeyRow`'s.
     @ViewBuilder
     func bezelButtonRow(index: Int, label: String, lb: LiveButtonState) -> some View {
+        let button = placed(.bezel(index)).index
         buttonRow(
             label,
-            isActive: lb.bezelButtons[index],
+            isActive: lb.bezelButtons[button],
             binding: settings.recordingBinding(
                 String(localized: "Bezel Button \(index + 1)"),
-                get: { settings.bezelButtonBindings[index] },
+                get: { settings.bezelButtonBindings[button] },
                 set: { newValue in
                     var updated = settings.bezelButtonBindings
-                    updated[index] = newValue
+                    updated[button] = newValue
                     settings.bezelButtonBindings = updated
                 }
             ),
             modeNames: ringModeNames,
-            recordRequestToken: bezelRecordTokens[index]
+            placement: rotaryPlacement,
+            recordRequestToken: bezelRecordTokens[button]
         )
-        .id(ControlTarget.bezel(index))
+        .id(ControlTarget.bezel(button))
     }
 
     // MARK: - Express key row helper
 
+    /// `index` is the key's place, numbered as in Landscape; the row edits
+    /// whichever key sits there now.
     @ViewBuilder
     func expressKeyRow(index: Int, label: String, lb: LiveButtonState) -> some View {
+        let key = placed(.expressKey(index)).index
         buttonRow(
             label,
-            isActive: lb.expressKeys[index],
+            isActive: lb.expressKeys[key],
             binding: settings.recordingBinding(
                 String(localized: "Express Key \(index + 1)", comment: "Undo action name: express key binding in the Buttons pane"),
-                get: { settings.expressKeyBindings[index] },
+                get: { settings.expressKeyBindings[key] },
                 set: { newValue in
                     var updated = settings.expressKeyBindings
-                    updated[index] = newValue
+                    updated[key] = newValue
                     settings.expressKeyBindings = updated
                 }
             ),
             ringSlotCount: spec?.ringSlotCount ?? 4,
             offersSecondDial: hasDualRings,
             modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-            recordRequestToken: keyRecordTokens[index]
+            placement: rotaryPlacement,
+            recordRequestToken: keyRecordTokens[key]
         )
-        .id(ControlTarget.expressKey(index))
+        .id(ControlTarget.expressKey(key))
     }
+
+    // MARK: - Places
+
+    /// The control in `place`'s Landscape place as the tablet sits now. The
+    /// pane numbers controls by place, so Key 1 is whichever key sits where
+    /// Key 1 does in Landscape. Saved settings stay with the physical control.
+    func placed(_ place: ControlTarget) -> ControlTarget { placedControls[place] ?? place }
+
+    private var placedControls: [ControlTarget: ControlTarget] {
+        guard !isRemote, let spec else { return [:] }
+        let key = DiagramFigureKey(productID: spec.productID, orientation: settings.tabletOrientation)
+        if let cached = Self.placeMaps[key] { return cached }
+        var map: [ControlTarget: ControlTarget] = [:]
+        if let figure = Self.diagramFigure(for: spec),
+           let seen = figure.landscapeEquivalents(turnedTo: key.orientation) {
+            for (control, place) in seen { map[place] = control }
+        }
+        Self.placeMaps[key] = map
+        return map
+    }
+
+    private static var placeMaps: [DiagramFigureKey: [ControlTarget: ControlTarget]] = [:]
+
+    /// Rings, dials, and modes named by where they sit now.
+    var rotaryPlacement: RotaryPlacement {
+        RotaryPlacement(
+            tradesRotaries: placed(hasMechanicalDial ? .dial(0) : .ring(0)).index == 1,
+            lampShift: ringLampShift)
+    }
+
+    /// Places a ring's lamps have moved as the tablet turns. On the Intuos5
+    /// and Intuos Pro gen 1 and 2, four lamps sit at the ring's corners, so
+    /// the mode lit at the upper left changes with each quarter turn. Other
+    /// rings' lamps keep their order.
+    var ringLampShift: Int {
+        guard let spec, !isRemote, spec.ringSlotCount == 4,
+              [.intuos5, .intuosPro2].contains(TabletControlMap.family(for: spec))
+        else { return 0 }
+        return settings.tabletOrientation.counterclockwiseTurns
+    }
+
+    /// Whether ring or dial `place` is turning, or a finger is on it.
+    func rotaryActive(place: Int, lb: LiveButtonState) -> Bool {
+        let rotary = placed(hasMechanicalDial ? .dial(place) : .ring(place)).index
+        return hasMechanicalDial ? dialsTurning[rotary] : rotary == 0 ? lb.touchRingActive : lb.touchRing2Active
+    }
+
+    /// `label` with the side of `place` as you see it: left or right, or top
+    /// or bottom with the tablet upright. Place 0 reads first.
+    func sideTitle(_ label: String, place: Int) -> String {
+        switch (settings.tabletOrientation.swapsAxes, place) {
+        case (false, 0): return String(localized: "\(label) — Left")
+        case (false, _): return String(localized: "\(label) — Right")
+        case (true, 0): return String(localized: "\(label) — Top")
+        case (true, _): return String(localized: "\(label) — Bottom")
+        }
+    }
+
+    /// The side of `place` as you see it, on its own.
+    func sideName(place: Int) -> String {
+        switch (settings.tabletOrientation.swapsAxes, place) {
+        case (false, 0): return String(localized: "Left", comment: "Left touch strip row label")
+        case (false, _): return String(localized: "Right", comment: "Right touch strip row label")
+        case (true, 0): return String(localized: "Top", comment: "Top touch strip row label")
+        case (true, _): return String(localized: "Bottom", comment: "Bottom touch strip row label")
+        }
+    }
+
+    /// Center button or dial toggle `center`, 0 or 1, as saved.
+    func centerBinding(_ center: Int, undoName: String) -> Binding<ButtonBinding> {
+        settings.recordingBinding(
+            undoName,
+            get: { center == 0 ? settings.touchRingButtonBinding : settings.touchRingButtonBinding2 },
+            set: { if center == 0 { settings.touchRingButtonBinding = $0 } else { settings.touchRingButtonBinding2 = $0 } })
+    }
+
+    func centerDown(_ center: Int, lb: LiveButtonState) -> Bool {
+        center == 0 ? lb.touchRingButtonDown : lb.touchRing2ButtonDown
+    }
+
+    func centerToken(_ center: Int) -> Int { center == 0 ? centerRecordToken : dial2RecordToken }
+
+    func bumpCenterToken(_ center: Int) { if center == 0 { centerRecordToken += 1 } else { dial2RecordToken += 1 } }
 
     // MARK: - Tablet diagram
 

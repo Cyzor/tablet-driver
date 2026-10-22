@@ -17,6 +17,10 @@ enum TabletOrientation: Int, CaseIterable {
     /// Whether this orientation swaps the X and Y hardware axes.
     var swapsAxes: Bool { self == .portrait || self == .portraitFlipped }
 
+    /// Turned a half turn from Landscape or Portrait, so whatever ran up the
+    /// tablet now runs down it.
+    var isHalfTurn: Bool { self == .landscapeFlipped || self == .portraitFlipped }
+
     /// Quarter turns counterclockwise from Landscape, as the tablet looks on
     /// the desk. Drawings of the tablet turn by this much.
     var counterclockwiseTurns: Int {

@@ -18,6 +18,7 @@ func buttonRow(
     modeNames: [[String]] = [],
     isMechanicalDialHardware: Bool = false,
     dialToggleControl: RotaryIndex? = nil,
+    placement: RotaryPlacement = .upright,
     recordRequestToken: Int = 0
 ) -> some View {
     HStack(spacing: 0) {
@@ -33,6 +34,7 @@ func buttonRow(
             modeNames: modeNames,
             isMechanicalDialHardware: isMechanicalDialHardware,
             dialToggleControl: dialToggleControl,
+            placement: placement,
             recordRequestToken: recordRequestToken)
             .equatable()
         Spacer(minLength: 0)

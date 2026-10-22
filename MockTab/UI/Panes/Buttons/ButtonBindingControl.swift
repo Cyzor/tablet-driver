@@ -5,6 +5,48 @@
 import AppKit
 import SwiftUI
 
+/// How the Buttons pane names a turned tablet's rings, dials, and modes: by
+/// where you see them. Saved bindings still name the physical ring or dial
+/// and slot, so this only translates between the two.
+struct RotaryPlacement: Equatable {
+    /// The two rings or dials have traded places as you see them.
+    var tradesRotaries = false
+    /// Places a four-lamp ring's lamps have moved around it: the mode you see
+    /// in place m is saved slot m + `lampShift`, wrapping at four.
+    var lampShift = 0
+
+    static let upright = RotaryPlacement()
+
+    /// `binding` as you see it, naming the ring or dial and mode in their places.
+    func shown(_ binding: ButtonBinding) -> ButtonBinding { moved(binding, slotBy: -lampShift) }
+
+    /// What to save for `binding`, chosen as you see it.
+    func saved(_ binding: ButtonBinding) -> ButtonBinding { moved(binding, slotBy: lampShift) }
+
+    /// Mode names by place, from names by saved ring or dial and slot.
+    func shown(modeNames: [[String]]) -> [[String]] {
+        let rows = tradesRotaries && modeNames.count == 2 ? modeNames.reversed() : modeNames
+        return rows.map { row in
+            row.count == 4 ? row.indices.map { row[($0 + lampShift) % 4] } : row
+        }
+    }
+
+    private func moved(_ binding: ButtonBinding, slotBy shift: Int) -> ButtonBinding {
+        var moved = binding
+        switch binding.kind {
+        case .ringCycle: moved.kind = tradesRotaries ? .ringCycle2 : .ringCycle
+        case .ringCycle2: moved.kind = tradesRotaries ? .ringCycle : .ringCycle2
+        case .ringSelectSlot: moved.kind = tradesRotaries ? .ringSelectSlot2 : .ringSelectSlot
+        case .ringSelectSlot2: moved.kind = tradesRotaries ? .ringSelectSlot : .ringSelectSlot2
+        default: return binding
+        }
+        if lampShift != 0, binding.kind == .ringSelectSlot || binding.kind == .ringSelectSlot2, binding.keyCode < 4 {
+            moved.keyCode = UInt16(((Int(binding.keyCode) + shift) % 4 + 4) % 4)
+        }
+        return moved
+    }
+}
+
 /// A Bloom-style shortcut recorder control.
 /// • Click the field to start recording — press any key combo to bind it.
 /// • ESC cancels; Delete alone clears the binding.
@@ -29,6 +71,8 @@ struct ButtonBindingControl: View, Equatable {
     /// Set on a PTK dial's own toggle key. The mode submenu then collapses to
     /// one flat Cycle item aimed at this dial.
     var dialToggleControl: RotaryIndex? = nil
+    /// Names rings, dials, and modes by where they sit on a turned tablet.
+    var placement: RotaryPlacement = .upright
     /// Incremented by an external control (the ring diagram's center button)
     /// to begin recording in this field, exactly as if it had been clicked.
     var recordRequestToken: Int = 0
@@ -51,6 +95,7 @@ struct ButtonBindingControl: View, Equatable {
                 && lhs.modeNames == rhs.modeNames
                 && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
                 && lhs.dialToggleControl == rhs.dialToggleControl
+                && lhs.placement == rhs.placement
                 && lhs.recordRequestToken == rhs.recordRequestToken
         }
     }
@@ -143,18 +188,20 @@ struct ButtonBindingControl: View, Equatable {
                 }
                 .help("Cycle through dial modes")
             } else {
+                // Items name rings, dials, and modes where you see them;
+                // `placement` turns each into what to save.
                 Menu(isMechanicalDialHardware ? "Dial Mode" : "Touch Ring Mode") {
                     if hasTwoRings {
-                        Button("Cycle (Left Ring)") { binding = ButtonBinding(kind: .ringCycle) }
+                        Button("Cycle (Left Ring)") { binding = placement.saved(ButtonBinding(kind: .ringCycle)) }
                             .help("Cycle through the left ring's modes")
                     } else {
-                        Button("Cycle") { binding = ButtonBinding(kind: .ringCycle) }
+                        Button("Cycle") { binding = placement.saved(ButtonBinding(kind: .ringCycle)) }
                             .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
                     }
                     Divider()
                     ForEach(0..<ringSlotCount, id: \.self) { i in
                         Button(hasTwoRings ? "Jump Left Ring to Mode \(i + 1)" : "Jump to Mode \(i + 1)") {
-                            binding = ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i))
+                            binding = placement.saved(ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i)))
                         }
                         .help(isMechanicalDialHardware
                             ? "Switch the dial directly to mode \(i + 1)"
@@ -165,16 +212,16 @@ struct ButtonBindingControl: View, Equatable {
                     if offersSecondDial {
                         Divider()
                         if hasTwoRings {
-                            Button("Cycle (Right Ring)") { binding = ButtonBinding(kind: .ringCycle2) }
+                            Button("Cycle (Right Ring)") { binding = placement.saved(ButtonBinding(kind: .ringCycle2)) }
                                 .help("Cycle through the right ring's modes")
                         } else {
-                            Button("Cycle (Second Dial)") { binding = ButtonBinding(kind: .ringCycle2) }
+                            Button("Cycle (Second Dial)") { binding = placement.saved(ButtonBinding(kind: .ringCycle2)) }
                                 .help("Cycle through the second dial's modes")
                         }
                         Divider()
                         ForEach(0..<ringSlotCount, id: \.self) { i in
                             Button(hasTwoRings ? "Jump Right Ring to Mode \(i + 1)" : "Jump Second Dial to Mode \(i + 1)") {
-                                binding = ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i))
+                                binding = placement.saved(ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i)))
                             }
                             .help(hasTwoRings
                                 ? "Switch the right ring directly to mode \(i + 1)"
@@ -216,7 +263,8 @@ struct ButtonBindingControl: View, Equatable {
     private var hasTwoRings: Bool { offersSecondDial && !isMechanicalDialHardware }
 
     private var modeFunctionText: String? {
-        binding.modeFunctionLabel(modeNames: modeNames, isMechanicalDial: isMechanicalDialHardware)
+        placement.shown(binding).modeFunctionLabel(
+            modeNames: placement.shown(modeNames: modeNames), isMechanicalDial: isMechanicalDialHardware)
     }
 
     // MARK: - Visual state
@@ -236,39 +284,41 @@ struct ButtonBindingControl: View, Equatable {
         }
         if let text = modeFunctionText { return text }
         // Say "Dial" on dial hardware. Display-only: `displayLabel` stays
-        // device-unaware because presets and undo text share it.
-        if dialToggleControl == .second, binding.kind == .ringCycle2 {
+        // device-unaware because presets and undo text share it. A toggle
+        // key cycling its own dial reads the same wherever the dial sits.
+        if let control = dialToggleControl, binding.kind == (control == .second ? .ringCycle2 : .ringCycle) {
             return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
         }
+        let shown = placement.shown(binding)
         if hasTwoRings {
-            switch binding.kind {
+            switch shown.kind {
             case .ringCycle:
                 return String(localized: "Left Ring: Cycle", comment: "Button action: cycle the left touch ring's mode")
             case .ringSelectSlot:
                 return String(
-                    localized: "Left Ring: Mode \(binding.keyCode + 1)",
+                    localized: "Left Ring: Mode \(shown.keyCode + 1)",
                     comment: "Button action: jump the left touch ring to a mode slot")
             case .ringCycle2:
                 return String(localized: "Right Ring: Cycle", comment: "Button action: cycle the right touch ring's mode")
             case .ringSelectSlot2:
                 return String(
-                    localized: "Right Ring: Mode \(binding.keyCode + 1)",
+                    localized: "Right Ring: Mode \(shown.keyCode + 1)",
                     comment: "Button action: jump the right touch ring to a mode slot")
             default: break
             }
         }
         if isMechanicalDialHardware {
-            switch binding.kind {
+            switch shown.kind {
             case .ringCycle where dialToggleControl != .second:
                 return String(localized: "Dial: Cycle", comment: "Button action: cycle a mechanical dial's mode")
             case .ringSelectSlot:
                 return String(
-                    localized: "Dial: Mode \(binding.keyCode + 1)",
+                    localized: "Dial: Mode \(shown.keyCode + 1)",
                     comment: "Button action: jump to a mechanical dial's mode slot")
             default: break
             }
         }
-        return binding.displayLabel
+        return shown.displayLabel
     }
 
     /// Modifier key symbols in standard macOS display order (⌃⌥⇧⌘).
