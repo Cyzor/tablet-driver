@@ -5927,6 +5927,28 @@
         }
       }
     },
+    "Cycle Touch Ring Mode" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touch-Ring-Modus wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar modo del anillo táctil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチリングモード切り替え"
+          }
+        }
+      }
+    },
     "Damps pressure noise near the low end of the sensor's range, which shows most as uneven line width on slow, light strokes. Firm pressure passes through unchanged." : {
       "comment" : "Tooltip on the Pressure Smoothing strength slider",
       "localizations" : {

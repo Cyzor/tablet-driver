@@ -73,6 +73,12 @@ struct ButtonBindingControl: View, Equatable {
     var dialToggleControl: RotaryIndex? = nil
     /// Names rings, dials, and modes by where they sit on a turned tablet.
     var placement: RotaryPlacement = .upright
+    /// Offer the ring or dial mode actions: only on a device's own keys, and
+    /// only when it has a ring, dial, or strip whose modes MockTab keeps.
+    var offersRingModes: Bool = false
+    /// Offer jumping straight to a mode, for hardware whose own mode keys
+    /// pick a mode (Cintiq 24HD, MobileStudio Pro) instead of cycling.
+    var offersModeJumps: Bool = false
     /// Incremented by an external control (the ring diagram's center button)
     /// to begin recording in this field, exactly as if it had been clicked.
     var recordRequestToken: Int = 0
@@ -96,6 +102,8 @@ struct ButtonBindingControl: View, Equatable {
                 && lhs.isMechanicalDialHardware == rhs.isMechanicalDialHardware
                 && lhs.dialToggleControl == rhs.dialToggleControl
                 && lhs.placement == rhs.placement
+                && lhs.offersRingModes == rhs.offersRingModes
+                && lhs.offersModeJumps == rhs.offersModeJumps
                 && lhs.recordRequestToken == rhs.recordRequestToken
         }
     }
@@ -187,7 +195,13 @@ struct ButtonBindingControl: View, Equatable {
                     binding = ButtonBinding(kind: control == .second ? .ringCycle2 : .ringCycle)
                 }
                 .help("Cycle through dial modes")
-            } else {
+            } else if offersRingModes && !offersModeJumps && !offersSecondDial {
+                // Cycle alone needs no submenu.
+                Button(isMechanicalDialHardware ? "Cycle Dial Mode" : "Cycle Touch Ring Mode") {
+                    binding = placement.saved(ButtonBinding(kind: .ringCycle))
+                }
+                .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
+            } else if offersRingModes {
                 // Items name rings, dials, and modes where you see them;
                 // `placement` turns each into what to save.
                 Menu(isMechanicalDialHardware ? "Dial Mode" : "Touch Ring Mode") {
@@ -198,16 +212,18 @@ struct ButtonBindingControl: View, Equatable {
                         Button("Cycle") { binding = placement.saved(ButtonBinding(kind: .ringCycle)) }
                             .help(isMechanicalDialHardware ? "Cycle through dial modes" : "Cycle through ring modes")
                     }
-                    Divider()
-                    ForEach(0..<ringSlotCount, id: \.self) { i in
-                        Button(hasTwoRings ? "Jump Left Ring to Mode \(i + 1)" : "Jump to Mode \(i + 1)") {
-                            binding = placement.saved(ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i)))
+                    if offersModeJumps {
+                        Divider()
+                        ForEach(0..<ringSlotCount, id: \.self) { i in
+                            Button(hasTwoRings ? "Jump Left Ring to Mode \(i + 1)" : "Jump to Mode \(i + 1)") {
+                                binding = placement.saved(ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16(i)))
+                            }
+                            .help(isMechanicalDialHardware
+                                ? "Switch the dial directly to mode \(i + 1)"
+                                : hasTwoRings
+                                    ? "Switch the left ring directly to mode \(i + 1)"
+                                    : "Switch ring directly to mode \(i + 1)")
                         }
-                        .help(isMechanicalDialHardware
-                            ? "Switch the dial directly to mode \(i + 1)"
-                            : hasTwoRings
-                                ? "Switch the left ring directly to mode \(i + 1)"
-                                : "Switch ring directly to mode \(i + 1)")
                     }
                     if offersSecondDial {
                         Divider()
@@ -218,14 +234,16 @@ struct ButtonBindingControl: View, Equatable {
                             Button("Cycle (Second Dial)") { binding = placement.saved(ButtonBinding(kind: .ringCycle2)) }
                                 .help("Cycle through the second dial's modes")
                         }
-                        Divider()
-                        ForEach(0..<ringSlotCount, id: \.self) { i in
-                            Button(hasTwoRings ? "Jump Right Ring to Mode \(i + 1)" : "Jump Second Dial to Mode \(i + 1)") {
-                                binding = placement.saved(ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i)))
+                        if offersModeJumps {
+                            Divider()
+                            ForEach(0..<ringSlotCount, id: \.self) { i in
+                                Button(hasTwoRings ? "Jump Right Ring to Mode \(i + 1)" : "Jump Second Dial to Mode \(i + 1)") {
+                                    binding = placement.saved(ButtonBinding(kind: .ringSelectSlot2, keyCode: UInt16(i)))
+                                }
+                                .help(hasTwoRings
+                                    ? "Switch the right ring directly to mode \(i + 1)"
+                                    : "Switch the second dial directly to mode \(i + 1)")
                             }
-                            .help(hasTwoRings
-                                ? "Switch the right ring directly to mode \(i + 1)"
-                                : "Switch the second dial directly to mode \(i + 1)")
                         }
                     }
                 }

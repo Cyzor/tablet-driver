@@ -128,6 +128,7 @@ extension ButtonMappingView {
                 ringSlotCount: spec?.ringSlotCount ?? 4,
                 modeNames: ringModeNames,
                 placement: rotaryPlacement,
+                offersRingModes: offersRingModes, offersModeJumps: offersModeJumps,
                 recordRequestToken: centerToken(center))
             .id(ControlTarget.ringCenter(center))
         }
@@ -383,6 +384,7 @@ extension ButtonMappingView {
             ),
             modeNames: ringModeNames,
             placement: rotaryPlacement,
+            offersRingModes: offersRingModes, offersModeJumps: offersModeJumps,
             recordRequestToken: bezelRecordTokens[button]
         )
         .id(ControlTarget.bezel(button))
@@ -411,6 +413,7 @@ extension ButtonMappingView {
             offersSecondDial: hasDualRings,
             modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
             placement: rotaryPlacement,
+            offersRingModes: offersRingModes, offersModeJumps: offersModeJumps,
             recordRequestToken: keyRecordTokens[key]
         )
         .id(ControlTarget.expressKey(key))
@@ -447,6 +450,18 @@ extension ButtonMappingView {
     }
 
     private static var placeMaps: [DiagramFigureKey: [ControlTarget: ControlTarget]] = [:]
+
+    /// Ring or dial mode actions belong on this device's own keys when it
+    /// has a ring, dial, or strip whose modes MockTab keeps. The ExpressKey
+    /// Remote's firmware keeps its own mode, so an action there would leave
+    /// its lights out of step.
+    var offersRingModes: Bool { !isRemote && (hasTouchRing || hasTouchStrips) }
+
+    /// Jumping straight to a mode, where the hardware's own mode keys pick
+    /// a mode each instead of cycling; see `TabletControlMap.modeKeysPickModes`.
+    var offersModeJumps: Bool {
+        offersRingModes && spec.map { TabletControlMap.modeKeysPickModes(productID: $0.productID) } == true
+    }
 
     /// Rings, dials, and modes named by where they sit now.
     var rotaryPlacement: RotaryPlacement {

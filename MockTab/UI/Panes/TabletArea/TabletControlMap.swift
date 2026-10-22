@@ -185,6 +185,12 @@ struct TabletControlMap: Equatable {
     static func ringLampsTurn(_ spec: TabletSpec) -> Bool {
         spec.ringSlotCount == 4 && [.intuos5, .intuosPro2].contains(family(for: spec))
     }
+
+    /// Whether a model's own mode keys each pick a mode, as on the Cintiq
+    /// 24HD and MobileStudio Pro, instead of one key cycling through them.
+    static func modeKeysPickModes(productID: Int) -> Bool {
+        TabletLayoutIdentity.all[productID]?.modeSwitches.values.contains { $0.mode != nil } == true
+    }
 }
 
 extension TabletFigure {

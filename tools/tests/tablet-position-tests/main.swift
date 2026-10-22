@@ -222,6 +222,17 @@ expect(figure(0x00B1)!.turnCarry(from: .landscape, to: .landscapeFlipped, ringLa
 expect(!figure(0x00B1)!.turnCarry(from: .landscape, to: .portrait, ringLampsTurn: false).invertsStrips,
        "Intuos3 Portrait keeps strip direction")
 
+// MARK: - Which hardware picks modes by key
+
+// Jump to Mode is offered only where the hardware's own mode keys pick a
+// mode each: the Cintiq 24HD class and the MobileStudio Pro. Cycle-button
+// hardware doesn't get it.
+for (id, picks) in [(0x00F4, true), (0x00F8, true), (0x034D, true), (0x034E, true),
+                    (0x0358, false), (0x00B9, false), (0x0027, false), (0x03F9, false), (0x00CC, false), (0x0374, false)] {
+    expect(TabletControlMap.modeKeysPickModes(productID: id) == picks,
+           "\(hex(id)) mode keys \(picks ? "pick modes" : "don't pick modes")")
+}
+
 // MARK: - Where carried values are written
 
 do {

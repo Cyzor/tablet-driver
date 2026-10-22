@@ -58,6 +58,8 @@ struct QuickKeysSectionView: View {
         let lb = liveButtons
         let keyCount = Self.keyCount(spec)
 
+        // The puck's dial keeps modes and has its own mode button, so its
+        // keys offer Cycle; none pick a mode, so none offer Jump.
         return Section {
             ForEach(0..<max(keyCount, 0), id: \.self) { i in
                 buttonRow(
@@ -71,7 +73,8 @@ struct QuickKeysSectionView: View {
                             updated[i] = newValue
                             settings.expressKeyBindings = updated
                         }
-                    ))
+                    ),
+                    offersRingModes: true)
             }
             // The bottom mode button rides the same indexed express-key
             // array as the last slot (pad buttons[8] — see
@@ -87,7 +90,8 @@ struct QuickKeysSectionView: View {
                         updated[keyCount] = newValue
                         settings.expressKeyBindings = updated
                     }
-                ))
+                ),
+                offersRingModes: true)
             // Dial center click — reuses the touch-ring center-button
             // slot, mirroring how XencelabsDecoder reports it via
             // the first ring's center button rather than an indexed key.
@@ -99,6 +103,7 @@ struct QuickKeysSectionView: View {
                     get: { settings.touchRingButtonBinding },
                     set: { settings.touchRingButtonBinding = $0 }
                 ),
+                offersRingModes: true,
                 recordRequestToken: dialRecordToken)
             // Dial rotation (CW/CCW detents) — same ControlSlot model used
             // by a real touch ring. Summary list + per-mode editor, with
