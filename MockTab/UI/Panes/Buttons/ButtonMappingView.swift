@@ -390,8 +390,14 @@ struct ButtonMappingView: View {
         onCenterTap: (() -> Void)? = nil,
         centerBinding: Binding<ButtonBinding>? = nil,
         side: Image? = nil,
-        strip: Int? = nil
+        strip: Int? = nil,
+        scrollTarget: ControlTarget? = nil
     ) -> some View {
+        // A strip with modes of its own is the rotary in its place.
+        let place = strip ?? (ring == .primary ? 0 : 1)
+        let shown = placed(strip != nil && hasStripToggles ? .strip(place)
+            : hasMechanicalDial ? .dial(place) : .ring(place))
+        let physical = shown.index
         // Label row — "Touch Ring", or a strip's side, with live-active
         // indicator. A strip's side shows as a symbol, with its words for VoiceOver.
         HStack(spacing: 6) {
@@ -406,13 +412,11 @@ struct ButtonMappingView: View {
             }
             Spacer(minLength: 0)
         }
+        // A diagram click on the ring, dial, or strip scrolls here.
+        .id(scrollTarget ?? shown)
 
         // Show only as many slots as the spec declares (default 4); model always stores 4.
         let ringSlotCount = spec?.ringSlotCount ?? 4
-        // A strip with modes of its own is the rotary in its place.
-        let place = strip ?? (ring == .primary ? 0 : 1)
-        let physical = placed(strip != nil && hasStripToggles ? .strip(place)
-            : hasMechanicalDial ? .dial(place) : .ring(place)).index
         let control: RotaryIndex = physical == 0 ? .first : .second
         let rotary = settings.rotary(control)
         // Mode m as you see it is saved slot `saved(m)`: only a ring with

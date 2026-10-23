@@ -89,7 +89,8 @@ extension ButtonMappingView {
                     touchRingSlotsSection(
                         sideName(place: place),
                         isActive: strip == 0 ? lb.touchStrip1Active : lb.touchStrip2Active,
-                        side: sideSymbol(place: place))
+                        side: sideSymbol(place: place),
+                        scrollTarget: .strip(strip))
                 }
                 reverseRingDirectionToggle
             }
@@ -688,7 +689,7 @@ extension ButtonMappingView {
 
     /// The controls with a row below, which answer clicks: the rows
     /// `singleSidedSection`, `dualSidedSection`, `touchRingBlock`, and
-    /// `bezelButtonsSection` show.
+    /// `bezelButtonsSection` show, and the mode lists of rings, dials, and strips.
     var diagramEnabled: UInt64 {
         var bits: UInt64 = 0
         for i in 0..<(hasSplitPadLayout ? 16 : expressKeyCount) { bits |= 1 << UInt64(i) }
@@ -700,10 +701,19 @@ extension ButtonMappingView {
         if hasStripToggles {
             for i in 0..<2 { bits |= 1 << UInt64(ControlTarget.bezel(i).bit) }
         }
+        if hasTouchRing {
+            for i in 0..<(hasDualRings ? 2 : 1) {
+                bits |= 1 << UInt64((hasMechanicalDial ? ControlTarget.dial(i) : .ring(i)).bit)
+            }
+        }
+        if hasTouchStrips {
+            for i in 0..<2 { bits |= 1 << UInt64(ControlTarget.strip(i).bit) }
+        }
         return bits
     }
 
-    /// Starts recording in the clicked control's row. A row scrolled into
+    /// Starts recording in the clicked key's row; a ring, dial, or strip
+    /// has no single action, so its click only scrolls. A row scrolled into
     /// view only now is created after the first bump, so a second bump once
     /// the scroll settles reaches it; a row already recording ignores it.
     func diagramTap(_ target: ControlTarget) {
