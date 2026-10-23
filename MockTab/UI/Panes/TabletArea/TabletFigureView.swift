@@ -197,7 +197,7 @@ enum TabletDiagramInk {
         static func backdrop(dark: Bool) -> Palette {
             let ink = dark ? Color.white : Color.black
             return Palette(ink: ink.opacity(0.16), face: ink.opacity(dark ? 0.08 : 0.07),
-                           screen: Color.black.opacity(dark ? 0.40 : 0.16), accent: ink.opacity(dark ? 0.08 : 0.07),
+                           screen: .clear, accent: ink.opacity(dark ? 0.08 : 0.07),
                            knockout: true, corner: 3)
         }
     }
@@ -236,11 +236,9 @@ enum TabletDiagramInk {
             for shape in d.shapes where shape.kind != .mark && !shape.isBehind {
                 body.addPath(Self.face(shape, scale: scale, gap: gap, corner: u))
             }
+            // The surface stays open, screen or not, so the editor on top shows
+            // one tone for every tablet.
             context.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))
-            if isPenDisplay {
-                context.fill(Path(roundedRect: surface, cornerRadius: 2 * u, style: .continuous),
-                             with: .color(palette.screen))
-            }
             return
         }
         // Even-odd fills a doubly cut area back in, so each area is cut once:
