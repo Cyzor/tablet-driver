@@ -317,8 +317,7 @@ final class TabletManager: ObservableObject {
     /// still in proximity.
     func resyncLiveStateForVisibility() {
         guard let context = activeContext, context.livePoint != nil else { return }
-        let injector = context.injector
-        guard !HIDThread.shared.performAndWait({ injector.lastProximity }) else { return }
+        guard !context.injector.proximityForMain else { return }
         context.activeToolID = nil
         context.activeToolCode = 0
         context.liveButtons = LiveButtonState()
@@ -1544,11 +1543,9 @@ final class TabletManager: ObservableObject {
             reason: "Pen in proximity — latency-critical input injection")
     }
 
-    /// Whether any connected tablet has a pen in range, read on the pen
-    /// thread, which owns that state.
+    /// Whether any connected tablet has a pen in range.
     private func anyPenInProximity() -> Bool {
-        let injectors = deviceContexts.values.filter(\.isConnected).map(\.injector)
-        return HIDThread.shared.performAndWait { injectors.contains { $0.lastProximity } }
+        deviceContexts.values.contains { $0.isConnected && $0.injector.proximityForMain }
     }
 
     /// Schedules assertion drop after `proximityIdleDelay` seconds, unless another

@@ -328,7 +328,13 @@ final class InputInjector: @unchecked Sendable {
     // Fields shared with the `InputInjector+*` extensions are internal, since
     // `private` is file-scoped. Ownership and HIDThread confinement are unchanged.
 
-    var lastProximity = false
+    var lastProximity = false {
+        didSet { _proximityForMain.withLock { $0 = lastProximity } }
+    }
+    /// `lastProximity` for main, which reads it on every proximity exit and
+    /// shouldn't wait on the pen thread to do so.
+    private let _proximityForMain = OSAllocatedUnfairLock<Bool>(initialState: false)
+    var proximityForMain: Bool { _proximityForMain.withLock { $0 } }
     var lastTipDown = false
     /// True after the first leftMouseDragged is posted following a tip-down.
     /// Used to guarantee Pages sees at least one drag event even when deltas are tiny.
