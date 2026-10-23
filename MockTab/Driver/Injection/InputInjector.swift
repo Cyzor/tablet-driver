@@ -265,9 +265,7 @@ final class InputInjector: @unchecked Sendable {
                 self.touchPanelNeedsResolve = true
             }
         }
-        leakWatchdogTimer = Timer.scheduledTimer(
-            withTimeInterval: 1.0, repeats: true
-        ) { [weak self] _ in self?.checkLeakWatchdog() }
+        installLeakWatchdog()
         installFlagsChangedTap()
 
         // End momentum tails before sleep and at quit: macOS 27 force-cancels a
@@ -304,7 +302,7 @@ final class InputInjector: @unchecked Sendable {
         if let obs = displayObserver { NotificationCenter.default.removeObserver(obs) }
         if let obs = willSleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(obs) }
         if let obs = willTerminateObserver { NotificationCenter.default.removeObserver(obs) }
-        leakWatchdogTimer?.invalidate()
+        leakWatchdogTimer.map { CFRunLoopTimerInvalidate($0) }
         if let src = flagsChangedTapSource {
             CFRunLoopRemoveSource(HIDThread.shared.runLoop, src, .commonModes)
             flagsChangedTapSource = nil
@@ -676,7 +674,7 @@ final class InputInjector: @unchecked Sendable {
     // A 1 Hz backstop that runs regardless of activity, for when
     // `lastAuxButtons` is stuck (e.g. unplugged mid-press).
 
-    private var leakWatchdogTimer: Timer?
+    private var leakWatchdogTimer: CFRunLoopTimer?
     /// Timestamp of the last groundTruthSyntheticFlags mutation.
     var lastSyntheticFlagChangeAt: Date = .distantPast
     /// Timestamp of the last tablet HID report (inject / injectAux / injectMouseButtons).
@@ -747,68 +745,74 @@ final class InputInjector: @unchecked Sendable {
         if let timer { CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes) }
     }
 
+    /// Schedules the 1 Hz leak check on HIDThread in common modes, so a menu,
+    /// a modal, or a stalled main thread can't hold it off. Nonisolated, unlike
+    /// `init`, so the handler doesn't inherit main's isolation.
+    private func installLeakWatchdog() {
+        let timer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + 1.0, 1.0, 0, 0
+        ) { [weak self] _ in self?.checkLeakWatchdog() }
+        leakWatchdogTimer = timer
+        CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+    }
+
     /// 1 Hz leak check, which works even if `lastAuxButtons` is corrupt. Fires
-    /// after 3 s with flags unchanged, the tablet idle, and nothing held. Runs
-    /// from main and hops to HIDThread.
+    /// after 3 s with flags unchanged, the tablet idle, and nothing held.
     private func checkLeakWatchdog() {
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) { [weak self] in
-            guard let self else { return }
-            let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
-            let penIdleInterval = Date().timeIntervalSince(self.lastPenInjectCallAt)
+        let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
+        let penIdleInterval = Date().timeIntervalSince(self.lastPenInjectCallAt)
 
-            // Stuck-proximity backstop. If `lastProximity` latches true (a lost exit
-            // report), this much pen silence is proof, so force the exit. Gated on pen
-            // idleness, not general idleness: touch frames kept the general timer fresh
-            // and once hid a stuck pen for a whole session. Touch arbitration itself uses
-            // `touchPenConfirmedBusy`.
-            if self.lastProximity, penIdleInterval > Self.stuckProximityTimeout,
-                let snap = self.injectionSnapshot
-            {
-                injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (pen idle \(Int(penIdleInterval))s)")
-                TouchPipelineProbe.note { $0.penProximityForcedExits += 1 }
-                self.commitProximityExit(snap: snap)
-            }
+        // Stuck-proximity backstop. If `lastProximity` latches true (a lost exit
+        // report), this much pen silence is proof, so force the exit. Gated on pen
+        // idleness, not general idleness: touch frames kept the general timer fresh
+        // and once hid a stuck pen for a whole session. Touch arbitration itself uses
+        // `touchPenConfirmedBusy`.
+        if self.lastProximity, penIdleInterval > Self.stuckProximityTimeout,
+            let snap = self.injectionSnapshot
+        {
+            injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (pen idle \(Int(penIdleInterval))s)")
+            TouchPipelineProbe.note { $0.penProximityForcedExits += 1 }
+            self.commitProximityExit(snap: snap)
+        }
 
-            // Touch streams while a finger is down, so a held drag with no
-            // frames for a second lost its lift.
-            if self.touchDragPosition != nil,
-               CFAbsoluteTimeGetCurrent() - self.lastTouchFrameTime > 1.0,
-               let snap = self.injectionSnapshot {
-                injectLog.notice("leak-watchdog: releasing stranded touch drag")
-                self.releaseTouchDrag(snapshot: snap)
-            }
+        // Touch streams while a finger is down, so a held drag with no
+        // frames for a second lost its lift.
+        if self.touchDragPosition != nil,
+           CFAbsoluteTimeGetCurrent() - self.lastTouchFrameTime > 1.0,
+           let snap = self.injectionSnapshot {
+            injectLog.notice("leak-watchdog: releasing stranded touch drag")
+            self.releaseTouchDrag(snapshot: snap)
+        }
 
-            if !self.groundTruthSyntheticFlags.isEmpty {
-                let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
-                // As with the idle watchdog above, a device that only reports on state
-                // change (Xencelabs QuickKeys) can sit idle for a long legitimate hold —
-                // trust the last known button state, not just elapsed time.
-                if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
-                    modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
-                    self.releaseAllSyntheticModifiers()
-                }
-            }
-
-            // Same check for a plain key held by a `.keyCombo` binding.
-            if !self.heldKeyComboRefCounts.isEmpty {
-                let heldInterval = Date().timeIntervalSince(self.lastKeyComboChangeAt)
-                if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
-                    modLog.notice("leak-watchdog: releasing stuck keyCombo keys \(Array(self.heldKeyComboRefCounts.keys), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
-                    self.releaseAllHeldKeyComboKeys()
-                }
-            }
-
-            // Same check for the shared store, looking across every device.
-            let shared = SharedAuxModifierState.shared
-            if !shared.groundTruthFlags.isEmpty {
-                let sharedHeldInterval = Date().timeIntervalSince(shared.lastChangeAt)
-                if sharedHeldInterval > 3.0 && idleInterval > 3.0 && !Self.anyAuxControlHeld {
-                    modLog.notice("leak-watchdog: releasing stuck shared aux flags 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public) (held \(Int(sharedHeldInterval))s)")
-                    self.releaseSharedAuxModifiers()
-                }
+        if !self.groundTruthSyntheticFlags.isEmpty {
+            let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
+            // As with the idle watchdog above, a device that only reports on state
+            // change (Xencelabs QuickKeys) can sit idle for a long legitimate hold —
+            // trust the last known button state, not just elapsed time.
+            if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
+                modLog.notice("leak-watchdog: releasing stuck synthetic flags 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
+                self.releaseAllSyntheticModifiers()
             }
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+
+        // Same check for a plain key held by a `.keyCombo` binding.
+        if !self.heldKeyComboRefCounts.isEmpty {
+            let heldInterval = Date().timeIntervalSince(self.lastKeyComboChangeAt)
+            if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
+                modLog.notice("leak-watchdog: releasing stuck keyCombo keys \(Array(self.heldKeyComboRefCounts.keys), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
+                self.releaseAllHeldKeyComboKeys()
+            }
+        }
+
+        // Same check for the shared store, looking across every device.
+        let shared = SharedAuxModifierState.shared
+        if !shared.groundTruthFlags.isEmpty {
+            let sharedHeldInterval = Date().timeIntervalSince(shared.lastChangeAt)
+            if sharedHeldInterval > 3.0 && idleInterval > 3.0 && !Self.anyAuxControlHeld {
+                modLog.notice("leak-watchdog: releasing stuck shared aux flags 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public) (held \(Int(sharedHeldInterval))s)")
+                self.releaseSharedAuxModifiers()
+            }
+        }
     }
 
     // MARK: - Last pen sample
