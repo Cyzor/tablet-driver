@@ -153,7 +153,8 @@ final class ToolSettings: ObservableObject {
     @Published private var pen1Raw: String = "" {
         didSet {
             persist("penButton1Binding", pen1Raw)
-            _pen1Binding = ButtonBinding.decode(pen1Raw) ?? .rightClick
+            // A mouse's buttons default to left, right, and middle; a pen's lower side button to right.
+            _pen1Binding = ButtonBinding.decode(pen1Raw) ?? (isMouse ? .leftClick : .rightClick)
         }
     }
 
