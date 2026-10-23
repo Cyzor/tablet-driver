@@ -519,6 +519,48 @@ do {
         "a single-sample run must keep its decode: \(lines)")
 }
 
+do {
+    // A strip swipe keeps its touch-down verbatim and its zones in order,
+    // so the log shows which way the finger moved.
+    let pad = { (zone: Int?) -> [TabletEvent] in
+        [.pad(PadState(buttons: [], strips: [StripState(position: nil), StripState(position: zone)]))]
+    }
+    let zones: [Int?] = [nil, 0, 0, 1, 2, 3, 3, 4, nil]
+    let samples = zones.enumerated().map { i, zone in
+        HIDCapture.Sample(
+            elapsed: Double(i) * 0.01, tag: "Test Device", reportID: 0x0C, length: 10,
+            hex: String(format: "0C %02X", zone ?? 0xFF), decoded: pad(zone),
+            signature: HIDCapture.signature(for: pad(zone)))
+    }
+    let lines = condenseAll(samples)
+    expect(
+        lines.contains { $0.contains("0C 00") && $0.contains("→ aux buttons=[] strip2=0") },
+        "touch-down must stay verbatim with its zone: \(lines)")
+    expect(
+        lines.contains { $0.contains("steady-state") && $0.contains("strip2:0→1→2→3→4") },
+        "the run must list zones in arrival order: \(lines)")
+    expect(
+        !lines.contains { $0.contains("strip1") },
+        "an untouched strip must not appear: \(lines)")
+}
+
+do {
+    // A long ring scrub keeps only each end of its path.
+    let pad = { (position: Int) -> [TabletEvent] in
+        [.pad(PadState(buttons: [], rings: [RingState(position: position, buttonDown: false)]))]
+    }
+    let samples = (0..<40).map { i in
+        HIDCapture.Sample(
+            elapsed: Double(i) * 0.01, tag: "Test Device", reportID: 0x0C, length: 10,
+            hex: String(format: "0C %02X", i), decoded: pad(i),
+            signature: HIDCapture.signature(for: pad(i)))
+    }
+    let lines = condenseAll(samples)
+    expect(
+        lines.contains { $0.contains("ring1:0→1→") && $0.contains("→…→") && $0.contains("→38→39 ") },
+        "a long path must elide its middle: \(lines)")
+}
+
 if failures > 0 {
     FileHandle.standardError.write(Data("hid-capture-condense-tests: \(failures)/\(checks) checks FAILED\n".utf8))
     exit(1)

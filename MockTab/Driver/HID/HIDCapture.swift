@@ -85,6 +85,10 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         var eraser: Bool?
         var buttonsDown: [Bool]?
         var toolEnterSerial: UInt32?
+        /// Finger on each ring and strip, then each ring button, so a
+        /// touch or lift is a transition like pen proximity.
+        var padContacts: [Bool]?
+        var padMode: Int?
         var hasOneShotEvent: Bool  // toolEnter/battery/wireless/toolCompatibility/mouseButton/wheel present this report
         /// True when this sample has no decoder. Two undecoded samples must
         /// never compare equal — otherwise every all-nil signature would
@@ -95,6 +99,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             if lhs.isUndecoded || rhs.isUndecoded { return false }
             return lhs.inProximity == rhs.inProximity && lhs.eraser == rhs.eraser
                 && lhs.buttonsDown == rhs.buttonsDown && lhs.toolEnterSerial == rhs.toolEnterSerial
+                && lhs.padContacts == rhs.padContacts && lhs.padMode == rhs.padMode
                 && lhs.hasOneShotEvent == rhs.hasOneShotEvent
         }
     }
@@ -403,7 +408,16 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 return "toolEnter serial=\(CaptureSerialRedaction.standIn(forPenSerial: t.serial)) code=0x\(String(t.toolCode, radix: 16)) eraser=\(t.isEraser) mouse=\(t.isMouse)"
             case .pad(let a):
                 let downs = a.buttons.enumerated().filter { $0.element }.map { String($0.offset) }
-                return "aux buttons=[\(downs.joined(separator: ","))]"
+                var fields = ["aux buttons=[\(downs.joined(separator: ","))]"]
+                for (i, ring) in a.rings.enumerated() {
+                    if let position = ring.position { fields.append("ring\(i + 1)=\(position)") }
+                    if ring.buttonDown { fields.append("ring\(i + 1)Button") }
+                }
+                for (i, strip) in a.strips.enumerated() {
+                    if let position = strip.position { fields.append("strip\(i + 1)=\(position)") }
+                }
+                if let mode = a.hardwareMode { fields.append("mode=\(mode)") }
+                return fields.joined(separator: " ")
             case .device(let event):
                 switch event.kind {
                 case .wireless:
@@ -460,6 +474,10 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 ]
             case .pad(let a):
                 sig.buttonsDown = a.buttons
+                sig.padContacts =
+                    a.rings.map { $0.position != nil } + a.strips.map { $0.position != nil }
+                    + a.rings.map(\.buttonDown)
+                sig.padMode = a.hardwareMode
             case .tool(let event):
                 // Leave is new with TabletEvent; ignored so condensing is unchanged.
                 if event.phase == .enter {
@@ -540,6 +558,9 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         /// Non-pen content, so a decoded touch or pad run doesn't read as
         /// undecoded.
         private var touchContactRange: ClosedRange<Int>?
+        /// Ring and strip positions in arrival order, keyed "ring1",
+        /// "strip2", and so on, so the log shows which way a finger moved.
+        private var padPaths: [String: PositionPath] = [:]
         private var otherKinds: Set<String> = []
         private var maxSeenDeltaX = 0
         private var maxSeenDeltaY = 0
@@ -587,7 +608,14 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 switch result {
                 case .touch(let frame):
                     touchContactRange = Self.extend(touchContactRange, with: frame.contacts.count)
-                case .pad: otherKinds.insert("buttons")
+                case .pad(let a):
+                    otherKinds.insert("buttons")
+                    for (i, ring) in a.rings.enumerated() {
+                        if let position = ring.position { padPaths["ring\(i + 1)", default: PositionPath()].append(position) }
+                    }
+                    for (i, strip) in a.strips.enumerated() {
+                        if let position = strip.position { padPaths["strip\(i + 1)", default: PositionPath()].append(position) }
+                    }
                 case .device(let event) where event.kind == .remotePairing: otherKinds.insert("pairing table")
                 default: break
                 }
@@ -660,6 +688,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 fields.append("rot@hover[\(rendered.joined(separator: " "))]")
             }
             if let r = touchContactRange { fields.append("touch contacts:\(r.lowerBound)-\(r.upperBound)") }
+            fields += padPaths.keys.sorted().map { "\($0):\(padPaths[$0]!.rendered)" }
             fields += otherKinds.sorted().map { "\($0) unchanged" }
             // Undecoded samples never join a run (see `Signature.isUndecoded`),
             // so an empty field list here means decoded with nothing to range.
@@ -677,6 +706,32 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
 
         static func pad(_ tag: String) -> String {
             tag.count <= 20 ? tag + String(repeating: " ", count: 20 - tag.count) : String(tag.prefix(20))
+        }
+    }
+
+    /// Distinct positions in arrival order. A long scrub keeps only each end.
+    fileprivate struct PositionPath {
+        private static let shownEachEnd = 12
+        private var head: [Int] = []
+        private var tail: [Int] = []
+        private var last: Int?
+        private var steps = 0
+
+        mutating func append(_ position: Int) {
+            guard position != last else { return }
+            last = position
+            steps += 1
+            if head.count < Self.shownEachEnd {
+                head.append(position)
+                return
+            }
+            tail.append(position)
+            if tail.count > Self.shownEachEnd { tail.removeFirst() }
+        }
+
+        var rendered: String {
+            let elided = steps - head.count - tail.count > 0 ? ["…"] : []
+            return (head.map(String.init) + elided + tail.map(String.init)).joined(separator: "→")
         }
     }
 
