@@ -207,6 +207,16 @@ struct DisplayMapper {
         }
     }
 
+    /// Turns a tilt vector the way `orient` turns a position, so a pen leaning
+    /// toward you on a turned tablet still reads as leaning toward you. A
+    /// vector has no origin, so the maxima are zero.
+    static func orientTilt(
+        x: Double, y: Double, orientation: TabletOrientation
+    ) -> (x: Double, y: Double) {
+        let o = orient(x: x, y: y, maxX: 0, maxY: 0, orientation: orientation)
+        return (o.ox, o.oy)
+    }
+
     /// Rotates a raw-space crop rect (fractions of the raw axes) into
     /// oriented-space fractions, by running the rect's two opposite corners
     /// through `orient` (with maxX=maxY=1, the fraction-space unit square)

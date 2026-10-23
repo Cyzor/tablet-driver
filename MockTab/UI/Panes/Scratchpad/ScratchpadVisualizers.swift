@@ -47,6 +47,7 @@ struct TouchVisualizer: View {
 /// noise and unrelated X/Y movement are filtered out for free.
 struct TiltVisualizerCanvas: View {
     @ObservedObject var tabletManager: TabletManager
+    let orientation: TabletOrientation
     /// Incremented by the `livePointPublisher` subscription below. It must be
     /// read in `body` (see the `let _` line) to register as a dependency —
     /// a `@State` write to a value the body never reads does not invalidate
@@ -64,8 +65,11 @@ struct TiltVisualizerCanvas: View {
         // changes that wouldn't move the dot don't trigger redraws.
         let raw = tabletManager.activeContext?.livePoint
         let inProximity = raw?.inProximity == true
-        let tx: Double = inProximity ? quantize(raw!.tiltX) : 0.0
-        let ty: Double = inProximity ? quantize(raw!.tiltY) : 0.0
+        let turned = inProximity
+            ? DisplayMapper.orientTilt(x: raw!.tiltX, y: raw!.tiltY, orientation: orientation)
+            : (x: 0.0, y: 0.0)
+        let tx = quantize(turned.x)
+        let ty = quantize(turned.y)
         return TiltDisc(tiltX: tx, tiltY: ty).equatable()
             .accessibilityElement()
             .accessibilityAddTraits(.isStaticText)

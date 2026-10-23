@@ -214,7 +214,7 @@ struct ScratchpadView: View {
                     .lineLimit(1)
                     .accessibilityHidden(true)
 
-                TiltVisualizerCanvas(tabletManager: tabletManager)
+                TiltVisualizerCanvas(tabletManager: tabletManager, orientation: settings.tabletOrientation)
                     .scaledFrame(width: 100, height: 100)
                     .help("Live tilt direction and magnitude from the active pen.")
             }

@@ -367,11 +367,13 @@ extension InputInjector {
     ) -> (tiltX: Double, tiltY: Double, rotation: Double) {
         let tool = snapshot.activeTool
 
-        var tiltX = point.tiltX
+        let turned = DisplayMapper.orientTilt(
+            x: point.tiltX, y: point.tiltY, orientation: snapshot.tabletOrientation)
+        var tiltX = turned.x
         // One blanket flip, matched to the vendor drivers at the app (Rebelle's flat
         // brush, 2026-09-05). Decoders disagree on native sign, so correcting each
         // first would mean two guesses instead of one.
-        var tiltY = -point.tiltY
+        var tiltY = -turned.y
         let rotation = point.rotation
 
         if tool.useRotationAsTilt && point.rotation != 0.0 {
