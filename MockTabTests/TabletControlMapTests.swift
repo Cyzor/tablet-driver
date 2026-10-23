@@ -18,7 +18,6 @@ struct TabletControlMapTests {
     /// registry, then take the model out of this list.
     private static let knownCountMismatches: Set<Int> = [
         0x0017, 0x0018, 0x0065,  // Bamboo Fun CTE-450/650, MTE-450: a Center row, but no center button
-        0x0026, 0x0314,  // PTH-450, PTH-451: registry says 8 keys, libwacom 6
         0x03F5,  // PTK-470: registry says 5 keys, libwacom 4 and a dial toggle
         0x00D0,  // CTT-460: registry says no keys, libwacom 4
         0x00C5,  // Cintiq 20WSX: registry says 10 keys, libwacom 14
