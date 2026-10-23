@@ -190,7 +190,7 @@ struct QuickKeysSectionView: View {
                     .labelsHidden()
                     .fixedSize()
                 }
-                .help("Which way up the Quick Keys reads, for holding it rotated or left-handed.")
+                .help("Which way up the Quick Keys reads, so its labels face you however you hold it.")
 
                 HStack {
                     Image(systemName: "sun.max")

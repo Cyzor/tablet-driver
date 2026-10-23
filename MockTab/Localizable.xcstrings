@@ -8822,29 +8822,6 @@
         }
       }
     },
-    "Flip 180° for left-handed use or reversed cable routing." : {
-      "comment" : "Tablet orientation help text",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Um 180° drehen, praktisch für Linkshänder oder umgekehrte Kabelführung."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gira 180° para usarla con la izquierda o con el cable al otro lado."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "180°回転します。左利きの場合や、ケーブルを逆側に回す場合に便利です。"
-          }
-        }
-      }
-    },
     "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation." : {
       "localizations" : {
         "de" : {
@@ -17652,6 +17629,29 @@
         }
       }
     },
+    "Rotate the active surface 180°, with the tablet's long edge horizontal." : {
+      "comment" : "Tablet orientation help text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dreh die aktive Fläche um 180°; die lange Kante des Tabletts bleibt waagerecht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gira la superficie activa 180°, con el borde largo de la tableta en horizontal."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクティブ面を180°回転させます。タブレットの長辺は水平のままです。"
+          }
+        }
+      }
+    },
     "Rotated display. Check where the pen lands." : {
       "comment" : "Warning message for rotated display",
       "localizations" : {
@@ -22157,24 +22157,24 @@
         }
       }
     },
-    "Which way up the Quick Keys reads, for holding it rotated or left-handed." : {
+    "Which way up the Quick Keys reads, so its labels face you however you hold it." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie herum die Quick Keys ablesbar sind – etwa wenn sie gedreht oder linkshändig gehalten werden."
+            "value" : "Wie herum die Quick Keys ablesbar sind, damit die Beschriftungen zu dir zeigen, egal wie du sie hältst."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hacia dónde se lee la pantalla de las Quick Keys, para sostenerlas giradas o con la mano izquierda."
+            "value" : "Hacia dónde se lee la pantalla de las Quick Keys, para que leas las etiquetas como sea que las sostengas."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Keys の表示の向き。回して持つときや左手で持つときに使います。"
+            "value" : "Quick Keys の表示の向き。どう持ってもラベルが読めるように合わせます。"
           }
         }
       }

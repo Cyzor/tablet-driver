@@ -147,7 +147,7 @@ extension TabletOrientation {
         switch self {
         case .landscape:        return "Standard orientation, with the tablet's long edge horizontal."
         case .portrait:         return "Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation."
-        case .landscapeFlipped: return "Flip 180° for left-handed use or reversed cable routing."
+        case .landscapeFlipped: return "Rotate the active surface 180°, with the tablet's long edge horizontal."
         case .portraitFlipped:  return "Rotate the active surface 90° counter-clockwise."
         }
     }
