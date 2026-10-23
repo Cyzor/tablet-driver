@@ -178,9 +178,9 @@ private struct PenDiagramCore: View, Equatable {
 
 extension PenRecipe {
     /// The barrel for a tool, with its button count and eraser. Grip and Art
-    /// Pens are classic, Pro Pen 2 and 3 slim, Art Pen 2 and the Xencelabs 3
-    /// Button Pen their own, and the rest straight; an airbrush is a fatter straight
-    /// barrel for now.
+    /// Pens are classic, Pro Pen 2 and 3 slim (the Pro Pen 2 with a rocker),
+    /// Art Pen 2 and the Xencelabs 3 Button Pen their own, and the rest
+    /// straight; an airbrush is a fatter straight barrel for now.
     init(tool: ToolSpec?, buttonCount: Int, hasEraser: Bool? = nil) {
         let name = tool?.name ?? ""
         var recipe: PenRecipe
@@ -193,6 +193,7 @@ extension PenRecipe {
         default:
             if tool == nil || name.contains("Grip Pen") || name == "Pro Pen" { recipe = .classic }
             else if name.hasPrefix("Xencelabs 3") { recipe = .xencelabs }
+            else if name.hasPrefix("Pro Pen 2") { recipe = .slim; recipe.buttons = .rocker(dot: false) }
             else if name.hasPrefix("Pro Pen") { recipe = .slim }
             else { recipe = .straight }
         }
