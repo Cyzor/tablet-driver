@@ -235,6 +235,9 @@ extension TabletFigure {
             /// this direction in radians (0 right, π/2 down); `rect` is the
             /// whole pad.
             case wedge(Double)
+            /// One half of a round button split in two, centered on this
+            /// direction; `rect` is the whole button.
+            case half(Double)
         }
         var kind: Kind
         var rect: CGRect
@@ -318,8 +321,17 @@ extension TabletFigure.Drawing {
     /// Rings, dials, and a pad's keys answer by where in their circle a click lands.
     static func isRound(_ kind: TabletFigure.Shape.Kind) -> Bool {
         switch kind {
-        case .ring, .dial, .wedge, .button: return true
+        case .ring, .dial, .wedge, .half, .button: return true
         default: return false
+        }
+    }
+
+    /// A pad key's or a split button half's direction, and half the angle it spans.
+    static func sector(_ kind: TabletFigure.Shape.Kind) -> (direction: Double, spread: Double)? {
+        switch kind {
+        case let .wedge(direction): return (direction, .pi / 4)
+        case let .half(direction): return (direction, .pi / 2)
+        default: return nil
         }
     }
 
@@ -331,11 +343,11 @@ extension TabletFigure.Drawing {
             let r = shape.rect
             let dx = point.x - r.midX, dy = point.y - r.midY
             guard hypot(dx, dy) <= r.width / 2 else { continue }
-            if case let .wedge(direction) = shape.kind {
-                // The quarter whose middle is nearest the click's direction.
-                var turn = atan2(dy, dx) - direction
+            if let sector = Self.sector(shape.kind) {
+                // The quarter or half whose middle is nearest the click's direction.
+                var turn = atan2(dy, dx) - sector.direction
                 turn = atan2(sin(turn), cos(turn))
-                if abs(turn) <= .pi / 4 { return target }
+                if abs(turn) <= sector.spread { return target }
                 continue
             }
             return target
@@ -393,6 +405,28 @@ extension TabletFigure {
         }
         guard Set(around.map { $0.letter }).count == 4 else { return nil }
         return (center: center, around: around)
+    }
+
+    /// Two keys alone on a 2×2 grid's diagonal: one round button split in
+    /// two, each key's offset along the edge and inward from it, −1 or 1.
+    /// Nil for any other shape.
+    static func split(_ grid: TabletLayoutIdentity.Grid)
+        -> [(letter: Character, along: Double, inward: Double)]? {
+        let rows = grid.rows
+        guard rows.count == 2, rows.allSatisfy({ $0.count == 2 }) else { return nil }
+        var keys: [(letter: Character, along: Double, inward: Double)] = []
+        for (r, row) in rows.enumerated() {
+            for (c, cell) in row.enumerated() {
+                switch cell {
+                case let .key(letter): keys.append((letter, r == 0 ? -1 : 1, c == 0 ? -1 : 1))
+                case .empty: continue
+                default: return nil
+                }
+            }
+        }
+        guard keys.count == 2, keys[0].letter != keys[1].letter,
+              keys[0].along != keys[1].along, keys[0].inward != keys[1].inward else { return nil }
+        return keys
     }
 
     /// The bezel's sizes. With `band`, a figure with controls: its bands that
@@ -467,9 +501,10 @@ extension TabletFigure {
         return !controls.indices.contains(index)
     }
 
+    /// Pads and split round buttons, which size like rings.
     private var hasPads: Bool {
         (controls ?? []).contains { part in
-            if case let .cluster(grid) = part.entry { return Self.pad(grid) != nil }
+            if case let .cluster(grid) = part.entry { return Self.pad(grid) != nil || Self.split(grid) != nil }
             return false
         }
     }
@@ -729,6 +764,12 @@ extension TabletFigure {
                  let (.ring, .ring(_, .beside(grid))?) where TabletFigure.pad(grid) != nil:
                 return padShapes(TabletFigure.pad(grid)!, box: rect(from: start, length: pixels(length), depth: pixels(length)),
                                  side: side, pixels: pixels, snap: snap)
+            case let (.cluster, .cluster(grid)?) where TabletFigure.split(grid) != nil:
+                let box = rect(from: start, length: pixels(length), depth: pixels(length))
+                return TabletFigure.split(grid)!.map { key in
+                    let (dx, dy) = Self.screenOffset(along: key.along, inward: key.inward, side: side)
+                    return Shape(kind: .half(atan2(dy, dx)), rect: box, target: controls?.keys[key.letter])
+                }
             case let (.cluster, .cluster(grid)?):
                 let columns = grid.rows.first?.count ?? 1
                 let depth = pixels(min(laneDepth * 0.8, m.keyDepth * Double(columns)))
@@ -789,17 +830,20 @@ extension TabletFigure {
                                                             width: c, height: c),
                                 target: controls?.keys[pad.center])]
             for key in pad.around {
-                // Along the edge and inward from it, turned to screen directions.
-                let (dx, dy): (Double, Double)
-                switch side {
-                case .top: (dx, dy) = (key.along, key.inward)
-                case .bottom: (dx, dy) = (key.along, -key.inward)
-                case .left: (dx, dy) = (key.inward, key.along)
-                case .right: (dx, dy) = (-key.inward, key.along)
-                }
+                let (dx, dy) = Self.screenOffset(along: key.along, inward: key.inward, side: side)
                 shapes.append(Shape(kind: .wedge(atan2(dy, dx)), rect: box, target: controls?.keys[key.letter]))
             }
             return shapes
+        }
+
+        /// An offset along the edge and inward from it, turned to screen directions.
+        static func screenOffset(along: Double, inward: Double, side: Side) -> (dx: Double, dy: Double) {
+            switch side {
+            case .top: return (along, inward)
+            case .bottom: return (along, -inward)
+            case .left: return (inward, along)
+            case .right: return (-inward, along)
+            }
         }
 
         /// A grid's keys, and the ring or dial among them, in rows along the
@@ -886,9 +930,9 @@ extension TabletFigure {
             item.length = Double(item.keyCount) * item.keyLength + Double(item.keyCount - 1) * item.keyGap
         }
         switch (part.control, controls?.entry) {
-        case let (.cluster, .cluster(grid)?) where Self.pad(grid) != nil,
+        case let (.cluster, .cluster(grid)?) where Self.pad(grid) != nil || Self.split(grid) != nil,
              let (.ring, .ring(_, .beside(grid))?) where Self.pad(grid) != nil:
-            // A round pad takes the same size as the rings and dials.
+            // A round pad or split button takes the same size as the rings and dials.
             item.length = min(m.round, laneDepth * 0.92)
         case let (.ring, .ring(_, .beside(grid))?), let (.dial, .dial(_, .beside(grid))?):
             // The ring shrinks to leave room for its keys' columns.
@@ -1539,10 +1583,10 @@ extension TabletFigure {
         for shape in d.shapes {
             guard let target = shape.target else { continue }
             var x = shape.rect.midX, y = shape.rect.midY
-            if case let .wedge(direction) = shape.kind {
+            if let sector = Drawing.sector(shape.kind) {
                 // A pad's key sits partway out from its middle, toward its direction.
-                x += shape.rect.width / 4 * cos(direction)
-                y += shape.rect.width / 4 * sin(direction)
+                x += shape.rect.width / 4 * cos(sector.direction)
+                y += shape.rect.width / 4 * sin(sector.direction)
             }
             let s = sums[target] ?? (0, 0, 0)
             sums[target] = (s.x + x, s.y + y, s.n + 1)

@@ -143,7 +143,7 @@ enum TabletFigureInk {
                 let r = shape.rect
                 let path: Path
                 switch shape.kind {
-                case .ring, .dial, .center, .wedge, .button:
+                case .ring, .dial, .center, .wedge, .half, .button:
                     path = Path(ellipseIn: r)
                 case .strip:
                     path = Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
@@ -250,7 +250,7 @@ enum TabletDiagramInk {
         var blocks: [CGRect] = []
         for shape in d.shapes where shape.kind != .mark && shape.kind != .center {
             switch shape.kind {
-            case .wedge:
+            case .wedge, .half:
                 if pads.contains(shape.rect) { continue }
                 pads.append(shape.rect)
                 body.addPath(path(shape, outset: gap, corner: u))
@@ -296,7 +296,7 @@ enum TabletDiagramInk {
     private static func path(_ shape: TabletFigure.Shape, outset: CGFloat = 0, corner: CGFloat) -> Path {
         let r = shape.rect.insetBy(dx: -outset, dy: -outset)
         switch shape.kind {
-        case .ring, .dial, .center, .wedge, .button: return Path(ellipseIn: r)
+        case .ring, .dial, .center, .wedge, .half, .button: return Path(ellipseIn: r)
         case .strip: return Path(roundedRect: r, cornerRadius: min(r.width, r.height) / 2)
         case .key, .cluster, .mark:
             return Path(roundedRect: r, cornerRadius: min(corner, min(r.width, r.height) / 2) + outset, style: .continuous)
@@ -305,8 +305,22 @@ enum TabletDiagramInk {
 
     /// The face that fills: a ring is an annulus, so its hole stays clear; a
     /// pad's key is a quarter of the ring around its center, cleared apart
-    /// from its neighbors by `gap`.
+    /// from its neighbors by `gap`; a split button's half stops `gap` short
+    /// of the other.
     private static func face(_ shape: TabletFigure.Shape, scale: CGFloat, gap: CGFloat, corner: CGFloat) -> Path {
+        if case let .half(direction) = shape.kind {
+            let r = shape.rect
+            let outer = r.width / 2
+            // The arc ends where the circle meets the cut, half a gap off the diameter;
+            // closing the path draws the cut.
+            let reach = asin(min(gap / 2 / outer, 1))
+            var half = Path()
+            half.addArc(center: CGPoint(x: r.midX, y: r.midY), radius: outer,
+                        startAngle: .radians(direction - .pi / 2 + reach), endAngle: .radians(direction + .pi / 2 - reach),
+                        clockwise: false)
+            half.closeSubpath()
+            return half
+        }
         if case let .wedge(direction) = shape.kind {
             let r = shape.rect
             let center = CGPoint(x: r.midX, y: r.midY)

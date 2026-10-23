@@ -65,9 +65,11 @@ struct TabletFigureControlsTests {
                 #expect([r.minX, r.minY, r.maxX, r.maxY].allSatisfy { abs(($0 * scale).rounded() - $0 * scale) < 1e-6 },
                         "\(name): \(a.kind) on whole pixels \(r)")
                 for b in shapes[(i + 1)...] {
-                    // A center sits inside its ring or pad; a pad's keys share its circle.
+                    // A center sits inside its ring or pad; a pad's keys and a split
+                    // button's halves share one circle.
                     if a.kind == .center || b.kind == .center { continue }
-                    if case .wedge = a.kind, case .wedge = b.kind, a.rect == b.rect { continue }
+                    if TabletFigure.Drawing.sector(a.kind) != nil, TabletFigure.Drawing.sector(b.kind) != nil,
+                       a.rect == b.rect { continue }
                     let overlap = a.rect.intersection(b.rect)
                     #expect(overlap.isNull || overlap.width * overlap.height <= slack * slack / 4,
                             "\(name): \(a.kind) and \(b.kind) apart")
@@ -94,13 +96,35 @@ struct TabletFigureControlsTests {
                 let point: CGPoint
                 switch shape.kind {
                 case .ring, .dial: point = CGPoint(x: r.midX, y: r.minY + r.height * 0.1)
-                case let .wedge(direction):
+                case .wedge, .half:
+                    let direction = TabletFigure.Drawing.sector(shape.kind)!.direction
                     point = CGPoint(x: r.midX + cos(direction) * r.width * 0.35, y: r.midY + sin(direction) * r.width * 0.35)
                 default: point = CGPoint(x: r.midX, y: r.midY)
                 }
                 #expect(d.target(at: point) == target, "\(name): \(shape.kind) answers for \(target)")
             }
             #expect(d.target(at: CGPoint(x: d.surface.midX, y: d.surface.midY)) == nil, "\(name): the surface answers nothing")
+        }
+    }
+
+    @Test("Two keys on a diagonal draw as one round button split in two")
+    func splitButtons() throws {
+        let intuos = try #require(Self.figures.first { $0.name.contains("CTH-490") }?.figure)
+        let d = intuos.drawing(.bezel, in: Self.frames[0], scale: 2)
+        let halves = d.shapes.filter { if case .half = $0.kind { return true } else { return false } }
+        #expect(halves.count == 4, "two halves in each top corner")
+        let circles = halves.map(\.rect).reduce(into: [CGRect]()) { if !$0.contains($1) { $0.append($1) } }
+        #expect(circles.count == 2, "each pair shares one circle")
+        #expect(Set(halves.compactMap(\.target)).count == 4, "each half is its own key")
+        #expect(!d.shapes.contains { $0.kind == .key || $0.kind == .cluster }, "no square keys left over")
+    }
+
+    @Test("A ring's center button lights in the Buttons pane")
+    func ringCenters() throws {
+        for model in ["PTH-660", "PTH-860", "PTH-850", "PTK-1240"] {
+            let figure = try #require(Self.figures.first { $0.name.contains(model) }?.figure)
+            let d = figure.drawing(.bezel, in: Self.frames[2], scale: 2)
+            #expect(d.shapes.contains { $0.kind == .center && $0.target == .ringCenter(0) }, "\(model)'s center lights")
         }
     }
 
@@ -199,10 +223,11 @@ struct TabletFigureControlsTests {
                 d.shapes.reduce(into: [:]) { spots, shape in
                     guard let t = shape.target, shape.kind != .center else { return }
                     var x = shape.rect.midX, y = shape.rect.midY
-                    // A pad's keys share its circle; aim at each one's quarter.
-                    if case let .wedge(direction) = shape.kind {
-                        x += cos(direction) * shape.rect.width * 0.35
-                        y += sin(direction) * shape.rect.width * 0.35
+                    // A pad's keys and a split button's halves share one circle;
+                    // aim at each one's part of it.
+                    if let sector = TabletFigure.Drawing.sector(shape.kind) {
+                        x += cos(sector.direction) * shape.rect.width * 0.35
+                        y += sin(sector.direction) * shape.rect.width * 0.35
                     }
                     spots[t] = CGPoint(x: (x - d.body.minX) / d.body.width, y: (y - d.body.minY) / d.body.height)
                 }
