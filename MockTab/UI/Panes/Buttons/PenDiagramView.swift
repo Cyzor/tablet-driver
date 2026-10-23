@@ -293,34 +293,34 @@ private struct MouseDiagramCore: View, Equatable {
                                              y: (size.height - frame.height * scale) / 2))
     }
 
-    /// The outline, its inner edge, and the body.
+    /// The outline's path and the body inside its gap.
     static let shell: (outer: Path, body: Path) = {
         var outer = Path()
-        outer.move(to: CGPoint(x: 56.74, y: 157.34))
-        outer.addCurve(to: CGPoint(x: 14.74, y: 115.34), control1: CGPoint(x: 33.58, y: 157.34), control2: CGPoint(x: 14.74, y: 138.5))
-        outer.addLine(to: CGPoint(x: 14.74, y: 48.66))
-        outer.addCurve(to: CGPoint(x: 48.74, y: 14.66), control1: CGPoint(x: 14.74, y: 29.91), control2: CGPoint(x: 29.99, y: 14.66))
-        outer.addLine(to: CGPoint(x: 64.74, y: 14.66))
-        outer.addCurve(to: CGPoint(x: 98.74, y: 48.66), control1: CGPoint(x: 83.49, y: 14.66), control2: CGPoint(x: 98.74, y: 29.91))
-        outer.addLine(to: CGPoint(x: 98.74, y: 115.33))
-        outer.addCurve(to: CGPoint(x: 56.74, y: 157.33), control1: CGPoint(x: 98.74, y: 138.49), control2: CGPoint(x: 79.9, y: 157.33))
+        outer.move(to: CGPoint(x: 56.74, y: 159.34))
+        outer.addCurve(to: CGPoint(x: 12.74, y: 115.34), control1: CGPoint(x: 32.48, y: 159.34), control2: CGPoint(x: 12.74, y: 139.6))
+        outer.addLine(to: CGPoint(x: 12.74, y: 48.66))
+        outer.addCurve(to: CGPoint(x: 48.74, y: 12.66), control1: CGPoint(x: 12.74, y: 28.81), control2: CGPoint(x: 28.89, y: 12.66))
+        outer.addLine(to: CGPoint(x: 64.74, y: 12.66))
+        outer.addCurve(to: CGPoint(x: 100.74, y: 48.66), control1: CGPoint(x: 84.59, y: 12.66), control2: CGPoint(x: 100.74, y: 28.81))
+        outer.addLine(to: CGPoint(x: 100.74, y: 115.33))
+        outer.addCurve(to: CGPoint(x: 56.74, y: 159.33), control1: CGPoint(x: 100.74, y: 139.59), control2: CGPoint(x: 81, y: 159.33))
         outer.closeSubpath()
 
         var body = Path()
-        body.move(to: CGPoint(x: 64.74, y: 16.66))
-        body.addLine(to: CGPoint(x: 48.74, y: 16.66))
-        body.addCurve(to: CGPoint(x: 16.74, y: 48.66), control1: CGPoint(x: 31.07, y: 16.66), control2: CGPoint(x: 16.74, y: 30.99))
-        body.addLine(to: CGPoint(x: 16.74, y: 115.33))
-        body.addCurve(to: CGPoint(x: 56.74, y: 155.33), control1: CGPoint(x: 16.74, y: 137.42), control2: CGPoint(x: 34.65, y: 155.33))
-        body.addCurve(to: CGPoint(x: 96.74, y: 115.33), control1: CGPoint(x: 78.83, y: 155.33), control2: CGPoint(x: 96.74, y: 137.42))
-        body.addLine(to: CGPoint(x: 96.74, y: 48.66))
-        body.addCurve(to: CGPoint(x: 64.74, y: 16.66), control1: CGPoint(x: 96.74, y: 30.99), control2: CGPoint(x: 82.41, y: 16.66))
+        body.move(to: CGPoint(x: 56.74, y: 157.34))
+        body.addCurve(to: CGPoint(x: 14.74, y: 115.34), control1: CGPoint(x: 33.58, y: 157.34), control2: CGPoint(x: 14.74, y: 138.5))
+        body.addLine(to: CGPoint(x: 14.74, y: 48.66))
+        body.addCurve(to: CGPoint(x: 48.74, y: 14.66), control1: CGPoint(x: 14.74, y: 29.91), control2: CGPoint(x: 29.99, y: 14.66))
+        body.addLine(to: CGPoint(x: 64.74, y: 14.66))
+        body.addCurve(to: CGPoint(x: 98.74, y: 48.66), control1: CGPoint(x: 83.49, y: 14.66), control2: CGPoint(x: 98.74, y: 29.91))
+        body.addLine(to: CGPoint(x: 98.74, y: 115.33))
+        body.addCurve(to: CGPoint(x: 56.74, y: 157.33), control1: CGPoint(x: 98.74, y: 138.49), control2: CGPoint(x: 79.9, y: 157.33))
         body.closeSubpath()
         return (outer, body)
     }()
 
-    /// The buttons, in drawing space. Without side buttons the middle
-    /// column keeps only its middle key.
+    /// Each button's slot, in drawing space; its face sits a border's width
+    /// inside. Without side buttons the middle column keeps only its middle key.
     static func parts(hasSideButtons: Bool) -> [(part: MouseDiagramView.Part, path: Path)] {
         var left = Path()
         left.move(to: CGPoint(x: 20.74, y: 88.01))
@@ -377,11 +377,17 @@ private struct MouseDiagramCore: View, Equatable {
                 layer.blendMode = .destinationOut
                 for (_, path) in parts { layer.fill(path.applying(t), with: .color(.black)) }
             }
+            // Each face a unit inside its slot, leaving a border like the pen's.
+            let border = 2 * hypot(t.a, t.b)
             for (part, path) in parts {
                 let p = path.applying(t)
                 let isDown = down.contains(part)
-                context.fill(p, with: .color(isDown && !muffled ? accent : passive))
-                if pressedPart == part { context.fill(p, with: .color(.primary.opacity(0.15))) }
+                context.drawLayer { layer in
+                    layer.fill(p, with: .color(isDown && !muffled ? accent : passive))
+                    if pressedPart == part { layer.fill(p, with: .color(.primary.opacity(0.15))) }
+                    layer.blendMode = .destinationOut
+                    layer.stroke(p, with: .color(.black), lineWidth: border)
+                }
                 if isDown && muffled { context.stroke(p, with: .color(.primary), lineWidth: 1) }
             }
         }
