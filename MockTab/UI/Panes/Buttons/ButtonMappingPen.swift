@@ -21,25 +21,41 @@ extension ButtonMappingView {
             // draws at one height, so the rows below don't move when the tool
             // changes. No label column; transparent so the section background
             // shows through unchanged. Clicking a part starts recording in its
-            // binding row — parts whose row isn't shown (mouse tools, missing
-            // buttons) stay inert.
-            PenDiagramView(liveButtons: lb, recipe: PenRecipe(tool: toolSpec, buttonCount: isMouse ? 3 : btnCount, hasEraser: penHasEraser), onPartTap: { part in
-                switch part {
-                case .tip: if !isMouse { penRecordTokens[0] += 1 }
-                case .eraser: if !isMouse { penRecordTokens[1] += 1 }
-                case .button1: if btnCount >= 1 { penRecordTokens[2] += 1 }
-                case .button2: if btnCount >= 2 { penRecordTokens[3] += 1 }
-                case .button3: if btnCount >= 3 { penRecordTokens[4] += 1 }
+            // binding row; parts whose row isn't shown stay inert.
+            Group {
+                if isMouse {
+                    // Intuos-family mice, like the KC-100, have buttons 4 and 5 around
+                    // the middle one, whatever the catalog counts; Graphire mice don't.
+                    MouseDiagramView(liveButtons: lb, wheelTurning: mouseWheelTurning,
+                                     hasSideButtons: !(toolSpec?.name.hasPrefix("Graphire") ?? false)) { part in
+                        switch part {
+                        case .left: penRecordTokens[2] += 1
+                        case .right: penRecordTokens[3] += 1
+                        case .middle: penRecordTokens[4] += 1
+                        case .button4: penRecordTokens[5] += 1
+                        case .button5: penRecordTokens[6] += 1
+                        }
+                    }
+                } else {
+                    PenDiagramView(liveButtons: lb, recipe: PenRecipe(tool: toolSpec, buttonCount: btnCount, hasEraser: penHasEraser), onPartTap: { part in
+                        switch part {
+                        case .tip: penRecordTokens[0] += 1
+                        case .eraser: penRecordTokens[1] += 1
+                        case .button1: if btnCount >= 1 { penRecordTokens[2] += 1 }
+                        case .button2: if btnCount >= 2 { penRecordTokens[3] += 1 }
+                        case .button3: if btnCount >= 3 { penRecordTokens[4] += 1 }
+                        }
+                    }, enabledParts: {
+                        var parts: Set<PenDiagramView.Part> = [.tip, .eraser]
+                        if btnCount >= 1 { parts.insert(.button1) }
+                        if btnCount >= 2 { parts.insert(.button2) }
+                        if btnCount >= 3 { parts.insert(.button3) }
+                        return parts
+                    }())
                 }
-            }, enabledParts: {
-                var parts: Set<PenDiagramView.Part> = []
-                if !isMouse { parts.insert(.tip); parts.insert(.eraser) }
-                if btnCount >= 1 { parts.insert(.button1) }
-                if btnCount >= 2 { parts.insert(.button2) }
-                if btnCount >= 3 { parts.insert(.button3) }
-                return parts
-            }())
-                .frame(maxWidth: .infinity, minHeight: 44, maxHeight: 64)
+            }
+                // An upright mouse needs more height than a pen lying flat.
+                .frame(maxWidth: .infinity, minHeight: isMouse ? 160 : 44, maxHeight: isMouse ? 180 : 64)
                 .listRowInsets(EdgeInsets(top: 14, leading: 8, bottom: 14, trailing: 8))
                 .listRowBackground(Color.clear)
 
@@ -102,7 +118,8 @@ extension ButtonMappingView {
                     Self.penButtonLabel(4, count: btnCount, isMouse: isMouse),
                     isActive: lb.button4Down,
                     binding: pen4Binding,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
+                    recordRequestToken: penRecordTokens[5])
             }
             // Button 5
             if btnCount >= 5 {
@@ -110,12 +127,14 @@ extension ButtonMappingView {
                     Self.penButtonLabel(5, count: btnCount, isMouse: isMouse),
                     isActive: lb.button5Down,
                     binding: pen5Binding,
-                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
+                    modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
+                    recordRequestToken: penRecordTokens[6])
             }
 
             // Wheel row — airbrush fingerwheel or scroll wheel
             if hasWheel {
-                buttonRow(Self.wheelLabel(tool: toolSpec), isActive: false, binding: wheelBinding, modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
+                buttonRow(Self.wheelLabel(tool: toolSpec), isActive: isMouse && mouseWheelTurning, binding: wheelBinding,
+                          modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial)
             }
         } header: {
             PaneSectionHeader(isMouse ? "Mouse Buttons" : "Pen Buttons") {

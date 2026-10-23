@@ -407,6 +407,11 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Buttons pane lights it from this.
     @Published var dialsTurning: [Bool] = [false, false]
 
+    /// A mouse's wheel, true while it's turning, so the Buttons pane lights it.
+    @Published var mouseWheelTurning = false
+    /// When the mouse wheel last stepped, in system uptime.
+    var mouseWheelLastStep: TimeInterval = 0
+
     /// Subscriptions managed by this context (e.g., to TabletManager for change propagation).
     var cancellables: Set<AnyCancellable> = []
 

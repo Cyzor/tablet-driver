@@ -972,6 +972,7 @@ final class TabletManager: ObservableObject {
                 context.activeToolID = nil
                 context.activeToolCode = 0
                 context.liveButtons = LiveButtonState()
+                context.mouseWheelTurning = false
                 context.livePoint = nil
                 return
             }
@@ -985,6 +986,10 @@ final class TabletManager: ObservableObject {
             // tab isn't visible. This eliminates every @Published write during
             // normal drawing use, including when MockTab is backgrounded.
             guard appIsFrontmost && infoViewVisible else { return }
+
+            // Ahead of the throttle, which would drop most single wheel steps.
+            let now = ProcessInfo.processInfo.systemUptime
+            if point.mouseWheelDelta != 0 { context.mouseWheelLastStep = now }
 
             // Throttle continuous updates to ~16 Hz.
             self.uiUpdateCounter += 1
@@ -1008,7 +1013,8 @@ final class TabletManager: ObservableObject {
                 eraserDown: tipDown && point.eraser,
                 button1Down: point.penButton1,
                 button2Down: point.penButton2,
-                button3Down: point.penButton3,
+                // A mouse's middle button stands in the third slot, which mice leave empty.
+                button3Down: point.penButton3 || (toolIsMouse && point.mouseMiddleButton),
                 button4Down: point.penButton4,
                 button5Down: point.penButton5,
                 expressKeys: context.liveButtons.expressKeys,
@@ -1022,6 +1028,10 @@ final class TabletManager: ObservableObject {
             )
             // Only assign when values changed — avoids spurious objectWillChange.
             if newButtons != context.liveButtons { context.liveButtons = newButtons }
+            // Lit from a step until the wheel has been still a moment; a mouse
+            // in range keeps reporting, so the next update turns it off.
+            let wheelTurning = toolIsMouse && now - context.mouseWheelLastStep < 0.35
+            if wheelTurning != context.mouseWheelTurning { context.mouseWheelTurning = wheelTurning }
             context.livePoint = point
             } // end Task @MainActor
         }

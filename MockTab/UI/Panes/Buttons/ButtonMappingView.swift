@@ -23,8 +23,8 @@ struct ButtonMappingView: View {
     /// Bumped when the ring diagram's center is clicked, starting recording
     /// in the Center row's binding field — direct manipulation on the diagram.
     @State var centerRecordToken = 0
-    /// Same for the pen diagram's parts: tip, eraser, buttons 1–3.
-    @State var penRecordTokens = [0, 0, 0, 0, 0]
+    /// Same for the pen and mouse diagrams' parts: tip, eraser, buttons 1–5.
+    @State var penRecordTokens = [0, 0, 0, 0, 0, 0, 0]
     /// Same for the tablet diagram's keys and the second dial's toggle.
     @State var keyRecordTokens = Array(repeating: 0, count: 16)
     @State var dial2RecordToken = 0
@@ -44,6 +44,12 @@ struct ButtonMappingView: View {
     var dialsTurning: [Bool] {
         guard controlActiveState == .key, !isLiveResizing else { return [false, false] }
         return liveSource?.dialsTurning ?? [false, false]
+    }
+
+    /// The mouse wheel's turning state, zeroed like `liveButtons`.
+    var mouseWheelTurning: Bool {
+        guard controlActiveState == .key, !isLiveResizing else { return false }
+        return liveSource?.mouseWheelTurning ?? false
     }
 
     private var liveSource: DeviceContext? {
