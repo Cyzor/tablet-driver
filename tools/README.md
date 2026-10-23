@@ -45,6 +45,10 @@ Older capture files may contain a device serial number. `triage_discovery.py` fl
 
 `key-order.sh` checks a Wacom tablet's key order for the Buttons pane's tablet diagram. It shows one key at a time where it sits on the tablet, records which control the tablet reports, and writes the result with each key's raw report. Keep MockTab running while it does.
 
+## recording-check/
+
+`run.sh` replays hid-recorder files of Wacom tablets through TabletKit's decoders. It compares each report with the tablet's own bits, read the way the Linux kernel reads them, and counts where they disagree: contact, proximity, eraser, barrel buttons, tool identity, pad keys, rings, strips, and touch. It also counts presses that merge, split, or appear from nothing, with the raw bytes of the worst. Run it before asking for a new capture, to see which report format needs the work. Pass the recordings as arguments; none ship with the repo.
+
 ## latency/ and event-probe/
 
 `latency/` measures the time from a tablet report to the cursor moving. `latency_ab.sh` compares MockTab with another driver, and `strain-bench.sh` measures MockTab with the CPU, GPU, or memory under load. `event-probe/` records the events a driver posts so you can find fields MockTab leaves out.
