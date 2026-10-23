@@ -130,12 +130,12 @@ struct SettingsPane<Content: View>: View {
                 Form { content() }
                     .formStyle(.grouped)
                     .scrollContentBackground(.hidden)
-                    .environment(\.scrollPaneTo) { id in
+                    .environment(\.scrollPaneTo, ScrollPaneAction { id in
                         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
                         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
                             proxy.scrollTo(id, anchor: .center)
                         }
-                    }
+                    })
             }
             DeviceStatusBar(
                 settings: settings, tabletManager: tabletManager, registry: registry,
@@ -483,8 +483,15 @@ private struct WindowWidthFloor: ViewModifier {
     }
 }
 
+/// Scrolls the pane's form to the row with this ID, for a diagram click
+/// whose row is out of view. Always equal, so a pane redraw doesn't count as
+/// a change for the diagram; the proxy it wraps lasts as long as the pane.
+struct ScrollPaneAction: Equatable {
+    let scroll: (AnyHashable) -> Void
+    func callAsFunction(_ id: AnyHashable) { scroll(id) }
+    static func == (lhs: Self, rhs: Self) -> Bool { true }
+}
+
 extension EnvironmentValues {
-    /// Scrolls the pane's form to the row with this ID, for a diagram click
-    /// whose row is out of view.
-    @Entry var scrollPaneTo: (AnyHashable) -> Void = { _ in }
+    @Entry var scrollPaneTo = ScrollPaneAction { _ in }
 }
