@@ -20,6 +20,14 @@ The active area is the portion of the tablet surface that maps to the screen. Pe
 
 **Reset to Full Area** – Restores the active area to the entire tablet surface. This action supports undo (⌘Z).
 
+## Orientation
+
+Choose the orientation whose picture matches how the tablet sits on your desk. In the Tablet Area pane, ⌘⌥1 through ⌘⌥4 choose them in order. The pen, touch, and tilt follow the choice, and the Buttons pane draws the tablet as it sits.
+
+Turning the tablet moves each assignment to the key now in its place, so every place keeps its action, in every profile and app override. Undo restores the orientation and the assignments together.
+
+**Turn Assignments Around** – Right-click the tablet drawing in the Buttons pane to move each assignment to the key in the opposite place without changing the orientation. Choose it again to put everything back.
+
 ## Calibration (Pen Displays)
 
 The **Calibrate…** button opens a full-screen overlay where crosshair targets appear for tapping with the pen tip. This process corrects the parallax gap between the pen tip and the on-screen cursor that the display glass introduces.

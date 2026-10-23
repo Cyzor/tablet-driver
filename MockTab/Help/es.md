@@ -20,6 +20,14 @@ El área activa es la parte de la superficie de la tableta que se asigna a la pa
 
 **Restablecer a área completa** – Restablece el área activa a toda la superficie de la tableta. Esta acción se puede deshacer con ⌘Z.
 
+## Orientación
+
+Elige la orientación cuya imagen coincida con cómo está la tableta en tu mesa. En el panel Área de tableta, ⌘⌥1 a ⌘⌥4 las eligen por orden. El lápiz, el toque y la inclinación siguen la elección, y el panel Botones dibuja la tableta tal como está.
+
+Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, así que cada lugar conserva su acción, en todos los perfiles y overrides por app. Deshacer restaura a la vez la orientación y las asignaciones.
+
+**Invertir asignaciones** – Haz clic derecho en el dibujo de la tableta del panel Botones para pasar cada asignación a la tecla del lugar opuesto sin cambiar la orientación. Elígelo de nuevo para dejarlo todo como estaba.
+
 ## Calibración (pen displays)
 
 El botón **Calibrar…** abre una superposición a pantalla completa con cruces para tocar con la punta del lápiz. Este proceso corrige la separación por paralaje entre la punta del lápiz y el cursor en pantalla que introduce el cristal.

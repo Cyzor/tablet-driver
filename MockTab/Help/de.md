@@ -20,6 +20,14 @@ Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bilds
 
 **Auf Vollbereich zurücksetzen** – Stellt den aktiven Bereich auf die gesamte Grafiktablett-Oberfläche zurück. Diese Aktion lässt sich mit ⌘Z rückgängig machen.
 
+## Ausrichtung
+
+Wähle die Ausrichtung, deren Bild zeigt, wie das Grafiktablett auf deinem Tisch liegt. Im Grafiktablett-Bereich wählen ⌘⌥1 bis ⌘⌥4 sie der Reihe nach. Stift, Berührung und Neigung folgen der Wahl, und der Tasten-Bereich zeigt das Grafiktablett so, wie es liegt.
+
+Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt. So behält jede Stelle ihre Aktion, in jedem Profil und jedem App-Override. Rückgängig stellt Ausrichtung und Belegungen gemeinsam wieder her.
+
+**Belegung umdrehen** – Klicke mit der rechten Maustaste auf das Grafiktablett im Tasten-Bereich, um jede Belegung auf die gegenüberliegende Taste zu verschieben, ohne die Ausrichtung zu ändern. Ein zweites Mal stellt alles wieder her.
+
 ## Kalibrierung (Pen-Displays)
 
 Die Schaltfläche **Kalibrieren…** öffnet ein Vollbild-Overlay mit Fadenkreuzen, die du mit der Stiftspitze antippst. Dieser Vorgang korrigiert den Parallaxenversatz zwischen Stiftspitze und Bildschirmcursor, der durch das Displayglas entsteht.
