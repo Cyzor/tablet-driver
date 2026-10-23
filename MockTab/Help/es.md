@@ -70,7 +70,11 @@ Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado
 
 Pulsa cualquier botón mientras la ventana está abierta para resaltar su posición; así puedes identificar qué botón físico corresponde a cada ranura de asignación. Al hacer clic en una parte del diagrama — la punta, el borrador o un botón lateral — comienza la grabación de una nueva asignación para esa parte.
 
-**Hover drag** – Mantén pulsado Button 1 (el botón lateral inferior) mientras el lápiz flota sobre la superficie para mover el cursor sin tocar con la punta y hacer gestos de arrastre en el aire.
+**Hover drag** – Mantén pulsado un botón con clic izquierdo, derecho o central mientras el lápiz flota para arrastrar sin tocar la superficie.
+
+## Ratones
+
+Un ratón o puck de Wacom tiene su propio diagrama y sus propias filas de botones. Sus tres primeros botones empiezan como clic izquierdo, derecho y central.
 
 ## Diagrama de la tableta
 
@@ -78,14 +82,14 @@ El diagrama muestra la posición de las teclas, anillos y diales de una tableta.
 
 ## Tipos de asignación
 
-- **Botones del ratón** – Clic izquierdo, derecho, central o doble clic  
+- **Botones del ratón** – Clic izquierdo, derecho y central, doble clic y bloqueo de clic, que mantiene pulsado el botón izquierdo hasta la siguiente pulsación  
 - **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
 - **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
-- **Acciones especiales** – Cambiar pantalla, Distribuir en pantallas, Borrador, selección de modo del Touch Ring  
+- **Acciones especiales** – Desplazar vista, Borrador, Barra espaciadora, Escape, Cambiar pantalla, Distribuir en pantallas, Cambiar modo relativo y modos de anillos, diales y franjas  
 
 ## Touch Ring y dial
 
-Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto.
+Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto. En las Cintiq 21UX2 y 22HD, cada franja tiene sus propios modos y un botón **Cambiar franja** al lado.
 
 **Desplazar** – Convierte el anillo o dial en una rueda de desplazamiento. La velocidad es un multiplicador: 1× equivale a una línea por paso.
 
@@ -94,6 +98,10 @@ Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece co
 **Tecla** – Envía un atajo de teclado en cada dirección.
 
 En Zoom y Girar la velocidad va de Desactivado a Máximo en lugar de un número.
+
+## Pantallas de teclas
+
+Una Intuos4 con pantallas de teclas muestra la acción de cada tecla a su lado mientras está conectada por USB. Las pantallas se atenúan tras 5 minutos sin actividad y se apagan a los 10. Cualquier uso del lápiz o de una tecla las reactiva.
 
 ## Iluminación
 
@@ -114,6 +122,10 @@ La barra de overrides de la parte superior permite asignar botones distintos a u
 Las tabletas con superficie táctil capacitiva informan de los contactos de los dedos junto con la entrada del lápiz. MockTab lo mantiene desactivado de forma predeterminada; activa **Habilitar toque con el dedo** para usarlo. La respuesta varía según la app.
 
 **Tocar para hacer clic** – Un toque breve sin movimiento apreciable envía un clic izquierdo.
+
+**Clic derecho con dos dedos** – Un toque breve con dos dedos, separados el ancho de una yema, envía un clic derecho.
+
+**Arrastrar con tres dedos** – Al apoyar tres dedos a la vez, el botón del ratón queda pulsado. Muévelos para arrastrar y levántalos para soltar.
 
 **Velocidad del cursor** – Ajusta la velocidad del puntero al arrastrar con un solo dedo. Los valores más bajos permiten un control más fino; los más altos cubren más distancia con menos movimiento.
 

@@ -38,7 +38,7 @@ The pressure curve controls how pen pressure maps to output pressure. A concave 
 
 Dampens pressure noise near the low end of the sensor's range, which otherwise shows up as uneven line width on slow, light strokes. Firm pressure is left alone.
 
-## Stabilization
+## Steadiness
 
 Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but may add input lag.
 
@@ -72,7 +72,11 @@ Pan View coasts briefly after release when its momentum setting (in Pen Feel) is
 
 Press any button while the window is open to highlight its position; this helps identify which physical button maps to which assignment slot. Clicking a part of the diagram — the tip, the eraser, or a barrel button — starts recording a new assignment for it.
 
-**Hover drag** – Hold Button 1 (the lower barrel button) while the pen hovers above the surface to move the cursor without tip contact and perform drag gestures in mid-air.
+**Hover drag** – Hold a button set to Left, Right, or Middle Click while the pen hovers to drag without touching the surface.
+
+## Mice
+
+A Wacom mouse or puck gets its own diagram and button rows. Its first three buttons start as Left, Right, and Middle Click.
 
 ## Tablet Diagram
 
@@ -80,14 +84,14 @@ The diagram depicts positions of a tablet's keys, rings, and dials. Click a comp
 
 ## Assignment Types
 
-- **Mouse buttons** – Left, Right, Middle click, or Double-click  
+- **Mouse buttons** – Left, Right, and Middle Click, Double Click, and Click Lock, which holds the left button down until the next press  
 - **Keyboard shortcuts** – click the shortcut field and press any key combination  
 - **Modifier holds** – ⌘ ⌥ ⇧ ⌃ held for as long as the button remains pressed  
-- **Special actions** – Toggle Display, Span Displays, Eraser, Touch Ring mode selection  
+- **Special actions** – Pan View, Eraser, Spacebar, Escape, Toggle Display, Span Displays, Toggle Relative Mode, and ring, dial, and strip modes  
 
 ## Touch Ring and Dial
 
-Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode.
+Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode. On the Cintiq 21UX2 and 22HD, each strip has its own modes and a **Strip Toggle** button beside it.
 
 **Scroll** – Turns the ring or dial into a scroll wheel. Speed is a multiplier, where 1× gives one scroll line per step.
 
@@ -96,6 +100,10 @@ Rings, dials, and touch strips support multiple mode slots. Each mode appears as
 **Key** – Sends a keyboard shortcut for each direction.
 
 Zoom and Rotate show a speed from Off to Max rather than a number.
+
+## Key Displays
+
+An Intuos4 with key displays shows each key's action beside it while connected by USB. The displays dim after 5 minutes without input and turn off after 10. Any pen or key input wakes them.
 
 ## Lighting
 
@@ -113,11 +121,15 @@ The app override bar at the top assigns different buttons for a specific applica
 
 ## Touch
 
-Tablets with a capacitive touch surface report finger contacts alongside pen input. MockTab keeps this disabled by default. Enable **Enable finger touch** to use it.  Response varies by app.
+Tablets with a capacitive touch surface report finger contacts alongside pen input. MockTab keeps this disabled by default. Turn on **Enable Finger Touch** to use it. Response varies by app.
 
-**Tap to click** – A brief touch with no significant motion produces a left click.
+**Tap to Click** – A brief touch with no significant motion produces a left click.
 
-**Cursor speed** – Scales pointer movement from a single-finger drag. Lower values allow fine control, while higher values cover more distance with less motion.
+**Two-Finger Right-Click** – A brief touch with two fingers, a fingertip's width apart, produces a right click.
+
+**Three-Finger Drag** – Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go.
+
+**Cursor Speed** – Scales pointer movement from a single-finger drag. Lower values allow fine control, while higher values cover more distance with less motion.
 
 ## Gestures
 

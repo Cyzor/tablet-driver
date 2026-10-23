@@ -72,7 +72,11 @@ Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitsein
 
 Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuheben; so erkennst du, welcher physische Knopf welchem Zuordnungsslot entspricht. Wenn du auf einen Teil des Diagramms klickst — die Spitze, den Radierer oder eine Barrel-Taste — startet die Aufzeichnung einer neuen Zuordnung dafür.
 
-**Hover drag** – Halte Button 1 (die untere Barrel-Taste) gedrückt, während der Stift über der Oberfläche schwebt, um den Cursor ohne Spitzenkontakt zu bewegen und Drag-Gesten in der Luft auszuführen.
+**Hover drag** – Halte eine Taste mit Links-, Rechts- oder Mittelklick gedrückt, während der Stift schwebt, um zu ziehen, ohne die Oberfläche zu berühren.
+
+## Mäuse
+
+Eine Wacom-Maus oder ein Puck bekommt ein eigenes Diagramm und eigene Tastenzeilen. Die ersten drei Tasten starten als Links-, Rechts- und Mittelklick.
 
 ## Tablett-Diagramm
 
@@ -80,14 +84,14 @@ Das Diagramm zeigt, wo Tasten, Ringe und Dials eines Grafiktabletts sitzen. Klic
 
 ## Zuordnungstypen
 
-- **Maustasten** – Links-, Rechts-, Mittelklick oder Doppelklick  
+- **Maustasten** – Links-, Rechts- und Mittelklick, Doppelklick und Klick-Verriegelung, die die linke Taste bis zum nächsten Druck gedrückt hält  
 - **Tastaturkürzel** – Klicke ins Shortcut-Feld und drücke eine beliebige Tastenkombination  
 - **Gehaltene Modifikatortasten** – ⌘ ⌥ ⇧ ⌃ bleiben gedrückt, solange die Taste gehalten wird  
-- **Spezialaktionen** – Display umschalten, Auf Displays verteilen, Radierer, Auswahl des Touch-Ring-Modus  
+- **Spezialaktionen** – Ansicht schwenken, Radierer, Leertaste, Escape, Display umschalten, Auf Displays verteilen, Relativen Modus umschalten sowie Modi für Ringe, Dials und Leisten  
 
 ## Berührungsring und Dial
 
-Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen.
+Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen. Beim Cintiq 21UX2 und 22HD hat jede Leiste eigene Modi und daneben eine Taste **Leiste umschalten**.
 
 **Scrollen** – Macht aus Ring oder Dial ein Scrollrad. Die Geschwindigkeit ist ein Faktor: 1× entspricht einer Scrollzeile pro Schritt.
 
@@ -96,6 +100,10 @@ Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus ersc
 **Taste** – Sendet für jede Richtung ein Tastenkürzel.
 
 Bei Zoomen und Drehen reicht die Geschwindigkeit von Aus bis Maximum statt einer Zahl.
+
+## Tastendisplays
+
+Ein Intuos4 mit Tastendisplays zeigt per USB neben jeder Taste ihre Aktion an. Nach 5 Minuten ohne Eingabe werden die Displays gedimmt, nach 10 schalten sie sich ab. Jede Stift- oder Tasteneingabe weckt sie wieder.
 
 ## Beleuchtung
 
@@ -116,6 +124,10 @@ Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wi
 Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzlich zur Stifteingabe. MockTab lässt das standardmäßig ausgeschaltet; aktiviere **Fingereingabe aktivieren**, um es zu verwenden. Die Reaktion hängt von der App ab.
 
 **Tippen zum Klicken** – Eine kurze Berührung ohne nennenswerte Bewegung sendet einen Linksklick.
+
+**Rechtsklick mit zwei Fingern** – Eine kurze Berührung mit zwei Fingern, etwa eine Fingerkuppe breit auseinander, sendet einen Rechtsklick.
+
+**Mit drei Fingern ziehen** – Setzt du drei Finger gleichzeitig auf, bleibt die Maustaste gedrückt. Bewege sie zum Ziehen und heb sie zum Loslassen ab.
 
 **Zeigergeschwindigkeit** – Skaliert die Zeigerbewegung bei einer Ein-Finger-Drag-Geste. Niedrigere Werte erlauben feinere Kontrolle, höhere decken mit weniger Bewegung mehr Strecke ab.
 
