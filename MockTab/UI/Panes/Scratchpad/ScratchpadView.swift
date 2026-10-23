@@ -229,7 +229,8 @@ struct ScratchpadView: View {
 
                     TouchVisualizer(
                         liveTouch: liveTouch,
-                        maxContacts: spec?.maxTouchContacts ?? 10
+                        maxContacts: spec?.maxTouchContacts ?? 10,
+                        orientation: settings.tabletOrientation
                     )
                     .scaledFrame(width: 100, height: 100)
                     .help("Live finger-touch contacts from the active device's touch surface.")
