@@ -406,14 +406,19 @@ final class SettingsWindowManager: ObservableObject {
 
     /// Rebuilds the windows open at last quit, one per main-queue turn, so
     /// tablet arrivals queued behind them don't wait for the whole stack,
-    /// then shows them together.
+    /// then shows them together. `showAlongside` runs in that same turn, just
+    /// before them, so other restored windows (Help) appear with the stack
+    /// and sit behind it.
     /// Call after `TabletManager.start()`.
-    func restoreWindows() {
+    func restoreWindows(showAlongside: @escaping () -> Void) {
         guard
             let entries = UserDefaults.standard.array(forKey: Self.restorationKey)
                 as? [[String: Any]],
             !entries.isEmpty
-        else { return }
+        else {
+            showAlongside()
+            return
+        }
 
         // Saved identity: composite "deviceID" string (current format), with
         // pre-instance saves falling back to the bare "productID" Int (read
@@ -461,9 +466,12 @@ final class SettingsWindowManager: ObservableObject {
             }
             pending.append(RestoreEntry(index: index, key: instanceKey, entry: entry))
         }
-        guard !pending.isEmpty else { return }
+        guard !pending.isEmpty else {
+            showAlongside()
+            return
+        }
         isRestoring = true
-        restoreNext(pending[...], created: [])
+        restoreNext(pending[...], created: [], showAlongside: showAlongside)
     }
 
     private struct RestoreEntry {
@@ -474,10 +482,12 @@ final class SettingsWindowManager: ObservableObject {
 
     private func restoreNext(
         _ pending: ArraySlice<RestoreEntry>,
-        created: [(wc: SettingsWindowController, entry: [String: Any])]
+        created: [(wc: SettingsWindowController, entry: [String: Any])],
+        showAlongside: @escaping () -> Void
     ) {
         guard let next = pending.first else {
             isRestoring = false
+            showAlongside()
             regroupRestoredWindows(created)
             return
         }
@@ -498,7 +508,9 @@ final class SettingsWindowManager: ObservableObject {
         // Built hidden; the last step shows the whole stack in one frame.
         wc.prepareTab(at: tabIndex)
         DispatchQueue.main.async { [self] in
-            restoreNext(pending.dropFirst(), created: created + [(wc, entry)])
+            restoreNext(
+                pending.dropFirst(), created: created + [(wc, entry)],
+                showAlongside: showAlongside)
         }
     }
 
@@ -570,6 +582,9 @@ final class SettingsWindowManager: ObservableObject {
     /// through `focusWindow(id:)`, whose "generic" branch calls
     /// `ensureDefaultWindow()` and *does* allocate.
     private func frontExistingWindow(forProductID productID: Int) {
+        // Restore shows its windows together at the end; raising one early
+        // makes connected tablets' windows appear before the rest.
+        guard !isRestoring else { return }
         let key = resolveKey(forProductID: productID)
         guard let wc = window(for: key) else { return }
         wc.orderFront()

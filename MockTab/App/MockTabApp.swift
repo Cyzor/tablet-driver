@@ -52,13 +52,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // After the driver starts, so the pen works while windows build.
         DisplayInfo.prewarmThumbnails()
         InfoView.prewarmSystemQueries()
-        SettingsWindowManager.shared.restoreWindows()
+        SettingsWindowManager.shared.restoreWindows {
+            HelpWindowController.shared.restoreIfWasOpen()
+        }
 
         // Only open a fresh window on first launch — subsequent launches
         // restore their windows via SettingsWindowManager.restoreWindows().
         DispatchQueue.main.async {
             SettingsWindowManager.shared.showIfNoSavedSession()
-            HelpWindowController.shared.restoreIfWasOpen()
         }
 
         // Track app focus to gate live state updates.  When MockTab is backgrounded,
