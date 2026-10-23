@@ -7,8 +7,8 @@
 # time, no history of past snapshots is kept. Nothing is public until you
 # click Publish on GitHub.
 #
-# This does NOT touch MARKETING_VERSION, does not create a version tag, and
-# is unrelated to the v*-triggered path in release.yml. Use this for
+# This doesn't touch MARKETING_VERSION, doesn't create a version tag, and has
+# nothing to do with release.yml. Use this for
 # "here's roughly where main stands" between real releases, not as a
 # substitute for tagging an actual version.
 #
