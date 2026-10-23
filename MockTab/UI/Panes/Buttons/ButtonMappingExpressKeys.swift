@@ -319,7 +319,6 @@ extension ButtonMappingView {
     // Indices  3– 7 = left express keys
     // Indices  8–10 = right toggle buttons (near ring, mirror)
     // Indices 11–15 = right express keys (mirror)
-    // Both rings share the same mode setting (mirrored behavior).
 
     @ViewBuilder
     func dualSidedSection(lb: LiveButtonState) -> some View {
@@ -343,7 +342,7 @@ extension ButtonMappingView {
         }
 
         Section {
-            touchRingSlotsSection(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRingActive, showsDiagram: true)
+            touchRingSlotsSection(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: rotaryActive(place: 0, lb: lb), showsDiagram: true)
         } header: {
             sideHeader(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), place: 0)
         }
@@ -365,7 +364,8 @@ extension ButtonMappingView {
         }
 
         Section {
-            touchRingSlotsSection(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: lb.touchRing2Active, showsDiagram: true)
+            touchRingSlotsSection(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), isActive: rotaryActive(place: 1, lb: lb), showsDiagram: true,
+                                  ring: .secondary)
         } header: {
             sideHeader(String(localized: "Touch Ring", comment: "Section header / row label for touch ring"), place: 1)
         }
