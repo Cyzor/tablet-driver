@@ -287,7 +287,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                     .frame(width: w, height: h)
                     .offset(x: x, y: y)
                     .gesture(cropGesture(.body, cs: cs))
-                    .cursor(.openHand, active: dragAnchor == nil)
+                    .areaPointer(.grab, active: dragAnchor == nil)
             }
             .frame(width: cs.width, height: cs.height, alignment: .topLeading)
             .clipShape(RoundedRectangle(cornerRadius: canvasOpening ?? 0, style: .continuous))
@@ -379,7 +379,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .offset(x: offset.0, y: offset.1)
             .gesture(cropGesture(edge, cs: cs))
             .simultaneousGesture(TapGesture(count: 2).onEnded { fitShape(from: edge) })
-            .cursor(edgeCursor(edge), active: dragAnchor == nil)
+            .areaPointer(edgePointer(edge), active: dragAnchor == nil)
     }
 
     /// Visible midpoint handle, positioned in the same canvas-absolute
@@ -417,7 +417,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .offset(x: pos.0 - s / 2, y: pos.1 - s / 2)
             .gesture(cropGesture(corner, cs: cs))
             .simultaneousGesture(TapGesture(count: 2).onEnded { fitShape(from: corner) })
-            .cursor(.crosshair, active: dragAnchor == nil)
+            .areaPointer(.crosshair, active: dragAnchor == nil)
     }
 
     /// A single handle dot — solid accent fill for the embedded editors,
@@ -467,9 +467,10 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
                 draftRect = nil
                 cornerDominantAxisIsWidth = nil
                 isSnapped = false
-                // The pointer may have left the handle mid-drag, when hover
-                // was ignored; the next move over a handle sets its cursor.
-                NSCursor.arrow.set()
+                // Before macOS 15 the pointer may have left the handle
+                // mid-drag, when hover was ignored; the next move over a
+                // handle sets its cursor.
+                if #unavailable(macOS 15) { NSCursor.arrow.set() }
             }
     }
 
@@ -737,7 +738,7 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
         return draft
     }
 
-    private func edgeCursor(_ edge: CropEdge) -> NSCursor {
+    private func edgePointer(_ edge: CropEdge) -> AreaPointer {
         switch edge {
         case .top, .bottom: return .resizeUpDown
         case .left, .right: return .resizeLeftRight
@@ -863,16 +864,51 @@ enum AreaSpokenSize {
     }
 }
 
-// MARK: - Cursor modifier
+// MARK: - Pointer modifier
+
+private enum AreaPointer {
+    case grab, resizeUpDown, resizeLeftRight, crosshair, arrow
+
+    var cursor: NSCursor {
+        switch self {
+        case .grab:            return .openHand
+        case .resizeUpDown:    return .resizeUpDown
+        case .resizeLeftRight: return .resizeLeftRight
+        case .crosshair:       return .crosshair
+        case .arrow:           return .arrow
+        }
+    }
+
+    @available(macOS 15, *)
+    var style: PointerStyle {
+        switch self {
+        case .grab:            return .grabIdle
+        case .resizeUpDown:    return .frameResize(position: .top)
+        case .resizeLeftRight: return .frameResize(position: .leading)
+        case .crosshair:       return .rectSelection
+        case .arrow:           return .default
+        }
+    }
+}
 
 private extension View {
+    /// On macOS 15 and later, SwiftUI owns the pointer. Setting it from a
+    /// hover handler there fights the hosting view's own pointer updates,
+    /// and with a customized pointer every set redraws the pointer image.
+    @ViewBuilder
+    func areaPointer(_ pointer: AreaPointer, active: Bool) -> some View {
+        if #available(macOS 15, *) {
+            self.pointerStyle(pointer.style)
+        } else {
+            self.legacyCursor(pointer.cursor, active: active)
+        }
+    }
+
     /// Sets `cursor` on every move over the view, rather than pushing it on
     /// entry: a drag can end away from where it began, skipping the exit that
     /// would pop it. `active: false` holds the cursor still during a drag,
-    /// where handles move under a stationary pointer. Sets only on a change:
-    /// on macOS 15 with a customized pointer, each set redraws the pointer
-    /// image, and a hovering pen moves ~200 times a second.
-    func cursor(_ cursor: NSCursor, active: Bool = true) -> some View {
+    /// where handles move under a stationary pointer.
+    func legacyCursor(_ cursor: NSCursor, active: Bool) -> some View {
         self.onContinuousHover { phase in
             guard active else { return }
             switch phase {
