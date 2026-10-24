@@ -843,10 +843,12 @@ final class TabletManager: ObservableObject {
                     injector.releaseHeldStateForToolChange()
                 }
             }
-            context.activeToolSerial = identity.serial
-            context.activeToolIsMouse = identity.isMouse
-            context.activeToolCode = identity.toolCode
-            context.lastKnownToolCode = identity.toolCode
+            // Published values are set only on a change, so a repeated enter
+            // from the same tool doesn't redraw the panes.
+            if context.activeToolSerial != identity.serial { context.activeToolSerial = identity.serial }
+            if context.activeToolIsMouse != identity.isMouse { context.activeToolIsMouse = identity.isMouse }
+            if context.activeToolCode != identity.toolCode { context.activeToolCode = identity.toolCode }
+            if context.lastKnownToolCode != identity.toolCode { context.lastKnownToolCode = identity.toolCode }
             // Propagate tool code to calibration session so tool changes are tracked.
             CaptureEngine.updateToolCode(identity.toolCode, device: device)
             let toolID = DeviceRegistry.shared.recordTool(
@@ -855,8 +857,9 @@ final class TabletManager: ObservableObject {
             // doesn't swap the settings panes to a second copy of the pen.
             let settingsID = DeviceRegistry.tipSiblingID(of: toolID) ?? toolID
             let toolSets = context.settings.toolSettings(forID: settingsID, isMouse: identity.isMouse)
-            context.activeTool = toolSets
-            context.settings.activeTool = toolSets
+            // Reassigning the same tool would reload all its settings.
+            if context.activeTool !== toolSets { context.activeTool = toolSets }
+            if context.settings.activeTool !== toolSets { context.settings.activeTool = toolSets }
             // Settings must resolve here — the lookup needs the registry and
             // settings store, neither reachable from HIDThread. Arriving late
             // affects only tuning, not tool recognition. Handed over on
