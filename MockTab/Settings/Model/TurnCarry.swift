@@ -15,7 +15,7 @@ struct TurnCarry: Equatable {
     var keys: [Int: Int] = [:]
     /// The same for bezel buttons.
     var bezelButtons: [Int: Int] = [:]
-    /// The two rings or dials, and their center or toggle keys, trade places.
+    /// The two rings, dials, or strips, and their center or toggle keys, trade places.
     var tradesRotaries = false
     /// A ring with a lamp at each corner turns its lamps with it: the mode in
     /// saved slot s moves to slot s + `lampShift`, wrapping at four.
@@ -110,7 +110,7 @@ extension TabletFigure {
                 switch (control, moved) {
                 case let (.expressKey(a), .expressKey(b)): carry.keys[a] = b
                 case let (.bezel(a), .bezel(b)): carry.bezelButtons[a] = b
-                case (.ring(0), .ring(1)), (.dial(0), .dial(1)): carry.tradesRotaries = true
+                case (.ring(0), .ring(1)), (.dial(0), .dial(1)), (.strip(0), .strip(1)): carry.tradesRotaries = true
                 default: break
                 }
             }

@@ -222,6 +222,15 @@ expect(figure(0x00B1)!.turnCarry(from: .landscape, to: .landscapeFlipped, ringLa
 expect(!figure(0x00B1)!.turnCarry(from: .landscape, to: .portrait, ringLampsTurn: false).invertsStrips,
        "Intuos3 Portrait keeps strip direction")
 
+// Two strips trade modes on a half turn, as two rings do; one strip has
+// nothing to trade with.
+for id in [0x00B1, 0x00CC] {
+    expect(figure(id)!.turnCarry(from: .landscape, to: .landscapeFlipped, ringLampsTurn: false).tradesRotaries,
+           "\(hex(id)) flip trades strips")
+}
+expect(!figure(0x00B0)!.turnCarry(from: .landscape, to: .landscapeFlipped, ringLampsTurn: false).tradesRotaries,
+       "PTZ-430 flip keeps its one strip")
+
 // MARK: - Which hardware picks modes by key
 
 // Jump to Mode is offered only where the hardware's own mode keys pick a

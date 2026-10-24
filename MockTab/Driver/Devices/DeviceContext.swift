@@ -119,7 +119,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     private func applyRotaryHardware() {
         // Registry, not `tabletDevice.spec`: `DigitizerSpec` lacks these flags.
         guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
-        let twoRotaries = spec.hasDualRings || spec.hasStripToggles
+        let twoRotaries = spec.hasDualRings || spec.hasIndependentStrips
         settings.defaultBezelButtonBindings = spec.hasStripToggles
             ? [ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2), .none]
             : TabletSettings.noBezelButtonBindings

@@ -1649,6 +1649,9 @@ extension TabletSpec {
     /// Cintiq 21UX2 and 22HD. The toggles are buttons 16 and 17, so they
     /// arrive in bezel slots 0 and 1. The 21UX, 12WX, and 20WSX have none.
     var hasStripToggles: Bool { format == .cintiqV1 && hasTouchStrips && buttonCount > 16 }
+
+    /// Two touch strips, each with its own modes, as two rings or dials have.
+    var hasIndependentStrips: Bool { touchStripCount == 2 }
 }
 
 /// Accessories folded into a pen tablet's window while both are connected:

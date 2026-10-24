@@ -125,8 +125,7 @@ final class InputInjector: @unchecked Sendable {
     /// registry, so its Quick Keys dial comes from `VendorDeviceRegistry`.
     let hasMechanicalDial: Bool
 
-    /// Each strip keeps its own modes, as the first and second rotary; see
-    /// `TabletSpec.hasStripToggles`. Otherwise both strips share the first.
+    /// Each strip keeps its own modes, as the first and second rotary.
     let stripsHaveOwnModes: Bool
 
     /// Detents per revolution of this device's mechanical dial; sets how far
@@ -236,7 +235,7 @@ final class InputInjector: @unchecked Sendable {
         Self.nextTabletDeviceID += 1
         self.ringDeltaIsInverted =
             WacomDeviceRegistry.spec(for: productID)?.format == .intuosV1
-        self.stripsHaveOwnModes = WacomDeviceRegistry.spec(for: productID)?.hasStripToggles == true
+        self.stripsHaveOwnModes = WacomDeviceRegistry.spec(for: productID)?.hasTouchStrips == true
         if let spec = WacomDeviceRegistry.spec(for: productID) {
             self.hasMechanicalDial = spec.hasMechanicalDial
             self.dialStepsPerRevolution = Self.wacomDialStepsPerRevolution

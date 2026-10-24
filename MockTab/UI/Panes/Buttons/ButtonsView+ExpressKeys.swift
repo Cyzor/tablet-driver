@@ -96,6 +96,7 @@ extension ButtonsView {
                         sideName(place: place),
                         isActive: strip == 0 ? lb.touchStrip1Active : lb.touchStrip2Active,
                         side: sideSymbol(place: place),
+                        strip: place,
                         scrollTarget: .strip(strip))
                 }
                 reverseRingDirectionToggle
@@ -475,9 +476,9 @@ extension ButtonsView {
                 }
             ),
             ringSlotCount: spec?.ringSlotCount ?? 4,
-            offersSecondDial: hasDualRings || hasStripToggles,
+            offersSecondDial: hasDualRings || hasIndependentStrips,
             modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-            isStripHardware: hasStripToggles,
+            isStripHardware: hasTouchStrips,
             placement: rotaryPlacement,
             offersRingModes: offersRingModes, offersModeJumps: offersModeJumps,
             recordRequestToken: keyRecordTokens[key]
@@ -532,7 +533,7 @@ extension ButtonsView {
     /// Rings, dials, and modes named by where they sit now.
     var rotaryPlacement: RotaryPlacement {
         RotaryPlacement(
-            tradesRotaries: placed(hasStripToggles ? .strip(0) : hasMechanicalDial ? .dial(0) : .ring(0)).index == 1,
+            tradesRotaries: placed(hasIndependentStrips ? .strip(0) : hasMechanicalDial ? .dial(0) : .ring(0)).index == 1,
             lampShift: ringLampShift)
     }
 

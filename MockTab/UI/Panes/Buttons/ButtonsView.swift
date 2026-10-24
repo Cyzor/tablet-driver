@@ -109,6 +109,7 @@ struct ButtonsView: View {
     var hasDualRings: Bool { spec?.hasDualRings == true }
     var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
     var touchStripCount: Int { spec?.touchStripCount ?? 0 }
+    var hasIndependentStrips: Bool { spec?.hasIndependentStrips == true }
     /// Each strip has its own toggle and modes (Cintiq 21UX2).
     var hasStripToggles: Bool { spec?.hasStripToggles == true }
     /// True for PTK-470/670/870 (Intuos Pro gen 3): mechanical rotate-only
@@ -394,7 +395,7 @@ struct ButtonsView: View {
     ) -> some View {
         // A strip with modes of its own is the rotary in its place.
         let place = strip ?? (ring == .primary ? 0 : 1)
-        let shown = placed(strip != nil && hasStripToggles ? .strip(place)
+        let shown = placed(strip != nil && hasIndependentStrips ? .strip(place)
             : hasMechanicalDial ? .dial(place) : .ring(place))
         let physical = shown.index
         // Label row — "Touch Ring", or a strip's side, with live-active
