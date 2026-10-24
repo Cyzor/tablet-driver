@@ -19,11 +19,7 @@ final class ConfigurationExporter {
     /// Suggested backup file name, without extension: a drag's provider adds
     /// one from its type, and a save panel adds one from `allowedContentTypes`.
     static var suggestedFileBaseName: String {
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "en_US_POSIX")
-        fmt.calendar = Calendar(identifier: .gregorian)
-        fmt.dateFormat = "yyyy-MM-dd"
-        return "mocktab-configuration-\(fmt.string(from: Date()))"
+        "mocktab-configuration-\(DateStamp.day())"
     }
 
     /// Builds a complete JSON backup of all known tablets and their settings.

@@ -10,7 +10,7 @@ SRC="$ROOT/MockTab/Driver/Diagnostics/DiagnosticPackage.swift"
 TEST="$DIR/DiagnosticPackageTests.swift"
 BIN="$(mktemp -d)/diagnostic-package-tests"
 
-swiftc -O "$SRC" "$TEST" -o "$BIN"
+swiftc -O "$SRC" "$ROOT/MockTab/App/DateStamp.swift" "$TEST" -o "$BIN"
 # The source path is passed through: some checks read the flags ditto is given
 # rather than the archive, because the staging strip hides them at runtime.
 "$BIN" "$SRC"

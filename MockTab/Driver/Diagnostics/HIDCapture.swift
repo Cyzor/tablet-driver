@@ -878,13 +878,8 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// "mocktab-raw-20260920-090122.txt" — hyphens throughout, no
     /// underscores, so the filename types as one word.
     private static func makeFileURL(for date: Date) -> URL {
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "en_US_POSIX")
-        fmt.calendar = Calendar(identifier: .gregorian)
-        fmt.dateFormat = "yyyyMMdd-HHmmss"
-        let stamp = fmt.string(from: date)
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop/mocktab-raw-\(stamp).txt")
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Desktop/mocktab-raw-\(DateStamp.compact(date)).txt")
     }
 
     /// Written synchronously before any samples exist, so a crash before

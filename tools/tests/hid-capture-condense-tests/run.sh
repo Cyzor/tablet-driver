@@ -18,5 +18,5 @@ BIN="$T/hid-capture-condense-tests"
 # from source instead of using SwiftPM's .build output.
 KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
 
-swiftc -O -I "$KIT" "$SRC" "$REDACT" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
+swiftc -O -I "$KIT" "$SRC" "$REDACT" "$ROOT/MockTab/App/DateStamp.swift" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
 "$BIN"

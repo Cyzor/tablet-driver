@@ -416,7 +416,7 @@ final class CaptureEngine: ObservableObject {
     /// path, including the file left behind if the auto-stop ceiling ends
     /// the session before the user clicks Done.
     private static func flushFileURL(productID: String, at date: Date) -> URL? {
-        let filename = "mocktab-info-\(productID)-\(Self.fileStamp(date)).json"
+        let filename = "mocktab-info-\(productID)-\(DateStamp.compact(date)).json"
         return FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Desktop")
             .appendingPathComponent(filename)
@@ -692,7 +692,7 @@ final class CaptureEngine: ObservableObject {
     /// to a save panel when that write fails (most often because the app has
     /// not been granted Desktop access).
     func exportDiscoveryJSON(result: DiscoveryResult) -> URL? {
-        let filename = "mocktab-info-\(result.deviceInfo.productID)-\(Self.fileStamp()).json"
+        let filename = "mocktab-info-\(result.deviceInfo.productID)-\(DateStamp.compact()).json"
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -764,21 +764,6 @@ final class CaptureEngine: ObservableObject {
             localized: "MockTab couldn't write to your Desktop. Choose where to save the collected device data.",
             comment: "Explanation in the capture save panel after a Desktop write failure")
         return panel.runModal() == .OK ? panel.url : nil
-    }
-
-    /// Timestamp for capture filenames.
-    ///
-    /// Pinned to `en_US_POSIX` so the stamp is Gregorian ASCII regardless of
-    /// the user's region. Without this, a submitted capture came back named
-    /// `mocktab-info-0x0000-14050418-150909.json` — Persian calendar year
-    /// 1405 — which sorts and reads as nonsense next to every other file.
-    private static func fileStamp(_ date: Date = Date()) -> String {
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "en_US_POSIX")
-        fmt.calendar = Calendar(identifier: .gregorian)
-        fmt.timeZone = .current
-        fmt.dateFormat = "yyyyMMdd-HHmmss"
-        return fmt.string(from: date)
     }
 
     // MARK: - Result Building

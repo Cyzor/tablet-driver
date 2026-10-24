@@ -287,9 +287,7 @@ extension InfoView {
     func buildDiagnosticText() -> String {
         var lines: [String] = []
 
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        lines += [String(localized: "Generated : \(fmt.string(from: Date()))", comment: "Diagnostic: timestamp when info was generated")]
+        lines += [String(localized: "Generated : \(DateStamp.full())", comment: "Diagnostic: timestamp when info was generated")]
 
         let ver = Bundle.main.versionLabel
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
