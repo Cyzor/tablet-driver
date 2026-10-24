@@ -7,7 +7,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/HID/HIDCapture.swift"
+SRC="$ROOT/MockTab/Driver/Diagnostics/HIDCapture.swift"
 REDACT="$ROOT/MockTab/Driver/Diagnostics/CaptureSerialRedaction.swift"
 TEST="$DIR/main.swift"
 T="$(mktemp -d)"

@@ -665,15 +665,12 @@ final class CaptureEngine: ObservableObject {
         isSendingInitReport = true
         Task.detached(priority: .userInitiated) { [weak self] in
             var bytes: [UInt8] = [UInt8(truncatingIfNeeded: reportID), UInt8(truncatingIfNeeded: value)]
-            let ret = hidSetReport(
-                device,
-                reportID: CFIndex(reportID),
-                bytes: &bytes,
-                tag: "capture modeInit \(String(format: "0x%02X", reportID))=\(value)",
-                severity: .bestEffort,
-                log: logger
-            )
+            let ret = IOHIDDeviceSetReport(
+                device, kIOHIDReportTypeFeature, CFIndex(reportID), &bytes, bytes.count)
             let ok = ret == kIOReturnSuccess
+            if !ok {
+                logger.info("capture modeInit \(String(format: "0x%02X", reportID), privacy: .public)=\(value): \(String(format: "0x%08x", ret), privacy: .public)")
+            }
             let attempt = CaptureInitReport(
                 reportID: reportID,
                 value: value,
