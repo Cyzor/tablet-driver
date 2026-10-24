@@ -19,23 +19,23 @@ let settingsLogger = Logger(subsystem: "com.cyzor.mocktab", category: "settings"
 /// that has the key wins. A write goes to whichever layer is currently
 /// "selected" for editing (the device default unless an override is active).
 ///
-///     ┌──────────────────────────────────────────────────────────────┐
-///     │ 4. Per-app override   keys: "device-0x0357.app-com.adobe.…" │  highest
+///     ┌─────────────────────────────────────────────────────────────┐
+///     │ 4. Per-app override   keys: "device-0x357.app-com.adobe.…"  │  highest
 ///     │    Activated automatically when the bound app is frontmost. │
-///     │    Stores only keys that diverge from the layer below.       │
-///     ├──────────────────────────────────────────────────────────────┤
-///     │ 3. Named profile       (overlay; optional)                    │
-///     │    User-saved profile, also stores only diffs. Manually      │
-///     │    selected or auto-activated by an app→profile binding.     │
-///     ├──────────────────────────────────────────────────────────────┤
-///     │ 2. Per-tool settings  keys: "device-0x0357.tool-<serial>.…" │
-///     │    One namespace per stylus serial (or "stylus"/"eraser"/    │
-///     │    "mouse" for the device-default tool, which shares prefix  │
-///     │    with layer 1 to avoid migration).                         │
-///     ├──────────────────────────────────────────────────────────────┤
-///     │ 1. Device defaults    keys: "device-0x0357.…"                │  lowest
-///     │    The baseline for this product ID.                         │
-///     └──────────────────────────────────────────────────────────────┘
+///     │    Stores only keys that diverge from the layer below.      │
+///     ├─────────────────────────────────────────────────────────────┤
+///     │ 3. Named profile      (overlay; optional)                   │
+///     │    User-saved profile, also stores only diffs. Manually     │
+///     │    selected or auto-activated by an app→profile binding.    │
+///     ├─────────────────────────────────────────────────────────────┤
+///     │ 2. Per-tool settings  keys: "device-0x357.tool-<serial>.…"  │
+///     │    One namespace per stylus serial (or "stylus"/"eraser"/   │
+///     │    "mouse" for the device-default tool, which shares prefix │
+///     │    with layer 1 to avoid migration).                        │
+///     ├─────────────────────────────────────────────────────────────┤
+///     │ 1. Device defaults    keys: "device-0x357.…"                │  lowest
+///     │    The baseline for this product ID.                        │
+///     └─────────────────────────────────────────────────────────────┘
 ///
 /// Legacy unprefixed keys (from before per-device support) are read as a
 /// fallback on first load for a given device, providing seamless migration.
@@ -53,7 +53,7 @@ final class TabletSettings: ObservableObject {
 
     // MARK: - Per-device backing store
 
-    /// Current UserDefaults key prefix, e.g. `"device-0x0357."`.
+    /// Current UserDefaults key prefix, e.g. `"device-0x357."`.
     /// Changed by `loadForDevice(_:)` when a tablet connects.
     private(set) var devicePrefix = "device-default."
 
@@ -1055,8 +1055,7 @@ final class TabletSettings: ObservableObject {
     /// constructing a pre-loaded settings object inside a `DeviceContext`.
     init(productID: Int? = nil) {
         if let pid = productID {
-            let hex = String(pid, radix: 16, uppercase: true)
-            devicePrefix = "device-0x\(hex)."
+            devicePrefix = DeviceInstanceClaims.prefix(productID: pid)
             loadProfileList()
             loadAppBindings()
             loadAppOverrides()
@@ -1078,8 +1077,7 @@ final class TabletSettings: ObservableObject {
     /// Switches the settings backing store to the given device's namespace
     /// and reloads all values.  Called by TabletManager when a device connects.
     func loadForDevice(_ productID: Int) {
-        let hex = String(productID, radix: 16, uppercase: true)
-        loadForDevice(prefix: "device-0x\(hex).")
+        loadForDevice(prefix: DeviceInstanceClaims.prefix(productID: productID))
     }
 
     /// Instance-aware variant: resolves the namespace through the registry's

@@ -44,7 +44,7 @@ final class ConfigurationExporter {
     func exportTablet(_ tablet: DeviceRegistry.KnownTablet) -> [String: Any] {
         let pid = tablet.productID
         let hexPID = "0x\(String(pid, radix: 16, uppercase: true))"
-        let devicePrefix = "device-\(hexPID)."
+        let devicePrefix = DeviceInstanceClaims.prefix(productID: pid)
         let ts: TabletSettings = tabletManager.contexts[pid]?.settings ?? TabletSettings(productID: pid)
 
         var d: [String: Any] = [

@@ -14,8 +14,8 @@ import TabletKit
 /// inherited automatically without migration.
 ///
 /// Storage namespaces:
-///   Default tool (serial = 0): "device-0x0357."          (same as devicePrefix)
-///   Per-serial tool:           "device-0x0357.tool-0x21802222."
+///   Default tool (serial = 0): "device-0x357."           (same as devicePrefix)
+///   Per-serial tool:           "device-0x357.tool-0x21802222."
 @MainActor
 final class ToolSettings: ObservableObject {
 

@@ -716,7 +716,7 @@ final class TabletManager: ObservableObject {
         context.settings.migrateTargetDisplayUUID()
 
         // First connection of a pen display: map it to its own screen.
-        let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
+        let prefix = DeviceInstanceClaims.prefix(productID: productID)
         if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil,
             let screen = Self.penDisplayID(forProductID: productID)
         {

@@ -125,9 +125,8 @@ final class DeviceRegistry: ObservableObject {
                 knownTablets.contains(where: { $0.productID == row.productID && ($0.instance ?? "").isEmpty })
             else { continue }
 
-            let pidHex = String(row.productID, radix: 16, uppercase: true)
-            let oldPrefix = "device-0x\(pidHex)#\(instance)."
-            let newPrefix = "device-0x\(pidHex)."
+            let oldPrefix = DeviceInstanceClaims.prefix(productID: row.productID, instance: instance)
+            let newPrefix = DeviceInstanceClaims.prefix(productID: row.productID)
             for (key, value) in ud.dictionaryRepresentation() where key.hasPrefix(oldPrefix) {
                 let target = newPrefix + key.dropFirst(oldPrefix.count)
                 if ud.object(forKey: target) == nil { ud.set(value, forKey: target) }
