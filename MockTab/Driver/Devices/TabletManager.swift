@@ -709,7 +709,7 @@ final class TabletManager: ObservableObject {
         }
         context.settings.applyExpressKeyDefaults(
             vendorID: context.vendorID,
-            splitPad: ButtonsView.hasSplitPadLayout(WacomDeviceRegistry.spec(for: context.productID)))
+            splitPad: WacomDeviceRegistry.spec(for: context.productID)?.hasSplitPadLayout == true)
         refreshConnectedIDs(mostRecent: productID)
 
         context.settings.penDisplayLocator = { Self.penDisplayID(forProductID: productID) }
@@ -1499,7 +1499,7 @@ final class TabletManager: ObservableObject {
         }
         target.settings.applyExpressKeyDefaults(
             vendorID: target.vendorID,
-            splitPad: ButtonsView.hasSplitPadLayout(WacomDeviceRegistry.spec(for: target.productID)))
+            splitPad: WacomDeviceRegistry.spec(for: target.productID)?.hasSplitPadLayout == true)
 
         if activeContext == nil || activeContext === source {
             activeContext = target

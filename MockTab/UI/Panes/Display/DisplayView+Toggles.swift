@@ -57,7 +57,7 @@ extension DisplayView {
         }
 
         let keys = settings.expressKeyBindings
-        if ButtonsView.hasSplitPadLayout(spec) {
+        if spec?.hasSplitPadLayout == true {
             rows += keys.enumerated().map { slot, binding in
                 (binding, {
                     let key = ButtonsView.splitPadKeyLabel(slot: slot)

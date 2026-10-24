@@ -127,7 +127,7 @@ final class DeviceContext: ObservableObject, Identifiable {
             controlCount: twoRotaries ? 2 : 1,
             independent: twoRotaries,
             seedFromSharedModes: !spec.hasMechanicalDial,
-            defaultSlots: ButtonsView.hasSplitPadLayout(spec) || spec.hasStripToggles
+            defaultSlots: spec.hasSplitPadLayout || spec.hasStripToggles
                 ? ControlSlot.splitPadDefaults : ControlSlot.defaults)
     }
 

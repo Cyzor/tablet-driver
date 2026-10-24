@@ -124,7 +124,7 @@ struct ButtonsView: View {
     /// Keyed on the family rather than `buttonCount`, since the Cintiq itself
     /// declares `buttonCount: 8` while filling all sixteen slots — the
     /// dual-sided layout has never respected that field for anyone.
-    var hasSplitPadLayout: Bool { Self.hasSplitPadLayout(spec) }
+    var hasSplitPadLayout: Bool { spec?.hasSplitPadLayout == true }
     /// What each ring or dial's modes do, for jump-to-mode labels.
     var ringModeNames: [[String]] { settings.rotaryModeNames }
     var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
@@ -479,10 +479,6 @@ extension ButtonsView {
         // Non-Wacom drivable devices (Xencelabs) aren't in WacomDeviceRegistry
         // at all — use the same spec the session attached the live driver with.
         return VendorDeviceRegistry.drivableSpec(forVendorID: ctx.vendorID, productID: pid)
-    }
-
-    static func hasSplitPadLayout(_ spec: TabletSpec?) -> Bool {
-        spec?.hasDualRings == true && spec?.format == .cintiqV1
     }
 
     /// Mice show all 5 HID-path button slots: `buttonCount` describes only
