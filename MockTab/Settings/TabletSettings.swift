@@ -846,10 +846,7 @@ final class TabletSettings: ObservableObject {
         get {
             if let cached = _expressKeyCache { return cached }
             let result: [ButtonBinding]
-            if !expressKeyRaw.isEmpty,
-                let data = expressKeyRaw.data(using: .utf8),
-                let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
-            {
+            if let arr = ButtonBinding.decodeList(expressKeyRaw) {
                 var r = arr
                 while r.count < 16 { r.append(.none) }
                 result = Array(r.prefix(16))
@@ -860,6 +857,10 @@ final class TabletSettings: ObservableObject {
             return result
         }
         set {
+            guard !ButtonBinding.isUnreadableList(expressKeyRaw) else {
+                settingsLogger.error("Refusing to save expressKeyBindings: stored data couldn't be parsed")
+                return
+            }
             guard let data = try? JSONEncoder().encode(newValue),
                 let s = String(data: data, encoding: .utf8)
             else { return }
@@ -875,10 +876,7 @@ final class TabletSettings: ObservableObject {
         get {
             if let cached = _bezelButtonCache { return cached }
             let result: [ButtonBinding]
-            if !bezelButtonRaw.isEmpty,
-                let data = bezelButtonRaw.data(using: .utf8),
-                let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
-            {
+            if let arr = ButtonBinding.decodeList(bezelButtonRaw) {
                 var r = arr
                 while r.count < 3 { r.append(.none) }
                 result = Array(r.prefix(3))
@@ -889,6 +887,10 @@ final class TabletSettings: ObservableObject {
             return result
         }
         set {
+            guard !ButtonBinding.isUnreadableList(bezelButtonRaw) else {
+                settingsLogger.error("Refusing to save bezelButtonBindings: stored data couldn't be parsed")
+                return
+            }
             guard let data = try? JSONEncoder().encode(newValue),
                 let s = String(data: data, encoding: .utf8)
             else { return }

@@ -195,6 +195,20 @@ do {
     }
 }
 
+// MARK: - Binding lists (the express key and bezel button save guard)
+
+do {
+    // A newer build that dropped a field this build requires.
+    let futureList = #"[{"kind":"leftClick","modifierFlags":0,"keyLabel":""}]"#
+    expect(ButtonBinding.isUnreadableList(futureList), "A list missing a required field is unreadable")
+    expect(ButtonBinding.decodeList(futureList) == nil, "An unreadable list decodes to nil")
+
+    let current = try String(data: JSONEncoder().encode([ButtonBinding.leftClick, .none]), encoding: .utf8)!
+    expect(!ButtonBinding.isUnreadableList(current), "A list this build wrote is readable")
+    expect(ButtonBinding.decodeList(current)?.first?.kind == .leftClick, "A readable list decodes")
+    expect(!ButtonBinding.isUnreadableList(""), "No stored list isn't unreadable")
+}
+
 // MARK: - Summary
 
 if failures == 0 {
