@@ -20,6 +20,8 @@ final class PresetExporter {
     /// one from its type, and a save panel adds one from `allowedContentTypes`.
     static var suggestedFileBaseName: String {
         let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.calendar = Calendar(identifier: .gregorian)
         fmt.dateFormat = "yyyy-MM-dd"
         return "MockTab-Settings-\(fmt.string(from: Date()))"
     }

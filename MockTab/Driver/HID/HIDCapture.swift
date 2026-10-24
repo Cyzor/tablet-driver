@@ -879,6 +879,8 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// underscores, so the filename types as one word.
     private static func makeFileURL(for date: Date) -> URL {
         let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.calendar = Calendar(identifier: .gregorian)
         fmt.dateFormat = "yyyyMMdd-HHmmss"
         let stamp = fmt.string(from: date)
         return FileManager.default.homeDirectoryForCurrentUser
