@@ -664,9 +664,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     /// Also quietly resends every connected device's init sequence first. A
     /// tablet can connect before its digitizer endpoint is ready to answer
     /// the mode-switch write, leaving it stuck reporting in whatever mode it
-    /// powered on in — seen 2026-07-26 as a wrong screen mapping on an
-    /// already-supported Intuos5 that only corrected once the same write the
-    /// driver already sends at connect was sent again. Cheap and idempotent
+    /// powered on in, which shows up as a wrong screen mapping. Cheap and idempotent
     /// on a device that's already fine, so there's no reason to gate it
     /// behind detecting a problem first.
     @MainActor

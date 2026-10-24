@@ -6,7 +6,7 @@ import AppKit
 import Foundation
 import SwiftUI
 
-// The UserDefaults layer, split out of TabletSettings.swift: reload, the
+// The UserDefaults layer: reload, the
 // layered-read and write helpers, the pressure-curve and touch-ring-slot
 // codecs, reset, and first-run express-key defaults. The backing-store
 // stored state lives on the main class body (Swift class extensions can't

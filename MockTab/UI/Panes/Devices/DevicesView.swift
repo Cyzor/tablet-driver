@@ -696,9 +696,8 @@ struct DevicesView: View {
 
     private func commitToolRename() {
         guard let toolID = editingToolID else { return }
-        // End the edit unconditionally — a failed lookup below must not
-        // leave the row stuck in edit mode (click-away used to do exactly
-        // that for all-tablets tools, which aren't in `knownTools`).
+        // End the edit unconditionally: a failed lookup below must not leave
+        // the row stuck in edit mode (all-tablets tools aren't in `knownTools`).
         editingToolID = nil
         let trimmed = String(editingName.prefix(Self.maxNicknameLength))
             .trimmingCharacters(in: .whitespaces)

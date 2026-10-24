@@ -72,17 +72,14 @@ final class BatchFramePacer {
     /// Queues frames to be delivered one per `interval`, oldest first.
     ///
     /// Any frames still queued from a prior batch are flushed immediately
-    /// first. This used to be framed as just an overlap policy ("rare in
-    /// steady state"), but it's load-bearing, not a corner case: the caller
-    /// must also flush before delivering anything synchronously (a
+    /// first. That's load-bearing: the caller must also flush before
+    /// delivering anything synchronously (a
     /// single-sample report, or the implausible-interval bypass path) —
     /// otherwise a synchronous pen-exit delivery can post *after* residual
     /// queued frames from the same lift are still pending, re-asserting
     /// in-proximity and leaving `InputInjector.lastProximity` stuck true.
     /// That silently kills touch (`injectTouch`'s `penBusy` gate) until
-    /// something else happens to flip proximity again — confirmed as the
-    /// mechanism behind "touch registers points but produces no action,
-    /// degrades after a few uses" (2026-08-22). See `dispatchBatch`, which
+    /// something else happens to flip proximity again. See `dispatchBatch`, which
     /// flushes unconditionally at its top for exactly this reason.
     func schedule(_ frames: [(frame: BatchedFrame, timestampNs: UInt64)], interval: TimeInterval) {
         flush()

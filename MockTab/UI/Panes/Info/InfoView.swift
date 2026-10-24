@@ -128,10 +128,7 @@ struct InfoView: View {
             rawCaptureCountTimer?.invalidate()
             rawCaptureCountTimer = nil
         }
-        // No Escape/Cmd-. handlers here any more. They existed to stop a
-        // standalone raw capture, which can no longer run without the guide
-        // sheet — and while that sheet is up it owns Escape itself, so
-        // claiming the shortcut from underneath would only fight it.
+        // No Escape handler here: the capture sheet owns Escape while it's up.
         .onReceive(
             NotificationCenter.default.publisher(
                 for: NSApplication.didBecomeActiveNotification)

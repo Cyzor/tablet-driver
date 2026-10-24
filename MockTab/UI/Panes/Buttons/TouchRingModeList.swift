@@ -345,8 +345,8 @@ private struct TouchRingModeListCore: View, Equatable {
     ///
     /// Rounds to the nearest notch so a stored value that predates the
     /// notching still reads as its closest level — `.rounded()` is
-    /// away-from-zero, so an exact midpoint rounds up (a stored 3.0 zoom,
-    /// the value the old clamp bug pinned everyone to, reads "Medium").
+    /// away-from-zero, so an exact midpoint rounds up (a stored 3.0 zoom
+    /// reads "Medium").
     private func bucketedSpeedLabel(
         _ speed: Double, ceiling: Double, intervals: Int
     ) -> String {

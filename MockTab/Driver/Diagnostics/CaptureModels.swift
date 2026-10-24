@@ -1262,10 +1262,9 @@ struct DiscoveryTouchPipeline: Codable {
     /// time, so a full-surface swipe stutters. `longestSingleContactDragMs` is
     /// the longest unbroken single-contact pointer drag seen; a large value
     /// next to a high re-arm count says the "swipe covers only part of the
-    /// screen" report is churn, not a real short drag. The onset-delay change
-    /// (2026-08-27) shortens each re-arm's cost from ~120 ms to the configured
-    /// value but does not remove the re-arm itself — these measure whether it
-    /// still matters.
+    /// screen" report is churn, not a real short drag. The onset delay sets
+    /// each re-arm's cost but doesn't remove the re-arm; these measure whether
+    /// it still matters.
     ///
     /// `TouchPipelineProbe` is global, so on a bench with two tablets connected
     /// `onsetWindowsEntered` sums both — don't read
@@ -1281,8 +1280,7 @@ struct DiscoveryTouchPipeline: Codable {
     /// zoom and rotate is hard to invoke". `twoFingerResolvedBoth` counts
     /// sequences that ended up running both at once; `twoFingerLateJoins`
     /// counts components that opened their envelope after the sequence had
-    /// already committed, which is the late-join path (added 2026-08-27)
-    /// firing. A high `Both` with a high `LateJoins` means concurrency is
+    /// already committed: the late-join path firing. A high `Both` with a high `LateJoins` means concurrency is
     /// arriving the new way — the first gesture commits, the second joins
     /// when its evidence shows up — rather than needing both signals to
     /// qualify in the same frame.

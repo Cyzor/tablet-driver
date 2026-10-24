@@ -768,8 +768,7 @@ final class DeviceRegistry: ObservableObject {
     ///
     /// Bluetooth Classic reports (PTH-660/860 BT) never carry a per-pen
     /// serial — `identity.serial` is always 0 — but they do carry a real
-    /// per-model tool code (e.g. 0x0804 Art Pen vs 0x0802 Grip Pen; live BT
-    /// capture 2026-07-22). Folding toolCode into the id here lets distinct
+    /// per-model tool code (e.g. 0x0804 Art Pen vs 0x0802 Grip Pen). Folding toolCode into the id here lets distinct
     /// BT tools coexist in knownTools instead of all collapsing onto a
     /// single "stylus"/"eraser" entry. Two physically different but
     /// identical-model pens still collide — BT Classic has no signal that

@@ -15,11 +15,9 @@ final class CalibrationOverlayWindow: NSWindow {
 
     private let session: CalibrationSession
 
-    /// Watches the session's own state publisher for completion. The auto-dismiss
-    /// used to hang off a SwiftUI `.onChange` in the overlay view, which sometimes
-    /// missed the `.computing` → `.done` edge and left the success panel up until
-    /// the user hit Cancel. `@Published` fires on every assignment regardless of
-    /// how SwiftUI coalesces the resulting view update.
+    /// Watches the session's own state publisher for completion, not a
+    /// SwiftUI `.onChange`, which can miss the `.computing` → `.done` edge.
+    /// `@Published` fires on every assignment.
     private var stateObserver: AnyCancellable?
     /// Pending auto-dismiss, cancelled if the user dismisses first.
     private var autoDismissWork: DispatchWorkItem?

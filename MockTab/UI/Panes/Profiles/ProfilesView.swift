@@ -609,9 +609,7 @@ private struct ProfileListView: View {
         .disabled(preset.name == "Default")
         // `onDelete` is `deleteProfileRecordingUndo`, which snapshots the
         // profile's stored values, its list position, and any app bindings
-        // that referenced it — so this genuinely undoes and redoes. The
-        // tooltip said "cannot be undone" through 2026-09, which was simply
-        // wrong and discouraged a reversible action.
+        // that referenced it, so deleting really is undoable.
         .help("Delete this profile (undoable).")
     }
 

@@ -290,17 +290,10 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         /// The single source of truth for both the UI slider's range
         /// (`TouchRingModeList.speedRange(for:)` defers to this) and every
         /// binding's stored-value clamp (`QuickKeysSectionView.
-        /// slotSpeedBinding`, `ButtonsView+Bindings.swift`'s slot0-3SpeedBinding)
-        /// — before this existed, `slotSpeedBinding`'s getter clamped to a
-        /// stale scroll-only constant regardless of action, silently
-        /// capping `.zoom`'s displayed/effective speed at 3.0 out of its
-        /// intended 0...8 while the slider's thumb (and the speed label,
-        /// reading the unclamped stored value) disagreed with each other —
-        /// confirmed on hardware (Xencelabs puck, 2026-09): slider looked
-        /// pinned around 37.5% of its travel yet read "Max".
+        /// slotSpeedBinding`, `ButtonsView+Bindings.swift`'s slot0-3SpeedBinding),
+        /// so the slider's thumb and its speed label always agree.
         ///
-        /// `.zoom`: hardware feedback (PTH-860, 2026-09) found the old
-        /// shared 3x ceiling too low for a comfortable feel;
+        /// `.zoom`: a shared 3x ceiling felt too low;
         /// `dialGestureZoomScale` (InputInjector+CGEvents.swift) has no
         /// physical 1:1 anchor to derive a ceiling from, so 8x is an
         /// empirical choice matching what felt right, with headroom above it.

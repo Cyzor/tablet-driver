@@ -119,10 +119,9 @@ struct TouchStateTracker {
     /// (`pinchInGesture`/`rotateInGesture`) is *not* frozen at commit: a
     /// component that wasn't qualified there can join later in the same
     /// sequence, so a pinch that grows a twist becomes a concurrent
-    /// pinch+rotate instead of resolving pinch-only. (It was frozen through
-    /// 2026-08-27, which is what made simultaneous zoom-and-rotate so hard to
-    /// invoke — the evidence for the second gesture almost never arrives in
-    /// the same frame as the first. See the late-join block in `process`.)
+    /// pinch+rotate instead of resolving pinch-only. The evidence for the
+    /// second gesture almost never arrives in the same frame as the first;
+    /// see the late-join block in `process`.
     /// Joining is one-way: a component that has begun is never dropped
     /// mid-sequence, because retracting it means posting an `.ended` that
     /// apps read as the gesture finishing.
@@ -187,9 +186,9 @@ struct TouchStateTracker {
         ///
         /// `rotate.rotation` is this frame's change in the pair's angle, in
         /// radians, sign-corrected to match the actual direction of finger
-        /// twist as the user perceives it on screen — hardware-confirmed
-        /// 2026-08-08 that raw `atan2` reads backwards here (screen
-        /// coordinates are y-down, which flips its usual y-up handedness).
+        /// twist as the user perceives it on screen. Raw `atan2` reads
+        /// backwards here: screen coordinates are y-down, which flips its
+        /// usual y-up handedness.
         /// Left in radians deliberately: the CGEvent field's actual expected
         /// unit is unverified (see `postTouchRotate`'s doc comment), so any
         /// unit conversion belongs at the posting layer, not baked into this
@@ -480,12 +479,11 @@ struct TouchStateTracker {
     /// cursor in the meantime.  Same trick trackpads use; the cost is pointer
     /// motion starting this late.
     ///
-    /// Default lowered 0.12 → 0.04 (2026-08-27): a two-finger gesture from rest
-    /// lands its fingers 1–3 frames (~10–30 ms) apart, so 40 ms covers job (2)
-    /// with margin — reasoned, not measured.  Job (1) only ever covered
-    /// palm-before-tip-down: a *hovering* pen takes `touchBusyHoldOff` (150 ms,
-    /// longer than the old window) to confirm busy, and tip-down bypasses that
-    /// hold-off.  What the window guards is a palm *drifting* the cursor before
+    /// A two-finger gesture from rest lands its fingers 1–3 frames
+    /// (~10–30 ms) apart, so 40 ms covers job (2) with margin; reasoned, not
+    /// measured. Job (1) only covers palm-before-tip-down: a *hovering* pen
+    /// takes `touchBusyHoldOff` (150 ms) to confirm busy, and tip-down
+    /// bypasses that hold-off.  What the window guards is a palm *drifting* the cursor before
     /// tip-down — not an irreversible action (a palm can't tap: drift exceeds
     /// `tapMaxDistance`; can't scroll: needs two contacts), and pen absolute
     /// positioning corrects the cursor on its next report.  Overridable per
@@ -538,10 +536,8 @@ struct TouchStateTracker {
     /// twist wobble: scale change 30, tangential motion 11, ratio 0.37 —
     /// below this threshold, so rotate is correctly suppressed there).
     /// Comparable signals (near this ratio or above) both survive, which is
-    /// what makes true concurrent pinch+rotate possible — and is strictly
-    /// more permissive to rotate than the exclusive dominance rule this
-    /// replaced: a near-tie that used to hand pinch an outright win (e.g.
-    /// tangential 25 vs scale 26) now clears suppression on both sides.
+    /// what makes true concurrent pinch+rotate possible: a near-tie (e.g.
+    /// tangential 25 vs scale 26) clears suppression on both sides.
     static let companionSuppressionRatio: Double = 0.5
     /// How far back to look for the fastest recent sample when seeding
     /// momentum release velocity — matches `PanScrollTracker.peakVelocityWindow`.
@@ -695,10 +691,8 @@ struct TouchStateTracker {
     /// half a millimeter of centroid drift at typical touch-surface-to-
     /// display scaling — so on the very first frame or two after two fingers
     /// land, landing noise alone can already exceed it in whichever
-    /// direction the fingers happened to settle. Hardware feedback
-    /// 2026-08-08 confirmed this empirically: "plant the fingers, hold for a
-    /// moment, then twist" was the only reliable way to invoke rotate,
-    /// meaning the fix belongs at the timing layer. Pan and pinch are not
+    /// direction the fingers happened to settle, so the fix belongs at the
+    /// timing layer. Pan and pinch are not
     /// held back by this — only rotate-eligible sequences wait, and only
     /// rotate's own win condition is gated by it; obviously large, fast
     /// motion still bypasses the wait via `rotateDwellBypassDistance`, so a
@@ -1073,8 +1067,8 @@ struct TouchStateTracker {
         // Centroid delta over the contacts present in both this frame and
         // the last.  Contacts with new ids (finger lifted and re-landed,
         // or upstream palm filtering churned the set) are seeded for the
-        // next frame instead of stalling the gesture — losing both
-        // original ids used to kill the scroll until every finger lifted.
+        // next frame instead of stalling the gesture, so losing both
+        // original ids doesn't stop the scroll.
         let current = Array(contacts.prefix(2))
         let tracked = current.filter { lastPositions[$0.id] != nil }
         let oldCentroid = centroid(of: tracked.compactMap { lastPositions[$0.id] })
@@ -1241,11 +1235,9 @@ struct TouchStateTracker {
         // own bars either, so the sequence fell through to the
         // "neither qualified" pan default below regardless.
         // That default only makes sense once every live
-        // candidate has had a real chance to clear its own bar
-        // — confirmed against hardware captures (2026-08-25)
-        // showing genuine rotate gestures losing the race to an
-        // instant, premature pan commit before tangential
-        // motion ever reached 9.
+        // candidate has had a real chance to clear its own bar;
+        // otherwise real rotate gestures lose to a premature pan
+        // commit before tangential motion reaches 9.
         if totalScaleChange < decide, totalTranslation < decide,
             totalTangentialMotion < Self.rotateNoiseFloor
         {
@@ -1376,9 +1368,8 @@ struct TouchStateTracker {
         // `companionSuppressionRatio` asks the newcomer to reach
         // half of a scale change that has been growing the whole
         // time, so a twist that joins after ~20° a moment after
-        // commit needed ~46° once the zoom had been running (probed
-        // 2026-08-27, which is why this isn't the commit's own
-        // accumulators). A window keeps the bar constant, and "how
+        // commit would need ~46° once the zoom had been running.
+        // A window keeps the bar constant, and "how
         // hard am I twisting *now*" is the question this is actually
         // asking.
         //
@@ -1444,9 +1435,8 @@ struct TouchStateTracker {
             let delta = frameAngleDelta
             if delta != 0 {
                 rotatePhase = .changed
-                // Negated: hardware-confirmed 2026-08-08 that raw
-                // atan2 delta reads backwards from the actual
-                // finger twist. `atan2`'s "positive is counter-
+                // Negated: the raw atan2 delta reads backwards from
+                // the actual finger twist. `atan2`'s "positive is counter-
                 // clockwise" convention holds in math coordinates
                 // (y-up); screen coordinates here are y-down,
                 // which flips the handedness. Internal tracking

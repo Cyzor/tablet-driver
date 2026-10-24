@@ -470,8 +470,8 @@ final class InputInjector: @unchecked Sendable {
     static let tipPressureThreshold: Double = 0.004
 
     /// Applies a tool's pressure curve. Shared with the Info pane so its tip
-    /// readout matches what's injected. Interpolates: plain indexing cut
-    /// 8192-level sensors to 256 steps (event-probe, 2026-09-30).
+    /// readout matches what's injected. Interpolates, since plain indexing
+    /// would cut 8192-level sensors to 256 steps.
     static func curvedPressure(_ normalized: Double, lut: [Double]) -> Double {
         let pos = Swift.min(Swift.max(normalized, 0), 1) * Double(lut.count - 1)
         let i = Int(pos)
@@ -1001,8 +1001,8 @@ final class InputInjector: @unchecked Sendable {
     static let typingHoldOff: CFAbsoluteTime = 0.5
     /// The pen touched down or stayed in range past `touchBusyHoldOff`. Touch
     /// arbitration gates on this, not raw `lastProximity`: Bluetooth proximity
-    /// flaps in 5–45 ms bursts while the pen is just held near the tablet
-    /// (capture, 2026-08-22), which blocked touch almost constantly.
+    /// flaps in 5–45 ms bursts while the pen is just held near the tablet,
+    /// which would block touch almost constantly.
     var touchPenConfirmedBusy: Bool = false
     /// Wall-clock time the current proximity session began, for measuring
     /// `touchBusyHoldOff` against.
@@ -1019,7 +1019,7 @@ final class InputInjector: @unchecked Sendable {
     var touchPenBusyHadTipSinceConfirmed: Bool = false
     /// How long the pen may count as busy with no tip contact before touch is
     /// let through again. Bluetooth proximity can sit in an ambiguous state for
-    /// seconds (PTH-860 capture, 2026-08-25), and the decoder deliberately stays
+    /// seconds, and the decoder deliberately stays
     /// in range then: exiting early once killed proximity for good. So a hand
     /// moving during a touch gesture could block touch indefinitely. Well above
     /// any pause before a stroke; one tip contact resets it.

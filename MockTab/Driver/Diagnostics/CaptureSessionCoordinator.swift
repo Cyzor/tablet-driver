@@ -544,21 +544,15 @@ final class CaptureSessionCoordinator: ObservableObject {
     static let wacomVendorID = 0x056A
 
     /// Build the capture header from the **device itself**, not from what the
-    /// app guessed about it.
+    /// app guessed about it: both IDs come off the `IOHIDDevice`, and the
+    /// Wacom registry is consulted only once the vendor ID says Wacom. A
+    /// header whose job is to say what the hardware is mustn't fall back to
+    /// a guess.
     ///
-    /// Both IDs used to come from the wrong place: the vendor ID fell back to
-    /// Wacom's when unreadable, and the product ID was the `contexts` dictionary
-    /// key rather than the device's own. A submitted capture (issue #2) came
-    /// back describing a Pro-One PDT6002 as vendor `0x056A`, product `0x0000`,
-    /// name "PenPartner" — three fabrications in a header whose entire job is
-    /// to say what the hardware is. Read both off the `IOHIDDevice`, and only
-    /// consult the Wacom registry once the vendor ID says Wacom.
-    ///
-    /// Deliberately free of side effects, unlike the single-device version it
-    /// replaced: it now runs once per interface, and a sibling that can't name
-    /// itself is a dropped interface rather than a failed session. Deciding
-    /// that is the caller's job — see `startCollection`, which raises the
-    /// error only when *no* interface could be described.
+    /// Free of side effects: it runs once per interface, and a sibling that
+    /// can't name itself is left out rather than failing the session. The
+    /// caller decides; `startCollection` raises the error only when *no*
+    /// interface could be described.
     private func deviceInfo(device dev: IOHIDDevice) -> CaptureDeviceInfo? {
         let vendorID = IOHIDDeviceGetProperty(dev, kIOHIDVendorIDKey as CFString) as? Int
         let deviceProductID = IOHIDDeviceGetProperty(dev, kIOHIDProductIDKey as CFString) as? Int

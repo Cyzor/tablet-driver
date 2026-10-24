@@ -621,8 +621,8 @@ extension InputInjector {
         e.setIntegerValueField(.tabletProximityEventDeviceID, value: tabletDeviceID)
 
         // Wacom sends each pen's serial; both ends share it, and the unique
-        // ID below tells them apart. No app has yet been seen to key tool
-        // settings on it (Photoshop, Krita, and Rebelle don't, 2026-09-30).
+        // ID below tells them apart. Photoshop, Krita, and Rebelle don't key
+        // tool settings on it.
         let toolCode = activeToolCode
         if activeToolSerial != 0 {
             e.setIntegerValueField(
@@ -1096,8 +1096,8 @@ extension InputInjector {
             // Clockwise scrolls down. macOS doesn't apply natural scrolling to injected
             // events, so apply it here.
             let signedLines = Self.naturalScrollingEnabled ? lines : -lines
-            // AppKit clamps a large .line delta well below its value (Xencelabs dial,
-            // 2026-08-06), so split fast bursts. Single ticks stay one event. Wacom
+            // AppKit clamps a large .line delta well below its value, so split
+            // fast bursts. Single ticks stay one event. Wacom
             // rings and strips only; moving them to pixel units needs a hardware pass.
             let scrollChunk = 10
             if abs(signedLines) <= scrollChunk {
@@ -1178,8 +1178,8 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Zoom per ring tick, as a magnification fraction. Tuned on the PTH-860
-    /// (2026-09). Ring only: zoom compounds per tick, so a dial's fewer ticks
+    /// Zoom per ring tick, as a magnification fraction. Tuned on the PTH-860.
+    /// Ring only: zoom compounds per tick, so a dial's fewer ticks
     /// need their own constant (`dialGestureZoomScaleMechanical`).
     static let dialGestureZoomScale = 1.0 / 300.0
 
@@ -1296,7 +1296,7 @@ extension InputInjector {
     /// deltas (Calendar, WebKit, Chromium, Adobe palettes) ignored pans without them.
     func applyTrackpadDeltaFields(_ e: CGEvent, dx: Double, dy: Double) {
         // Lines first: writing them recomputes the point and fixed-point fields,
-        // and writing them last quantized pans to 8 pt (event-probe, 2026-09-30).
+        // and writing them last quantizes pans to 8 pt.
         // At least 1 line, so slow pans aren't lost on the line-delta path.
         let ix = Int64(dx), iy = Int64(dy)
         e.setIntegerValueField(
@@ -1319,8 +1319,7 @@ extension InputInjector {
     ///
     /// A phased began/changed/ended stream is enough for `NSScrollView` apps
     /// to coast on their own, but apps that build their own physics from
-    /// gesture deltas (Safari, Firefox, Affinity — confirmed by hardware test
-    /// 2026-08-05) need a momentum stream, which `CGEventPost` gets from no
+    /// gesture deltas (Safari, Firefox, Affinity) need a momentum stream, which `CGEventPost` gets from no
     /// trackpad hardware. Scroll phase stays 0 while momentum phase runs: both
     /// nonzero confuses AppKit and WebKit.
     func postScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {

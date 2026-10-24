@@ -126,7 +126,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
 
     // The PTK-870 over Bluetooth LE sends one sample per report but several
     // reports per radio window: four Pro Pen 3 samples within 3 ms, then
-    // nothing for 15 ms (2026-10-09 captures).
+    // nothing for 15 ms.
     /// Arrival of the current window's first pen sample; 0 when none is open.
     private var penWindowStartNs: UInt64 = 0
     /// Arrival of the most recent single-sample pen report.
@@ -288,7 +288,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
         if pacePenWindowSample(frames, reportTimestampNs: reportTimestampNs) { return true }
         // Flush first: a queued sample is older than anything decoded now,
         // and a pen lift posted ahead of it left proximity stuck on, which
-        // silenced touch (2026-08-22). A report with no samples has nothing
+        // silenced touch. A report with no samples has nothing
         // to order against, and flushing for it would burst a paced window.
         let flushed = frames.isEmpty ? 0 : batchFramePacer.flush()
         if !frames.isEmpty {
@@ -298,7 +298,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
             TouchPipelineProbe.note { $0.pacerFlushDeliveredFrames += flushed }
         }
         // Every report stamps this, single-sample or not, so the interval is
-        // this report's own (2026-08-25).
+        // this report's own.
         let previous = lastBatchReportTimestampNs
         lastBatchReportTimestampNs = reportTimestampNs
 

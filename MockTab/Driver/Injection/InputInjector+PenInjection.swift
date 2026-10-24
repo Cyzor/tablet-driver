@@ -634,9 +634,8 @@ extension InputInjector {
     /// `proximityExitDebounceTimer`.
     func commitProximityExit(snap: InjectionSnapshot) {
         ThreadContract.expectPenThread()
-        // Posted here, not by the caller, so every exit tells apps: the
-        // Xencelabs debounce, the stuck-proximity watchdog, and disconnect
-        // used to skip it. Exit reports carry no tool, so a leaving eraser
+        // Posted here, not by the caller, so every exit tells apps, including
+        // the Xencelabs debounce, the stuck-proximity watchdog, and disconnect. Exit reports carry no tool, so a leaving eraser
         // takes the identity it entered with.
         if lastProximity {
             postProximityEvent(

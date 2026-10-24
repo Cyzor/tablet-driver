@@ -26,8 +26,7 @@ struct DisplayMapper {
     /// aspect ratio matches the display's, avoiding stretching. Shared by
     /// `mapToScreen` (runtime injection), `CalibrationSession.normalizeRawPoint`
     /// (calibration-sample normalization), and the Active Area editor's
-    /// preview overlay — previously three near-identical copies of this
-    /// formula existed; consolidated 2026-09-17.
+    /// preview overlay.
     ///
     /// `surfaceAspect` should already reflect orientation (swapped if the
     /// device is in a portrait orientation) and any vendor-profile physical
@@ -190,8 +189,7 @@ struct DisplayMapper {
     /// Rotates a raw device-space point (and its axis maxima) into oriented
     /// (post-rotation) space. Shared by `mapToScreen`, `resolveRelativePoint`,
     /// the touch injection path (`InputInjector+Touch.swift`), and
-    /// `CalibrationSession.normalizeRawPoint` — previously duplicated inline
-    /// in all of the above; consolidated 2026-09-18.
+    /// `CalibrationSession.normalizeRawPoint`.
     static func orient(
         x: Double, y: Double, maxX: Double, maxY: Double, orientation: TabletOrientation
     ) -> (ox: Double, oy: Double, effMaxX: Double, effMaxY: Double) {

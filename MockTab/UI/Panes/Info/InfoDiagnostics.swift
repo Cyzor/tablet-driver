@@ -17,19 +17,13 @@ extension InfoView {
     /// and records both the statistical summary and the full raw log for the
     /// same session, packaged into one zip.
     ///
-    /// There is deliberately no running/stopped state here. The raw capture
-    /// used to be startable on its own (and Option-armable alongside the
-    /// sheet), so this section carried its own Stop button and live counter
-    /// — which left the window showing an active recording after the sheet
-    /// was cancelled. The capture's lifetime is now exactly the sheet's.
+    /// There's deliberately no running/stopped state here: the capture lasts
+    /// exactly as long as the sheet.
     var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
-                        // Always records both the summary and the full log —
-                        // the raw capture used to be Option-only, which meant
-                        // the default path produced half the evidence and a
-                        // follow-up round to ask for the rest.
+                        // Always records both the summary and the full log.
                         beginCollection()
                     }
                     .buttonStyle(.bordered)

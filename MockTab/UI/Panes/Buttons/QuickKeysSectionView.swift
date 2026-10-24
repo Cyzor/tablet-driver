@@ -141,9 +141,6 @@ struct QuickKeysSectionView: View {
                 current: settings.reverseRingDirection ? " Counter-clockwise." : " Clockwise.",
                 help: "Flips the direction of the dial, whatever its mode is set to. Turn on if the dial runs opposite to your expectation.")
         } header: {
-            // The caption's gray dot and "No device connected" name replace
-            // the trailing "Not connected" text this header used to carry —
-            // same information, in the shape every other section uses.
             PaneSectionHeader("Quick Keys") { nameLabel }
         }
     }
@@ -274,11 +271,8 @@ struct QuickKeysSectionView: View {
                 // at the top rather than letting the slider render off its
                 // own scale. `.zoom`/`.rotate` have their own, much taller
                 // fixed ceilings (see `ControlSlot.Action.fixedSpeedCeiling`)
-                // and must not be pulled down to this 3.0 — that bug (fixed
-                // 2026-09) let the slider's thumb and its own speed label
-                // disagree, since the label read the true unclamped stored
-                // value while only the displayed/effective value here was
-                // capped.
+                // and must not be pulled down to this 3.0, or the slider's
+                // thumb and its speed label disagree.
                 let ceiling = slot.action.fixedSpeedCeiling ?? 3.0
                 return min(slot.speed, ceiling)
             },

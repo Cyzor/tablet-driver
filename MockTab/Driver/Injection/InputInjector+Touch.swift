@@ -7,8 +7,7 @@ import CoreGraphics
 import os
 import TabletKit
 
-// Capacitive finger-touch injection, split out of InputInjector.swift. The
-// per-sequence touch state it reads (`touchTracker`, `cachedTouch*`,
+// Capacitive finger-touch injection. The per-sequence touch state it reads (`touchTracker`, `cachedTouch*`,
 // `penProximityExitTime`) lives on the main class body — Swift class
 // extensions can't hold stored properties — and stays HIDThread-confined
 // exactly as documented there.
@@ -84,12 +83,8 @@ extension InputInjector {
 
         // Pen arbitration: pen takes priority.  Drop frames and reset tracker
         // so a half-formed gesture doesn't resume after the pen lifts.
-        //
-        // An iPad-style "scroll while the pen is in use" mode was prototyped
-        // and removed (2026-06): firmware does stream touch with the pen busy,
-        // but palm rejection wasn't shippable — scrolls died mid-gesture and
-        // per-app event arbitration was inconsistent.  Git history has the
-        // prototype if another attempt is ever made.
+        // Touch during pen use isn't offered: the firmware streams it, but
+        // palm rejection wasn't reliable enough to ship.
         let now = CFAbsoluteTimeGetCurrent()
         // `staleBusy` is much narrower than that prototype: it only lets
         // touch through once a busy pen has sat with no tip contact at all
@@ -674,8 +669,8 @@ extension InputInjector {
         // this stream instead of — or in addition to — the wheel event. Posted
         // first to avoid a stutter seen the other way round, though a real
         // trackpad posts the wheel event first. Matching the trackpad's order
-        // and marker fields (137, 135, MayBegin) didn't fix sites that reject
-        // this phased stream (event-probe, 2026-09-30); only the phase-free
+        // and marker fields (137, 135, MayBegin) doesn't fix sites that reject
+        // this phased stream; only the phase-free
         // mode reaches them. Only meaningful with a real phase.
         if usePhases {
             postTouchScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
@@ -765,14 +760,9 @@ extension InputInjector {
     /// its internal `atan2` math); converted here to degrees on the
     /// assumption the field expects what `NSEvent.rotation` — the public API
     /// apps actually read a real trackpad rotation through — documents.
-    /// Hardware feedback 2026-08-08: rotate is responsive when it engages,
-    /// which is consistent with this scaling being roughly right (a 57×
-    /// unit error would have been obvious as "nothing happens" or "spins
-    /// wildly"), but that's corroborating evidence, not a controlled
-    /// measurement — MMF's own source never states what its `rotation`
-    /// parameter's unit actually is. Direction was independently confirmed
-    /// wrong and fixed at the source (see `TouchStateTracker`'s `.rotate`
-    /// case doc comment); magnitude scaling has not had the same scrutiny.
+    /// Rotation feels right in use, so the scale is at least roughly
+    /// correct, but nothing documents the field's unit; the magnitude hasn't
+    /// been measured.
     /// Not `private`: ring/dial `.rotate` slot actions (`postRingGesture`,
     /// +CGEvents.swift) call this too — same event technique, different
     /// envelope source.

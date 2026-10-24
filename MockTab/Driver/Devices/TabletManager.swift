@@ -897,9 +897,8 @@ final class TabletManager: ObservableObject {
             }
 
             // ── HID-thread gate: skip the Task hop when nothing needs to run.
-            // At 200 Hz USB report rate the active-pen-backgrounded case used to
-            // spawn a Task per report whose body did nothing; this short-circuit
-            // collapses that to zero allocations on the dominant idle path.
+            // At 200 Hz, a Task per report with nothing to do would allocate on
+            // the most common path.
             let needsHop: Bool
             if isActive {
                 needsHop = !point.inProximity  // proximity-exit cleanup
