@@ -22,17 +22,14 @@ extension TabletSettings {
         guard autoSwitchEnabled else { return }
         let target = appBindings.first(where: { $0.bundleID == bundleID })
             .flatMap { b in profiles.first { $0.id == b.profileID } }
-        guard target?.id != activeProfile?.id || activationSource == .manual else {
-            // Same profile already active via auto-switch — just refresh the label.
-            activationSource = .app(bundleID: bundleID, name: appName)
-            return
-        }
         if target?.id != activeProfile?.id {
             activeProfile = target
             saveActiveProfileID()
             reloadAll()
         }
-        activationSource = .app(bundleID: bundleID, name: appName)
+        // Set only on a change: every publish rebuilds each tablet's snapshot.
+        let source = ActivationSource.app(bundleID: bundleID, name: appName)
+        if activationSource != source { activationSource = source }
     }
 
     // MARK: - App override management

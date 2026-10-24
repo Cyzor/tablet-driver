@@ -443,7 +443,9 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.
     func observeRingLED() {
+        // A reload republishes unchanged slots; only a change goes to the LEDs.
         settings.$touchRingActiveSlotIndex
+            .removeDuplicates()
             .sink { [weak self] index in
                 guard let self, let device = self.tabletDevice else { return }
                 self.onHIDThread(device) { device in device.controls.ringLED?.setRingLED(index: index) }
@@ -451,6 +453,7 @@ final class DeviceContext: ObservableObject, Identifiable {
             }
             .store(in: &cancellables)
         settings.$touchRingActiveSlotIndex2
+            .removeDuplicates()
             .sink { [weak self] index in
                 guard let self, let device = self.tabletDevice else { return }
                 self.onHIDThread(device) { device in device.controls.ringLED?.setRingLED2(index: index) }
