@@ -62,8 +62,8 @@ struct TabletAreaView: View {
 
     /// True if the bound device is a pen display (Cintiq / Xencelabs-class),
     /// connected or not. Resolved from a persistent registry so the calibration
-    /// section stays visible — greyed out — while the display is unplugged, per
-    /// the grey-out-vs-hide convention. The `VendorDeviceRegistry` fallback is
+    /// section stays visible — grayed out — while the display is unplugged, per
+    /// the gray-out-vs-hide convention. The `VendorDeviceRegistry` fallback is
     /// what keeps Xencelabs displays (absent from `WacomDeviceRegistry`) from
     /// collapsing to false and hiding the section on disconnect.
     private var activeDeviceIsPenDisplay: Bool {
@@ -316,7 +316,7 @@ struct TabletAreaView: View {
                                 .foregroundStyle(.secondary)
                                 .scaledFrame(width: Self.statusGutter)
                                 .accessibilityHidden(true)
-                            // `.disabled` greys the controls but not plain Text
+                            // `.disabled` grays the controls but not plain Text
                             // labels, so dim this one to match the status row
                             // above when the display is unplugged.
                             Text("Pointer Offset")
@@ -355,7 +355,7 @@ struct TabletAreaView: View {
                         }
                         .help("Apply a small constant offset on top of calibration for sub-pixel fine-tuning.")
                     }
-                    // Whole section greys out when the display is unplugged: the
+                    // Whole section grays out when the display is unplugged: the
                     // status row already explains why ("Display not connected"),
                     // and nothing here — calibrating or nudging the offset — is
                     // meaningful without the panel in front of you.

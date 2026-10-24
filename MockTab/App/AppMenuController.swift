@@ -174,7 +174,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     private func insertTextSizeSubmenu() {
         guard let viewMenu else { return }
 
-        // Remove ALL stale or system-injected copies (macOS 26 injects its own
+        // Remove every stale or system-injected copy (macOS 26 injects its own
         // "Text Size" entry on each rebuild; removing only the first one leaves extras).
         // Snapshot items first so index shifts don't skip entries.
         for item in viewMenu.items.filter({ $0.title == textSizeMenuTitle }) {

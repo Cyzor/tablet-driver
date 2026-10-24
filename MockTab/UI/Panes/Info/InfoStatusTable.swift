@@ -150,7 +150,7 @@ extension InfoView {
                     leadingSymbol: BatteryIndicator.symbolName(pct: batteryPercent ?? 100, charging: charging),
                     // Affirmative green when healthy — this table is the
                     // place users come to check on the device.
-                    // Grey while the tablet sleeps: the reading is from before.
+                    // Gray while the tablet sleeps: the reading is from before.
                     symbolColor: deviceContext?.isAsleepOnWirelessKit == true ? .secondary : batteryPercent.map {
                         BatteryIndicator.tint(pct: $0, charging: charging, healthy: .green)
                     } ?? (charging ? .green : .secondary),

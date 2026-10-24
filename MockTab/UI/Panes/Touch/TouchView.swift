@@ -248,7 +248,7 @@ struct TouchView: View {
                 .appControlSize(.small)
                 // Gated on `touchEnabled` only — deliberately not also on
                 // "the rect is already full", which the pen pane doesn't do
-                // either. A reset button that greys out at exactly the state
+                // either. A reset button that grays out at exactly the state
                 // it produces reads as broken rather than as already-done.
                 .disabled(!areaEditable)
                 .help("Reset the touch area to the full touch surface (undoable).")

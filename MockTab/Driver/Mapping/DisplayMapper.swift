@@ -128,7 +128,7 @@ struct DisplayMapper {
     /// report after proximity entry) so it can't drift from reality.
     private var ownedRelativePosition: CGPoint? = nil
 
-    /// Cached physical active-area size in millimetres, used to convert
+    /// Cached physical active-area size in millimeters, used to convert
     /// relative-mode deltas into a gain expressed relative to real pen
     /// travel rather than tablet-model-specific raw units. Invalidated when
     /// the device's productID changes.

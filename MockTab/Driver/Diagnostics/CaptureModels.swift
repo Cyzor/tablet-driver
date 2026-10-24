@@ -20,7 +20,7 @@ import TabletKit
 /// descriptor — IOKit surfaces those fields as `usage 0x00`, so we can't
 /// discover it from the element list. Hence the manual entry: a tester
 /// with modern hardware can try candidate report IDs and ship the outcome back
-/// in the capture file. See Notes/Wacom-HID-Post-2020-Preliminary-Research.md.
+/// in the capture file. See Notes/Wacom-Mode-Switching.md.
 struct CaptureInitReport: Codable, Identifiable {
     let reportID: Int
     let value: Int
@@ -1361,7 +1361,7 @@ struct DiscoveryByteStat: Codable {
     var truncated: Bool?
     /// Every observed value as a 256-bit mask, low byte first, hex encoded.
     /// Authoritative when `truncated` is set — see
-    /// `DiscoveryByteValueSet.valueMaskHex` for why the list alone misleads.
+    /// `ByteValueSet.valueMaskHex` for why the list alone misleads.
     var valueMask: String?
     /// Largest magnitude when this byte is read as signed. Compare a candidate
     /// tilt divisor against this, not against `max`, which reads 255 for any

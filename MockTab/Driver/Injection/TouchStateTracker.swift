@@ -31,7 +31,7 @@ struct TouchPalmRejector {
 
     /// Live PTH-660 capture: a palm begins at Width/Height 6/7, while the
     /// finger-sized fragments alongside it remain 1–4. The descriptor's
-    /// logical maxima (41 × 31) are not physical millimetres, so a threshold
+    /// logical maxima (41 × 31) are not physical millimeters, so a threshold
     /// inferred from those maxima was invalid; use both observed raw axes.
     private static let rejectAxisAtOrAbove = 5
 
@@ -398,7 +398,7 @@ struct TouchStateTracker {
     /// escalation) and the per-frame delta baseline once committed.
     private var lastPairAngle: Double = 0
     /// Cumulative wrapped angle change (radians) since an undecided
-    /// sequence's origin — the rotate analogue of `undecidedOriginCentroid`/
+    /// sequence's origin — the rotate analog of `undecidedOriginCentroid`/
     /// `undecidedOriginDistance`. Summed per-frame rather than taken as
     /// `newAngle - originAngle` so a rotation exceeding π during the decide
     /// window still accumulates correctly instead of wrapping back on itself.
@@ -619,7 +619,7 @@ struct TouchStateTracker {
     /// close it out and hold wound-down until all fingers actually lift.
     static let scrollSingleContactGrace: CFAbsoluteTime = 0.1
     /// Cumulative unsigned centroid travel (screen points) a committed `.pan`
-    /// considers before deciding a dominant axis — the touch analogue of
+    /// considers before deciding a dominant axis — the touch analog of
     /// `PanScrollTracker.axisLockWindow`. Deliberately much shorter than the
     /// pen tracker's 26pt: a freeform diagonal *pen* pan (rotating the canvas
     /// with the Hand tool) is a real use case that needs room to reveal its
@@ -770,7 +770,7 @@ struct TouchStateTracker {
     /// Given a set of contacts already projected to screen-space, choose or
     /// continue a gesture mode and return the intent to execute.
     ///
-    /// `tapToClick` and `twoFingerScroll` gate the optional behaviours;
+    /// `tapToClick` and `twoFingerScroll` gate the optional behaviors;
     /// `reverseScrollDirection` flips the sign of the scroll delta.
     /// `sensitivity` multiplies pointer-mode movement (1.0 = identity).
     /// `pinchZoom` enables sticky pinch → synthesized magnify-gesture zoom (vs pan scroll).

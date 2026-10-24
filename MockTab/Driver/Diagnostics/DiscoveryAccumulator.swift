@@ -211,7 +211,7 @@ final class DiscoveryAccumulator: Sendable {
         // shape; the retained longest gaps carry a session-elapsed timestamp
         // so a reader can see where in the session they fell.
         //
-        // Two bucket arrays, split on whether a contact was down at BOTH ends
+        // Two bucket arrays, split on whether a contact was down at both ends
         // of the gap (`inGestureGapBuckets`) or not (`idleGapBuckets`). A
         // finger-off pause between flicks lands in `idle`; a stall while the
         // finger is still on the tablet lands in `inGesture`. The gap that

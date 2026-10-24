@@ -127,7 +127,7 @@ CI runs both.
 
 ## Rules to Keep
 
-- **TabletKit reads nothing from the outside world.** No files, clocks, or shared state. The app passes in everything a decoder needs.
+- **Decoders read nothing from the outside world.** No files, clocks, or shared state. The session passes in everything a decoder needs.
 - **Each piece of state belongs to one thread.** The other thread sends work over instead of touching it. See the table in [Two Threads](#two-threads).
 - **Messages to a tablet go out on the pen thread,** through `DeviceContext.onHIDThread(_:)`, which owns the record of what was last sent. Init steps at connect are the exception: they run on main.
 - **Events post from the pen thread.** macOS allows it, and it saves a delay.

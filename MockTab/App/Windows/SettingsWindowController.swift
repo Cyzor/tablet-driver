@@ -580,7 +580,7 @@ final class SettingsWindowController: NSWindowController {
         }
         // Touch tab is only registered for devices whose spec declares finger touch.
         // The pane itself also guards against being shown for a non-touch device
-        // (defence-in-depth in case the spec lookup changes).
+        // (defense-in-depth in case the spec lookup changes).
         if hasTouchTab {
             addTab(
                 label: Self.tabLabels[Tab.touch.rawValue], symbol: "hand.point.up.left", height: 480

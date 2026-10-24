@@ -228,7 +228,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// ever being able to record whichever one `hidDevice` happened to claim.
     /// Weakly held via `CaptureInterfaceCandidate`, mirroring `hidDevice`,
     /// since IOKit owns the lifetime; pruned on disconnect in
-    /// `TabletManager.deviceDisconnected`.
+    /// `TabletManager.forgetInterface(_:of:)`.
     ///
     /// `@Published`, unlike `hidDevice` — a second interface routinely
     /// attaches a moment after `CaptureGuideView` opens (its own capture

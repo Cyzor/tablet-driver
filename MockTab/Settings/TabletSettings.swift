@@ -553,7 +553,7 @@ final class TabletSettings: ObservableObject {
 
     /// Master enable for finger-touch input.  When false, `InputInjector.injectTouch`
     /// becomes a no-op regardless of incoming reports.  Defaults to true so that
-    /// Off by default: Wacom's touch behaviour is widely disliked, and many
+    /// Off by default: Wacom's touch behavior is widely disliked, and many
     /// users prefer to opt in deliberately rather than discover the cursor
     /// jumping the first time they rest a hand on the tablet.
     @Published var touchEnabled: Bool = false {
@@ -662,7 +662,7 @@ final class TabletSettings: ObservableObject {
     /// When true (and two-finger scroll is on), a pinch gesture posts
     /// ⌘+Keypad-Plus/Minus keystrokes as a zoom stand-in, one step per pinch
     /// increment. Off by default — pan scroll stays the primary two-finger
-    /// behaviour.
+    /// behavior.
     @Published var pinchZoomEnabled: Bool = false {
         didSet { persist("pinchZoomEnabled", pinchZoomEnabled) }
     }
@@ -677,7 +677,7 @@ final class TabletSettings: ObservableObject {
     }
     /// Active-touch-area mapping — independent from the pen's active area because
     /// users typically want the full surface for touch but a cropped area for pen
-    /// work.  Coordinates are normalised 0..1 over the device's full touch surface.
+    /// work.  Coordinates are normalized 0..1 over the device's full touch surface.
     /// Defaults to the full surface.
     @Published var touchAreaX: Double = 0.0 {
         didSet { persist("touchAreaX", touchAreaX) }

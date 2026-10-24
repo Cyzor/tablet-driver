@@ -140,7 +140,7 @@ extension InputInjector {
         let systemBefore = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
         modLog.info("releaseAll: clearing 0x\(String(toRelease.rawValue, radix: 16), privacy: .public) (system=0x\(String(systemBefore, radix: 16), privacy: .public))")
 
-        // Clear ground truth and ref counts BEFORE posting.
+        // Clear ground truth and ref counts before posting.
         groundTruthSyntheticFlags = []
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
         lastSyntheticFlagChangeAt = Date()

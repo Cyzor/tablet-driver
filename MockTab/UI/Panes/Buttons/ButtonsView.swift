@@ -138,7 +138,7 @@ struct ButtonsView: View {
     /// Keys puck/dongle or an ExpressKey Remote. A live connection wins
     /// (`DeviceCompanions.connectedCompanion`); failing that, a
     /// companion seen earlier this session still resolves so its section
-    /// stays visible — greyed via `companionIsConnected` — instead of
+    /// stays visible — grayed via `companionIsConnected` — instead of
     /// vanishing while the accessory is detached (disable-vs-hide rule:
     /// disconnection is temporary state, not a capability change).
     var companionProductID: Int? {

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run every standalone test harness under tools/*-tests/ and report a single
+# Run every standalone test harness under tools/tests/*-tests/ and report a single
 # pass/fail summary. Exits non-zero if any harness fails.
 set -u
 

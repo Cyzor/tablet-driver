@@ -1555,7 +1555,7 @@ private func testTapStabilizationDoesNotAffectAbsoluteMode() {
 
 /// Fingers spread cleanly first (pinch commits alone), then twist. The twist
 /// must join the gesture in progress rather than being locked out for the
-/// rest of the sequence — the behaviour that made simultaneous zoom-and-
+/// rest of the sequence — the behavior that made simultaneous zoom-and-
 /// rotate nearly impossible to invoke before 2026-08-27.
 private func testRotateJoinsACommittedPinch() {
     var tracker = TouchStateTracker()

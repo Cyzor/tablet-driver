@@ -160,7 +160,7 @@ final class TabletManager: ObservableObject {
     }
 
     /// Physical width ÷ height of a tablet's whole surface, before rotation.
-    /// Vendor millimetres where registered: raw units aren't square on every
+    /// Vendor millimeters where registered: raw units aren't square on every
     /// tablet (Xencelabs' Pen Display differs per axis), so maxX ÷ maxY alone
     /// can draw a landscape surface as portrait.
     func surfaceAspectRatio(for key: DeviceInstanceKey?) -> Double {
@@ -1158,9 +1158,7 @@ final class TabletManager: ObservableObject {
         // Called on HIDThread when a decoder emits a `.touch` result.  When
         // touch is disabled in settings, return early — the hardware switch
         // on PTH-660/860 streams 0x21 reports at ~100 Hz, and publishing
-        // them to `liveTouchContacts` invalidates every view that observes
-        // `TabletManager` (which is every settings pane), making the UI
-        // choppy and burning CPU even though no input is being injected.
+        // them would redraw panes and burn CPU with no input injected.
         // Per-contact-id position, area, and lifetime, purely to derive the
         // erratic-touch diagnostics below (`maxContactJump`/
         // `shortLivedContacts`/`maxStallBeforeLift`) — not used by

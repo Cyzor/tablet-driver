@@ -4,7 +4,7 @@
 
 import SwiftUI
 
-/// A normalised (0..1) rectangle.  Origin top-left; matches SwiftUI conventions.
+/// A normalized (0..1) rectangle.  Origin top-left; matches SwiftUI conventions.
 struct NormalizedRect: Equatable {
     var x: Double
     var y: Double
@@ -12,7 +12,7 @@ struct NormalizedRect: Equatable {
     var h: Double
 }
 
-/// Photoshop-style crop editor for a normalised rectangle inside an
+/// Photoshop-style crop editor for a normalized rectangle inside an
 /// aspect-preserving canvas.  Draggable interior + 4 edge handles + 4 corner
 /// dots, with a dimmed exterior, accent border, and a snapshot-based drag
 /// state machine that drafts internally and writes the binding once on
@@ -579,10 +579,8 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     ) -> NormalizedRect {
         var draft = draft
 
-        // `fixedRight`/`fixedBottom`: true when that opposite edge must stay
-        // pinned at its origin position (i.e. the near edge is what's being
-        // dragged), so a width/height rescale needs to shift x/y to compensate.
-        // Corners rescale whichever axis moved proportionally *less*, so the
+        // Dragging a left or top edge keeps the opposite edge pinned, so a
+        // width or height rescale shifts x or y to compensate. Corners rescale whichever axis moved proportionally *less*, so the
         // axis the cursor is actively pushing harder on stays exact and only
         // the lagging axis snaps to match it.
         switch edge {

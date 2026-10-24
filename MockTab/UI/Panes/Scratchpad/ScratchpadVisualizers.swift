@@ -148,7 +148,7 @@ private struct TiltDisc: View, Equatable {
 
 // MARK: - Touch contacts visualizer
 
-/// Top-down rectangle showing normalised finger-contact positions as numbered
+/// Top-down rectangle showing normalized finger-contact positions as numbered
 /// dots, turned to match the tablet on the desk. The tablet's touch surface
 /// maps to the full canvas area.
 /// Contacts fade out over ~0.3 s after they lift (lift = empty contacts array).
@@ -184,9 +184,9 @@ private struct TouchContactsCanvas: View, Equatable {
     private func drawContacts(ctx: GraphicsContext, size: CGSize) {
         guard !contacts.isEmpty else { return }
 
-        // Determine the normalised coordinate range from the first contact.
+        // Determine the normalized coordinate range from the first contact.
         // TouchContact uses raw tablet units; we don't have access to maxX/maxY
-        // here, so normalise each contact against the bounding box of all
+        // here, so normalize each contact against the bounding box of all
         // contacts with a small guard against zero-range.
         // Turned like pen and touch input. The bounding-box normalization
         // below cancels the axis offsets, so zero maxima suffice.
@@ -196,7 +196,7 @@ private struct TouchContactsCanvas: View, Equatable {
         let xs = points.map(\.ox)
         let ys = points.map(\.oy)
 
-        // Normalise within [0,1] using whatever range the contacts span.
+        // Normalize within [0,1] using whatever range the contacts span.
         // Falls back to centring a single contact on the canvas.
         func norm(_ val: Double, _ vals: [Double]) -> Double {
             let lo = vals.min() ?? 0

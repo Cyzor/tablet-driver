@@ -16,7 +16,7 @@ extension InputInjector {
 
     /// Inject a touch contact frame.
     ///
-    /// Behaviour:
+    /// Behavior:
     ///   • `touchEnabled == false` → no-op.
     ///   • Pen confirmed busy (`touchPenConfirmedBusy` — in proximity past
     ///     `touchBusyHoldOff`, or already down), or lifted within

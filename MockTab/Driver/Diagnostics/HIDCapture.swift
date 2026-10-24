@@ -22,11 +22,9 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 /// auto-stopped after `maxCaptureDuration`, so memory stays bounded and a
 /// crash loses at most one flush interval.
 ///
-/// Reachable from InfoView's Diagnostics section, behind Option — the
-/// advanced sibling of "Collect Device Data…" (`CaptureEngine`/
-/// `DiscoveryAccumulator`), which statistically summarizes an *unknown*
-/// protocol for triage. This one checks a *known* decoder's output against
-/// real hardware, hence recording every report instead of a histogram.
+/// "Collect Device Data…" runs it beside `CaptureEngine`, which summarizes
+/// the reports statistically; this one keeps every report, so a decoder's
+/// output can be checked against real hardware.
 ///
 /// Thread safety: `record(...)` runs on HIDThread; `start/stop/clear/
 /// flushIfDue` and the published reads run on main. State is guarded by one

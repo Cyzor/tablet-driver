@@ -8,9 +8,7 @@ import TabletKit
 /// The ring/strip/dial mode block: every mode stays visible as a one-line
 /// readable summary ("Scroll · 1.5×", "Keys ⌘= / ⌘－", …), and selecting a
 /// mode — by clicking its row or its wedge in the ring diagram — expands a
-/// labeled editor for just that mode beneath it. Replaces the old
-/// all-controls-inline rows (`TouchRingSlotRowView`), whose mixed picker/
-/// slider/recorder rows never aligned with each other.
+/// labeled editor for just that mode beneath it.
 ///
 /// One instance renders as a single Form row containing the whole block.
 /// Bindings come in as per-index factories so the caller keeps owning its
@@ -393,12 +391,12 @@ private struct TouchRingModeListCore: View, Equatable {
                 .fixedSize()
             }
 
-            // Greyed (not hidden) while the mode is off/skip — the value is
+            // Grayed (not hidden) while the mode is off/skip — the value is
             // kept and comes back when the mode does.
             //
             // `.disabled()` alone doesn't visibly dim this row: AppKit dims
             // disabled *controls* natively (which is why the slider's accent
-            // does grey out), but `Text` carrying an explicit
+            // does gray out), but `Text` carrying an explicit
             // `.foregroundStyle(.secondary)` — the row label and the speed
             // readout both do — renders that style at full strength either
             // way. Hence the explicit opacity, matching how TouchView pairs

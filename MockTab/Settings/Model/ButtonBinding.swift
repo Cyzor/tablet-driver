@@ -134,7 +134,7 @@ struct ButtonBinding: Codable, Equatable {
         if ns.contains(.control) { f.insert(.maskControl) }
         modifierFlags = f.rawValue
         // Pass the full modifier flags so UCKeyTranslate applies any layout-switching
-        // modifier behaviour (e.g. Dvorak Qwerty-Command shows QWERTY char with ⌘).
+        // modifier behavior (e.g. Dvorak Qwerty-Command shows QWERTY char with ⌘).
         keyLabel = ButtonBinding.charLabel(keyCode: event.keyCode, modifiers: ns)
     }
 
