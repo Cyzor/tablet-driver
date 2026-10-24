@@ -5,7 +5,7 @@ The Tablet Area pane draws each tablet from a kit of parts: a body, its active
 surface, and the keys, rings, dials, and strips along its edges. TabletKit's
 registry knows a model's size but not where its controls sit. libwacom's layout
 SVGs do, so this script reads them and writes the simplified result into
-MockTab/UI/Panes/TabletArea/TabletLayoutTable.swift.
+MockTab/Figures/TabletLayoutTable.swift.
 
 Simplification happens here, not in the app:
 
@@ -46,7 +46,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REGISTRY = ROOT / "TabletKit" / "registry.json"
-DEFAULT_OUTPUT = ROOT / "MockTab" / "UI" / "Panes" / "TabletArea" / "TabletLayoutTable.swift"
+DEFAULT_OUTPUT = ROOT / "MockTab" / "Figures" / "TabletLayoutTable.swift"
 WACOM_VID = "056a"
 
 NUM = r"[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?"

@@ -10,5 +10,5 @@ TEST="$DIR/main.swift"
 T="$(mktemp -d)"
 BIN="$T/pen-recipe-tests"
 
-swiftc -O "$ROOT/MockTab/UI/Panes/Buttons/PenRecipe.swift" "$TEST" -o "$BIN"
+swiftc -O "$ROOT/MockTab/Figures/PenRecipe.swift" "$TEST" -o "$BIN"
 "$BIN"

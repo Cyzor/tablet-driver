@@ -26,7 +26,7 @@ Publishing creates a draft. Nothing goes public until you click Publish on GitHu
 
 Keeps the app's tablet data in step with outside sources. The scripts that edit TabletKit's registry live in [`TabletKit/tools/`](../TabletKit/tools/).
 
-- `generate_tablet_layouts.py` writes `MockTab/UI/Panes/TabletArea/TabletLayoutTable.swift` from libwacom's layouts: where each model's controls sit, and which button each key is. Run it with `--libwacom-data <libwacom>/data --libwacom-rev <commit>`; `--check` exits 1 and shows a diff if the table is out of date.
+- `generate_tablet_layouts.py` writes `MockTab/Figures/TabletLayoutTable.swift` from libwacom's layouts: where each model's controls sit, and which button each key is. Run it with `--libwacom-data <libwacom>/data --libwacom-rev <commit>`; `--check` exits 1 and shows a diff if the table is out of date.
 - `upstream-sweep.sh` fetches libwacom, input-wacom, and OpenTabletDriver and reports what changed since the last review.
 
 ## capture/

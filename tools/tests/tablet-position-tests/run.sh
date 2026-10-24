@@ -6,7 +6,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-AREA="$ROOT/MockTab/UI/Panes/TabletArea"
+FIGURES="$ROOT/MockTab/Figures"
 TEST="$DIR/main.swift"
 T="$(mktemp -d)"
 BIN="$T/tablet-position-tests"
@@ -16,8 +16,8 @@ BIN="$T/tablet-position-tests"
 KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
 
 SETTINGS="$ROOT/MockTab/Settings"
-swiftc -O -I "$KIT" "$AREA/TabletFigure.swift" "$AREA/TabletLayoutTable.swift" "$AREA/TabletLayoutIdentity.swift" \
-    "$AREA/TabletControlMap.swift" "$SETTINGS/Model/TabletOrientation.swift" "$SETTINGS/Model/TurnCarry.swift" \
+swiftc -O -I "$KIT" "$FIGURES/TabletFigure.swift" "$FIGURES/TabletLayoutTable.swift" "$FIGURES/TabletLayoutIdentity.swift" \
+    "$FIGURES/TabletControlMap.swift" "$SETTINGS/Model/TabletOrientation.swift" "$SETTINGS/Model/TurnCarry.swift" \
     "$SETTINGS/Model/ButtonBinding.swift" "$SETTINGS/Model/ControlSlot.swift" "$SETTINGS/Model/RotaryConfig.swift" \
     "$SETTINGS/Model/BezierCurve.swift" "$SETTINGS/Serialization/UnknownFieldsCodable.swift" "$TEST" \
     "$KIT/libTabletKit.a" -o "$BIN"

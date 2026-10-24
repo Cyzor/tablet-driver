@@ -31,11 +31,11 @@
 			membershipExceptions = (
 				Driver/Injection/MomentumTail.swift,
 				Driver/Mapping/RelativeBallistics.swift,
+				Figures/TabletControlMap.swift,
+				Figures/TabletFigure.swift,
+				Figures/TabletLayoutIdentity.swift,
+				Figures/TabletLayoutTable.swift,
 				Settings/Model/TabletOrientation.swift,
-				UI/Panes/TabletArea/TabletControlMap.swift,
-				UI/Panes/TabletArea/TabletFigure.swift,
-				UI/Panes/TabletArea/TabletLayoutIdentity.swift,
-				UI/Panes/TabletArea/TabletLayoutTable.swift,
 			);
 			target = ADT00001 /* MockTabTests */;
 		};

@@ -10,9 +10,9 @@ ROOT="$(git -C "$(dirname "$0")/../.." rev-parse --show-toplevel)"
 HERE="$ROOT/tools/hardware-check"
 WORK=/tmp/mocktab-hwcheck
 KIT="$WORK/tabletkit"
-AREA="$ROOT/MockTab/UI/Panes/TabletArea"
-SOURCES=("$HERE/wacom_key_order.swift" "$AREA/TabletControlMap.swift" "$AREA/TabletLayoutIdentity.swift"
-         "$AREA/TabletLayoutTable.swift" "$AREA/TabletFigure.swift" "$ROOT/MockTab/Settings/Model/TabletOrientation.swift")
+FIGURES="$ROOT/MockTab/Figures"
+SOURCES=("$HERE/wacom_key_order.swift" "$FIGURES/TabletControlMap.swift" "$FIGURES/TabletLayoutIdentity.swift"
+         "$FIGURES/TabletLayoutTable.swift" "$FIGURES/TabletFigure.swift" "$ROOT/MockTab/Settings/Model/TabletOrientation.swift")
 
 mkdir -p "$WORK/bin" "$KIT"
 # Same TabletKit build as hardware-check.sh.
