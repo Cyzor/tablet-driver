@@ -112,11 +112,9 @@ struct ButtonMappingView: View {
     var hasStripToggles: Bool { spec?.hasStripToggles == true }
     /// True for PTK-470/670/870 (Intuos Pro gen 3): mechanical rotate-only
     /// dials rather than a capacitive touch ring. Drives the "Dial" vs.
-    /// "Touch Ring" section label and hides the nonexistent center-click row
-    /// — confirmed on real hardware 2026-09-16 that these dials have no
-    /// press action at all; the mode-cycle function Wacom's own driver
-    /// exposes lives on an ExpressKey ("Dial toggle"), not a ring center
-    /// button. See `TabletSpec.hasMechanicalDial`'s doc comment.
+    /// "Touch Ring" section label and hides the center-click row: these dials
+    /// don't press, and mode cycling lives on an ExpressKey ("Dial toggle").
+    /// See `TabletSpec.hasMechanicalDial`.
     var hasMechanicalDial: Bool { spec?.hasMechanicalDial == true }
 
     /// Whether to draw the split left/right *pad* layout (three toggle buttons

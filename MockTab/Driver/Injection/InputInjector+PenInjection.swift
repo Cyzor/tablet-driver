@@ -649,7 +649,7 @@ extension InputInjector {
         tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         tipUpDebounceTimer = nil
         let exitPoint = smoother.smoothedPoint
-        // Lifting the pen away ends Click Lock, as in the Xencelabs driver.
+        // Lifting the pen away ends Click Lock.
         releaseClickLock(at: exitPoint, snapshot: snap)
         if lastTipDown && tipClickSwallowed {
             tipClickSwallowed = false

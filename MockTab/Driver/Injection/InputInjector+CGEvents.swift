@@ -236,8 +236,8 @@ extension InputInjector {
             event.timestamp = Self.currentReportTimestampNs
         }
         stampClickSequence(event)
-        // Wacom's driver marks every event non-coalesced, so the system keeps
-        // each pen sample instead of merging moves (event-probe, 2026-09-30).
+        // Non-coalesced, so the system keeps each pen sample instead of
+        // merging moves.
         event.flags.insert(.maskNonCoalesced)
         // Diagnostic: `event.post` is synchronous IPC into WindowServer and
         // the only stage no other stall probe covers.
@@ -370,9 +370,9 @@ extension InputInjector {
         let turned = DisplayMapper.orientTilt(
             x: point.tiltX, y: point.tiltY, orientation: snapshot.tabletOrientation)
         var tiltX = turned.x
-        // One blanket flip, matched to the vendor drivers at the app (Rebelle's flat
-        // brush, 2026-09-05). Decoders disagree on native sign, so correcting each
-        // first would mean two guesses instead of one.
+        // One blanket flip, checked at the app with Rebelle's flat brush.
+        // Decoders disagree on native sign, so correcting each first would
+        // mean two guesses instead of one.
         var tiltY = -turned.y
         let rotation = point.rotation
 
@@ -398,7 +398,7 @@ extension InputInjector {
         return (tiltX, tiltY, rotation)
     }
 
-    /// Raw digitizer coordinates, which Wacom's driver puts on every pen event.
+    /// Raw digitizer coordinates, which drawing apps read from every pen event.
     func stampTabletPosition(_ e: CGEvent, _ p: TabletPoint) {
         e.setIntegerValueField(.tabletEventPointX, value: Int64(p.x))
         e.setIntegerValueField(.tabletEventPointY, value: Int64(p.y))
@@ -592,9 +592,9 @@ extension InputInjector {
         e.flags = currentEventFlags
         finalizeAndPost(e)
 
-        // Wacom's driver also sends each proximity change as a mouse event of
-        // subtype 2 carrying the same fields; Cocoa apps that read proximity
-        // from NSEvent subtypes only see this copy (event-probe, 2026-09-30).
+        // Each proximity change also goes out as a mouse event of subtype 2
+        // carrying the same fields; Cocoa apps that read proximity from
+        // NSEvent subtypes only see this copy.
         guard
             let m = CGEvent(
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,

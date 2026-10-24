@@ -222,9 +222,9 @@ final class InputInjector: @unchecked Sendable {
     /// Longest no-contact gap on the touch ring still treated as one touch.
     static let ringDropoutBridge: TimeInterval = 0.4
 
-    /// Stable per-tablet ID for `tabletEventDeviceID` and proximity events,
-    /// as Wacom's driver sends one per tablet; a shared constant made two
-    /// tablets look like one to apps that pair pointer and proximity events.
+    /// Stable per-tablet ID for `tabletEventDeviceID` and proximity events.
+    /// A shared constant would make two tablets look like one to apps that
+    /// pair pointer and proximity events.
     let tabletDeviceID: Int64
     @MainActor private static var nextTabletDeviceID: Int64 = 1
 

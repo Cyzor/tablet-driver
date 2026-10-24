@@ -108,8 +108,7 @@ struct DisplayMappingView: View {
     let gammaChoices: [Int] = [18, 20, 22, 24]
 
     /// Color-space presets, in the panel's on-screen order (row index = wire
-    /// value for `colorModePayload`). Descriptions condensed from the vendor
-    /// driver's own tooltips.
+    /// value for `colorModePayload`).
     let colorModeChoices: [(name: String, description: String)] = [
         ("Adobe RGB", "A wide color space covering most colors achievable on CMYK printers. Common for print-bound artwork."),
         ("sRGB", "The standard color space for the web and most consumer displays. Common for web-bound artwork."),

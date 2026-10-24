@@ -94,9 +94,8 @@ struct TouchPalmRejector {
 /// gesture intent (pointer drag vs. two-finger scroll vs. tap-click).
 ///
 /// "Sticky mode" means once a touch sequence picks a mode at second-finger-down,
-/// it stays in that mode until *all* fingers lift.  Wacom's official driver
-/// switches modes mid-stream whenever a finger is added or removed; users
-/// uniformly describe the result as twitchy.  This tracker chooses once and
+/// it stays in that mode until *all* fingers lift. Switching modes whenever a
+/// finger lands or lifts feels twitchy, so this tracker chooses once and
 /// commits.
 ///
 /// Owned by `InputInjector`.  All state is mutable; the injector is the only

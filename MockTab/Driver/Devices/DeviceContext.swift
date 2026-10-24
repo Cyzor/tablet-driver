@@ -265,8 +265,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// zeroed back out — it exists so the Buttons pane can keep showing the
     /// right button layout (e.g. Pro Pen 3's 3rd button) across a brief
     /// proximity gap instead of falling back to a generic default the moment
-    /// the pen lifts off, which is what both MockTab and Wacom's own driver
-    /// did before this field existed.
+    /// the pen lifts off.
     @Published var lastKnownToolCode: UInt16 = 0
 
     /// The ToolSettings for the pen currently in proximity.
@@ -491,9 +490,8 @@ final class DeviceContext: ObservableObject, Identifiable {
         // Panel contrast and gamma ride the same 0xB5 control family and
         // replay-on-connect the same way; -1 means untouched, leave the panel's
         // own value alone. Named color presets (Adobe RGB, sRGB, etc.) own
-        // their own contrast/gamma internally — the vendor driver only
-        // exposes these controls in Custom/User Mode, and writing them under
-        // a named preset visibly corrupts its color transform.
+        // their contrast and gamma; writing them under a named preset
+        // visibly corrupts its color transform, so only Custom takes them.
         settings.$displayContrast
             .sink { [weak self] value in
                 guard value >= 0, let self, self.isCustomColorMode,

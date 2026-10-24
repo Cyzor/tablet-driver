@@ -93,9 +93,8 @@ extension DisplayMappingView {
                         ? settings.displayColorMode : 0
                 ].description)
 
-                // Contrast/gamma are only meaningful in Custom mode — named
-                // presets (Adobe RGB, sRGB, etc.) own these internally, and the
-                // vendor driver doesn't expose them outside Custom either.
+                // Contrast/gamma are only meaningful in Custom mode; named
+                // presets (Adobe RGB, sRGB, etc.) own these internally.
                 if isCustomColorModeSelected {
                     HStack {
                         Image(systemName: "circle.lefthalf.filled")
