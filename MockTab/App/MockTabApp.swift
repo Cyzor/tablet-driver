@@ -159,13 +159,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let pwc = SettingsWindowManager.shared
             let tm = TabletManager.shared
             for tablet in knownTablets {
+                // A connected companion (Quick Keys puck or dongle) belongs to
+                // its tablet's window, so it gets no row of its own.
+                if DeviceCompanions.isConnectedCompanion(
+                    productID: tablet.productID, connectedProductIDs: connectedIDs)
+                {
+                    continue
+                }
                 let connected = connectedIDs.contains(tablet.productID)
                 let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
+                // The dongle has no window of its own, so its row is disabled.
+                let isDongle = tm.isDongleRawProductID(tablet.productID)
                 let item = NSMenuItem(
                     title: pwc.menuLabel(forKey: tablet.instanceKey) + suffix,
-                    action: #selector(dockOpenTablet(_:)),
+                    action: isDongle ? nil : #selector(dockOpenTablet(_:)),
                     keyEquivalent: "")
                 item.target = self
+                item.isEnabled = !isDongle
                 // Composite instance identity doesn't fit NSMenuItem.tag
                 // (an Int) — carry it via representedObject instead.
                 item.representedObject = tablet.instanceKey.stringValue
