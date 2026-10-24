@@ -939,7 +939,7 @@ final class InputInjector: @unchecked Sendable {
     /// tracker, so a palm can never enter its gesture state.
     var touchPalmRejector = TouchPalmRejector()
     /// The current touch sequence has had 2+ contacts, and whether it committed
-    /// to a gesture. For `DiscoveryTouchPipeline` diagnostics only.
+    /// to a gesture. For `CaptureTouchPipeline` diagnostics only.
     var touchSequenceSawTwoFingers = false
     var touchSequenceCommitted = false
     /// Gesture components opened during this sequence; a component can join
@@ -967,10 +967,10 @@ final class InputInjector: @unchecked Sendable {
     /// having to report them. `.idle` initially.
     var prevTouchMode: TouchStateTracker.Mode = .idle
     /// When the last touch sequence ended. A new touch within
-    /// `DiscoveryTouchPipeline.reArmWindow` is one interrupted drag, not a new touch.
+    /// `CaptureTouchPipeline.reArmWindow` is one interrupted drag, not a new touch.
     var lastTouchTeardownTime: CFAbsoluteTime = 0
     /// Wall-clock time the current single-contact pointer drag began, for
-    /// `DiscoveryTouchPipeline.longestSingleContactDragMs`. 0 when not in a
+    /// `CaptureTouchPipeline.longestSingleContactDragMs`. 0 when not in a
     /// single-contact drag.
     var singleContactDragStart: CFAbsoluteTime = 0
     /// When the pen last left range. Touch waits a brief grace window after,

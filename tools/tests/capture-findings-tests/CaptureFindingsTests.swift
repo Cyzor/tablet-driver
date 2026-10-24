@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Checks for `discoveryFindings(for:)` — the triage observations computed at
+// Checks for `captureFindings(for:)` — the triage observations computed at
 // export from data a capture already carries.
 //
 // Runs against the real submitted capture set for Cyzor/tablet-driver#14 (a
@@ -36,23 +36,23 @@ func makeResult(
     touchEnabled: Bool? = nil,
     penActivity: Bool? = nil,
     relativeMode: Bool? = nil
-) -> DiscoveryResult {
+) -> CaptureResult {
     var layouts: [String: LiveHIDDescriptorInspector.ReportLayout] = [:]
     for id in declaredInput {
         layouts["input:\(id)"] = LiveHIDDescriptorInspector.ReportLayout(
             reportID: 0, direction: .input, fields: [])
     }
-    var reports: [String: DiscoveryReportSummary] = [:]
+    var reports: [String: CaptureReportSummary] = [:]
     for id in observed {
-        reports[id] = DiscoveryReportSummary(
+        reports[id] = CaptureReportSummary(
             reportID: 0, length: 10, maxLength: 10, lengthVaried: false, sampleCount: 1,
             varyingBytes: [], constantBytes: [])
     }
-    return DiscoveryResult(
+    return CaptureResult(
         capturedAt: Date(),
         mode: "discovery",
         duration: duration,
-        deviceInfo: DiscoveryDeviceInfo(
+        deviceInfo: CaptureDeviceRecord(
             vendorID: "0x056A", productID: productID, name: "Test Device"),
         reports: reports,
         hidReportDescriptor: LiveHIDDescriptorInspector.Parsed(
@@ -60,13 +60,13 @@ func makeResult(
         observedToolCodes: toolCodes,
         observedPenActivity: penActivity,
         touchSettings: touchEnabled.map { enabled in
-            DiscoveryTouchSettings(
+            CaptureTouchSettings(
                 touchEnabled: enabled, tapToClick: false, twoFingerScroll: false,
                 pinchZoom: false, sensitivity: 1, areaX: 0, areaY: 0, areaWidth: 1,
                 areaHeight: 1)
         },
         appSettings: relativeMode.map { relative in
-            var s = DiscoveryAppSettings()
+            var s = CaptureAppSettings()
             s.relativeCursorMovement = relative
             return s
         })
@@ -87,55 +87,55 @@ do {
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
     let data = try! encoder.encode(result)
-    let back = try? decoder.decode(DiscoveryResult.self, from: data)
+    let back = try? decoder.decode(CaptureResult.self, from: data)
     check(back?.initReads?.first?.reply == "0202", "initReads round-trips")
     var json = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
     json["initReads"] = nil
     let older = try? decoder.decode(
-        DiscoveryResult.self, from: try! JSONSerialization.data(withJSONObject: json))
+        CaptureResult.self, from: try! JSONSerialization.data(withJSONObject: json))
     check(older != nil && older?.initReads == nil, "a file without initReads still decodes")
 }
 
 // MARK: Hardware survey wiring
 
 // Issue #19's shape: only the Cintiq Pro 16's touch sensor reached USB.
-func usb(_ pid: String) -> DiscoveryUSBDevice {
-    DiscoveryUSBDevice(
+func usb(_ pid: String) -> CaptureUSBDevice {
+    CaptureUSBDevice(
         vendorID: "0x056A", productID: pid, name: nil, locationID: "0x02120000",
         reason: "tablet", drivers: [])
 }
-let touchOnly = surveyFindings(DiscoveryHardwareSurvey(displays: [], usbDevices: [usb("0x03B3")]))
+let touchOnly = surveyFindings(CaptureHardwareSurvey(displays: [], usbDevices: [usb("0x03B3")]))
 check(
     touchOnly.first { $0.kind == "companionNotOnUSB" }?.detail.contains("pen interface 0x03B2") == true,
     "a touch sensor without its pen interface is flagged")
-let penOnly = surveyFindings(DiscoveryHardwareSurvey(displays: [], usbDevices: [usb("0x03B2")]))
+let penOnly = surveyFindings(CaptureHardwareSurvey(displays: [], usbDevices: [usb("0x03B2")]))
 check(
     penOnly.first { $0.kind == "companionNotOnUSB" }?.detail.contains("touch sensor 0x03B3") == true,
     "a pen interface without its touch sensor is flagged")
 let both = surveyFindings(
-    DiscoveryHardwareSurvey(displays: [], usbDevices: [usb("0x03B2"), usb("0x03B3")]))
+    CaptureHardwareSurvey(displays: [], usbDevices: [usb("0x03B2"), usb("0x03B3")]))
 check(!both.contains { $0.kind == "companionNotOnUSB" }, "a complete pair is not flagged")
 
-func wacomDisplay(provider: String?, hdmi: Bool?) -> DiscoveryDisplay {
-    var d = DiscoveryDisplay(
+func wacomDisplay(provider: String?, hdmi: Bool?) -> CaptureDisplay {
+    var d = CaptureDisplay(
         name: "Cintiq Pro 16", vendorID: "0x5C23", productID: "0x0001", ddc: "answered")
     d.epicProvider = provider
     d.hdmi = hdmi
     return d
 }
-let paths: [(DiscoveryDisplay, String)] = [
+let paths: [(CaptureDisplay, String)] = [
     (wacomDisplay(provider: "AppleDCPMCDP29XX", hdmi: true), "the Mac's own HDMI port"),
     (wacomDisplay(provider: "AppleDCPDPTXController", hdmi: true), "HDMI from a DisplayPort controller"),
     (wacomDisplay(provider: "AppleDCPDPTXController", hdmi: false), "USB-C or Thunderbolt DisplayPort"),
 ]
 for (display, expected) in paths {
-    let detail = surveyFindings(DiscoveryHardwareSurvey(displays: [display], usbDevices: []))
+    let detail = surveyFindings(CaptureHardwareSurvey(displays: [display], usbDevices: []))
         .first { $0.kind == "wacomDisplayVideoPath" }?.detail ?? ""
     check(detail.contains(expected), "video path reads as \(expected)")
 }
-let other = DiscoveryDisplay(name: "LG", vendorID: "0x1E6D", productID: "0x0001", ddc: "answered")
+let other = CaptureDisplay(name: "LG", vendorID: "0x1E6D", productID: "0x0001", ddc: "answered")
 check(
-    surveyFindings(DiscoveryHardwareSurvey(displays: [other], usbDevices: [])).isEmpty,
+    surveyFindings(CaptureHardwareSurvey(displays: [other], usbDevices: [])).isEmpty,
     "non-Wacom displays get no video-path finding")
 
 // MARK: Declared-but-never-observed
@@ -143,7 +143,7 @@ check(
 // The issue #14 shape: five declared input reports, one ever arrives.
 let partial = makeResult(
     declaredInput: ["0x01", "0x10", "0x11", "0x63", "0xAC"], observed: ["0x11"])
-let partialFindings = discoveryFindings(for: partial)
+let partialFindings = captureFindings(for: partial)
 let missingFinding = partialFindings.first { $0.kind == "declaredReportsNeverObserved" }
 check(missingFinding != nil, "reports declared but never observed are reported")
 check(
@@ -158,11 +158,11 @@ check(missingFinding?.productID == "0x032B", "finding is attributed to its devic
 // attributed to the receiver, not to the primary tablet.
 var desk = makeResult(declaredInput: ["0x11"], observed: ["0x11"], toolCodes: ["0x0802"])
 desk.interfaces = [
-    DiscoveryInterface(
+    CaptureInterface(
         usagePage: "0x0001", usage: "0x0002", productID: "0x032B", deviceName: nil,
         isPrimary: true, sampleCount: 1, reports: desk.reports,
         hidReportDescriptor: desk.hidReportDescriptor),
-    DiscoveryInterface(
+    CaptureInterface(
         usagePage: "0xFF0C", usage: "0x0000", productID: "0x0331", deviceName: nil,
         isPrimary: false, sampleCount: 0, reports: [:],
         hidReportDescriptor: LiveHIDDescriptorInspector.Parsed(
@@ -170,7 +170,7 @@ desk.interfaces = [
             reports: ["input:0x11": LiveHIDDescriptorInspector.ReportLayout(
                 reportID: 0x11, direction: .input, fields: [])])),
 ]
-let deskFindings = discoveryFindings(for: desk).filter { $0.kind == "declaredReportsNeverObserved" }
+let deskFindings = captureFindings(for: desk).filter { $0.kind == "declaredReportsNeverObserved" }
 check(deskFindings.count == 1, "only the silent interface is reported")
 check(deskFindings.first?.productID == "0x0331", "a finding names the device it came from")
 
@@ -178,12 +178,12 @@ check(deskFindings.first?.productID == "0x0331", "a finding names the device it 
 let complete = makeResult(
     declaredInput: ["0x01", "0x10"], observed: ["0x01", "0x10"], toolCodes: ["0x0802"])
 check(
-    discoveryFindings(for: complete).isEmpty,
+    captureFindings(for: complete).isEmpty,
     "a capture with nothing notable produces no findings")
 
 // Singular vs. plural, since this text is read by a human.
 let single = makeResult(declaredInput: ["0x01", "0x10"], observed: ["0x10"])
-let singleDetail = discoveryFindings(for: single)
+let singleDetail = captureFindings(for: single)
     .first { $0.kind == "declaredReportsNeverObserved" }?.detail ?? ""
 check(singleDetail.contains("Declared input report 0x01"), "one missing report reads singular")
 check(!singleDetail.contains("reports"), "one missing report doesn't say 'reports'")
@@ -193,24 +193,24 @@ check(!singleDetail.contains("reports"), "one missing report doesn't say 'report
 var noDescriptor = makeResult(observed: ["0x11"], toolCodes: ["0x0802"])
 noDescriptor.hidReportDescriptor = nil
 check(
-    !discoveryFindings(for: noDescriptor).contains { $0.kind == "declaredReportsNeverObserved" },
+    !captureFindings(for: noDescriptor).contains { $0.kind == "declaredReportsNeverObserved" },
     "no descriptor means no declared-report finding")
 
 // MARK: - Proximity and settings
 
 check(
-    discoveryFindings(for: makeResult(toolCodes: []))
+    captureFindings(for: makeResult(toolCodes: []))
         .contains { $0.kind == "noToolCodeObserved" },
     "an empty tool-code list reports no pen proximity")
 check(
-    discoveryFindings(for: makeResult(toolCodes: ["0x0802"]))
+    captureFindings(for: makeResult(toolCodes: ["0x0802"]))
         .contains { $0.kind == "noToolCodeObserved" } == false,
     "an observed tool code suppresses the proximity finding")
 // A protocol that carries no tool code at all — Wacom One S report 0x1F. The
 // pen frames decoded, so neither finding may claim the pen went undetected or
 // untried. A working capture was told its pen had never been seen.
 let noToolCodeProtocol = makeResult(toolCodes: [], penActivity: true)
-let noToolCodeFound = discoveryFindings(for: noToolCodeProtocol)
+let noToolCodeFound = captureFindings(for: noToolCodeProtocol)
 check(
     !noToolCodeFound.contains { $0.kind == "subsystemsNotExercised" },
     "decoded pen frames mean the pen is not reported as unexercised")
@@ -226,31 +226,31 @@ check(
 // Without pen activity the original wording stands — an untouched pen really
 // is untried, which is the issue #14 case the findings exist for.
 check(
-    discoveryFindings(for: makeResult(toolCodes: [], penActivity: false))
+    captureFindings(for: makeResult(toolCodes: [], penActivity: false))
         .contains { $0.kind == "subsystemsNotExercised" },
     "no pen activity still reports the pen as unexercised")
 
 check(
-    discoveryFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: false))
+    captureFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: false))
         .contains { $0.kind == "touchDisabledInSettings" },
     "touch switched off in settings is reported")
 check(
-    discoveryFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: true))
+    captureFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: true))
         .contains { $0.kind == "touchDisabledInSettings" } == false,
     "touch switched on produces no setting finding")
 
 // Relative mode turns the same harmless noise floor into visible cursor
 // jitter, and a capture reads identically either way without this.
 check(
-    discoveryFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: true))
+    captureFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: true))
         .contains { $0.kind == "relativeModeActive" },
     "relative mode is surfaced as an explanation for jitter")
 check(
-    discoveryFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: false))
+    captureFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: false))
         .contains { $0.kind == "relativeModeActive" } == false,
     "absolute mode produces no relative-mode finding")
 check(
-    discoveryFindings(for: makeResult(toolCodes: ["0x0802"]))
+    captureFindings(for: makeResult(toolCodes: ["0x0802"]))
         .contains { $0.kind == "relativeModeActive" } == false,
     "a capture with no app settings makes no claim about mode")
 
@@ -258,9 +258,9 @@ check(
 
 // The DTH-2700's Pro Pen folds to 0x1E02; once cataloged it must not be flagged.
 do {
-    let known = discoveryFindings(for: makeResult(toolCodes: ["0x1E02", "0x1E0A"], penActivity: true))
+    let known = captureFindings(for: makeResult(toolCodes: ["0x1E02", "0x1E0A"], penActivity: true))
     check(!known.contains { $0.kind == "toolCodeNotInCatalog" }, "cataloged Pro Pen is not flagged")
-    let unknown = discoveryFindings(for: makeResult(toolCodes: ["0x7F02"], penActivity: true))
+    let unknown = captureFindings(for: makeResult(toolCodes: ["0x7F02"], penActivity: true))
     check(
         unknown.contains { $0.kind == "toolCodeNotInCatalog" && $0.detail.contains("0x7F02") },
         "uncataloged tool code is flagged")
@@ -268,17 +268,17 @@ do {
 
 do {
     var result = makeResult()
-    var touch = DiscoveryTouchPipeline()
+    var touch = CaptureTouchPipeline()
     touch.framesDecoded = 5
     touch.contactsDecoded = 7
     touch.touchScreenMatchedPanel = false
     result.touchPipeline = touch
-    result.settingsIdentity = DiscoverySettingsIdentity(
+    result.settingsIdentity = CaptureSettingsIdentity(
         usbSerialReported: true, sharedNamespace: false, knownUnitsOfModel: 2,
         storedSettingCount: 3)
-    result.appEnvironment = DiscoveryAppEnvironment(
+    result.appEnvironment = CaptureAppEnvironment(
         accessibilityGranted: true, inputMonitoringGranted: false, installLocation: "translocated")
-    let kinds = Set(discoveryFindings(for: result).map(\.kind))
+    let kinds = Set(captureFindings(for: result).map(\.kind))
     for kind in [
         "touchReportsNoContactSize", "touchScreenNotMatched", "multipleUnitsOfModel",
         "permissionsMissing", "appTranslocated",
@@ -289,13 +289,13 @@ do {
     check(!kinds.contains("otherMockTabRunning"), "unrecorded copies aren't flagged")
     result.appEnvironment?.otherMockTabCopies = 0
     result.appEnvironment?.competingDrivers = []
-    let quiet = Set(discoveryFindings(for: result).map(\.kind))
+    let quiet = Set(captureFindings(for: result).map(\.kind))
     check(
         !quiet.contains("otherMockTabRunning") && !quiet.contains("competingDriverRunning"),
         "no other copies or drivers, no finding")
     result.appEnvironment?.otherMockTabCopies = 1
     result.appEnvironment?.competingDrivers = ["Wacom Tablet Driver"]
-    let busy = discoveryFindings(for: result)
+    let busy = captureFindings(for: result)
     check(
         busy.contains { $0.kind == "otherMockTabRunning" && $0.detail.hasPrefix("Another copy") },
         "another running copy is flagged")
@@ -304,14 +304,14 @@ do {
         "a competing driver is flagged")
     result.settingsIdentity?.windowProductID = "0x0357"
     check(
-        discoveryFindings(for: result).contains {
+        captureFindings(for: result).contains {
             $0.kind == "collectedFromOtherWindow" && $0.detail.contains("0x0357")
         },
         "another tablet's window is flagged")
 }
 
 do {
-    var touch = DiscoveryTouchPipeline()
+    var touch = CaptureTouchPipeline()
     touch.noteFrameContacts(2, withSize: 0)
     touch.noteFrameContacts(14, withSize: 0)
     check(touch.contactsPerFrame == [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1], "contact counts bucket, capped at 10")
@@ -323,7 +323,7 @@ do {
 }
 
 do {
-    var touch = DiscoveryTouchPipeline()
+    var touch = CaptureTouchPipeline()
     check(touch.palmNeighborSpacingMM == nil, "no palm figures until a palm is seen")
     touch.notePalmNeighbor(mm: 3, size: 2)
     touch.notePalmNeighbor(mm: 22, size: nil)
@@ -336,7 +336,7 @@ do {
     // Touch 0x88 goes quiet once the 0x83 mode switch lands.
     var result = makeResult(declaredInput: ["0x88"], observed: [])
     result.interfaces = [
-        DiscoveryInterface(
+        CaptureInterface(
             usagePage: "0xFF00", usage: "0x0001", productID: "0x032C", deviceName: nil,
             isPrimary: false, sampleCount: 0, reports: [:],
             hidReportDescriptor: result.hidReportDescriptor)
@@ -344,7 +344,7 @@ do {
     result.initReports = [
         CaptureInitReport(reportID: 131, value: 2, succeeded: true, interfaceUsagePage: "0xFF00")
     ]
-    let detail = discoveryFindings(for: result)
+    let detail = captureFindings(for: result)
         .first { $0.kind == "declaredReportsNeverObserved" }?.detail ?? ""
     check(detail.contains("mode switch succeeded"), "silence after a mode switch is explained")
 }
@@ -352,19 +352,19 @@ do {
 do {
     // PTH-860 over Bluetooth: touch rides in the pen's 0x80 container.
     var result = makeResult(touchEnabled: true, penActivity: true)
-    var touch = DiscoveryTouchPipeline()
+    var touch = CaptureTouchPipeline()
     touch.framesDecoded = 906
     result.touchPipeline = touch
-    let detail = discoveryFindings(for: result)
+    let detail = captureFindings(for: result)
         .first { $0.kind == "subsystemsNotExercised" }?.detail ?? ""
     check(!detail.contains("finger touch"), "decoded touch counts as exercised")
-    let grip = discoveryFindings(for: makeResult(productID: "0x0361", toolCodes: ["0x0802"], penActivity: true))
+    let grip = captureFindings(for: makeResult(productID: "0x0361", toolCodes: ["0x0802"], penActivity: true))
     check(!grip.contains { $0.kind == "toolCodeNotInCatalog" }, "Grip Pen is cataloged for PTH-860")
 }
 
 // MARK: - Real submitted captures
 
-// Set MOCKTAB_SILENT_REPORT_CAPTURES to a folder of discovery captures in
+// Set MOCKTAB_SILENT_REPORT_CAPTURES to a folder of captures in
 // which no pen ever came into range. Without it, these checks are skipped.
 let fixtureDir = URL(fileURLWithPath:
     ProcessInfo.processInfo.environment["MOCKTAB_SILENT_REPORT_CAPTURES"] ?? "/nonexistent")
@@ -375,10 +375,10 @@ if let files = try? FileManager.default.contentsOfDirectory(atPath: fixtureDir.p
     var examined = 0
     for name in files.sorted() where name.hasSuffix(".json") {
         guard let data = try? Data(contentsOf: fixtureDir.appendingPathComponent(name)),
-            let result = try? decoder.decode(DiscoveryResult.self, from: data)
+            let result = try? decoder.decode(CaptureResult.self, from: data)
         else { continue }
         examined += 1
-        let found = discoveryFindings(for: result)
+        let found = captureFindings(for: result)
         // Every capture in this set observed exactly one of its declared
         // input reports — that is the whole point of the case.
         check(

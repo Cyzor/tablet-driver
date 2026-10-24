@@ -148,7 +148,7 @@ struct ByteValueSet: Sendable, Equatable {
     }
 }
 
-// MARK: - Discovery accumulator
+// MARK: - Capture accumulator
 
 /// Streaming per-report statistics, written from the HID callback thread.
 ///
@@ -159,7 +159,7 @@ struct ByteValueSet: Sendable, Equatable {
 /// Done. Everything the capture file reports — and everything
 /// `TabletKit/tools/triage_discovery.py` reads — is derivable incrementally, so it is
 /// derived incrementally, in fixed space.
-final class DiscoveryAccumulator: Sendable {
+final class CaptureAccumulator: Sendable {
 
     struct ReportStats: Sendable {
         var firstLength: Int

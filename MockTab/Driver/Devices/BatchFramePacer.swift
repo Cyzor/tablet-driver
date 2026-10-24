@@ -107,7 +107,7 @@ final class BatchFramePacer {
     /// nothing is pending. Returns how many frames it delivered — a nonzero
     /// return in steady state means a batch didn't finish pacing before the
     /// next report arrived, and those frames reached the injector bunched
-    /// (see `DiscoveryTouchPipeline.pacerFlushDeliveredFrames`).
+    /// (see `CaptureTouchPipeline.pacerFlushDeliveredFrames`).
     @discardableResult
     func flush() -> Int {
         timer.map { CFRunLoopTimerInvalidate($0) }

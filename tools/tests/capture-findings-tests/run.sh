@@ -1,7 +1,7 @@
 #!/bin/sh
 # Compile and run the capture-findings checks against the real source. The app
 # has no XCTest target, so this builds a small executable from CaptureModels.swift
-# (which holds both the models and discoveryFindings) plus the test main.
+# (which holds both the models and captureFindings) plus the test main.
 # Exits non-zero on failure.
 set -e
 

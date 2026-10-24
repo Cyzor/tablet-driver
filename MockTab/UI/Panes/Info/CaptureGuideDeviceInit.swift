@@ -281,7 +281,7 @@ extension CaptureGuideView {
             }
         }
         // Finger touch is counted by the injection pipeline rather than the
-        // decoder, and is likewise zeroed per session by `startDiscovery`.
+        // decoder, and is likewise zeroed per session by `startCapture`.
         if TouchPipelineProbe.snapshot().contactsDecoded > 0 {
             satisfied.insert(.fingerTouch)
         }

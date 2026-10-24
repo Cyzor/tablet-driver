@@ -272,7 +272,7 @@ extension InputInjector {
 
         // Diagnostic: a committed pan scroll running on fewer than two contacts
         // is the "stuck scroll" signature — see
-        // `DiscoveryTouchPipeline.scrollSingleContactFrames`. Sampled here, from
+        // `CaptureTouchPipeline.scrollSingleContactFrames`. Sampled here, from
         // the injector, so `TouchStateTracker` keeps taking no dependency on the
         // probe. `now` is the same wall clock the tracker sees, so a
         // sub-millisecond gap between touch frames — the batched-Bluetooth
@@ -315,7 +315,7 @@ extension InputInjector {
 
         // Diagnostic: tally how this two-or-more-finger sequence resolves,
         // once per sequence rather than per frame — see
-        // `DiscoveryTouchPipeline.twoFingerResolved*`. A lift with no prior
+        // `CaptureTouchPipeline.twoFingerResolved*`. A lift with no prior
         // commit closes out a sequence that saw 2+ fingers but never
         // resolved to any gesture; the commit side is tallied in the intent
         // switch below.
@@ -440,7 +440,7 @@ extension InputInjector {
 
         if prevTouchMode == .idle, mode == .pending {
             let reArmed = lastTouchTeardownTime != 0
-                && now - lastTouchTeardownTime < DiscoveryTouchPipeline.reArmWindow
+                && now - lastTouchTeardownTime < CaptureTouchPipeline.reArmWindow
             TouchPipelineProbe.note {
                 $0.onsetWindowsEntered += 1
                 if reArmed { $0.onsetWindowsReArmedWithin += 1 }

@@ -18,14 +18,14 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 /// Open-ended device data collection.
 ///
 /// Usage:
-/// 1. `startDiscovery(deviceInfo:duration:)` to begin.
+/// 1. `startCapture(deviceInfo:duration:)` to begin.
 /// 2. Drivers call `CaptureEngine.recordRaw(...)` from their report callbacks.
-/// 3. `finishDiscovery()` to end and build a `DiscoveryResult`.
-/// 4. `exportDiscoveryJSON(result:)` to write it to disk.
+/// 3. `finishCapture()` to end and build a `CaptureResult`.
+/// 4. `exportCaptureJSON(result:)` to write it to disk.
 ///
 /// Thread safety: UI-state methods are `@MainActor`. The recording path is
 /// deliberately *not* — `recordRaw` runs on HIDThread and writes into a
-/// lock-guarded `DiscoveryAccumulator`, so no report ever hops to the main
+/// lock-guarded `CaptureAccumulator`, so no report ever hops to the main
 /// actor. The main actor only polls the accumulated count for display.
 @MainActor
 final class CaptureEngine: ObservableObject {
@@ -46,45 +46,45 @@ final class CaptureEngine: ObservableObject {
     struct InterfaceSession {
         let device: IOHIDDevice
         let info: CaptureDeviceInfo
-        let accumulator: DiscoveryAccumulator
+        let accumulator: CaptureAccumulator
     }
 
     /// Every interface this session is recording, primary first — see
-    /// `startDiscovery(devices:)`. Empty when idle.
+    /// `startCapture(devices:)`. Empty when idle.
     private var sessions: [InterfaceSession] = []
 
     /// Every in-progress session's accumulator, keyed by the identity of the
     /// `IOHIDDevice` it's recording — not product ID, so two connected units
     /// of the same model (or two capture sheets open at once) each keep their
-    /// own data. Registered in `startDiscovery`, deregistered in
-    /// `cancelDiscovery`/`finishDiscovery`. Lock-guarded because drivers call
+    /// own data. Registered in `startCapture`, deregistered in
+    /// `cancelCapture`/`finishCapture`. Lock-guarded because drivers call
     /// `recordRaw` from HIDThread, never the main actor.
-    /// The device's touch settings as of `startDiscovery`, recorded into the
+    /// The device's touch settings as of `startCapture`, recorded into the
     /// capture file. Nil for a device a spec says has no finger touch, where
     /// these settings are inert.
-    private var capturedTouchSettings: DiscoveryTouchSettings?
-    /// Mapping and pen-feel settings as of `startDiscovery`. Unlike touch,
-    /// recorded for every device — see `DiscoveryAppSettings`.
-    private var capturedAppSettings: DiscoveryAppSettings?
+    private var capturedTouchSettings: CaptureTouchSettings?
+    /// Mapping and pen-feel settings as of `startCapture`. Unlike touch,
+    /// recorded for every device — see `CaptureAppSettings`.
+    private var capturedAppSettings: CaptureAppSettings?
     /// Tools the device registry has ever recorded for this tablet, injected
     /// at start like the settings above — `CaptureEngine` stays free of the
     /// main-actor registry so the standalone harnesses can build a result.
     private var capturedEverSeenTools: [String]?
-    private var capturedSettingsIdentity: DiscoverySettingsIdentity?
-    private var capturedKnownTablets: [DiscoveryKnownTablet]?
-    private var capturedAppEnvironment: DiscoveryAppEnvironment?
+    private var capturedSettingsIdentity: CaptureSettingsIdentity?
+    private var capturedKnownTablets: [CaptureKnownTablet]?
+    private var capturedAppEnvironment: CaptureAppEnvironment?
     /// Filled a second or two into the session; see `HardwareSurveyProbe`.
-    private var capturedHardwareSurvey: DiscoveryHardwareSurvey?
-    /// Live for the session only — created in `startDiscovery` when the
+    private var capturedHardwareSurvey: CaptureHardwareSurvey?
+    /// Live for the session only — created in `startCapture` when the
     /// device is Bluetooth and a candidate address is available, torn down
-    /// in `finishDiscovery`/`cancelDiscovery`. Not a standing per-device
+    /// in `finishCapture`/`cancelCapture`. Not a standing per-device
     /// monitor: polling bluetoothd for the whole time a tablet sits connected
     /// would be needless background chatter for something only useful while
     /// actively diagnosing.
     private var bluetoothLinkMonitor: BluetoothLinkMonitor?
 
     private nonisolated static let activeAccumulators =
-        OSAllocatedUnfairLock<[ObjectIdentifier: DiscoveryAccumulator]>(initialState: [:])
+        OSAllocatedUnfairLock<[ObjectIdentifier: CaptureAccumulator]>(initialState: [:])
 
     /// Automatic `initSteps` writes the driver made, newest last, regardless of
     /// whether a capture was running at the time.
@@ -192,13 +192,13 @@ final class CaptureEngine: ObservableObject {
 
     /// Findings for every known-vendor device a sweep skipped, for the
     /// exporter. Sorted so two captures of one desk compare cleanly.
-    nonisolated static func excludedDeviceFindings() -> [DiscoveryFinding] {
+    nonisolated static func excludedDeviceFindings() -> [CaptureFinding] {
         excludedDevices.withLock { $0 }
             .sorted { ($0.vendorID, $0.productID) < ($1.vendorID, $1.productID) }
             .map { device in
                 let pid = String(format: "0x%04X", device.productID)
                 let usage = device.usage.map { String(format: "/0x%04X", $0) } ?? ""
-                return DiscoveryFinding(
+                return CaptureFinding(
                     kind: "knownVendorDeviceExcluded",
                     productID: pid,
                     detail: "Skipped \(String(format: "0x%04X", device.vendorID))/\(pid): "
@@ -224,7 +224,7 @@ final class CaptureEngine: ObservableObject {
     ///     of this call — nothing retains it.
     ///   - contactDown: whether a touch contact was down as of the driver's
     ///     most recent decode. Used only to split the arrival-gap histogram
-    ///     (see `DiscoveryAccumulator.record`); `nil` when the caller has no
+    ///     (see `CaptureAccumulator.record`); `nil` when the caller has no
     ///     touch state to offer, which is every non-touch report and every
     ///     driver that doesn't decode touch.
     nonisolated static func recordRaw(
@@ -242,7 +242,7 @@ final class CaptureEngine: ObservableObject {
     // MARK: - Published UI State
 
     @Published private(set) var isRunning = false
-    @Published private(set) var discoverySampleCount = 0
+    @Published private(set) var captureSampleCount = 0
     @Published private(set) var lastError: String?
     /// Device-mode init writes attempted this session, in order. Surfaced in the
     /// capture UI and carried into the exported JSON.
@@ -262,10 +262,10 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - Session State
 
-    private var discoveryStartTime: Date = .distantPast
+    private var captureStartTime: Date = .distantPast
     /// Fires once at the end of the session duration to auto-finish a session
     /// the user walked away from.
-    private var discoveryTimer: Timer?
+    private var captureTimer: Timer?
     /// Polls the accumulator so the UI can show a live event count without the
     /// recording path touching `@Published` state per report.
     private var pollTimer: Timer?
@@ -274,46 +274,46 @@ final class CaptureEngine: ObservableObject {
     /// — same rationale as `HIDCapture`'s background flush. Safe to run
     /// live: every accumulator's `snapshot()` is a non-destructive read.
     private var flushTimer: Timer?
-    /// Fixed at `startDiscovery`, unlike the final export's filename (stamped
+    /// Fixed at `startCapture`, unlike the final export's filename (stamped
     /// fresh) — periodic flushes overwrite one file in place. Cleared by
     /// `stopTimers()`; `lastFlushFileURL` below survives that so the final
     /// export can still find and delete the now-redundant interim copy.
     private var flushFileURL: URL?
-    /// Outlives `flushFileURL` across `stopTimers()` so `exportDiscoveryJSON`
+    /// Outlives `flushFileURL` across `stopTimers()` so `exportCaptureJSON`
     /// can clean up the interim flush file after a successful final export.
     private var lastFlushFileURL: URL?
     private static let flushInterval: TimeInterval = 15
 
     // MARK: - Callbacks
 
-    /// Called when discovery finishes with the full result.
-    var onDiscoveryComplete: ((DiscoveryResult) -> Void)?
+    /// Called when the capture finishes with the full result.
+    var onCaptureComplete: ((CaptureResult) -> Void)?
 
     // MARK: - Public API
 
     /// Begin a collection session covering **every** reporting interface of
     /// one tablet at once. Records for `duration` seconds, or until
-    /// `finishDiscovery()` is called. Independent of any other `CaptureEngine`
+    /// `finishCapture()` is called. Independent of any other `CaptureEngine`
     /// instance's session, even one running concurrently on another device.
     ///
     /// - Parameter devices: each interface to record, paired with its own
     ///   identity and descriptor. `devices[0]` names the hardware in the
     ///   capture header (`deviceInfo`); the interface that supplies the
     ///   top-level `reports` block is chosen from descriptor contents at
-    ///   build time — see `buildDiscoveryResult` — so callers no longer have
+    ///   build time — see `buildCaptureResult` — so callers no longer have
     ///   to sort a pen interface to the front. Passing more than one is the
     ///   point: which interface carries the interesting traffic is exactly
     ///   what a tester submitting an unknown device cannot be expected to
     ///   know, and recording them all costs a few KB.
-    func startDiscovery(
+    func startCapture(
         devices: [(IOHIDDevice, CaptureDeviceInfo)],
         duration: TimeInterval = 60,
-        touchSettings: DiscoveryTouchSettings? = nil,
-        appSettings: DiscoveryAppSettings? = nil,
+        touchSettings: CaptureTouchSettings? = nil,
+        appSettings: CaptureAppSettings? = nil,
         everSeenTools: [String]? = nil,
-        settingsIdentity: DiscoverySettingsIdentity? = nil,
-        knownTablets: [DiscoveryKnownTablet]? = nil,
-        appEnvironment: DiscoveryAppEnvironment? = nil,
+        settingsIdentity: CaptureSettingsIdentity? = nil,
+        knownTablets: [CaptureKnownTablet]? = nil,
+        appEnvironment: CaptureAppEnvironment? = nil,
         bluetoothAddressCandidate: String? = nil,
         tapped: [IOHIDDevice] = []
     ) {
@@ -322,8 +322,8 @@ final class CaptureEngine: ObservableObject {
         deregisterAccumulators()
         lastError = nil
         initReportsSent = []
-        discoverySampleCount = 0
-        discoveryStartTime = Date()
+        captureSampleCount = 0
+        captureStartTime = Date()
         // Zeroed per session so the counters describe this recording rather
         // than everything since launch.
         TouchPipelineProbe.reset()
@@ -337,10 +337,10 @@ final class CaptureEngine: ObservableObject {
         // Off the main thread: each DDC request waits ~50 ms on the panel.
         // Keyed to the session start so a slow survey can't land in the next.
         capturedHardwareSurvey = nil
-        let sessionStart = discoveryStartTime
+        let sessionStart = captureStartTime
         Task { [weak self] in
             let survey = await Task.detached(priority: .utility) { HardwareSurveyProbe.run() }.value
-            guard let self, self.discoveryStartTime == sessionStart else { return }
+            guard let self, self.captureStartTime == sessionStart else { return }
             self.capturedHardwareSurvey = survey
         }
         bluetoothLinkMonitor = bluetoothAddressCandidate.flatMap {
@@ -356,7 +356,7 @@ final class CaptureEngine: ObservableObject {
             if let id = Self.registryID(of: device) {
                 guard seenRegistryIDs.insert(id).inserted else { return nil }
             }
-            return InterfaceSession(device: device, info: info, accumulator: DiscoveryAccumulator())
+            return InterfaceSession(device: device, info: info, accumulator: CaptureAccumulator())
         }
         sessions = started
         // Arm each accumulator before announcing it: a report arriving between
@@ -383,15 +383,15 @@ final class CaptureEngine: ObservableObject {
         initReportsAutomatic = Self.autoInitReportsSnapshot()
         pollTimer = scheduledTimer(interval: 0.5, repeats: true) { [weak self] in
             guard let self, self.isRunning else { return }
-            self.discoverySampleCount = self.totalSampleCount
+            self.captureSampleCount = self.totalSampleCount
             // Picks up the idle-recovery retries, which keep firing every few
             // seconds while a device stays unarmed.
             self.initReportsAutomatic = Self.autoInitReportsSnapshot()
         }
-        discoveryTimer = scheduledTimer(interval: duration, repeats: false) { [weak self] in
-            self?.finishDiscovery()
+        captureTimer = scheduledTimer(interval: duration, repeats: false) { [weak self] in
+            self?.finishCapture()
         }
-        flushFileURL = Self.flushFileURL(productID: devices[0].1.productIDHex, at: discoveryStartTime)
+        flushFileURL = Self.flushFileURL(productID: devices[0].1.productIDHex, at: captureStartTime)
         lastFlushFileURL = flushFileURL
         flushTimer = scheduledTimer(interval: Self.flushInterval, repeats: true) { [weak self] in
             self?.flushToDisk()
@@ -404,7 +404,7 @@ final class CaptureEngine: ObservableObject {
     /// must be saved for the real final export.
     private func flushToDisk() {
         guard isRunning, !sessions.isEmpty, let url = flushFileURL else { return }
-        let result = buildDiscoveryResult(sessions: sessions, bluetoothLink: nil)
+        let result = buildCaptureResult(sessions: sessions, bluetoothLink: nil)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -450,7 +450,7 @@ final class CaptureEngine: ObservableObject {
     /// the hardware in the header keeps that role for the whole session.
     func addInterface(device: IOHIDDevice, deviceInfo: CaptureDeviceInfo, tapped: Bool = false) {
         guard isRunning, !isRecording(device) else { return }
-        let accumulator = DiscoveryAccumulator()
+        let accumulator = CaptureAccumulator()
         accumulator.start()
         sessions.append(
             InterfaceSession(device: device, info: deviceInfo, accumulator: accumulator))
@@ -571,7 +571,7 @@ final class CaptureEngine: ObservableObject {
     }
 
     /// Cancel collection and discard everything gathered.
-    func cancelDiscovery() {
+    func cancelCapture() {
         guard isRunning else { return }
         // A cancelled capture shouldn't leave the crash-safety copy behind
         // with no corresponding final export.
@@ -583,7 +583,7 @@ final class CaptureEngine: ObservableObject {
         for session in sessions { session.accumulator.stop() }
         deregisterAccumulators()
         isRunning = false
-        discoverySampleCount = 0
+        captureSampleCount = 0
         _ = bluetoothLinkMonitor?.stopAndSummarize()
         bluetoothLinkMonitor = nil
     }
@@ -615,16 +615,16 @@ final class CaptureEngine: ObservableObject {
     }
 
     /// Finish collection and build the result. Also invokes
-    /// `onDiscoveryComplete`.
+    /// `onCaptureComplete`.
     @discardableResult
-    func finishDiscovery() -> DiscoveryResult? {
+    func finishCapture() -> CaptureResult? {
         guard isRunning else { return nil }
         stopTimers()
         // Close every accumulator before snapshotting so no report lands
         // between the snapshot and the end of the session.
         for session in sessions { session.accumulator.stop() }
         isRunning = false
-        discoverySampleCount = totalSampleCount
+        captureSampleCount = totalSampleCount
 
         guard !sessions.isEmpty else {
             lastError = String(
@@ -639,9 +639,9 @@ final class CaptureEngine: ObservableObject {
         bluetoothLinkMonitor = nil
 
         // Built before deregistering: `sessions` holds the data being read.
-        let result = buildDiscoveryResult(sessions: sessions, bluetoothLink: bluetoothSummary)
+        let result = buildCaptureResult(sessions: sessions, bluetoothLink: bluetoothSummary)
         deregisterAccumulators()
-        onDiscoveryComplete?(result)
+        onCaptureComplete?(result)
         return result
     }
 
@@ -688,10 +688,10 @@ final class CaptureEngine: ObservableObject {
 
     // MARK: - JSON Export
 
-    /// Write the discovery result to a JSON file on the Desktop, falling back
+    /// Write the capture result to a JSON file on the Desktop, falling back
     /// to a save panel when that write fails (most often because the app has
     /// not been granted Desktop access).
-    func exportDiscoveryJSON(result: DiscoveryResult) -> URL? {
+    func exportCaptureJSON(result: CaptureResult) -> URL? {
         let filename = "mocktab-info-\(result.deviceInfo.productID)-\(DateStamp.compact()).json"
 
         let encoder = JSONEncoder()
@@ -778,9 +778,9 @@ final class CaptureEngine: ObservableObject {
     /// primary included, is additionally listed in `interfaces`. Tool codes
     /// are unioned across interfaces, since a tool entering proximity is a
     /// property of the tablet rather than of whichever interface reported it.
-    private func buildDiscoveryResult(
+    private func buildCaptureResult(
         sessions allSessions: [InterfaceSession], bluetoothLink: BluetoothLinkMonitor.Summary?
-    ) -> DiscoveryResult {
+    ) -> CaptureResult {
         // Last line of defense before anything reaches a file the user may
         // attach to a public issue. `dropUnrelatedInterfacesIfTabletFound`
         // already prunes as interfaces arrive; repeating the rule at the
@@ -830,14 +830,14 @@ final class CaptureEngine: ObservableObject {
                 : (sessions.max { $0.accumulator.sampleCount < $1.accumulator.sampleCount }
                     ?? sessions[0]).device)
 
-        var interfaces: [DiscoveryInterface] = []
+        var interfaces: [CaptureInterface] = []
         var allToolCodes: Set<UInt16> = []
 
         for session in sessions {
             let (reports, toolCodes) = session.accumulator.snapshot()
             allToolCodes.formUnion(toolCodes)
             interfaces.append(
-                DiscoveryInterface(
+                CaptureInterface(
                     usagePage: session.info.usagePage.map { String(format: "0x%04X", $0) },
                     usage: session.info.usage.map { String(format: "0x%04X", $0) },
                     productID: session.info.productIDHex,
@@ -897,9 +897,9 @@ final class CaptureEngine: ObservableObject {
         // candidate that resolved to the wrong (or no) device produces a
         // block of pure zeros/nils that would read as "signal is fine"
         // rather than "we have no data."
-        let discoveryBluetoothLink = bluetoothLink.flatMap { summary -> DiscoveryBluetoothLink? in
+        let captureBluetoothLink = bluetoothLink.flatMap { summary -> CaptureBluetoothLink? in
             guard summary.sampleCount > 0 else { return nil }
-            return DiscoveryBluetoothLink(
+            return CaptureBluetoothLink(
                 sampleCount: summary.sampleCount,
                 disconnectedSampleCount: summary.disconnectedSampleCount,
                 addressLikelyWrong: summary.addressLikelyWrong,
@@ -911,13 +911,13 @@ final class CaptureEngine: ObservableObject {
                 rawRSSIAvg: summary.rawRSSIAvg)
         }
 
-        var result = DiscoveryResult(
+        var result = CaptureResult(
             appVersion: Bundle.main.versionLabel,
             appBuildDate: Bundle.main.object(forInfoDictionaryKey: "MockTabBuildDate") as? String,
             capturedAt: Date(),
             mode: "discovery",
-            duration: Date().timeIntervalSince(discoveryStartTime),
-            deviceInfo: DiscoveryDeviceInfo(
+            duration: Date().timeIntervalSince(captureStartTime),
+            deviceInfo: CaptureDeviceRecord(
                 vendorID: deviceInfo.vendorIDHex,
                 productID: deviceInfo.productIDHex,
                 name: deviceInfo.name,
@@ -947,7 +947,7 @@ final class CaptureEngine: ObservableObject {
             settingsIdentity: capturedSettingsIdentity,
             appEnvironment: capturedAppEnvironment,
             touchPipeline: touchPipeline.isEmpty ? nil : touchPipeline,
-            bluetoothLink: discoveryBluetoothLink,
+            bluetoothLink: captureBluetoothLink,
             hardwareSurvey: capturedHardwareSurvey,
             notes: notes,
             submitterContact: nil
@@ -956,7 +956,7 @@ final class CaptureEngine: ObservableObject {
         result.coverage = Self.featureCoverage(
             vendorID: deviceInfo.vendorID, productID: deviceInfo.productID, transport: deviceInfo.transport,
             touchDecoded: touchPipeline.contactsDecoded > 0)
-        let found = discoveryFindings(for: result) + Self.excludedDeviceFindings()
+        let found = captureFindings(for: result) + Self.excludedDeviceFindings()
         result.findings = found.isEmpty ? nil : found
         return result
     }
@@ -965,7 +965,7 @@ final class CaptureEngine: ObservableObject {
     /// least-proven ones lead.
     private static func featureCoverage(
         vendorID: Int, productID: Int, transport: String?, touchDecoded: Bool
-    ) -> [DiscoveryFeatureCoverage]? {
+    ) -> [CaptureFeatureCoverage]? {
         guard WacomDeviceRegistry.vendorIDs.contains(vendorID) else { return nil }
         let canonical = WacomDeviceRegistry.canonicalProductID(for: productID)
         guard let spec = WacomDeviceRegistry.spec(for: canonical) else { return nil }
@@ -984,7 +984,7 @@ final class CaptureEngine: ObservableObject {
         return spec.evidence
             .sorted { ($0.value.level, $0.key.rawValue) < ($1.value.level, $1.key.rawValue) }
             .map { feature, evidence in
-                DiscoveryFeatureCoverage(
+                CaptureFeatureCoverage(
                     feature: feature.rawValue,
                     level: "\(evidence.level)",
                     exercised: unshowable.contains(feature) ? nil : seen.contains(feature))
@@ -999,11 +999,11 @@ final class CaptureEngine: ObservableObject {
     ///   interface's reports against a pen interface's descriptor marks every
     ///   one of them opaque.
     private static func reportSummaries(
-        _ reports: [UInt8: DiscoveryAccumulator.ReportStats],
+        _ reports: [UInt8: CaptureAccumulator.ReportStats],
         descriptor: LiveHIDDescriptorInspector.Parsed?,
         productID: Int
-    ) -> [String: DiscoveryReportSummary] {
-        var reportSummaries: [String: DiscoveryReportSummary] = [:]
+    ) -> [String: CaptureReportSummary] {
+        var reportSummaries: [String: CaptureReportSummary] = [:]
 
         for (reportID, stats) in reports {
             let idHex = String(format: "0x%02X", reportID)
@@ -1017,7 +1017,7 @@ final class CaptureEngine: ObservableObject {
             var constantBytes: [Int] = []
             var optionalBytes: [Int] = []
             var constantValues: [Int] = []
-            var byteStats: [Int: DiscoveryByteStat] = [:]
+            var byteStats: [Int: CaptureByteStat] = [:]
 
             // `byteRoles()` partitions every position exactly once, so
             // `constantBytes` and `constantValues` stay the same length by
@@ -1048,7 +1048,7 @@ final class CaptureEngine: ObservableObject {
             }
 
             // Cross-reference against the parsed descriptor: does it expose a
-            // decodable (non-opaque) field for this input report ID? Discovery
+            // decodable (non-opaque) field for this input report ID? Capture
             // only observes device->host traffic, so we only ever check the
             // "input:" direction here.
             let descriptorReadable = descriptor?.reports["input:\(idHex)"]?.isReadable
@@ -1064,25 +1064,25 @@ final class CaptureEngine: ObservableObject {
                 })
             let repeatingStructure = RepeatingReportStructureDetector
                 .detect(signatures: signatures)
-                .map(Self.discoveryRepeatingStructure)
+                .map(Self.captureRepeatingStructure)
 
             // Only meaningful once a report has arrived more than once — a
             // single-arrival report has no gap and `gapBuckets` is all zeros.
-            let arrivalGaps: DiscoveryArrivalGaps? =
+            let arrivalGaps: CaptureArrivalGaps? =
                 stats.sampleCount > 1
-                ? DiscoveryArrivalGaps(
-                    bucketEdgesMs: DiscoveryAccumulator.ReportStats.gapBucketEdgesMs,
+                ? CaptureArrivalGaps(
+                    bucketEdgesMs: CaptureAccumulator.ReportStats.gapBucketEdgesMs,
                     buckets: stats.gapBuckets,
                     inGestureBuckets: stats.inGestureGapBuckets.contains { $0 != 0 }
                         ? stats.inGestureGapBuckets : nil,
                     idleBuckets: stats.idleGapBuckets.contains { $0 != 0 }
                         ? stats.idleGapBuckets : nil,
                     longestGaps: stats.longestGaps.map {
-                        DiscoveryArrivalGaps.Gap(ms: $0.ms, endedAtSessionMs: $0.atElapsedMs)
+                        CaptureArrivalGaps.Gap(ms: $0.ms, endedAtSessionMs: $0.atElapsedMs)
                     })
                 : nil
 
-            reportSummaries[idHex] = DiscoveryReportSummary(
+            reportSummaries[idHex] = CaptureReportSummary(
                 reportID: reportID,
                 length: stats.firstLength,
                 maxLength: stats.maxLength,
@@ -1120,38 +1120,38 @@ final class CaptureEngine: ObservableObject {
 
     /// Builds `byteStatsByDiscriminator` for one report, or nil when byte 1's
     /// own cardinality falls outside `discriminatorMaxDistinct` — see that
-    /// property and `DiscoveryReportSummary.byteStatsByDiscriminator`.
+    /// property and `CaptureReportSummary.byteStatsByDiscriminator`.
     private static func discriminatedStats(
-        _ stats: DiscoveryAccumulator.ReportStats,
+        _ stats: CaptureAccumulator.ReportStats,
         serialBytes: Set<Int>
-    ) -> [String: DiscoveryDiscriminatedStats]? {
+    ) -> [String: CaptureDiscriminatedStats]? {
         let distinctDiscriminatorValues = stats.byDiscriminator.count
         guard (2...discriminatorMaxDistinct).contains(distinctDiscriminatorValues) else { return nil }
 
-        var out: [String: DiscoveryDiscriminatedStats] = [:]
+        var out: [String: CaptureDiscriminatedStats] = [:]
         for (disc, bucket) in stats.byDiscriminator {
-            var byteStats: [Int: DiscoveryByteStat] = [:]
+            var byteStats: [Int: CaptureByteStat] = [:]
             for (idx, seen) in bucket.enumerated() {
                 guard let lo = seen.min, let hi = seen.max,
                       !serialBytes.contains(idx) else { continue }
                 byteStats[idx] = Self.byteStat(seen, lo: lo, hi: hi)
             }
             let key = String(format: "%02X", disc)
-            out[key] = DiscoveryDiscriminatedStats(
+            out[key] = CaptureDiscriminatedStats(
                 sampleCount: stats.discriminatorSampleCounts[disc] ?? 0,
                 byteStats: byteStats)
         }
         return out
     }
 
-    private static func byteStat(_ seen: ByteValueSet, lo: UInt8, hi: UInt8) -> DiscoveryByteStat {
+    private static func byteStat(_ seen: ByteValueSet, lo: UInt8, hi: UInt8) -> CaptureByteStat {
         let (kept, truncated) = seen.sampledValues(cap: byteValueListCap)
         // Emitted only when some bit actually toggled: on a coordinate byte
         // nearly every bit does, which says nothing, and a field of 255s
         // across a long report would bury the positions where it means
         // something.
         let toggled = seen.togglingBits
-        return DiscoveryByteStat(
+        return CaptureByteStat(
             min: Int(lo),
             max: Int(hi),
             distinctCount: seen.count,
@@ -1165,18 +1165,18 @@ final class CaptureEngine: ObservableObject {
         )
     }
 
-    private static func discoveryRepeatingRun(_ run: RepeatingRun) -> DiscoveryRepeatingRun {
-        DiscoveryRepeatingRun(
+    private static func captureRepeatingRun(_ run: RepeatingRun) -> CaptureRepeatingRun {
+        CaptureRepeatingRun(
             startOffset: run.startOffset, period: run.period,
             repeatCount: run.repeatCount, matchFraction: run.matchFraction)
     }
 
-    private static func discoveryRepeatingStructure(
+    private static func captureRepeatingStructure(
         _ structure: RepeatingReportStructure
-    ) -> DiscoveryRepeatingStructure {
-        DiscoveryRepeatingStructure(
-            outer: discoveryRepeatingRun(structure.outer),
-            nested: structure.nested.map(discoveryRepeatingRun))
+    ) -> CaptureRepeatingStructure {
+        CaptureRepeatingStructure(
+            outer: captureRepeatingRun(structure.outer),
+            nested: structure.nested.map(captureRepeatingRun))
     }
 
     // MARK: - Timers
@@ -1197,8 +1197,8 @@ final class CaptureEngine: ObservableObject {
     private func stopTimers() {
         pollTimer?.invalidate()
         pollTimer = nil
-        discoveryTimer?.invalidate()
-        discoveryTimer = nil
+        captureTimer?.invalidate()
+        captureTimer = nil
         flushTimer?.invalidate()
         flushTimer = nil
         flushFileURL = nil

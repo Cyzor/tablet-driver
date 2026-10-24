@@ -106,7 +106,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
 
     /// Running per-report-ID stats for the header block — categorize the
     /// protocol at a glance. Deliberately not a full histogram like
-    /// `DiscoveryAccumulator`; this tool's job is decode correctness.
+    /// `CaptureAccumulator`; this tool's job is decode correctness.
     struct ReportIDSummary {
         var count = 0
         var minLength = Int.max

@@ -345,7 +345,7 @@ final class TabletManager: ObservableObject {
     private static let uiUpdateInterval = 8  // every 8th report ≈ 16 Hz at 133 Hz
 
     /// A contact alive this many frames or fewer when it disappears counts
-    /// as "short-lived" for `DiscoveryTouchPipeline.shortLivedContacts` — at
+    /// as "short-lived" for `CaptureTouchPipeline.shortLivedContacts` — at
     /// ~100 Hz touch reporting, roughly 30 ms, well under any deliberate tap.
     private nonisolated static let shortLivedContactFrames = 3
 

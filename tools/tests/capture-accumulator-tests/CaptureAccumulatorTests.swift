@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// DiscoveryAccumulatorTests.swift — Standalone checks for the device-data
-// collection accumulator (MockTab/Driver/Diagnostics/DiscoveryAccumulator.swift).
+// CaptureAccumulatorTests.swift — Standalone checks for the device-data
+// collection accumulator (MockTab/Driver/Diagnostics/CaptureAccumulator.swift).
 //
 // This is where "Collect Device Data…" either produces meaningful data or
 // quietly produces nonsense, and it can't be exercised without a tablet
@@ -16,7 +16,7 @@
 //
 // The app has no XCTest target (by design — see the project's test
 // conventions), so this runs as a small executable compiled against the real
-// source file. Run via tools/tests/discovery-accumulator-tests/run.sh.
+// source file. Run via tools/tests/capture-accumulator-tests/run.sh.
 // Exits non-zero on the first failure.
 
 import Foundation
@@ -43,7 +43,7 @@ private func expectEqual<T: Equatable>(_ a: T, _ b: T, _ message: @autoclosure (
 // MARK: - Helpers
 
 /// Feed one report to the accumulator the way a driver's IOKit callback does.
-private func feed(_ acc: DiscoveryAccumulator, _ reportID: UInt8, _ bytes: [UInt8]) {
+private func feed(_ acc: CaptureAccumulator, _ reportID: UInt8, _ bytes: [UInt8]) {
     bytes.withUnsafeBufferPointer { buf in
         acc.record(reportID: reportID, pointer: buf.baseAddress!, length: buf.count)
     }
@@ -51,7 +51,7 @@ private func feed(_ acc: DiscoveryAccumulator, _ reportID: UInt8, _ bytes: [UInt
 
 /// Feed one report with a contact-down flag, as a touch-decoding driver does.
 private func contactFeed(
-    _ acc: DiscoveryAccumulator, _ reportID: UInt8, _ bytes: [UInt8], contactDown: Bool?
+    _ acc: CaptureAccumulator, _ reportID: UInt8, _ bytes: [UInt8], contactDown: Bool?
 ) {
     bytes.withUnsafeBufferPointer { buf in
         acc.record(
@@ -60,8 +60,8 @@ private func contactFeed(
     }
 }
 
-private func stats(_ acc: DiscoveryAccumulator, _ reportID: UInt8)
-    -> DiscoveryAccumulator.ReportStats?
+private func stats(_ acc: CaptureAccumulator, _ reportID: UInt8)
+    -> CaptureAccumulator.ReportStats?
 {
     acc.snapshot().reports[reportID]
 }
@@ -69,30 +69,30 @@ private func stats(_ acc: DiscoveryAccumulator, _ reportID: UInt8)
 // The three published byte lists come straight from `byteRoles()`, so these
 // helpers exercise the same partition the capture file is built from.
 
-private func varying(_ s: DiscoveryAccumulator.ReportStats) -> [Int] {
+private func varying(_ s: CaptureAccumulator.ReportStats) -> [Int] {
     s.byteRoles().filter { $0.role == .varying }.map(\.index)
 }
 
-private func constant(_ s: DiscoveryAccumulator.ReportStats) -> [Int] {
+private func constant(_ s: CaptureAccumulator.ReportStats) -> [Int] {
     s.byteRoles().compactMap { if case .constant = $0.role { return $0.index } else { return nil } }
 }
 
-private func constantValues(_ s: DiscoveryAccumulator.ReportStats) -> [Int] {
+private func constantValues(_ s: CaptureAccumulator.ReportStats) -> [Int] {
     s.byteRoles().compactMap {
         if case .constant(let v) = $0.role { return Int(v) } else { return nil }
     }
 }
 
-private func optional(_ s: DiscoveryAccumulator.ReportStats) -> [Int] {
+private func optional(_ s: CaptureAccumulator.ReportStats) -> [Int] {
     s.byteRoles().filter { $0.role == .optional }.map(\.index)
 }
 
 /// Every byte position must be classified exactly once, with the constant
-/// values list staying in step with the constant index list. `buildDiscoveryResult`
+/// values list staying in step with the constant index list. `buildCaptureResult`
 /// publishes these as three parallel arrays; if the partition ever leaks a
 /// position or double-counts one, the capture file silently misdescribes the
 /// device.
-private func expectWellFormedPartition(_ s: DiscoveryAccumulator.ReportStats,
+private func expectWellFormedPartition(_ s: CaptureAccumulator.ReportStats,
                                        _ label: String) {
     let roles = s.byteRoles()
     expectEqual(roles.count, s.maxLength, "\(label): every byte position is classified")
@@ -163,7 +163,7 @@ private func testByteValueSet() {
 // MARK: - Gating
 
 private func testGating() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
 
     // Reports before start() are dropped: drivers now call unconditionally.
     feed(acc, 0x10, [0x10, 1, 2])
@@ -193,7 +193,7 @@ private func testGating() {
 /// these exact constant values.
 private func testCTH690ConstantReport() {
     let sample: [UInt8] = [0xC0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     for _ in 0..<4 { feed(acc, 0xC0, sample) }
 
@@ -225,7 +225,7 @@ private func testCTH690ConstantReport() {
 /// reads as a plateau at ±12 — the misreading that produced a wrong Xencelabs
 /// tilt divisor. The mask and signed magnitude must both contradict it.
 private func testSignedSpanIsNotMistakenForAPlateau() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     for v in -12...11 {
         feed(acc, 0x02, [0x02, 0x00, UInt8(bitPattern: Int8(v))])
@@ -244,7 +244,7 @@ private func testSignedSpanIsNotMistakenForAPlateau() {
 
     // And a genuinely wider sweep must report a larger magnitude, so the
     // number tracks the field rather than the truncation boundary.
-    let wide = DiscoveryAccumulator()
+    let wide = CaptureAccumulator()
     wide.start()
     for v in -60...44 {
         feed(wide, 0x02, [0x02, 0x00, UInt8(bitPattern: Int8(v))])
@@ -258,7 +258,7 @@ private func testSignedSpanIsNotMistakenForAPlateau() {
 
 /// The mask must carry every value the truncated list drops.
 private func testValueMaskRoundTrips() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     let sent: [UInt8] = [0, 1, 7, 44, 128, 196, 255]
     for v in sent { feed(acc, 0x03, [0x03, v]) }
@@ -280,7 +280,7 @@ private func testValueMaskRoundTrips() {
 }
 
 private func testPressureCeilingSurvives() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     for v in 0...255 {
         feed(acc, 0x10, [0x10, 0x00, UInt8(v)])
@@ -341,7 +341,7 @@ private func testPressureCeilingSurvives() {
 /// bytes silently dropped, nor be called constant on the strength of the
 /// samples that happened to include them.
 private func testVariableLength() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     feed(acc, 0x21, [0x21, 0x01, 0x02, 0x03])
     feed(acc, 0x21, [0x21, 0x01, 0x09, 0x03, 0xAA, 0xBB])
@@ -367,7 +367,7 @@ private func testVariableLength() {
     expectWellFormedPartition(s, "variable-length report")
 
     // The reverse order (long first, then short) must reach the same conclusion.
-    let acc2 = DiscoveryAccumulator()
+    let acc2 = CaptureAccumulator()
     acc2.start()
     feed(acc2, 0x21, [0x21, 0x01, 0x09, 0x03, 0xAA, 0xBB])
     feed(acc2, 0x21, [0x21, 0x01, 0x02, 0x03])
@@ -386,7 +386,7 @@ private func testVariableLength() {
 /// Interleaved report IDs must be kept apart. The old delta-capture path
 /// conflated them; the accumulator keys everything by report ID.
 private func testStreamsStaySeparate() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     for i in 0..<50 {
         feed(acc, 0x10, [0x10, UInt8(i % 7), 0x00])
@@ -404,7 +404,7 @@ private func testStreamsStaySeparate() {
 // MARK: - Tool codes
 
 private func testToolCodes() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     acc.noteToolCode(0x0802)
     acc.noteToolCode(0x080A)
@@ -423,7 +423,7 @@ private func testToolCodes() {
 /// type bytes at that position got mixed in with thousands of real position
 /// samples. See Notes/Wacom-Intuos-10-Byte-Protocol.md.
 private func testDiscriminatorSeparatesPacketShapes() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
 
     // 20 ordinary pen samples: status byte 0xA0 (in proximity), X high byte
@@ -468,7 +468,7 @@ private func testDiscriminatorSeparatesPacketShapes() {
 /// isn't part of this standalone harness) — this only confirms the
 /// accumulator side hands it a single, complete bucket to make that call from.
 private func testDiscriminatorSingleBucketWhenByteOneConstant() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     for i in 0..<10 {
         feed(acc, 0x10, [0x10, 0x80, UInt8(i)])
@@ -483,7 +483,7 @@ private func testDiscriminatorSingleBucketWhenByteOneConstant() {
 
 /// A report too short to have a byte 1 must not crash or fabricate a bucket.
 private func testDiscriminatorSkippedForShortReports() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     feed(acc, 0x05, [0x05])
     guard let s = stats(acc, 0x05) else {
@@ -496,7 +496,7 @@ private func testDiscriminatorSkippedForShortReports() {
 // MARK: - Inter-arrival gaps
 
 private func testGapBucketBoundaries() {
-    typealias RS = DiscoveryAccumulator.ReportStats
+    typealias RS = CaptureAccumulator.ReportStats
     // edges: [2, 5, 10, 20, 50, 100, 500] → 8 buckets, index 0 is <2ms,
     // index 7 is >=500ms. A gap equal to an edge falls in the *lower*
     // bucket's neighbour — i.e. `ms < edge` puts it below, so 2.0 is not
@@ -517,7 +517,7 @@ private func testGapBucketBoundaries() {
 }
 
 private func testGapContactSplit() {
-    typealias RS = DiscoveryAccumulator.ReportStats
+    typealias RS = CaptureAccumulator.ReportStats
     var s = RS(firstLength: 4, minLength: 4, maxLength: 4, sampleCount: 2,
                firstSample: [0, 0, 0, 0], byteValues: [])
     s.noteGap(ms: 30, atElapsedMs: 10, bothEndsContactDown: true)   // 20-50 → 4, inGesture
@@ -537,7 +537,7 @@ private func testLiftBoundaryGapIsIdle() {
     // A gap that spans a lift: contact down before, up after. `record` passes
     // bothEndsContactDown = (prev && current) = (true && false) = false, so
     // the gap lands in idle — it is the boundary, not a mid-gesture stall.
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     contactFeed(acc, 0x21, [1, 1, 1, 1], contactDown: true)   // arm: contact down
     contactFeed(acc, 0x21, [1, 1, 1, 1], contactDown: true)   // gap 1: both down → inGesture
@@ -548,7 +548,7 @@ private func testLiftBoundaryGapIsIdle() {
 }
 
 private func testLongestGapsRetainedLargestFirstWithTimestamp() {
-    typealias RS = DiscoveryAccumulator.ReportStats
+    typealias RS = CaptureAccumulator.ReportStats
     var s = RS(firstLength: 4, minLength: 4, maxLength: 4, sampleCount: 2,
                firstSample: [0, 0, 0, 0], byteValues: [])
     // More than maxRetainedGaps (8) gaps; only the 8 largest survive.
@@ -562,7 +562,7 @@ private func testLongestGapsRetainedLargestFirstWithTimestamp() {
 }
 
 private func testFirstReportOfIdRecordsNoGap() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     feed(acc, 0x10, [1, 2, 3, 4])
     let s = stats(acc, 0x10)
@@ -574,7 +574,7 @@ private func testFirstReportOfIdRecordsNoGap() {
 }
 
 private func testGapsAreSeparatePerReportID() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     feed(acc, 0x10, [1, 2, 3, 4])
     feed(acc, 0x21, [9, 9, 9, 9])
@@ -587,7 +587,7 @@ private func testGapsAreSeparatePerReportID() {
 // MARK: - Degenerate input
 
 private func testEmptyReportIgnored() {
-    let acc = DiscoveryAccumulator()
+    let acc = CaptureAccumulator()
     acc.start()
     let empty: [UInt8] = [0]
     empty.withUnsafeBufferPointer { buf in
@@ -600,7 +600,7 @@ private func testEmptyReportIgnored() {
 // MARK: - Runner
 
 @main
-enum DiscoveryAccumulatorTestRunner {
+enum CaptureAccumulatorTestRunner {
     static func main() {
         testByteValueSet()
         testGating()

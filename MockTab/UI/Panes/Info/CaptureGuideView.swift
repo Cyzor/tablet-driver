@@ -10,11 +10,11 @@ import TabletKit
 /// Open-ended device data collection sheet.
 ///
 /// Shows the user a static list of actions to perform, records all HID
-/// reports via discovery mode, and lets the user click Done when finished.
+/// reports, and lets the user click Done when finished.
 /// No step gating, no per-row buttons — the engine captures whatever arrives.
 ///
 /// Output is a compact JSON summary (~5–15 KB) produced by
-/// `CaptureEngine.buildDiscoveryResult`: which byte positions varied and what
+/// `CaptureEngine.buildCaptureResult`: which byte positions varied and what
 /// values they took. Not a raw hex firehose.
 struct CaptureGuideView: View {
 
@@ -103,7 +103,7 @@ struct CaptureGuideView: View {
         .alert(String(localized: "Stop Collecting?", comment: "Data collection confirmation alert title"), isPresented: $showCancelConfirm) {
             Button("Keep Collecting", role: .cancel) {}
             Button(String(localized: "Stop and Discard", comment: "Destructive button that ends the in-progress data collection session and discards its data"), role: .destructive) {
-                engine.cancelDiscovery()
+                engine.cancelCapture()
                 onDismiss()
             }
         } message: {
@@ -256,7 +256,7 @@ struct CaptureGuideView: View {
                 comment: "HID discovery: status shown when collection could not be started")
         }
         return engine.isRunning
-            ? String(localized: "\(engine.discoverySampleCount) events recorded", comment: "HID discovery: number of events captured during device discovery")
+            ? String(localized: "\(engine.captureSampleCount) events recorded", comment: "HID discovery: number of events captured during device discovery")
             : String(localized: "Starting…", comment: "HID discovery: status indicator while discovery is starting")
     }
 
@@ -276,7 +276,7 @@ struct CaptureGuideView: View {
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             } else {
-                Button("Done") { engine.finishDiscovery() }
+                Button("Done") { engine.finishCapture() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!engine.isRunning)

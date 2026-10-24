@@ -139,7 +139,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     private var recentPenWindowCounts: [Int] = []
 
     /// Whether each interface's last report decoded to a touch contact, so a
-    /// discovery capture can tell a mid-gesture gap from an idle one.
+    /// capture can tell a mid-gesture gap from an idle one.
     private var lastReportHadContact: [ObjectIdentifier: Bool] = [:]
     /// Last logged pairing-table summary; the receiver repeats it twice a second.
     private var lastRemotePairingSummary: String?

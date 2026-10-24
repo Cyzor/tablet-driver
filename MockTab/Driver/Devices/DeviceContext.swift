@@ -207,7 +207,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// `TabletManager.beginConnecting` sets this only for the first
     /// `.driver`-routed interface (see `firstDriverInterfaceClaimed`), so a
     /// sibling that attaches later can't take its place. `CaptureGuideView`
-    /// hands it to `CaptureEngine.startDiscovery(device:)`; the wrong
+    /// hands it to `CaptureEngine.startCapture(device:)`; the wrong
     /// interface would record nothing for the whole capture.
     weak var hidDevice: IOHIDDevice?
 

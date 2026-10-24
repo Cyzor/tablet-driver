@@ -213,9 +213,9 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// Mapping and pen-feel settings for the capture file. Unconditional,
     /// unlike `touchSettingsSnapshot()` — gating these the same way left
     /// non-Wacom captures with no app-side configuration at all.
-    private func appSettingsSnapshot(_ source: DeviceContext?) -> DiscoveryAppSettings? {
+    private func appSettingsSnapshot(_ source: DeviceContext?) -> CaptureAppSettings? {
         guard let s = source?.settings else { return nil }
-        return DiscoveryAppSettings(
+        return CaptureAppSettings(
             activeAreaX: s.activeAreaX,
             activeAreaY: s.activeAreaY,
             activeAreaWidth: s.activeAreaWidth,
@@ -272,11 +272,11 @@ final class CaptureSessionCoordinator: ObservableObject {
         }
     }
 
-    private func knownTabletsSnapshot() -> [DiscoveryKnownTablet]? {
+    private func knownTabletsSnapshot() -> [CaptureKnownTablet]? {
         let tablets = DeviceRegistry.shared.knownTablets
         guard !tablets.isEmpty else { return nil }
         return tablets.map { row in
-            DiscoveryKnownTablet(
+            CaptureKnownTablet(
                 productID: String(format: "0x%04X", row.productID),
                 model: row.modelName,
                 connected: tabletManager.context(for: row)?.isConnected == true,
@@ -300,13 +300,13 @@ final class CaptureSessionCoordinator: ObservableObject {
         }
     }
 
-    private func settingsIdentitySnapshot(_ source: DeviceContext?) -> DiscoverySettingsIdentity? {
+    private func settingsIdentitySnapshot(_ source: DeviceContext?) -> CaptureSettingsIdentity? {
         guard let context = source else { return nil }
         let registry = DeviceRegistry.shared
         let prefix = context.settings.devicePrefix
         let key = registry.normalizedKey(context.instanceKey)
         let row = registry.knownTablets.first { $0.instanceKey == key }
-        return DiscoverySettingsIdentity(
+        return CaptureSettingsIdentity(
             usbSerialReported: row.map { !($0.usbSerial ?? "").isEmpty },
             sharedNamespace: !prefix.contains("#"),
             knownUnitsOfModel: registry.knownTablets.filter { $0.productID == context.productID }.count,
@@ -316,7 +316,7 @@ final class CaptureSessionCoordinator: ObservableObject {
                 ? nil : String(format: "0x%04X", productID))
     }
 
-    private func appEnvironmentSnapshot() -> DiscoveryAppEnvironment {
+    private func appEnvironmentSnapshot() -> CaptureAppEnvironment {
         let path = Bundle.main.bundlePath
         let location =
             path.contains("/AppTranslocation/") ? "translocated"
@@ -327,7 +327,7 @@ final class CaptureSessionCoordinator: ObservableObject {
             $0.bundleIdentifier == Bundle.main.bundleIdentifier && $0.processIdentifier != ownPID
         }.count
         let names = Set(running.compactMap(\.localizedName) + running.compactMap(\.bundleIdentifier))
-        return DiscoveryAppEnvironment(
+        return CaptureAppEnvironment(
             accessibilityGranted: AXIsProcessTrusted(),
             inputMonitoringGranted:
                 IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted,
@@ -336,7 +336,7 @@ final class CaptureSessionCoordinator: ObservableObject {
             competingDrivers: ConflictProcessMatcher.matchedLabels(liveNames: names))
     }
 
-    private func touchSettingsSnapshot(_ source: DeviceContext?) -> DiscoveryTouchSettings? {
+    private func touchSettingsSnapshot(_ source: DeviceContext?) -> CaptureTouchSettings? {
         guard let source else { return nil }
         let settings = source.settings
         // Omitted only when a spec positively says the device has no finger
@@ -348,7 +348,7 @@ final class CaptureSessionCoordinator: ObservableObject {
         if let spec = WacomDeviceRegistry.spec(for: source.productID), !spec.hasFingerTouch {
             return nil
         }
-        return DiscoveryTouchSettings(
+        return CaptureTouchSettings(
             touchEnabled: settings.touchEnabled,
             tapToClick: settings.tapToClick,
             twoFingerScroll: settings.twoFingerScroll,
@@ -457,10 +457,10 @@ final class CaptureSessionCoordinator: ObservableObject {
         startupError = nil
         applyAutoDetectedModeSwitch(from: targets)
 
-        engine.onDiscoveryComplete = { [weak self] result in
+        engine.onCaptureComplete = { [weak self] result in
             Task { @MainActor in
                 guard let self,
-                    let summaryURL = self.engine.exportDiscoveryJSON(result: result)
+                    let summaryURL = self.engine.exportCaptureJSON(result: result)
                 else { return }
                 // Finalized here rather than on dismiss: the summary is
                 // written when the user clicks Done, while this sheet is
@@ -487,7 +487,7 @@ final class CaptureSessionCoordinator: ObservableObject {
             !ownInterfaces.contains { $0 === candidate }
         }
         let source = settingsSource(recording: primary.0, ownInterfaces: ownInterfaces)
-        engine.startDiscovery(
+        engine.startCapture(
             devices: targets, duration: HIDCapture.maxCaptureDuration, touchSettings: touchSettingsSnapshot(source),
             appSettings: appSettingsSnapshot(source),
             everSeenTools: everSeenToolsSnapshot(source),

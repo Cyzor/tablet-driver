@@ -62,14 +62,14 @@ struct CaptureInitRead: Codable {
     var interfaceUsagePage: String?
 }
 
-// MARK: - Discovery Result
+// MARK: - Capture Result
 
-/// Output of a discovery session. Records every report ID seen and, for each,
+/// Output of a capture session. Records every report ID seen and, for each,
 /// which byte positions varied and what values they took.
 ///
 /// Consumed by `TabletKit/tools/triage_discovery.py` and read by hand when adding a new
 /// device to the registry.
-struct DiscoveryResult: Codable {
+struct CaptureResult: Codable {
     /// 5: `byteSampleValues` replaced by `byteStats` (adds per-byte min/max and
     /// distinct-value counts); adds `maxLength`/`lengthVaried`/`optionalBytes`
     /// and top-level `observedToolCodes`.
@@ -77,7 +77,7 @@ struct DiscoveryResult: Codable {
     /// split by the value at byte position 1, so a report ID that actually
     /// carries more than one packet shape (coordinate data and a tool-change/
     /// status packet sharing one ID and length, on Wacom-family devices)
-    /// doesn't get histogrammed as one blob. See `DiscoveryAccumulator
+    /// doesn't get histogrammed as one blob. See `CaptureAccumulator
     /// .ReportStats.discriminatorByteIndex`.
     /// 7: adds `interfaces` — a device whose reports arrive on more than one
     /// HID interface is now recorded on all of them at once, each with its own
@@ -143,7 +143,7 @@ struct DiscoveryResult: Codable {
     /// always implied. Single-interface captures and devices whose pen
     /// interface already led are unchanged. `interfaces[]` still carries
     /// every interface, so nothing is lost either way.
-    /// (b) each `DiscoveryReportSummary` gains `arrivalGaps` — a histogram of
+    /// (b) each `CaptureReportSummary` gains `arrivalGaps` — a histogram of
     /// the time between consecutive reports of that ID, plus the longest few
     /// gaps kept whole, split by whether a touch contact was down at both
     /// ends of the gap. A capture recorded what reports *contained* but never
@@ -152,7 +152,7 @@ struct DiscoveryResult: Codable {
     /// finger-off pause between gestures. New field is optional, so v13
     /// readers and files still decode.
     ///
-    /// v15 adds `DiscoveryTouchSettings.tabletOrientationRawValue` — touch's
+    /// v15 adds `CaptureTouchSettings.tabletOrientationRawValue` — touch's
     /// crop rect is recorded raw/un-oriented, and without the orientation
     /// active at capture time there's no way to relate it to what the Touch
     /// pane UI displayed. New field is optional, so v14 readers/files still
@@ -162,7 +162,7 @@ struct DiscoveryResult: Codable {
     /// file already carried, chiefly declared-but-never-observed input
     /// reports. Derived, not newly collected: every one of them was already
     /// answerable from a v15 file by hand, which is precisely the problem
-    /// (see `DiscoveryFinding`). Optional, so v15 readers and files still
+    /// (see `CaptureFinding`). Optional, so v15 readers and files still
     /// decode.
     ///
     /// v17 adds `appSettings` and makes `touchSettings` unconditional.
@@ -227,9 +227,9 @@ struct DiscoveryResult: Codable {
     var appVersion: String?
     var appBuildDate: String?
     let capturedAt: Date
-    let mode: String  // always "discovery"
+    let mode: String  // always "discovery", which triage reads
     let duration: TimeInterval
-    let deviceInfo: DiscoveryDeviceInfo
+    let deviceInfo: CaptureDeviceRecord
     /// The **primary** interface's reports — the pen interface on a tablet
     /// that has one (`captureVersion` 14+ selects it by descriptor contents,
     /// so this holds even when the pen interface attached second or hid
@@ -239,13 +239,13 @@ struct DiscoveryResult: Codable {
     /// as shipped, and every capture file already submitted against it) still
     /// finds the block it looks for, in the shape it expects. A few KB of
     /// duplication buys that.
-    let reports: [String: DiscoveryReportSummary]
+    let reports: [String: CaptureReportSummary]
     /// Likewise the primary interface's descriptor.
     var hidReportDescriptor: LiveHIDDescriptorInspector.Parsed?
     /// Every interface recorded, primary first — present only when there was
     /// more than one, so single-interface captures (the overwhelming majority)
     /// stay byte-for-byte the shape they always were.
-    var interfaces: [DiscoveryInterface]?
+    var interfaces: [CaptureInterface]?
     /// Device-mode init writes attempted during the session, in order, both
     /// the automatic `initSteps` sent at open and any the tester triggered by
     /// hand — `automatic` tells them apart. Empty only when neither happened.
@@ -279,47 +279,47 @@ struct DiscoveryResult: Codable {
     /// The touch-related settings in force during the session. Present only
     /// for a device whose spec declares finger touch — on everything else
     /// these settings are inert and would be misleading noise.
-    var touchSettings: DiscoveryTouchSettings?
+    var touchSettings: CaptureTouchSettings?
     /// Mapping and pen-feel settings in force during the session. Recorded
-    /// for every device, unlike `touchSettings` — see `DiscoveryAppSettings`.
-    var appSettings: DiscoveryAppSettings?
-    /// Where this tablet's settings are stored — see `DiscoverySettingsIdentity`.
-    var settingsIdentity: DiscoverySettingsIdentity?
+    /// for every device, unlike `touchSettings` — see `CaptureAppSettings`.
+    var appSettings: CaptureAppSettings?
+    /// Where this tablet's settings are stored — see `CaptureSettingsIdentity`.
+    var settingsIdentity: CaptureSettingsIdentity?
     /// Every tablet the app remembers, connected or not. A capture otherwise
     /// lists only what's attached, so a window left open on a tablet that
     /// isn't connected left no trace of that tablet in the file.
-    var knownTablets: [DiscoveryKnownTablet]?
-    /// Permissions and install location — see `DiscoveryAppEnvironment`.
-    var appEnvironment: DiscoveryAppEnvironment?
+    var knownTablets: [CaptureKnownTablet]?
+    /// Permissions and install location — see `CaptureAppEnvironment`.
+    var appEnvironment: CaptureAppEnvironment?
     /// Per-stage tallies of what the touch injection pipeline did with the
     /// contacts it decoded. Present only when the pipeline saw at least one
     /// frame, so a pen-only session doesn't carry a block of zeroes.
-    var touchPipeline: DiscoveryTouchPipeline?
+    var touchPipeline: CaptureTouchPipeline?
     /// RSSI/link-quality samples taken during the session, Bluetooth only.
     /// See `captureVersion` 13's doc line for the address-match caveat.
-    var bluetoothLink: DiscoveryBluetoothLink?
+    var bluetoothLink: CaptureBluetoothLink?
     /// Displays and USB hardware around the tablet, read once when the
     /// capture starts. See `HardwareSurveyProbe`.
-    var hardwareSurvey: DiscoveryHardwareSurvey?
-    /// Precomputed observations for triage — see `DiscoveryFinding`. Omitted
+    var hardwareSurvey: CaptureHardwareSurvey?
+    /// Precomputed observations for triage — see `CaptureFinding`. Omitted
     /// when nothing notable was found, so a clean capture doesn't carry an
     /// empty block.
-    var findings: [DiscoveryFinding]?
+    var findings: [CaptureFinding]?
     /// Each feature the registry claims for this model, how well it's
     /// proven, and whether this session exercised it. Nil for unknown models.
-    var coverage: [DiscoveryFeatureCoverage]?
+    var coverage: [CaptureFeatureCoverage]?
     var notes: String?
     var submitterContact: String?
 }
 
 /// What `HardwareSurveyProbe` found. Read-only by construction: DDC/CI
 /// traffic is limited to Get VCP Feature and Capabilities requests.
-struct DiscoveryHardwareSurvey: Codable {
-    var displays: [DiscoveryDisplay]
-    var usbDevices: [DiscoveryUSBDevice]
+struct CaptureHardwareSurvey: Codable {
+    var displays: [CaptureDisplay]
+    var usbDevices: [CaptureUSBDevice]
 }
 
-struct DiscoveryDisplay: Codable {
+struct CaptureDisplay: Codable {
     var name: String?
     /// EDID vendor and product, hex.
     let vendorID: String
@@ -341,14 +341,14 @@ struct DiscoveryDisplay: Codable {
     var ddcChecksum: String?
     /// VCP code (hex) → value, for codes that replied with a nonzero max.
     /// Every code the capabilities string advertises, minus write-only ones.
-    var vcp: [String: DiscoveryVCPValue]?
+    var vcp: [String: CaptureVCPValue]?
     /// MCCS capabilities string, as far as it could be read.
     var capabilities: String?
     /// One brightness read per read offset, no retries.
-    var ddcReadProbes: [DiscoveryDDCProbe]?
+    var ddcReadProbes: [CaptureDDCProbe]?
 }
 
-struct DiscoveryDDCProbe: Codable {
+struct CaptureDDCProbe: Codable {
     /// I2C read offset, hex.
     let readOffset: String
     /// `ok`, `writeFailed`, `readFailed`, `badChecksum`, or `wrongReply`
@@ -358,12 +358,12 @@ struct DiscoveryDDCProbe: Codable {
     var reply: String?
 }
 
-struct DiscoveryVCPValue: Codable {
+struct CaptureVCPValue: Codable {
     let current: Int
     let max: Int
 }
 
-struct DiscoveryUSBDevice: Codable {
+struct CaptureUSBDevice: Codable {
     let vendorID: String
     let productID: String
     var name: String?
@@ -380,7 +380,7 @@ struct DiscoveryUSBDevice: Codable {
 /// RSSI and link-quality summary for a Bluetooth capture session. See
 /// `BluetoothLinkMonitor` for how it's gathered and the address-match
 /// caveat this block exists to carry along with the numbers.
-struct DiscoveryBluetoothLink: Codable {
+struct CaptureBluetoothLink: Codable {
     // The address used to find the device is left out: it identifies the
     // tablet, like a serial.
     let sampleCount: Int
@@ -399,7 +399,7 @@ struct DiscoveryBluetoothLink: Codable {
 }
 
 /// One claimed feature of the recorded model.
-struct DiscoveryFeatureCoverage: Codable {
+struct CaptureFeatureCoverage: Codable {
     let feature: String
     /// The registry's evidence level: claimed, sourced, recorded, or hardware.
     let level: String
@@ -418,7 +418,7 @@ struct DiscoveryFeatureCoverage: Codable {
 /// Observations, never verdicts: "these declared reports never arrived" is a
 /// fact; "the pen is broken" would be wrong for a user who never touched it
 /// down.
-struct DiscoveryFinding: Codable {
+struct CaptureFinding: Codable {
     /// Stable machine-readable kind, so tooling can group findings without
     /// parsing prose.
     let kind: String
@@ -434,8 +434,8 @@ struct DiscoveryFinding: Codable {
 /// A free function, not a `CaptureEngine` method: it needs no device, session
 /// or main actor, which lets `tools/tests/capture-findings-tests` run it
 /// against real capture files without linking AppKit. Collects nothing new.
-func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
-    var found: [DiscoveryFinding] = []
+func captureFindings(for result: CaptureResult) -> [CaptureFinding] {
+    var found: [CaptureFinding] = []
     let pid = result.deviceInfo.productID
 
     // Every interface — the silent one is usually the interesting one.
@@ -446,7 +446,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     })
     var switchedLabels: [String: Bool] = [:]
     let allInterfaces:
-        [(LiveHIDDescriptorInspector.Parsed?, [String: DiscoveryReportSummary], String?, String)] =
+        [(LiveHIDDescriptorInspector.Parsed?, [String: CaptureReportSummary], String?, String)] =
         result.interfaces.map { list in
             list.map { iface in
                 // Named so several findings from one device don't read as
@@ -484,14 +484,14 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
                 + " its default mode are expected to stay silent."
         }
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "declaredReportsNeverObserved", productID: interfacePID, detail: detail))
     }
 
     // Already in `notes` as prose; here as a structured fact.
     if result.observedToolCodes?.isEmpty ?? true {
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "noToolCodeObserved",
                 productID: pid,
                 detail: {
@@ -551,7 +551,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     }
     if !untested.isEmpty {
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "subsystemsNotExercised",
                 productID: pid,
                 detail: "This capture contains no data for: \(untested.joined(separator: ", ")). "
@@ -562,7 +562,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     // A setting that independently explains the symptom.
     if result.touchSettings?.touchEnabled == false {
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "touchDisabledInSettings",
                 productID: pid,
                 detail: "Finger touch was switched off in MockTab's settings during this capture."))
@@ -574,7 +574,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     // a full round-trip on the PTH-850 once.
     if result.appSettings?.relativeCursorMovement == true {
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "relativeModeActive",
                 productID: pid,
                 detail: "The pen was in relative mode during this capture, where sensor noise "
@@ -592,7 +592,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     }
     if !unknownTools.isEmpty {
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "toolCodeNotInCatalog",
                 productID: pid,
                 detail: "Tool code(s) \(unknownTools.joined(separator: ", ")) are not cataloged for "
@@ -603,7 +603,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
     if let touch = result.touchPipeline {
         if touch.contactsDecoded > 0, touch.contactsWithSize == 0 {
             found.append(
-                DiscoveryFinding(
+                CaptureFinding(
                     kind: "touchReportsNoContactSize",
                     productID: pid,
                     detail: "None of \(touch.contactsDecoded) touch contacts carried a size, so "
@@ -611,7 +611,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
         }
         if touch.touchScreenMatchedPanel == false {
             found.append(
-                DiscoveryFinding(
+                CaptureFinding(
                     kind: "touchScreenNotMatched",
                     productID: pid,
                     detail: "Direct touch could not identify the pen display's own screen by name "
@@ -621,7 +621,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
 
     if let identity = result.settingsIdentity, identity.knownUnitsOfModel > 1 {
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "multipleUnitsOfModel",
                 productID: pid,
                 detail: "The app remembers \(identity.knownUnitsOfModel) units of this model. On a "
@@ -631,7 +631,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
 
     if let window = result.settingsIdentity?.windowProductID {
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "collectedFromOtherWindow",
                 productID: pid,
                 detail: "Collected from the settings window of \(window), not this tablet's. "
@@ -644,7 +644,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
         if !env.inputMonitoringGranted { missing.append("Input Monitoring") }
         if !missing.isEmpty {
             found.append(
-                DiscoveryFinding(
+                CaptureFinding(
                     kind: "permissionsMissing",
                     productID: nil,
                     detail: "macOS had not granted \(missing.joined(separator: " or ")) while "
@@ -652,7 +652,7 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
         }
         if let copies = env.otherMockTabCopies, copies > 0 {
             found.append(
-                DiscoveryFinding(
+                CaptureFinding(
                     kind: "otherMockTabRunning",
                     productID: nil,
                     detail: (copies == 1
@@ -662,14 +662,14 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
         }
         if let drivers = env.competingDrivers, !drivers.isEmpty {
             found.append(
-                DiscoveryFinding(
+                CaptureFinding(
                     kind: "competingDriverRunning",
                     productID: nil,
                     detail: "Also running while recording: \(drivers.joined(separator: ", "))."))
         }
         if env.installLocation == "translocated" {
             found.append(
-                DiscoveryFinding(
+                CaptureFinding(
                     kind: "appTranslocated",
                     productID: nil,
                     detail: "The app ran from a quarantined download, not Applications. macOS "
@@ -688,8 +688,8 @@ func discoveryFindings(for result: DiscoveryResult) -> [DiscoveryFinding] {
 /// touch can be separate USB products behind its internal hub; one of them
 /// missing from USB is a cable or connection fact no report data can show.
 /// The Cintiq Pro 16 (DTH-167), for one, needs a USB cable alongside HDMI.
-func surveyFindings(_ survey: DiscoveryHardwareSurvey) -> [DiscoveryFinding] {
-    var found: [DiscoveryFinding] = []
+func surveyFindings(_ survey: CaptureHardwareSurvey) -> [CaptureFinding] {
+    var found: [CaptureFinding] = []
     let hex = { (pid: Int) in String(format: "0x%04X", pid) }
     let wacomPIDs = Set(survey.usbDevices.compactMap { device -> Int? in
         guard device.vendorID == "0x056A" else { return nil }
@@ -707,7 +707,7 @@ func surveyFindings(_ survey: DiscoveryHardwareSurvey) -> [DiscoveryFinding] {
         }
         guard let pair, !wacomPIDs.contains(pair.partner) else { continue }
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "companionNotOnUSB",
                 productID: hex(pid),
                 detail: "\(hex(pid)) is on USB, but its paired \(pair.role) \(hex(pair.partner)) "
@@ -734,7 +734,7 @@ func surveyFindings(_ survey: DiscoveryHardwareSurvey) -> [DiscoveryFinding] {
             path = "an undetermined video link"
         }
         found.append(
-            DiscoveryFinding(
+            CaptureFinding(
                 kind: "wacomDisplayVideoPath",
                 productID: nil,
                 detail: "\(name) is connected over \(path); DDC/CI \(display.ddc)."))
@@ -756,7 +756,7 @@ func surveyFindings(_ survey: DiscoveryHardwareSurvey) -> [DiscoveryFinding] {
 /// Which settings namespace the tablet resolved to, without the serial that
 /// picks it. A tablet that reappears as a new unit starts from empty settings,
 /// and these fields tell that apart from settings that are stored but unused.
-struct DiscoverySettingsIdentity: Codable {
+struct CaptureSettingsIdentity: Codable {
     /// Whether the tablet reported a USB serial, which keys its settings.
     var usbSerialReported: Bool?
     /// True for the model's first-seen unit (`device-0x{PID}.`), false for a
@@ -774,7 +774,7 @@ struct DiscoverySettingsIdentity: Codable {
 
 /// One remembered tablet, by model only: nicknames are user text and
 /// serials identify the owner.
-struct DiscoveryKnownTablet: Codable {
+struct CaptureKnownTablet: Codable {
     let productID: String
     let model: String
     let connected: Bool
@@ -785,7 +785,7 @@ struct DiscoveryKnownTablet: Codable {
 /// What macOS granted the app and where it runs from. An app copied over an
 /// old one that loses its permissions, or runs from a quarantined copy, looks
 /// to its user like it forgot its settings.
-struct DiscoveryAppEnvironment: Codable {
+struct CaptureAppEnvironment: Codable {
     let accessibilityGranted: Bool
     let inputMonitoringGranted: Bool
     /// "applications", "translocated" (run from a quarantined download), or
@@ -797,7 +797,7 @@ struct DiscoveryAppEnvironment: Codable {
     var competingDrivers: [String]? = nil
 }
 
-struct DiscoveryAppSettings: Codable {
+struct CaptureAppSettings: Codable {
     // Mapping — explains "the pen reaches the wrong part of the screen".
     var activeAreaX: Double?
     var activeAreaY: Double?
@@ -841,7 +841,7 @@ struct DiscoveryAppSettings: Codable {
 /// Every field here can independently silence touch, and none of them is
 /// visible in a report stream. Recording them turns "touch does nothing" from
 /// a question that has to be asked into a fact the file already carries.
-struct DiscoveryTouchSettings: Codable {
+struct CaptureTouchSettings: Codable {
     let touchEnabled: Bool
     let tapToClick: Bool
     let twoFingerScroll: Bool
@@ -895,7 +895,7 @@ struct DiscoveryTouchSettings: Codable {
 /// *contacts* where individual contacts were filtered out of a surviving
 /// frame — the distinction matters, since a partially filtered frame still
 /// reaches the gesture tracker.
-struct DiscoveryTouchPipeline: Codable {
+struct CaptureTouchPipeline: Codable {
     /// Frames the decoder emitted (`TabletEvent.touch`), and the total
     /// contacts across them. A nonzero `framesDecoded` with everything else
     /// zero means the decode half is working and the loss is downstream.
@@ -1313,7 +1313,7 @@ struct DiscoveryTouchPipeline: Codable {
 /// interface exists, we listened, and it said nothing for the whole session"
 /// is a real finding — it's what a device sitting in a reduced boot mode looks
 /// like, and it's the evidence a mode-switch write is needed.
-struct DiscoveryInterface: Codable {
+struct CaptureInterface: Codable {
     /// HID primary usage page/usage, as hex. Together these name the
     /// interface's role — `0x000D`/`0x0002` a pen digitizer, `0x000D`/`0x0004`
     /// a touchscreen, `0xFF00`+ a vendor-private tunnel.
@@ -1326,17 +1326,17 @@ struct DiscoveryInterface: Codable {
     var productID: String?
     var deviceName: String?
     /// True for the interface whose data is also duplicated at the top level
-    /// of `DiscoveryResult`. Exactly one interface has this.
+    /// of `CaptureResult`. Exactly one interface has this.
     let isPrimary: Bool
     /// Reports recorded on this interface alone.
     let sampleCount: Int
-    let reports: [String: DiscoveryReportSummary]
+    let reports: [String: CaptureReportSummary]
     /// This interface's own descriptor — the one every `descriptorReadable`
     /// flag in `reports` above was judged against.
     var hidReportDescriptor: LiveHIDDescriptorInspector.Parsed?
 }
 
-struct DiscoveryDeviceInfo: Codable {
+struct CaptureDeviceRecord: Codable {
     let vendorID: String
     let productID: String
     let name: String
@@ -1346,7 +1346,7 @@ struct DiscoveryDeviceInfo: Codable {
 }
 
 /// What one byte position did across every sample of a report.
-struct DiscoveryByteStat: Codable {
+struct CaptureByteStat: Codable {
     let min: Int
     let max: Int
     /// Number of distinct values observed at this position.
@@ -1379,7 +1379,7 @@ struct DiscoveryByteStat: Codable {
     var bitsSet: Int?
 }
 
-struct DiscoveryReportSummary: Codable {
+struct CaptureReportSummary: Codable {
     let reportID: UInt8
     /// Length of the first sample seen. Equal to `maxLength` unless
     /// `lengthVaried`.
@@ -1400,7 +1400,7 @@ struct DiscoveryReportSummary: Codable {
     var constantValues: [Int]?        // values at `constantBytes`, same order
     /// Per-byte statistics, keyed by byte index. Covers every position that
     /// took more than one value, plus every optional position.
-    var byteStats: [Int: DiscoveryByteStat]?
+    var byteStats: [Int: CaptureByteStat]?
     /// Whether the HID report descriptor exposes at least one standard-usage
     /// field for this report ID (see `LiveHIDDescriptorInspector.Field.isReadable`).
     /// `false` flags a report whose bytes vary (real signal, per the above
@@ -1420,9 +1420,9 @@ struct DiscoveryReportSummary: Codable {
     /// hardest one to notice by reading the byte list. `nil` when no
     /// structure cleared the detector's thresholds, which is the correct and
     /// common answer for reports with real varying bytes and no repeat.
-    var repeatingStructure: DiscoveryRepeatingStructure?
+    var repeatingStructure: CaptureRepeatingStructure?
     /// `byteStats` further split by the value at byte position 1 — see
-    /// `DiscoveryAccumulator.ReportStats.discriminatorByteIndex`. Keyed by
+    /// `CaptureAccumulator.ReportStats.discriminatorByteIndex`. Keyed by
     /// that value as a two-digit uppercase hex string (JSON object keys must
     /// be strings; hex keeps it legible next to `firstSample`).
     ///
@@ -1432,7 +1432,7 @@ struct DiscoveryReportSummary: Codable {
     /// threshold this is genuinely absent, not merely omitted — reading a
     /// capture file without it means byte 1 was constant for every sample of
     /// this report, or its own stats already told the whole story.
-    var byteStatsByDiscriminator: [String: DiscoveryDiscriminatedStats]?
+    var byteStatsByDiscriminator: [String: CaptureDiscriminatedStats]?
     /// How long this report ID went between arrivals — `captureVersion` 14+.
     /// `captureVersion` 13 and earlier recorded what each report *contained*
     /// but nothing about when it arrived, so a Bluetooth stream that stalls
@@ -1440,7 +1440,7 @@ struct DiscoveryReportSummary: Codable {
     /// stream stopped feeding the momentum path before the finger lifted —
     /// left no trace in the file. Present for every report ID; `nil` only for
     /// a report that arrived exactly once (no gap to measure).
-    var arrivalGaps: DiscoveryArrivalGaps?
+    var arrivalGaps: CaptureArrivalGaps?
 }
 
 /// Inter-arrival timing for one report ID: a fixed-bucket histogram of the
@@ -1460,9 +1460,9 @@ struct DiscoveryReportSummary: Codable {
 /// for the USB touch report; not yet for the Bluetooth 0x80 wrapper, whose
 /// touch frames are packed inside it and never reach this counter as their
 /// own report — there `buckets` is wrapper-arrival cadence, not touch).
-struct DiscoveryArrivalGaps: Codable {
+struct CaptureArrivalGaps: Codable {
     /// Upper edges of the histogram buckets, in milliseconds, copied from
-    /// `DiscoveryAccumulator.ReportStats.gapBucketEdgesMs` so a reader has
+    /// `CaptureAccumulator.ReportStats.gapBucketEdgesMs` so a reader has
     /// them without the source. Each bucket array is one longer — the final
     /// slot counts everything at or above the last edge.
     let bucketEdgesMs: [Double]
@@ -1488,18 +1488,18 @@ struct DiscoveryArrivalGaps: Codable {
     }
 }
 
-/// One discriminator-value bucket of `DiscoveryReportSummary
+/// One discriminator-value bucket of `CaptureReportSummary
 /// .byteStatsByDiscriminator` — the byte stats for every sample of a report
 /// where byte 1 held one particular value, plus how many samples that was.
-struct DiscoveryDiscriminatedStats: Codable {
+struct CaptureDiscriminatedStats: Codable {
     let sampleCount: Int
-    var byteStats: [Int: DiscoveryByteStat]
+    var byteStats: [Int: CaptureByteStat]
 }
 
 /// One reported run of repeating byte-stride structure, at one nesting level.
 /// Mirrors `TabletKit.RepeatingRun` for JSON output — see that type's doc
 /// comment for what each field claims and how it is scored.
-struct DiscoveryRepeatingRun: Codable {
+struct CaptureRepeatingRun: Codable {
     let startOffset: Int
     let period: Int
     let repeatCount: Int
@@ -1508,9 +1508,9 @@ struct DiscoveryRepeatingRun: Codable {
 
 /// A detected repeating structure, with an optional one-level-deeper nested
 /// run. Mirrors `TabletKit.RepeatingReportStructure`.
-struct DiscoveryRepeatingStructure: Codable {
-    let outer: DiscoveryRepeatingRun
-    let nested: DiscoveryRepeatingRun?
+struct CaptureRepeatingStructure: Codable {
+    let outer: CaptureRepeatingRun
+    let nested: CaptureRepeatingRun?
 }
 
 /// An interface a capture session can record from, weakly held.
