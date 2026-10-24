@@ -8,7 +8,7 @@ import TabletKit
 
 // The Display pane's Built-in Display section for Xencelabs pen displays:
 // brightness, color mode, contrast, and gamma.
-extension DisplayMappingView {
+extension DisplayView {
     /// True when the selected tablet is a pen display whose panel brightness
     /// the driver can set (Xencelabs). Decided from the device spec, not the
     /// live connection, so the section stays visible — disabled — while the

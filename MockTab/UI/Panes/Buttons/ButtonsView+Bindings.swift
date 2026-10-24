@@ -5,14 +5,14 @@
 import SwiftUI
 import TabletKit
 
-// Binding<T> accessors for ButtonMappingView's rows: touch ring slot
+// Binding<T> accessors for ButtonsView's rows: touch ring slot
 // direction/action/speed, and pen/tip/eraser/wheel. Split out from the main
 // file because it's mechanical boilerplate, not view logic — every property
 // here is a pure get/set closure over `settings`, pre-allocated as a stored
 // property (rather than built fresh per call) so SwiftUI view identity
 // stays stable across the ~16 Hz liveButtons invalidations that redraw
 // these rows.
-extension ButtonMappingView {
+extension ButtonsView {
     // Pre-allocated Binding<ToolSettings> — created once, not per body call.
     // Used to derive Binding<ButtonBinding> for each key path so SwiftUI
     // view identity is stable across ~16 Hz liveButtons invalidations.

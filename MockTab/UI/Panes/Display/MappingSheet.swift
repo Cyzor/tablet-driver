@@ -115,7 +115,7 @@ struct MappingSheet: View {
                                 }
                             },
                             overlay: { areaRect, _ in
-                                DisplayMappingView.DisplayNameBadge(
+                                DisplayView.DisplayNameBadge(
                                     name: display.name, resolution: display.resolution, areaRect: areaRect)
                             }
                         )
@@ -146,7 +146,7 @@ struct MappingSheet: View {
                         Canvas { ctx, _ in
                             letterbox(ctx: ctx, areaRect: areaRect, canvas: cs)
                         }
-                        DisplayMappingView.DisplayNameBadge(
+                        DisplayView.DisplayNameBadge(
                             name: tabletCaption.primary, resolution: tabletCaption.secondary ?? "",
                             areaRect: areaRect)
                     }

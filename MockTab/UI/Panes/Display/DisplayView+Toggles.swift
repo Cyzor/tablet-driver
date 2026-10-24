@@ -9,7 +9,7 @@ import TabletKit
 
 // The Display pane's Toggle and Span section: which displays the Toggle
 // Display button cycles through, and the thumbnails for picking them.
-extension DisplayMappingView {
+extension DisplayView {
     var toggleSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Active Displays")
@@ -32,7 +32,7 @@ extension DisplayMappingView {
     /// Buttons bound to `kind`, named as the Buttons pane names them.
     func buttonNames(boundTo kind: ButtonBinding.Kind) -> [String] {
         let ctx = tabletManager.context(forKey: instanceKey)
-        let spec = productID.flatMap { ButtonMappingView.layoutSpec(productID: $0, context: ctx) }
+        let spec = productID.flatMap { ButtonsView.layoutSpec(productID: $0, context: ctx) }
         let tool = ctx.flatMap { ToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
         let isMouse = tool?.toolType == .mouse
         // A device or side ahead of a row label, e.g. "Pucky-Puck Key 1".
@@ -47,20 +47,20 @@ extension DisplayMappingView {
             rows.append((t.tipBinding, { String(localized: "Tip", comment: "Pen tip button row label in Buttons tab") }))
             rows.append((t.eraserBinding, { String(localized: "Eraser", comment: "Eraser button row label in Buttons tab") }))
         }
-        let penCount = ButtonMappingView.penButtonCount(tool: tool, device: spec)
+        let penCount = ButtonsView.penButtonCount(tool: tool, device: spec)
         let penButtons = [t.penButton1Binding, t.penButton2Binding, t.penButton3Binding, t.penButton4Binding, t.penButton5Binding]
         rows += penButtons.prefix(penCount).enumerated().map { i, binding in
-            (binding, { ButtonMappingView.penButtonLabel(i + 1, count: penCount, isMouse: isMouse) })
+            (binding, { ButtonsView.penButtonLabel(i + 1, count: penCount, isMouse: isMouse) })
         }
         if tool?.hasWheel == true {
-            rows.append((t.wheelBinding, { ButtonMappingView.wheelLabel(tool: tool) }))
+            rows.append((t.wheelBinding, { ButtonsView.wheelLabel(tool: tool) }))
         }
 
         let keys = settings.expressKeyBindings
-        if ButtonMappingView.hasSplitPadLayout(spec) {
+        if ButtonsView.hasSplitPadLayout(spec) {
             rows += keys.enumerated().map { slot, binding in
                 (binding, {
-                    let key = ButtonMappingView.splitPadKeyLabel(slot: slot)
+                    let key = ButtonsView.splitPadKeyLabel(slot: slot)
                     return qualified(key.side, key.label)
                 })
             }
@@ -99,7 +99,7 @@ extension DisplayMappingView {
                 if auxSpec?.format == .expressKeyRemote {
                     // Its firmware owns the ring button, so only keys count.
                     rows += (auxKeys + aux.settings.bezelButtonBindings.prefix(1)).enumerated().map { slot, binding in
-                        (binding, { qualified(device, ButtonMappingView.remoteKeyLabel(slot: slot)) })
+                        (binding, { qualified(device, ButtonsView.remoteKeyLabel(slot: slot)) })
                     }
                 } else {
                     let keyCount = QuickKeysSectionView.keyCount(auxSpec)

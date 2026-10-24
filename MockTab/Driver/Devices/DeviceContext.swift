@@ -127,7 +127,7 @@ final class DeviceContext: ObservableObject, Identifiable {
             controlCount: twoRotaries ? 2 : 1,
             independent: twoRotaries,
             seedFromSharedModes: !spec.hasMechanicalDial,
-            defaultSlots: ButtonMappingView.hasSplitPadLayout(spec) || spec.hasStripToggles
+            defaultSlots: ButtonsView.hasSplitPadLayout(spec) || spec.hasStripToggles
                 ? ControlSlot.splitPadDefaults : ControlSlot.defaults)
     }
 
@@ -384,7 +384,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// @Published: TabletManager forwards every context.objectWillChange up
     /// to its own objectWillChange, which every SwiftUI view holding
     /// @ObservedObject tabletManager observes — including panes (e.g.
-    /// ButtonMappingView) that never read livePoint at all. With this
+    /// ButtonsView) that never read livePoint at all. With this
     /// published, plain hovering (no button change) re-ran those views' full,
     /// expensive bodies at ~16 Hz for no reason, which is what caused the
     /// Buttons pane's 100% CPU/choppy-scroll behavior while a pen hovered.

@@ -574,7 +574,7 @@ final class SettingsWindowController: NSWindowController {
             label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill",
             height: 575
         ) {
-            ButtonMappingView(
+            ButtonsView(
                 settings: s, tabletManager: tm, registry: dr,
                 instanceKey: instanceKey)
         }
@@ -590,7 +590,7 @@ final class SettingsWindowController: NSWindowController {
         }
         if !isAuxOnly {
             addTab(label: Self.tabLabels[Tab.display.rawValue], symbol: "display", height: 370) {
-                DisplayMappingView(
+                DisplayView(
                     settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey)
             }
         }

@@ -6,9 +6,9 @@ import AppKit
 import SwiftUI
 import TabletKit
 
-// MARK: - ButtonMappingView
+// MARK: - ButtonsView
 
-struct ButtonMappingView: View {
+struct ButtonsView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry: DeviceRegistry
@@ -61,8 +61,8 @@ struct ButtonMappingView: View {
         instanceKey != nil && liveSource !== tabletManager.context(forKey: instanceKey)
     }
 
-    // Not private: read from the ButtonMappingView extension in
-    // ButtonMappingBindings.swift.
+    // Not private: read from the ButtonsView extension in
+    // ButtonsView+Bindings.swift.
     var tool: ToolSettings { settings.activeTool }
 
     var spec: TabletSpec? {
@@ -456,7 +456,7 @@ struct ButtonMappingView: View {
 
 #Preview("ExpressKey Remote") {
     let key = DeviceInstanceKey(productID: 0x0331, instance: "preview")
-    ButtonMappingView(
+    ButtonsView(
         settings: TabletSettings(instanceKey: key), tabletManager: .shared,
         registry: .shared, instanceKey: key)
         .frame(width: 620, height: 900)
@@ -465,7 +465,7 @@ struct ButtonMappingView: View {
 // MARK: - Shared row labels
 
 /// Static so the Display pane's toggle hint names each button as this pane does.
-extension ButtonMappingView {
+extension ButtonsView {
     /// The spec that decides this pane's layout.
     static func layoutSpec(productID pid: Int, context ctx: DeviceContext?) -> TabletSpec? {
         // Most devices are in the registry keyed by their own PID.

@@ -832,7 +832,7 @@ struct AppOverrideBar: View {
     /// `NSWorkspace` icons carry every representation up to the app's largest
     /// `.icns` size (often 1024pt+ at retina). Rendered at chip size that's a
     /// lot of wasted GPU-backed surface — rasterizing once to a small bitmap
-    /// here, the same way `DisplayMappingView.loadThumbnail` caps wallpaper
+    /// here, the same way `DisplayView.loadThumbnail` caps wallpaper
     /// thumbnails, keeps the cached icon's backing store proportional to what's
     /// actually drawn on screen.
     private static func downsampledIcon(_ image: NSImage, pointSize: CGFloat, scale: CGFloat = 2) -> NSImage {

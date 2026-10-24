@@ -9,8 +9,8 @@ import TabletKit
 /// The Quick Keys UI: express keys, mode button, dial center-click, and the
 /// dial's mode slots (action, speed, key bindings, LED color). Renders
 /// identically whether it's folded into a tablet's Buttons pane as a
-/// companion section (`ButtonMappingView.quickKeysSection`) or shown as the
-/// puck/dongle's own standalone window (`ButtonMappingView.body`'s aux-only
+/// companion section (`ButtonsView.quickKeysSection`) or shown as the
+/// puck/dongle's own standalone window (`ButtonsView.body`'s aux-only
 /// path) — only which settings/spec/live-state it's fed changes.
 ///
 /// Bindings read/write `settings` directly, whichever `TabletSettings`
@@ -165,7 +165,7 @@ struct QuickKeysSectionView: View {
             // Dimmed on the content only, not the whole Section: the
             // header's `nameLabel` carries the connection dot that explains
             // *why* these are unavailable, so it has to stay full strength.
-            // See the `.opacity` note in `DisplayMappingView.brightnessSection`
+            // See the `.opacity` note in `DisplayView.brightnessSection`
             // for why `.disabled()` alone doesn't dim a Form section at all.
             Group {
                 HStack {

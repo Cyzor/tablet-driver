@@ -9,7 +9,7 @@ import TabletKit
 
 // The Buttons pane's ExpressKey layouts: single-sided, dual-sided (Cintiq
 // 24HD), and bezel buttons, plus the shared key row.
-extension ButtonMappingView {
+extension ButtonsView {
     @ViewBuilder
     func singleSidedSection(lb: LiveButtonState) -> some View {
         // The device line heads this section unless the tablet section above
@@ -286,7 +286,7 @@ extension ButtonMappingView {
         if companionProductID == DeviceCompanions.expressKeyRemoteProductID,
            let companion = companionContext {
             let _ = (companion.settings.undoManager = settings.undoManager)
-            ButtonMappingView(
+            ButtonsView(
                 settings: companion.settings, tabletManager: tabletManager, registry: registry,
                 instanceKey: companion.instanceKey, isEmbeddedRemote: true)
         } else if let companionSettings = companionContext?.settings {

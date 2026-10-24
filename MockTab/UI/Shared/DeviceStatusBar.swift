@@ -282,7 +282,7 @@ struct DeviceStatusBar: View {
     }
 
     /// PID of a connected aux-only companion peripheral (currently only the
-    /// Xencelabs Quick Keys puck/dongle) — same resolution `ButtonMappingView`
+    /// Xencelabs Quick Keys puck/dongle) — same resolution `ButtonsView`
     /// uses for its companion section, kept independent here rather than
     /// shared, since this view has no other companion state to coordinate.
     private var companionProductID: Int? {

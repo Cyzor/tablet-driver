@@ -107,8 +107,8 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// action has one — a no-op for `.scroll`/`.keyPress`/`.off`/`.skip`,
     /// whose ceiling is UI-configurable (`maxSpeed`) rather than fixed.
     /// Shared write-side guard used by every "set this slot's speed"
-    /// binding (`ButtonMappingBindings`'s slot0-3SpeedBinding,
-    /// `ButtonMappingQuickKeys.slotSpeedBinding`), so a stored `speed` can
+    /// binding (`ButtonsView+Bindings.swift`'s slot0-3SpeedBinding,
+    /// `QuickKeysSectionView.slotSpeedBinding`), so a stored `speed` can
     /// never exceed its action's actual range regardless of which binding
     /// wrote it — see `Action.fixedSpeedCeiling`'s doc comment for the bug
     /// this (and the matching read-side clamp in `slotSpeedBinding`) fixed.
@@ -289,8 +289,8 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         /// from the caller instead (see `TouchRingModeList.speedRange(for:)`).
         /// The single source of truth for both the UI slider's range
         /// (`TouchRingModeList.speedRange(for:)` defers to this) and every
-        /// binding's stored-value clamp (`ButtonMappingQuickKeys.
-        /// slotSpeedBinding`, `ButtonMappingBindings`'s slot0-3SpeedBinding)
+        /// binding's stored-value clamp (`QuickKeysSectionView.
+        /// slotSpeedBinding`, `ButtonsView+Bindings.swift`'s slot0-3SpeedBinding)
         /// — before this existed, `slotSpeedBinding`'s getter clamped to a
         /// stale scroll-only constant regardless of action, silently
         /// capping `.zoom`'s displayed/effective speed at 3.0 out of its

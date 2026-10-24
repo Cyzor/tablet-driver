@@ -8,7 +8,7 @@ import SwiftUI
 import TabletKit
 
 // The Buttons pane's pen section: the pen diagram and its button rows.
-extension ButtonMappingView {
+extension ButtonsView {
     @ViewBuilder
     func penButtonsSection(lb: LiveButtonState) -> some View {
         let toolSpec = activeToolSpec

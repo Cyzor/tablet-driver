@@ -8,7 +8,7 @@ import ImageIO
 import SwiftUI
 import TabletKit
 
-struct DisplayMappingView: View {
+struct DisplayView: View {
     @Environment(\.controlActiveState) private var controlActiveState
     var accent: Color { .windowAccent(controlActiveState) }
 

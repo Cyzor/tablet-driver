@@ -23,7 +23,7 @@ extension InfoView {
 
     /// Connected aux-only companion peripheral (currently only the Xencelabs
     /// Quick Keys puck/dongle) — same resolution `DeviceStatusBar` and
-    /// `ButtonMappingView` use for their own companion sections.
+    /// `ButtonsView` use for their own companion sections.
     var companionContext: DeviceContext? {
         guard let productID else { return nil }
         let companionPID = DeviceCompanions.connectedCompanion(

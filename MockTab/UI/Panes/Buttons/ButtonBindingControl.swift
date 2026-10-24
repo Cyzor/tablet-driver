@@ -66,7 +66,7 @@ struct ButtonBindingControl: View, Equatable {
     /// function ("Right Ring: Zoom") instead of the slot.
     var modeNames: [[String]] = []
     /// The hardware has a mechanical dial, not a touch ring. Picks "Dial"
-    /// or "Ring" wording. See `ButtonMappingView.hasMechanicalDial`.
+    /// or "Ring" wording. See `ButtonsView.hasMechanicalDial`.
     var isMechanicalDialHardware: Bool = false
     /// The rotaries are touch strips with modes of their own (Cintiq 21UX2).
     /// Picks "Strip" wording.

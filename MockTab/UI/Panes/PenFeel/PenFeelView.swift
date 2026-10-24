@@ -191,12 +191,12 @@ struct PenFeelView: View {
     private func sideButtonsUsing(_ kind: ButtonBinding.Kind) -> String {
         let ctx = tabletManager.context(forKey: instanceKey)
         let toolSpec = ctx.flatMap { ToolCatalog.spec(forToolCode: $0.lastKnownToolCode) }
-        let device = productID.flatMap { ButtonMappingView.layoutSpec(productID: $0, context: ctx) }
+        let device = productID.flatMap { ButtonsView.layoutSpec(productID: $0, context: ctx) }
         let count = toolSpec?.toolType == .mouse
-            ? 0 : min(ButtonMappingView.penButtonCount(tool: toolSpec, device: device), 3)
+            ? 0 : min(ButtonsView.penButtonCount(tool: toolSpec, device: device), 3)
         let bindings = [tool.penButton1Binding, tool.penButton2Binding, tool.penButton3Binding]
         let names = (0..<count).filter { bindings[$0].kind == kind }
-            .map { ButtonMappingView.penButtonLabel($0 + 1, count: count, isMouse: false) }
+            .map { ButtonsView.penButtonLabel($0 + 1, count: count, isMouse: false) }
         let lists = ListFormatter()
         lists.locale = Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en")
         switch names.count {

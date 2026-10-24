@@ -96,7 +96,7 @@ extension TabletSettings {
         loadPressureCurve()
 
         // Sync resolved pressure values and app overrides into activeTool so PenFeel
-        // and ButtonMappingView reflect the active override or profile.
+        // and ButtonsView reflect the active override or profile.
         let op = effectiveOverride.map { appOverrideKeyPrefix($0) }
         activeTool.overridePrefix = op
         activeTool.reload()
