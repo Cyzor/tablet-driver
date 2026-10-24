@@ -3,7 +3,7 @@
 #
 # Wraps tools/release/build-snapshot.sh with the surrounding git + GitHub work, mirroring
 # tools/release/release-and-publish.sh but for the rolling "snapshot" pre-release instead
-# of a numbered version. Lets you publish "here's roughly where main stands"
+# of a numbered version. Lets you publish "here's roughly where next stands"
 # from your own Mac.
 #
 # Flow:
@@ -87,7 +87,7 @@ gh release create snapshot "$DMG_PATH" \
     --title "MockTab snapshot" \
     --prerelease \
     --draft \
-    --notes "Rolling pre-release build of main, replaced on each snapshot run — not a numbered version.
+    --notes "Rolling pre-release build of next, replaced on each snapshot run — not a numbered version.
 
 Commit: ${SHA_SHORT}
 Built: ${BUILT_AT}${NOTES_LINE}"
