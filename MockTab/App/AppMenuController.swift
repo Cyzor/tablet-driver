@@ -736,27 +736,10 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         menu.removeAllItems()
 
         if !settings.profiles.isEmpty {
-            let defsItem = NSMenuItem(
-                title: String(
-                    localized: "Device Defaults",
-                    comment: "Profile option: use device's default settings"),
-                action: #selector(activateDeviceDefaults),
-                keyEquivalent: "")
-            defsItem.target = self
-            defsItem.state = settings.activeProfile == nil ? .on : .off
-            menu.addItem(defsItem)
-            menu.addItem(.separator())
-
-            for profile in settings.profiles {
-                let item = NSMenuItem(
-                    title: profile.name,
-                    action: #selector(activateProfile(_:)),
-                    keyEquivalent: "")
-                item.target = self
-                item.representedObject = profile.id
-                item.state = settings.activeProfile?.id == profile.id ? .on : .off
-                menu.addItem(item)
-            }
+            ProfileMenuItems.items(
+                for: settings, target: self,
+                defaultsAction: #selector(activateDeviceDefaults), profileAction: #selector(activateProfile(_:))
+            ).forEach(menu.addItem)
             menu.addItem(.separator())
         }
 
@@ -974,10 +957,8 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     }
 
     @objc private func activateProfile(_ sender: NSMenuItem) {
-        guard let uuid = sender.representedObject as? UUID,
-            let profile = settings?.profiles.first(where: { $0.id == uuid })
-        else { return }
-        settings?.activate(profile)
+        guard let settings, let profile = ProfileMenuItems.profile(of: sender, in: settings) else { return }
+        settings.activate(profile)
     }
 
     @objc private func showProfilesTab() {

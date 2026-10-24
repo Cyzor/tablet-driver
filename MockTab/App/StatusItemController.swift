@@ -146,23 +146,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     private func buildProfileSubmenu(settings: TabletSettings) -> NSMenu {
         let sub = NSMenu()
-
-        let defaultsItem = NSMenuItem(
-            title: String(localized: "Device Defaults", comment: "Profile option: use device's default settings"),
-            action: #selector(activateDeviceDefaults), keyEquivalent: "")
-        defaultsItem.target = self
-        defaultsItem.state = settings.activeProfile == nil ? .on : .off
-        sub.addItem(defaultsItem)
-        sub.addItem(.separator())
-
-        for profile in settings.profiles {
-            let item = NSMenuItem(title: profile.name, action: #selector(activateProfile(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = profile.id
-            item.state = settings.activeProfile?.id == profile.id ? .on : .off
-            sub.addItem(item)
-        }
-
+        ProfileMenuItems.items(
+            for: settings, target: self,
+            defaultsAction: #selector(activateDeviceDefaults), profileAction: #selector(activateProfile(_:))
+        ).forEach(sub.addItem)
         return sub
     }
 
@@ -196,9 +183,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func activateProfile(_ sender: NSMenuItem) {
         let settings = SettingsWindowManager.shared.settings
-        guard let uuid = sender.representedObject as? UUID,
-              let profile = settings.profiles.first(where: { $0.id == uuid })
-        else { return }
+        guard let profile = ProfileMenuItems.profile(of: sender, in: settings) else { return }
         settings.activate(profile)
     }
 
