@@ -19,6 +19,6 @@ SETTINGS="$ROOT/MockTab/Settings"
 swiftc -O -I "$KIT" "$FIGURES/TabletFigure.swift" "$FIGURES/TabletLayoutTable.swift" "$FIGURES/TabletLayoutIdentity.swift" \
     "$FIGURES/TabletControlMap.swift" "$SETTINGS/Model/TabletOrientation.swift" "$SETTINGS/Model/TurnCarry.swift" \
     "$SETTINGS/Model/ButtonBinding.swift" "$SETTINGS/Model/ControlSlot.swift" "$SETTINGS/Model/RotaryConfig.swift" \
-    "$SETTINGS/Model/BezierCurve.swift" "$SETTINGS/Serialization/UnknownFieldsCodable.swift" "$TEST" \
+    "$SETTINGS/Model/BezierCurve.swift" "$SETTINGS/Serialization/UnknownFieldsCodec.swift" "$TEST" \
     "$KIT/libTabletKit.a" -o "$BIN"
 "$BIN"

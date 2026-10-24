@@ -9,7 +9,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
 SRC1="$ROOT/MockTab/Settings/Model/ButtonBinding.swift"
 SRC2="$ROOT/MockTab/Settings/Model/ControlSlot.swift"
-SRC3="$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodable.swift"
+SRC3="$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodec.swift"
 TEST="$DIR/main.swift"
 BIN="$(mktemp -d)/configuration-locale-tests"
 

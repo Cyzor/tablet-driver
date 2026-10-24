@@ -15,7 +15,7 @@ swiftc -O \
     "$SETTINGS/Model/ButtonBinding.swift" \
     "$SETTINGS/Model/ControlSlot.swift" \
     "$SETTINGS/Model/RotaryConfig.swift" \
-    "$SETTINGS/Serialization/UnknownFieldsCodable.swift" \
+    "$SETTINGS/Serialization/UnknownFieldsCodec.swift" \
     "$SETTINGS/Model/BezierCurve.swift" \
     "$DIR/../configuration-display-region-tests/StubTypes.swift" \
     "$DIR/main.swift" \

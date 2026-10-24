@@ -12,7 +12,7 @@ TEST="$DIR/main.swift"
 BIN="$(mktemp -d)/prefs-resilience-tests"
 
 swiftc -O \
-    "$SETTINGS/Serialization/UnknownFieldsCodable.swift" \
+    "$SETTINGS/Serialization/UnknownFieldsCodec.swift" \
     "$SETTINGS/Model/ButtonBinding.swift" \
     "$SETTINGS/Model/ControlSlot.swift" \
     "$SETTINGS/Model/BezierCurve.swift" \
