@@ -149,8 +149,10 @@ final class ScratchpadNSView: NSView {
         Self.ringCursor.set()
     }
 
+    // On macOS 15 with a customized pointer, each set redraws the pointer
+    // image, so a set on every move keeps a core busy.
     override func mouseMoved(with event: NSEvent) {
-        Self.ringCursor.set()
+        if NSCursor.current != Self.ringCursor { Self.ringCursor.set() }
     }
 
     override init(frame frameRect: NSRect) {
@@ -280,7 +282,7 @@ final class ScratchpadNSView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        Self.ringCursor.set()
+        if NSCursor.current != Self.ringCursor { Self.ringCursor.set() }
         let viewPt = convert(event.locationInWindow, from: nil)
         let pt = canvasPoint(viewPt)
         if isErasingGesture {

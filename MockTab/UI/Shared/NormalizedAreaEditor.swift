@@ -869,12 +869,14 @@ private extension View {
     /// Sets `cursor` on every move over the view, rather than pushing it on
     /// entry: a drag can end away from where it began, skipping the exit that
     /// would pop it. `active: false` holds the cursor still during a drag,
-    /// where handles move under a stationary pointer.
+    /// where handles move under a stationary pointer. Sets only on a change:
+    /// on macOS 15 with a customized pointer, each set redraws the pointer
+    /// image, and a hovering pen moves ~200 times a second.
     func cursor(_ cursor: NSCursor, active: Bool = true) -> some View {
         self.onContinuousHover { phase in
             guard active else { return }
             switch phase {
-            case .active: cursor.set()
+            case .active: if NSCursor.current != cursor { cursor.set() }
             case .ended: NSCursor.arrow.set()
             }
         }
