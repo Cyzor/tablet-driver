@@ -52,6 +52,7 @@ enum TabletLayoutTable {
     0057 0059: k1wT0 52-82, k5wT0 376-604
     005B 00FA: sL0 425-575, k9fL1 348-652, sR0 425-575, k9fR1 348-652
     0065: cT0 247-467, rT0 400-538, cT0 472-690
+    0081: k2wT0 366-634
     00B0 00B7: cL0 190-407, sL1 190-407
     00B1 00B5: cL0 156-336, sL1 156-336, cR0 156-336, sR1 156-336
     00B2: cL0 121-259, sL1 121-259, cR0 121-259, sR1 121-259
@@ -115,6 +116,7 @@ enum TabletLayoutTable {
     003F: s 1; c CA/CB/DD; s 2; c GE/GF/HH
     0057 0059: k A; k BCDEF
     005B 00CC 00FA: s 1; k BCDEAFGHI; s 2; k KLMNJOPQR | m A=s1 J=s2
+    0081 0318 0319: k AB | ev 110 111
     00B0 00B7: c CA/CB/DD; s 1
     00B1 00B2 00B3 00B4 00B5: c CA/CB/DD; s 1; c GE/GF/HH; s 2
     00C5: s 1; c KL; c II/CA/CB/DD; s 2; c NM; c JJ/GE/GF/HH
@@ -125,7 +127,6 @@ enum TabletLayoutTable {
     00FB 0336 0359 0374 0375 0376 0377 0378 0379 03C5 03C6 03C7 03C8: k ABCD
     0302 0303 030E 0323: c AB; c CD | ev 110 111 115 116
     0304 0333: k BC; r 1 @G@/HAF/@I@; k DE
-    0318 0319: k AB | ev 110 111
     0325: k BCD; r 1 @I@/JAH/@K@; k EFG
     033B 033C 033D 033E: c A./.B; c .D/C. | ev 110 111 115 116
     0343: k CD; k AB

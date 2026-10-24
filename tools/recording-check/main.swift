@@ -77,6 +77,7 @@ enum Obs { case pen(PenObs), pad(PadObs), touch(Int), penAndPad(PenObs, PadObs),
 enum PadKind { case i4, i5, ux2, hd22, hd24, dtk, generic }
 enum Kind {
     case graphire(mo: Bool)
+    case graphireBT
     case bpt
     case intuos(pad: PadKind, pmax: Int, nbuttons: Int, cintiqRdy: Bool, needsI4Bit: Bool, noLens: Bool)
     case dtu, dtus, hdt24
@@ -86,6 +87,7 @@ enum Kind {
 func kernelKind(_ pid: Int) -> Kind? {
     switch pid {
     case 0x13: return .graphire(mo: false)
+    case 0x81: return .graphireBT
     case 0x17, 0x65: return .graphire(mo: true)
     case 0xD0, 0xD4, 0x302, 0x303, 0x323, 0x30E: return .bpt
     case 0xC6: return .intuos(pad: .generic, pmax: 1023, nbuttons: 10, cintiqRdy: false, needsI4Bit: false, noLens: false)
@@ -108,7 +110,7 @@ func kernelKind(_ pid: Int) -> Kind? {
 
 func kernelPressureMax(_ kind: Kind) -> Int {
     switch kind {
-    case .graphire, .dtu, .dtus: return 511
+    case .graphire, .graphireBT, .dtu, .dtus: return 511
     case .bpt: return 1023
     case .intuos(_, let pmax, _, _, _, _): return pmax
     case .hdt24: return 0
@@ -141,6 +143,7 @@ struct Oracle {
         pen.entered = false
         switch kind {
         case .graphire(let mo): return graphire(d, mo: mo)
+        case .graphireBT: return graphire(d, mo: false, bt: true)
         case .bpt:
             if d[0] == 0xC0 { return .ignored("status") }
             switch d.count {
@@ -159,8 +162,8 @@ struct Oracle {
         }
     }
 
-    mutating func graphire(_ d: [UInt8], mo: Bool) -> Obs {
-        guard d[0] == 0x02, d.count >= 8 else { return .ignored("id") }
+    mutating func graphire(_ d: [UInt8], mo: Bool, bt: Bool = false) -> Obs {
+        guard d[0] == (bt ? 0x03 : 0x02), d.count >= 8 else { return .ignored("id") }
         var penChanged = false
         let prox = d[1] & 0x80 != 0
         if prox || id0 != 0 {
@@ -173,7 +176,7 @@ struct Oracle {
                 }
             }
             if pen.tool != .mouse {
-                pen.pressure = Int(d[6]) | Int(d[7] & 0x03) << 8
+                pen.pressure = bt ? Int(d[6]) | Int(d[1] & 0x08) << 5 : Int(d[6]) | Int(d[7] & 0x03) << 8
                 pen.touch = d[1] & 0x01 != 0
                 pen.s1 = d[1] & 0x02 != 0
                 pen.s2 = d[1] & 0x04 != 0
@@ -183,6 +186,16 @@ struct Oracle {
             penChanged = true
         }
         var pad: PadObs?
+        if bt {
+            // BTN_0, BTN_1
+            let active = d[7] & 0x03 != 0
+            if active || padActive {
+                var p = PadObs()
+                for (n, bit) in [(0, 0x02), (1, 0x01)] where Int(d[7]) & bit != 0 { p.buttons.append(n) }
+                pad = p
+                padActive = active
+            }
+        }
         if mo, d.count >= 9 {
             let active = d[7] & 0xF8 != 0 || d[8] != 0
             if active || padActive {

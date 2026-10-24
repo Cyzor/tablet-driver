@@ -19,7 +19,6 @@ struct TabletControlMapTests {
     private static let knownCountMismatches: Set<Int> = [
         0x0017, 0x0018, 0x0065,  // Bamboo Fun CTE-450/650, MTE-450: a Center row, but no center button
         0x03F5,  // PTK-470: registry says 5 keys, libwacom 4 and a dial toggle
-        0x00D0,  // CTT-460: registry says no keys, libwacom 4
         0x00C5,  // Cintiq 20WSX: registry says 10 keys, libwacom 14
         0x0325,  // Companion 2: registry says 4 keys, libwacom 11
         0x034D, 0x0398, 0x034E, 0x0399, 0x03AA,  // MobileStudio Pro: the ring's four mode keys have no rows
