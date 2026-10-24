@@ -13,6 +13,20 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "driver")
 /// holds. The session opens and closes it; this carries what the panes and
 /// settings read, and the handler its reports arrive at.
 final class SessionDriver: TabletDevice, @unchecked Sendable {
+    /// The app's closures for one tablet's events, called on HIDThread.
+    struct Callbacks {
+        let onTablet: @Sendable (TabletPoint) -> Void
+        let onAux: @Sendable (PadState) -> Void
+        let onToolEnter: @Sendable (ToolIdentity) -> Void
+        let onMouseButton: @Sendable (UInt8) -> Void
+        let onBattery: @Sendable (Int?, Bool) -> Void
+        /// Whether a wireless kit's tablet is linked or asleep, on a change.
+        let onWirelessLink: @Sendable (Bool) -> Void
+        let onWheel: @Sendable (Int, Int) -> Void
+        /// Per-frame finger contacts; an empty array means every finger lifted.
+        let onTouch: @Sendable ([TouchContact]) -> Void
+    }
+
     let transportID: TabletTransport.ID
     let handler: TransportEventHandler
     let controls: TabletControls
@@ -37,7 +51,7 @@ final class SessionDriver: TabletDevice, @unchecked Sendable {
     private static let androidModeProductIDs: Set<Int> = [0x0374, 0x0375, 0x0376, 0x0378, 0x03C5, 0x03C7]
 
     @MainActor
-    init(_ transport: TabletTransport, callbacks: DeviceRouter.Callbacks) {
+    init(_ transport: TabletTransport, callbacks: SessionDriver.Callbacks) {
         transportID = transport.id
         controls = transport.controls
         spec = transport.digitizer
@@ -93,7 +107,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     /// A wireless kit receiver, whose level reads high while its tablet
     /// charges (96% whatever the charge).
     private let isWireless: Bool
-    private let callbacks: DeviceRouter.Callbacks
+    private let callbacks: SessionDriver.Callbacks
     private let keyDisplayClock: KeyDisplayIdleClock?
     /// The kit's last link status; its receiver repeats it twice a second.
     private var wirelessLinked: Bool?
@@ -135,7 +149,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     /// 3.8 ms apart, windows at least 13 ms apart.
     private static let penWindowGapNs: UInt64 = 5_000_000
 
-    init(spec: TabletSpec, isBluetooth: Bool, isWireless: Bool, callbacks: DeviceRouter.Callbacks,
+    init(spec: TabletSpec, isBluetooth: Bool, isWireless: Bool, callbacks: SessionDriver.Callbacks,
          keyDisplayClock: KeyDisplayIdleClock? = nil) {
         self.spec = spec
         self.isBluetooth = isBluetooth

@@ -17,7 +17,7 @@ If a change is about what the bytes mean, it goes in TabletKit. If it's about wh
 
 Pen input never waits on the user interface. Each report goes through `HIDThread`, which runs at the highest priority macOS gives an app and handles the report from start to finish. The main thread runs the settings window and everything else.
 
-Each piece of state belongs to one thread, and only that thread changes it. The other thread sends the work over instead. The pen thread hops to main with `Task { @MainActor in … }`. Main hands work to the pen thread with `HIDThread.shared.perform { … }`. Its closure is `@Sendable`, so it doesn't inherit main's isolation; a closure written in main-actor code and passed straight to `CFRunLoopPerformBlock` does, and Swift 6 traps when it runs on the pen thread. The same goes for any closure the pen thread calls, such as `DeviceRouter.Callbacks`.
+Each piece of state belongs to one thread, and only that thread changes it. The other thread sends the work over instead. The pen thread hops to main with `Task { @MainActor in … }`. Main hands work to the pen thread with `HIDThread.shared.perform { … }`. Its closure is `@Sendable`, so it doesn't inherit main's isolation; a closure written in main-actor code and passed straight to `CFRunLoopPerformBlock` does, and Swift 6 traps when it runs on the pen thread. The same goes for any closure the pen thread calls, such as `SessionDriver.Callbacks`.
 
 | State | Belongs to | How the other thread reaches it |
 |---|---|---|
@@ -140,7 +140,7 @@ CI runs both.
 | Add a pen | `ToolCatalog.swift` |
 | Add another maker's tablet | `VendorDeviceRegistry.swift` |
 | Add a new report format | A decoder in `Decoders/`, plus a `ReportFormat` case and its line in `makeDecoder()` |
-| Fix how a tablet is recognized | `DeviceRouter.swift` |
+| Fix how a tablet is recognized | TabletKit's `InterfaceRouting.swift` and `SessionRouting.swift` |
 | Change how the pen behaves | `InputInjector+PenInjection.swift` |
 | Change what a tablet button, ring, or dial does | `InputInjector+AuxInput.swift` |
 | Change touch gestures | `TouchStateTracker.swift` |

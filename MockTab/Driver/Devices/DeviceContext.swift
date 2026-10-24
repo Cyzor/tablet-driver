@@ -201,26 +201,14 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// The raw IOHIDDevice handle for this context's primary digitizer
     /// interface — weak because IOKit owns the lifetime.
     ///
-    /// A multi-interface tablet (touch, pad/aux, LED-only siblings alongside
-    /// the pen interface) enumerates one `IOHIDDevice` per interface, all
-    /// mapped to this same context, but only one of them is the interface the
-    /// driver actually reads pen reports from and passes to
-    /// `CaptureEngine.recordRaw`. `TabletManager.beginConnecting` sets this
-    /// only the first time a `.driver`-routed interface attaches for this raw
-    /// product ID (see `firstDriverInterfaceClaimed`) — never overwritten by a
-    /// sibling interface that attaches later. Before that guard existed, an
-    /// `.intuosV1`-family device with `seizeUSB: false` (no defer/seize
-    /// gating in `DeviceRouter.route`) would route *every* interface through
-    /// `.driver` independently, and this property took whichever one attached
-    /// last — order-dependent and silently wrong. Confirmed on a PTH-850: two
-    /// discovery captures both came back scoped to its touch interface
-    /// instead of the pen interface, because that was the one that happened
-    /// to attach second. Only consumer today is `CaptureGuideView`, which
-    /// hands this to `CaptureEngine.startDiscovery(device:)`; if it pointed
-    /// at the wrong interface, that session would silently record zero events
-    /// for the whole capture window (0 events despite reports flowing
-    /// normally through the app) because `recordRaw`'s device never matches
-    /// the registered accumulator's key.
+    /// A multi-interface tablet enumerates one `IOHIDDevice` per interface,
+    /// all mapped to this context, but only the pen interface is the one the
+    /// driver reads and passes to `CaptureEngine.recordRaw`.
+    /// `TabletManager.beginConnecting` sets this only for the first
+    /// `.driver`-routed interface (see `firstDriverInterfaceClaimed`), so a
+    /// sibling that attaches later can't take its place. `CaptureGuideView`
+    /// hands it to `CaptureEngine.startDiscovery(device:)`; the wrong
+    /// interface would record nothing for the whole capture.
     weak var hidDevice: IOHIDDevice?
 
     /// True once `hidDevice` has been claimed by a `.driver`-routed interface

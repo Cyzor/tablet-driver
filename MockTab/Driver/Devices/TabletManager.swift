@@ -788,7 +788,7 @@ final class TabletManager: ObservableObject {
     private func makeCallbacks(
         context: DeviceContext, contextHandle: DriverContextHandle, device: IOHIDDevice,
         productID: Int, instanceKey: DeviceInstanceKey
-    ) -> DeviceRouter.Callbacks {
+    ) -> SessionDriver.Callbacks {
         // Only handed back to main.
         nonisolated(unsafe) let device = device
 
@@ -1269,7 +1269,7 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        return DeviceRouter.Callbacks(
+        return SessionDriver.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
             onMouseButton: onMouseButton, onBattery: onBattery, onWirelessLink: onWirelessLink,
             onWheel: onWheel, onTouch: onTouch)
