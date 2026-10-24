@@ -77,34 +77,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         addItem(to: menu, title: String(localized: "Detect Tablet", comment: "Menu item: detect and focus active tablet"),
                 action: #selector(detectTablet))
 
-        let knownTablets = DeviceRegistry.shared.knownTablets
-        if !knownTablets.isEmpty {
+        let tablets = TabletMenuItems.items(target: self, action: #selector(openTablet(_:)))
+        if !tablets.isEmpty {
             menu.addItem(.separator())
-            for tablet in knownTablets {
-                // A companion peripheral (Xencelabs Quick Keys puck/dongle)
-                // is folded into its owning tablet's window while connected —
-                // don't list it as its own selectable device.
-                if DeviceCompanions.isConnectedCompanion(
-                    productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs)
-                {
-                    continue
-                }
-                let connected = tm.connectedProductIDs.contains(tablet.productID)
-                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
-                // The dongle has no window of its own (`openWindow`) — grey it
-                // out rather than let the click silently no-op. A tablet it
-                // relays is listed, and checked, under its own row.
-                let isDongleDisabled = tm.isDongleRawProductID(tablet.productID)
-                let item = NSMenuItem(title: pwc.menuLabel(forKey: tablet.instanceKey) + suffix,
-                                       action: isDongleDisabled ? nil : #selector(openTablet(_:)), keyEquivalent: "")
-                item.target = self
-                item.isEnabled = !isDongleDisabled
-                // Composite instance identity doesn't fit NSMenuItem.tag
-                // (an Int) — carry it via representedObject instead.
-                item.representedObject = tablet.instanceKey.stringValue
-                item.state = connected ? .on : .off
-                menu.addItem(item)
-            }
+            tablets.forEach(menu.addItem)
         }
 
         if pwc.windowDescriptors.count > 1 {
@@ -193,11 +169,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     // MARK: - Actions
 
     @objc private func showTabletArea() {
-        SettingsWindowManager.shared.showTab(at: 0)
+        SettingsWindowManager.shared.showTab(.tabletArea)
     }
 
     @objc private func showButtons() {
-        SettingsWindowManager.shared.showTab(at: 2)
+        SettingsWindowManager.shared.showTab(.buttons)
     }
 
     @objc private func detectTablet() {
@@ -205,9 +181,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openTablet(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String,
-            let key = DeviceInstanceKey(stringValue: id)
-        else { return }
+        guard let key = TabletMenuItems.instanceKey(of: sender) else { return }
         SettingsWindowManager.shared.openWindow(forInstanceKey: key)
     }
 

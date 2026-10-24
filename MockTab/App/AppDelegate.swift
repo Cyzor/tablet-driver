@@ -150,55 +150,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         detect.target = self
         menu.addItem(detect)
 
-        // List known tablets, matching the Tablet menu in the main menu bar.
-        // A filled checkmark icon marks currently connected devices.
-        let knownTablets = DeviceRegistry.shared.knownTablets
-        if !knownTablets.isEmpty {
+        let tablets = TabletMenuItems.items(target: self, action: #selector(dockOpenTablet(_:)))
+        if !tablets.isEmpty {
             menu.addItem(.separator())
-            let connectedIDs = TabletManager.shared.connectedProductIDs
-            let pwc = SettingsWindowManager.shared
-            let tm = TabletManager.shared
-            for tablet in knownTablets {
-                // A connected companion (Quick Keys puck or dongle) belongs to
-                // its tablet's window, so it gets no row of its own.
-                if DeviceCompanions.isConnectedCompanion(
-                    productID: tablet.productID, connectedProductIDs: connectedIDs)
-                {
-                    continue
-                }
-                let connected = connectedIDs.contains(tablet.productID)
-                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
-                // The dongle has no window of its own, so its row is disabled.
-                let isDongle = tm.isDongleRawProductID(tablet.productID)
-                let item = NSMenuItem(
-                    title: pwc.menuLabel(forKey: tablet.instanceKey) + suffix,
-                    action: isDongle ? nil : #selector(dockOpenTablet(_:)),
-                    keyEquivalent: "")
-                item.target = self
-                item.isEnabled = !isDongle
-                // Composite instance identity doesn't fit NSMenuItem.tag
-                // (an Int) — carry it via representedObject instead.
-                item.representedObject = tablet.instanceKey.stringValue
-                // Dock menus reliably honor NSMenuItem.state (left-gutter
-                // checkmark) but not all NSMenuItem.image values render in the
-                // Dock's restricted menu pipeline, so use the canonical
-                // selected-state indicator here rather than a custom image.
-                if connected {
-                    item.state = .on
-                }
-                menu.addItem(item)
-            }
+            tablets.forEach(menu.addItem)
         }
 
         return menu
     }
 
     @objc private func dockShowTabletArea() {
-        SettingsWindowManager.shared.showTab(at: 0)
+        SettingsWindowManager.shared.showTab(.tabletArea)
     }
 
     @objc private func dockShowButtons() {
-        SettingsWindowManager.shared.showTab(at: 2)
+        SettingsWindowManager.shared.showTab(.buttons)
     }
 
     @objc private func dockDetectTablet() {
@@ -206,9 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func dockOpenTablet(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String,
-            let key = DeviceInstanceKey(stringValue: id)
-        else { return }
+        guard let key = TabletMenuItems.instanceKey(of: sender) else { return }
         SettingsWindowManager.shared.openWindow(forInstanceKey: key)
         NSApp.activate(ignoringOtherApps: true)
     }

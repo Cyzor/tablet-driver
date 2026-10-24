@@ -223,10 +223,6 @@ final class SettingsWindowManager: ObservableObject {
         ensureDefaultWindow().show()
     }
 
-    func showTab(at index: Int) {
-        frontmostSettingsWindow().showTab(at: index)
-    }
-
     func showTab(_ tab: SettingsWindowController.Tab) {
         // Menu validation only gates this when a window is already key; with
         // none key (or the resolved window's device lacks the tab, e.g.

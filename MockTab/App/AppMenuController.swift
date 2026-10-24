@@ -637,43 +637,10 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         detectItem.target = self
         menu.addItem(detectItem)
 
-        // List known tablets from DeviceRegistry.
-        let registry = DeviceRegistry.shared
-        let tm = TabletManager.shared
-        if !registry.knownTablets.isEmpty {
+        let tablets = TabletMenuItems.items(target: self, action: #selector(openDeviceWindow(_:)))
+        if !tablets.isEmpty {
             menu.addItem(.separator())
-
-            for tablet in registry.knownTablets {
-                // A companion peripheral (Xencelabs Quick Keys puck/dongle)
-                // is folded into its owning tablet's window while connected —
-                // don't list it as its own selectable device.
-                if DeviceCompanions.isConnectedCompanion(
-                    productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs)
-                {
-                    continue
-                }
-                let connected = tm.connectedProductIDs.contains(tablet.productID)
-                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
-                let label = SettingsWindowManager.shared.menuLabel(forKey: tablet.instanceKey) + suffix
-                // The dongle has no window of its own (`openWindow`) — grey it
-                // out rather than let the click silently no-op. A tablet it
-                // relays is listed, and checked, under its own row.
-                let isDongleDisabled = tm.isDongleRawProductID(tablet.productID)
-                let item = NSMenuItem(
-                    title: label,
-                    action: isDongleDisabled ? nil : #selector(openDeviceWindow(_:)),
-                    keyEquivalent: "")
-                item.target = self
-                item.isEnabled = !isDongleDisabled
-                // Composite instance identity doesn't fit NSMenuItem.tag
-                // (an Int) — carry it via representedObject instead.
-                item.representedObject = tablet.instanceKey.stringValue
-                // Show the native state checkmark for currently connected tablets,
-                // matching the flush-left alignment of the other checkmarked items
-                // (toggles, active profile) in the same menu.
-                item.state = connected ? .on : .off
-                menu.addItem(item)
-            }
+            tablets.forEach(menu.addItem)
         }
     }
 
@@ -682,9 +649,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     }
 
     @objc private func openDeviceWindow(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String,
-            let key = DeviceInstanceKey(stringValue: id)
-        else { return }
+        guard let key = TabletMenuItems.instanceKey(of: sender) else { return }
         SettingsWindowManager.shared.openWindow(forInstanceKey: key)
     }
 
