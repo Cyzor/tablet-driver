@@ -106,7 +106,7 @@ Das Diagramm zeigt, wo Tasten, Ringe und Dials eines Grafiktabletts sitzen. Klic
 
 ## Berührungsring und Dial
 
-Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen. Beim Cintiq 21UX2 und 22HD hat jede Leiste eigene Modi und daneben eine Taste **Leiste umschalten**.
+Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen. Jede Leiste hat eigene Modi. Beim Cintiq 21UX2 und 22HD liegt neben jeder Leiste eine Taste **Leiste umschalten**.
 
 **Scrollen** – Macht aus Ring oder Dial ein Scrollrad. Die Geschwindigkeit ist ein Faktor: 1× entspricht einer Scrollzeile pro Schritt.
 

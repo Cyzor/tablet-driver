@@ -104,7 +104,7 @@ El diagrama muestra la posición de las teclas, anillos y diales de una tableta.
 
 ## Touch Ring y dial
 
-Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto. En las Cintiq 21UX2 y 22HD, cada franja tiene sus propios modos y un botón **Cambiar franja** al lado.
+Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto. Cada franja tiene sus propios modos. En las Cintiq 21UX2 y 22HD, cada franja tiene al lado un botón **Cambiar franja**.
 
 **Desplazar** – Convierte el anillo o dial en una rueda de desplazamiento. La velocidad es un multiplicador: 1× equivale a una línea por paso.
 

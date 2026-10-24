@@ -106,7 +106,7 @@ The diagram depicts positions of a tablet's keys, rings, and dials. Click a comp
 
 ## Touch Ring and Dial
 
-Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode. On the Cintiq 21UX2 and 22HD, each strip has its own modes and a **Strip Toggle** button beside it.
+Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode. Each touch strip has its own modes. On the Cintiq 21UX2 and 22HD, a **Strip Toggle** button sits beside each strip.
 
 **Scroll** – Turns the ring or dial into a scroll wheel. Speed is a multiplier, where 1× gives one scroll line per step.
 
