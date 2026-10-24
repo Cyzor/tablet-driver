@@ -479,34 +479,3 @@ private struct SheetMaterial: NSViewRepresentable {
     }
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
-
-/// Weak handle to the window a view lives in, filled in by `WindowReader`.
-final class WindowRef {
-    weak var window: NSWindow?
-}
-
-/// Records the hosting window into `ref`, so an action can target the window
-/// it came from rather than whichever one is key.
-struct WindowReader: NSViewRepresentable {
-    let ref: WindowRef
-
-    func makeNSView(context: Context) -> NSView { Probe(ref: ref) }
-    func updateNSView(_ nsView: NSView, context: Context) {}
-
-    final class Probe: NSView {
-        let ref: WindowRef
-        init(ref: WindowRef) {
-            self.ref = ref
-            super.init(frame: .zero)
-        }
-        required init?(coder: NSCoder) { nil }
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            // Record, never clear: several readers can share one ref, and a
-            // reader leaving the pane (the Screen Area section on switching to
-            // Toggle) must not blank the window for the ones that stay. The
-            // ref is weak, so a closed window still clears itself.
-            if let window { ref.window = window }
-        }
-    }
-}

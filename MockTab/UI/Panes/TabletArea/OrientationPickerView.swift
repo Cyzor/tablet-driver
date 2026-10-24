@@ -93,42 +93,6 @@ struct OrientationPickerView: View {
     }
 }
 
-// MARK: - Native radio button indicator
-
-/// Display-only native macOS radio button. A real `NSButton`, so it fades
-/// with its window like any system control.
-/// Position (circle left, label right) is controlled by the enclosing HStack.
-/// Interaction is handled by the parent — this view ignores hit-testing.
-struct NativeRadioIndicator: NSViewRepresentable {
-    let isSelected: Bool
-
-    func makeNSView(context: Context) -> RadioIndicatorView { RadioIndicatorView() }
-
-    func updateNSView(_ view: RadioIndicatorView, context: Context) {
-        view.button.state = isSelected ? .on : .off
-    }
-
-    final class RadioIndicatorView: NSView {
-        let button = NSButton(radioButtonWithTitle: "", target: nil, action: nil)
-
-        override init(frame: NSRect) {
-            super.init(frame: frame)
-            button.imagePosition = .imageOnly
-            button.translatesAutoresizingMaskIntoConstraints = false
-            button.setAccessibilityElement(false)
-            addSubview(button)
-            NSLayoutConstraint.activate([
-                button.centerXAnchor.constraint(equalTo: centerXAnchor),
-                button.centerYAnchor.constraint(equalTo: centerYAnchor),
-            ])
-        }
-
-        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    }
-}
-
 // MARK: - Orientation label extension
 
 extension TabletOrientation {

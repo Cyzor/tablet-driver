@@ -40,49 +40,6 @@ final class RingMenuTarget: NSObject, @unchecked Sendable {  // stateless
     }
 }
 
-/// Serves a right-click menu for the diagram without stealing any other
-/// mouse event: `hitTest` returns nil for everything but a right mouse-down,
-/// so left-click/drag falls through untouched to the SwiftUI gesture layer
-/// beneath it. Builds and pops the `NSMenu` itself, synchronously, inside
-/// `rightMouseDown` — SwiftUI's `.contextMenu` reads its content closure
-/// against `@State` at menu-open time, which raced the state write from the
-/// same click and showed the *previous* selection's menu; going straight to
-/// AppKit avoids that state round-trip entirely, and it's still one-shot
-/// (no continuous tracking), so it carries none of the hover-driven
-/// invalidation cost the equatable-core split above exists to avoid.
-struct RightClickMenuHost: NSViewRepresentable {
-    let menuBuilder: (CGPoint) -> NSMenu?
-
-    func makeNSView(context: Context) -> NSView {
-        let view = CatcherView()
-        view.menuBuilder = menuBuilder
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? CatcherView)?.menuBuilder = menuBuilder
-    }
-
-    final class CatcherView: NSView {
-        var menuBuilder: ((CGPoint) -> NSMenu?)?
-
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            guard let event = NSApp.currentEvent, event.type == .rightMouseDown else { return nil }
-            return super.hitTest(point)
-        }
-
-        override func rightMouseDown(with event: NSEvent) {
-            let point = convert(event.locationInWindow, from: nil)
-            // AppKit's y-axis grows upward; the SwiftUI-side hit-testing
-            // (`region(at:in:)`) expects the same top-left origin GeometryReader
-            // reports, so flip once here rather than teach that math two origins.
-            let flipped = CGPoint(x: point.x, y: bounds.height - point.y)
-            guard let menu = menuBuilder?(flipped) else { return }
-            NSMenu.popUpContextMenu(menu, with: event, for: self)
-        }
-    }
-}
-
 /// Zero-size backing view that scrolls its position into view once, when it
 /// first lands in a window. Placed behind each mode's expanded editor: the
 /// editor opens below the fold whenever its summary row sits near the bottom

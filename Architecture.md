@@ -97,7 +97,8 @@ TabletKit/Sources/TabletKit/
   Core/          The values decoders produce
   Decoders/      One file per report format
   Registry/      Known tablets, other makers, pens
-  HID/           The pen thread and report-description parsing
+  HID/           The pen thread, device access, and report-description parsing
+  Session/       Grouping interfaces into tablets, reading and writing them
   Smoothing/     Cursor, pan, and pressure smoothing
   Output/        Data sent to tablets: lights, small screens, display controls
 
@@ -108,8 +109,11 @@ MockTab/
     Injection/   Turning input into events
     Mapping/     Which part of which screen the tablet covers
     Diagnostics/ Collect Device Data
-  Settings/      TabletSettings and the values it stores
+  Settings/      TabletSettings, ToolSettings, and the values they store
+  Figures/       The tablet and pen drawings' layout, without the views
   UI/Panes/      One folder per settings tab
+  UI/Shared/     Views more than one pane uses
+  Help/          The Help window's text, one file per language
 ```
 
 Swift extensions can't add stored properties, so a few large classes keep their data in the main file and split their behavior across extensions: `InputInjector` (pen, touch, tablet buttons and dials, and event posting) and `TabletSettings` (saving, presets, per-app settings).
