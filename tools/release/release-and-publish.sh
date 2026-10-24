@@ -5,10 +5,7 @@
 # release can be triggered as one action (from Xcode's "Release" aggregate target
 # or directly from the terminal).
 #
-# This script is the release path. .github/workflows/release.yml can build an
-# existing tag in CI, but only when started by hand from the Actions tab, and it
-# has never produced a release. Pushing a tag doesn't start it. Use one path per
-# release.
+# This script is the release path.
 #
 # Flow:
 #   1. Sanity: clean working tree, on main, gh installed and authenticated.

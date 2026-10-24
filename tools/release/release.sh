@@ -24,9 +24,8 @@ CONFIG="Release"
 KEYCHAIN_PROFILE="MockTabNotary"
 EXPORT_OPTIONS="tools/release/ExportOptions.plist"
 
-# Notary auth. Locally we use the stored keychain profile (MockTabNotary).
-# CI has no login keychain, so it passes credentials via the environment:
-# set NOTARY_APPLE_ID, NOTARY_PASSWORD (app-specific), and NOTARY_TEAM_ID.
+# Notary auth: the stored keychain profile (MockTabNotary), unless
+# NOTARY_APPLE_ID, NOTARY_PASSWORD (app-specific), and NOTARY_TEAM_ID are set.
 if [[ -n "${NOTARY_APPLE_ID:-}" && -n "${NOTARY_PASSWORD:-}" && -n "${NOTARY_TEAM_ID:-}" ]]; then
     NOTARY_AUTH=(--apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID")
 else
