@@ -11,14 +11,10 @@ DerivedData/
 # Release artifacts (DMGs and staging; uploaded to GitHub Releases, not committed)
 dist/
 
-# Generated tool output (regenerate with tools/audit_registry.py)
-tools/registry_audit.csv
-
-# Compiled diagnostic tools (build with the compile line in each header comment)
-tools/scroll_event_capture
-tools/scroll_momentum_probe
-tools/gpu_bandwidth_stress_probe
-tools/ram_pressure_probe
+# Compiled capture tools (each header has its build line). Sources all
+# have an extension; the binaries built beside them don't.
+tools/capture/*
+!tools/capture/*.*
 
 # Xcode user-specific settings (editor state, breakpoints, etc.)
 xcuserdata/
