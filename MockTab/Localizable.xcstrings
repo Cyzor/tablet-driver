@@ -8326,66 +8326,6 @@
         }
       }
     },
-    "Express Keys — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left express keys",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Express-Tasten — Links"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Express Keys — Left"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teclas rápidas — Izquierda"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エクスプレスキー — 左"
-          }
-        }
-      }
-    },
-    "Express Keys — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right express keys",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Express-Tasten — Rechts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Express Keys — Right"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teclas rápidas — Derecha"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エクスプレスキー — 右"
-          }
-        }
-      }
-    },
     "Extra Large" : {
       "comment" : "Text Size submenu: largest",
       "localizations" : {
@@ -20517,66 +20457,6 @@
         }
       }
     },
-    "Toggle Buttons — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left-side toggle buttons",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Umschalttasten — Links"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Toggle Buttons — Left"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Botones de alternancia — Izquierda"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "トグルボタン — 左"
-          }
-        }
-      }
-    },
-    "Toggle Buttons — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right-side toggle buttons",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Umschalttasten — Rechts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Toggle Buttons — Right"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Botones de alternancia — Derecha"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "トグルボタン — 右"
-          }
-        }
-      }
-    },
     "Toggle Display" : {
       "comment" : "Button action: cycle through displays",
       "localizations" : {
@@ -21026,66 +20906,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タッチリング"
-          }
-        }
-      }
-    },
-    "Touch Ring — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left touch ring",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touch Ring — Links"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Touch Ring — Left"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anillo táctil — Izquierda"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチリング — 左"
-          }
-        }
-      }
-    },
-    "Touch Ring — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right touch ring",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touch Ring — Rechts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Touch Ring — Right"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anillo táctil — Derecha"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチリング — 右"
           }
         }
       }
