@@ -10,12 +10,9 @@ import TabletKit
 
 /// The set of byte values seen at one byte position, as a 256-bit map.
 ///
-/// Four words instead of a `Set<UInt8>` because this is written from the HID
-/// callback thread — the same thread that feeds cursor movement — for every
-/// byte of every report. Insertion is a shift and an OR: no hashing, no
-/// allocation, no growth, ever. The analysis the capture file needs (distinct
-/// count, min, max, the value list) all falls out of bit tricks on the way
-/// back out, which happens once at the end of the session.
+/// Four words instead of a `Set<UInt8>`: the pen thread writes it for every
+/// byte of every report, and insertion is a shift and an OR, with no hashing
+/// or allocation. The analysis comes out once, at the end of the session.
 struct ByteValueSet: Sendable, Equatable {
     private var w0: UInt64 = 0
     private var w1: UInt64 = 0
@@ -55,13 +52,9 @@ struct ByteValueSet: Sendable, Equatable {
 
     /// Every observed value as a 256-bit mask, low byte first, hex encoded.
     ///
-    /// The complete distribution in 64 characters — shorter than the truncated
-    /// `values` list it backstops, and immune to the misreading that list
-    /// invites. When a byte is signed, the truncated list shows the lowest and
-    /// highest *unsigned* values, so a field spanning -12…+11 appears as
-    /// `0…11` and `244…255`; sorted together that reads as a plateau at ±12
-    /// even though `distinctCount` says 121 values were seen. A Xencelabs tilt
-    /// divisor was set from exactly that misreading. Decode this instead when
+    /// The complete distribution in 64 characters. The truncated `values`
+    /// list misleads for signed bytes: a field spanning -12…+11 shows as
+    /// `0…11` and `244…255`, which reads as a plateau at ±12. Decode this when
     /// the shape of a distribution matters.
     /// Encoded so that value `v` is bit `v % 4` of hex character `v / 4`,
     /// counting from the string's start — a plain little-endian bitmap. Built
@@ -89,10 +82,8 @@ struct ByteValueSet: Sendable, Equatable {
     /// Observed values for the capture file, ascending, at most `cap` of them.
     ///
     /// When more than `cap` values were seen, keeps the lowest and highest
-    /// halves rather than a prefix. A prefix of a sorted list hides the
-    /// *ceiling* — a pressure byte that swept 0…255 got reported as having
-    /// taken the values 0…19, which is the opposite of the number the capture
-    /// is read for. `min`/`max` are reported separately and are always exact.
+    /// halves, since a prefix would hide the ceiling. `min`/`max` are always
+    /// exact.
     func sampledValues(cap: Int) -> (values: [UInt8], truncated: Bool) {
         let all = values
         guard all.count > cap else { return (all, false) }
@@ -118,15 +109,9 @@ struct ByteValueSet: Sendable, Equatable {
     /// Which bit positions took both values across the session — set in at
     /// least one sample and clear in at least one other.
     ///
-    /// The decodable signal for a button device. A report whose descriptor is
-    /// opaque still gives its structure away here: on a pad or remote, every
-    /// key is one bit that toggles, so this mask *is* the button map, and a
-    /// bit that is always set (a validity or battery flag) drops out of it
-    /// automatically instead of being counted as a nineteenth button.
-    ///
-    /// Derived at snapshot time by folding the observed values, never on the
-    /// HID callback thread — this walks the value list, which the hot path
-    /// must not.
+    /// On a pad or remote every key is one toggling bit, so this mask is the
+    /// button map even when the descriptor is opaque; an always-set flag bit
+    /// stays out of it. Computed at snapshot time, never on the pen thread.
     var togglingBits: UInt8 {
         var everSet: UInt8 = 0
         var everClear: UInt8 = 0
@@ -139,10 +124,8 @@ struct ByteValueSet: Sendable, Equatable {
 
     /// Bits set in at least one observed value.
     ///
-    /// Reported alongside `togglingBits` because the difference between them
-    /// is meaningful: a bit here but not there was set in *every* sample, so
-    /// it is a constant flag rather than a control, and knowing that saves
-    /// the reader from chasing it.
+    /// A bit here but not in `togglingBits` was set in every sample: a
+    /// constant flag, not a control.
     var bitsEverSet: UInt8 {
         values.reduce(into: UInt8(0)) { $0 |= $1 }
     }
@@ -152,13 +135,10 @@ struct ByteValueSet: Sendable, Equatable {
 
 /// Streaming per-report statistics, written from the HID callback thread.
 ///
-/// Deliberately does **not** retain raw samples. A one-hour session on a
-/// tablet streaming ~100 reports/sec is ~360k reports; retaining them cost
-/// tens of megabytes, a `Task { @MainActor }` hop per report while the user
-/// was drawing, and a multi-second main-thread reduction when they clicked
-/// Done. Everything the capture file reports — and everything
-/// `TabletKit/tools/triage_discovery.py` reads — is derivable incrementally, so it is
-/// derived incrementally, in fixed space.
+/// Keeps no raw samples: an hour at ~100 reports/sec is ~360k reports.
+/// Everything the capture file reports, and everything
+/// `TabletKit/tools/triage_discovery.py` reads, is derived incrementally in
+/// fixed space.
 final class CaptureAccumulator: Sendable {
 
     struct ReportStats: Sendable {
@@ -172,55 +152,32 @@ final class CaptureAccumulator: Sendable {
 
         /// The byte position `byDiscriminator` splits on.
         ///
-        /// Fixed at 1 — the byte immediately after the report ID. On the
-        /// Wacom IntuosV1 protocol (and a good deal of other HID tablet/
-        /// joystick gear) that position is a status/packet-type byte: an
-        /// ordinary coordinate report and a tool-change/aux report can share
-        /// one report ID and length, told apart only by this byte's high
-        /// bits. Folding both into one flat byte-position histogram (what
-        /// `byteValues` above does) makes a tool-change packet's serial/type
-        /// bytes look like wild coordinate excursions in the "varying byte"
-        /// stats for every other position — this is exactly what made a
-        /// submitted GD-0608-U capture unreadable for confirming maxX/maxY:
-        /// byte 2's range looked large enough to span the tool ID space, not
-        /// because the pen moved there, but because a handful of tool-change
-        /// samples were mixed into the same histogram as thousands of pen
-        /// samples. See Notes/Wacom-Intuos-10-Byte-Protocol.md.
+        /// Fixed at 1, the byte after the report ID. On the Intuos 10-byte
+        /// protocol and other gear it's a packet-type byte: a coordinate
+        /// report and a tool-change report share one ID and length, told
+        /// apart only by this byte. In one flat histogram (`byteValues`), a
+        /// tool-change packet's serial bytes look like wild coordinate
+        /// excursions. See Notes/Wacom-Intuos-10-Byte-Protocol.md.
         static let discriminatorByteIndex = 1
 
         /// Per-value byte statistics, keyed by the value seen at
-        /// `discriminatorByteIndex`. Maintained unconditionally during
-        /// recording — one extra dictionary lookup and a `ByteValueSet`
-        /// insert per report, negligible next to the top-level accumulation
-        /// this mirrors. Whether it's worth *reading* depends on how many
-        /// distinct values that byte took; that judgment is made once, at
-        /// snapshot time, in `CaptureEngine`, not here — a byte position that
-        /// turns out to be a coordinate byte itself (high cardinality) simply
-        /// makes an uninteresting set of buckets, not an incorrect one.
+        /// `discriminatorByteIndex`. Always maintained, at one lookup and
+        /// insert per report; `CaptureEngine` decides at snapshot time
+        /// whether the split is worth reading.
         var byDiscriminator: [UInt8: [ByteValueSet]] = [:]
         var discriminatorSampleCounts: [UInt8: Int] = [:]
 
         // MARK: Inter-arrival gaps
         //
-        // How long between one report of this ID and the next, in fixed
-        // millisecond buckets plus the handful of longest gaps kept whole.
-        // The question this answers: when a touch stream stops feeding the
-        // momentum path right before a finger lifts, is that a clean
-        // multi-hundred-ms dropout or a gradual thinning — and does it land
-        // mid-gesture or only in the idle between gestures. Buckets show the
-        // shape; the retained longest gaps carry a session-elapsed timestamp
-        // so a reader can see where in the session they fell.
+        // Time between one report of this ID and the next, in millisecond
+        // buckets plus the longest gaps kept whole with their session time.
+        // They show whether a touch stream stalls mid-gesture or only
+        // between gestures.
         //
-        // Two bucket arrays, split on whether a contact was down at both ends
-        // of the gap (`inGestureGapBuckets`) or not (`idleGapBuckets`). A
-        // finger-off pause between flicks lands in `idle`; a stall while the
-        // finger is still on the tablet lands in `inGesture`. The gap that
-        // spans a lift — contact down before, up after — is an `idle` gap by
-        // this rule, which is correct: it is the boundary, not a mid-gesture
-        // stall, and keeping it visible in `idle` beats discarding it. The
-        // caller supplies the contact-down flag (it has the decoded touch
-        // state; the accumulator does not); `nil` means "caller doesn't
-        // know", and those gaps go only to the combined `gapBuckets`.
+        // Gaps split on whether a contact was down at both ends
+        // (`inGestureGapBuckets`) or not (`idleGapBuckets`); a lift counts as
+        // idle. The caller supplies the contact-down flag; with `nil`, a gap
+        // goes only to the combined `gapBuckets`.
 
         /// Upper edges, in milliseconds, of the gap buckets. A gap of exactly
         /// an edge value falls in the lower bucket. Each bucket array has one
