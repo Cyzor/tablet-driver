@@ -143,7 +143,8 @@ extension ButtonsView {
     /// modes. The remote's center button belongs to its firmware.
     @ViewBuilder
     func touchRingBlock(lb: LiveButtonState) -> some View {
-        let hasCenterButton = !hasMechanicalDial && !isRemote && !hasSplitPadLayout
+        // The Bamboo Fun's ring, the only one on a Graphire-format tablet, has no center button.
+        let hasCenterButton = !hasMechanicalDial && !isRemote && !hasSplitPadLayout && spec?.format != .graphire
         // The first ring or dial as you see it, and its center or toggle.
         let center = placed(.ringCenter(0)).index
         if hasMechanicalDial {

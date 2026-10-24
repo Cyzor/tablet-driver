@@ -17,7 +17,6 @@ struct TabletControlMapTests {
     /// diagram would have keys with no row or rows with no key. Fix the
     /// registry, then take the model out of this list.
     private static let knownCountMismatches: Set<Int> = [
-        0x0017, 0x0018, 0x0065,  // Bamboo Fun CTE-450/650, MTE-450: a Center row, but no center button
         0x03F5,  // PTK-470: registry says 5 keys, libwacom 4 and a dial toggle
         0x00C5,  // Cintiq 20WSX: registry says 10 keys, libwacom 14
         0x0325,  // Companion 2: registry says 4 keys, libwacom 11
@@ -29,7 +28,7 @@ struct TabletControlMapTests {
     private static func paneRows(_ spec: TabletSpec) -> Set<ControlTarget> {
         let splitPad = spec.hasDualRings && spec.format == .cintiqV1
         var rows = Set((0..<(splitPad ? 16 : min(spec.buttonCount, 16))).map(ControlTarget.expressKey))
-        if spec.hasTouchRing && !splitPad { rows.insert(.ringCenter(0)) }
+        if spec.hasTouchRing && !splitPad && spec.format != .graphire { rows.insert(.ringCenter(0)) }
         if spec.hasTouchRing && spec.hasDualRings && spec.hasMechanicalDial && !splitPad { rows.insert(.ringCenter(1)) }
         return rows
     }
