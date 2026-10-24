@@ -70,156 +70,41 @@ struct CaptureInitRead: Codable {
 /// Consumed by `TabletKit/tools/triage_discovery.py` and read by hand when adding a new
 /// device to the registry.
 struct CaptureResult: Codable {
-    /// 5: `byteSampleValues` replaced by `byteStats` (adds per-byte min/max and
-    /// distinct-value counts); adds `maxLength`/`lengthVaried`/`optionalBytes`
-    /// and top-level `observedToolCodes`.
-    /// 6: adds `byteStatsByDiscriminator` — per-report byte stats further
-    /// split by the value at byte position 1, so a report ID that actually
-    /// carries more than one packet shape (coordinate data and a tool-change/
-    /// status packet sharing one ID and length, on Wacom-family devices)
-    /// doesn't get histogrammed as one blob. See `CaptureAccumulator
-    /// .ReportStats.discriminatorByteIndex`.
-    /// 7: adds `interfaces` — a device whose reports arrive on more than one
-    /// HID interface is now recorded on all of them at once, each with its own
-    /// reports and descriptor, instead of only whichever one was captured.
-    /// 8: adds `touchSettings` and `touchPipeline`. A capture until now
-    /// recorded only what the *device* sent, which is half the picture when a
-    /// report arrives well-formed and produces nothing: the answer is then
-    /// somewhere in the app, and the file said nothing about the app. These
-    /// two blocks close that — what the user's touch settings were, and how
-    /// many contacts each stage of the injection pipeline let through.
-    /// 9: `touchSettings` gains `twoFingerScrollMomentum`, `reverseScrollDirection`,
-    /// `rotateEnabled`, `smartZoomEnabled` — the gesture toggles a reader
-    /// otherwise had to ask the user about. `touchPipeline` gains the
-    /// scroll-wind-down and momentum-tail counters (`scrollSingleContactFrames`,
-    /// `longestScrollSingleContactRun`, `scrollWindDowns`, `momentumTailStarts`,
-    /// `momentumSuppressedStale`, `momentumSuppressedSlow`,
-    /// `maxReleaseVelocity`, `maxReleaseFrameGap`, `maxReleaseMotionGap`) plus
-    /// `subMillisecondDtFrames` / `pacerFlushDeliveredFrames` for diagnosing a
-    /// batched-Bluetooth scroll that coasts erratically. All new
-    /// `touchPipeline` fields default to 0 and all new `touchSettings` fields
-    /// are optional, so a v8 reader and v8 files still decode.
-    /// 10: adds `appVersion` / `appBuildDate` — which binary produced the file,
-    /// so a capture can't be mis-attributed to a build that lacks the fix under
-    /// test. `touchPipeline` gains `penProximityForcedExits` (leak-watchdog
-    /// recoveries, split out of `penProximityExits` which now counts *every*
-    /// exit path) and `palmRejectionBrokeTwoFingerFrames` (a ≥2-contact frame
-    /// filtered below two — palm rejection costing a gesture, as distinct from
-    /// `contactsPalmRejected` correctly dropping a lone palm).
-    /// 11: `touchSettings` gains `touchOnsetDelayMs` — the onset window is now a
-    /// silent user-settable `defaults` value, so a file that doesn't carry it
-    /// can't rule it out as the cause of "a palm moved the cursor" / "touch
-    /// starts laggy". `touchPipeline` gains `onsetWindowsEntered`,
-    /// `onsetWindowsReArmedWithin`, `longestSingleContactDragMs` — whether a
-    /// slow full-surface swipe is re-paying the onset delay per re-land (the
-    /// PTH-651 issue #12 "swipe covers only part of the screen" report). New
-    /// pipeline fields default 0, the new settings field is optional, so v10
-    /// readers and files still decode.
-    /// 12: `touchPipeline` gains `twoFingerResolvedBoth` and
-    /// `twoFingerLateJoins`, which measure concurrent pinch+rotate — the
-    /// per-component tallies alone can't distinguish one sequence running
-    /// both from two separate sequences. Added alongside the change that
-    /// lets a component join a gesture after commit. Both default 0, so v11
-    /// readers and files still decode.
-    /// 13: adds `bluetoothLink` — RSSI and link-quality samples taken during
-    /// the capture, for a Bluetooth device only. Answers "was this specific
-    /// choppy session a weak-signal problem or something else" without
-    /// asking the reporter to guess. The address used to find the device is
-    /// a best-effort match (`BluetoothLinkMonitor`'s doc comment explains
-    /// why), so the block also carries `addressLikelyWrong` — set if the
-    /// resolved device's own connection state ever disagreed with reality
-    /// during the session — and a reader should treat the numbers as
-    /// unreliable when that's true. Nil on USB, and nil if no paired device
-    /// could be matched at all. Optional, so v12 readers and files still
-    /// decode.
-    /// 14: two changes.
-    /// (a) The top-level `reports`/`hidReportDescriptor` block now comes from
-    /// the interface whose descriptor declares pen fields (pressure/tilt/…),
-    /// not the one that attached first. On a multi-interface Wacom device
-    /// whose pen interface enumerates second and behind a Generic Desktop
-    /// primary usage — the PTH-860 over USB — v13 and earlier put the touch
-    /// tunnel's reports at the top level while the pen samples sat in
-    /// `interfaces[]`; v14 puts the pen interface there as the block's name
-    /// always implied. Single-interface captures and devices whose pen
-    /// interface already led are unchanged. `interfaces[]` still carries
-    /// every interface, so nothing is lost either way.
-    /// (b) each `CaptureReportSummary` gains `arrivalGaps` — a histogram of
-    /// the time between consecutive reports of that ID, plus the longest few
-    /// gaps kept whole, split by whether a touch contact was down at both
-    /// ends of the gap. A capture recorded what reports *contained* but never
-    /// when they arrived, so a stream that stalls mid-gesture left no trace;
-    /// the contact-state split then separates a real mid-gesture stall from a
-    /// finger-off pause between gestures. New field is optional, so v13
-    /// readers and files still decode.
-    ///
-    /// v15 adds `CaptureTouchSettings.tabletOrientationRawValue` — touch's
-    /// crop rect is recorded raw/un-oriented, and without the orientation
-    /// active at capture time there's no way to relate it to what the Touch
-    /// pane UI displayed. New field is optional, so v14 readers/files still
-    /// decode.
-    ///
-    /// v16 adds `findings` — observations computed at export from data the
-    /// file already carried, chiefly declared-but-never-observed input
-    /// reports. Derived, not newly collected: every one of them was already
-    /// answerable from a v15 file by hand, which is precisely the problem
-    /// (see `CaptureFinding`). Optional, so v15 readers and files still
-    /// decode.
-    ///
-    /// v17 adds `appSettings` and makes `touchSettings` unconditional.
-    /// Settings were only ever recorded for a Wacom device whose spec
-    /// declared finger touch, so a capture from any other vendor carried no
-    /// app-side configuration at all — an Xencelabs session recorded none.
-    /// `interfaces` entries also gain `productID`/`deviceName`, needed since
-    /// a session now spans every attached device rather than one tablet. All
-    /// new fields are optional, so v16 readers and files still decode.
-    ///
-    /// v18 adds `observedPenActivity`. The pen findings keyed off
-    /// `observedToolCodes`, which a protocol carrying no tool code never fills
-    /// — a working Wacom One S capture was told its pen had never been
-    /// detected. Optional, so v17 readers and files still decode.
-    ///
-    /// v19 adds `hardwareSurvey`: external displays with whatever DDC/CI
-    /// answers over the video cable, and the USB devices around each tablet
-    /// with the macOS driver that claimed them. Panel controls and bridge
-    /// chips live there, not on the tablet's HID interfaces. Optional, so
-    /// v18 readers and files still decode.
-    ///
-    /// v20 adds `epicProvider` to each display, telling a Mac's own HDMI
-    /// port from a USB-C/Thunderbolt DisplayPort link. Optional, so v19
-    /// readers and files still decode.
-    ///
-    /// v21 adds `settingsIdentity` and `appEnvironment`, for settings that
-    /// seem lost between launches, and touch-pipeline contact counts, contact
-    /// size presence, and the screen direct touch maps to. Optional, so v20
-    /// readers and files still decode.
-    ///
-    /// v22 adds palm diagnostics to the touch pipeline: how far contacts
-    /// that got past palm rejection sat from the palm, their sizes, and what
-    /// touch sequences with a palm in them did. Optional, so v21 readers and
-    /// files still decode.
-    ///
-    /// v23 adds `ddcReadProbes` to each display: one brightness read at each
-    /// read offset, with where it failed and the raw reply. Optional, so v22
-    /// readers and files still decode.
-    ///
-    /// v24 adds `appSettings.penBindings`, and the raw log gains a line for
-    /// each pen-button change naming the action it fired. Optional, so v23
-    /// readers and files still decode.
-    ///
-    /// v25 takes the settings blocks from the recorded tablet rather than
-    /// the window that opened the sheet, and adds
-    /// `settingsIdentity.windowProductID` when the two differ, and
-    /// `knownTablets`. Optional, so v24 readers and files still decode.
-    ///
-    /// v26 adds `coverage`, and `bluetoothLink` loses the tablet's address.
-    /// Optional, so v25 readers and files still decode.
-    ///
-    /// v27 adds `initReads`: the replies to the driver's setup reads.
-    /// Optional, so v26 readers and files still decode.
-    ///
-    /// v28 adds `appEnvironment.otherMockTabCopies` and
-    /// `appEnvironment.competingDrivers`. Optional, so v27 readers and files
-    /// still decode.
+    /// Format history. Every field added since 8 is optional or defaults to
+    /// zero, so older readers and files still decode.
+    /// - 5: `byteStats` replaces `byteSampleValues`; adds `maxLength`,
+    ///   `lengthVaried`, `optionalBytes`, and `observedToolCodes`.
+    /// - 6: `byteStatsByDiscriminator`, byte stats split by byte 1, for IDs
+    ///   that carry more than one packet shape.
+    /// - 7: `interfaces`, every interface of the device recorded at once.
+    /// - 8: `touchSettings` and `touchPipeline`.
+    /// - 9: gesture toggles in `touchSettings`; scroll wind-down and
+    ///   momentum counters in `touchPipeline`.
+    /// - 10: `appVersion` and `appBuildDate`; `penProximityForcedExits` and
+    ///   `palmRejectionBrokeTwoFingerFrames`.
+    /// - 11: `touchOnsetDelayMs` and the onset-window counters.
+    /// - 12: `twoFingerResolvedBoth` and `twoFingerLateJoins`.
+    /// - 13: `bluetoothLink`, signal samples for Bluetooth devices; distrust
+    ///   them when `addressLikelyWrong` is set.
+    /// - 14: the top-level `reports` come from the interface that declares
+    ///   pen fields, not the first to attach; adds `arrivalGaps`.
+    /// - 15: `tabletOrientationRawValue`.
+    /// - 16: `findings`, derived at export.
+    /// - 17: `appSettings`, recorded for every vendor; `interfaces` entries
+    ///   gain `productID` and `deviceName`.
+    /// - 18: `observedPenActivity`.
+    /// - 19: `hardwareSurvey`: displays with their DDC/CI answers, and the
+    ///   USB devices around each tablet.
+    /// - 20: `epicProvider` per display.
+    /// - 21: `settingsIdentity`, `appEnvironment`, and more touch counts.
+    /// - 22: palm diagnostics in the touch pipeline.
+    /// - 23: `ddcReadProbes` per display.
+    /// - 24: `appSettings.penBindings`.
+    /// - 25: settings come from the recorded tablet; adds
+    ///   `settingsIdentity.windowProductID` and `knownTablets`.
+    /// - 26: `coverage`; `bluetoothLink` no longer carries an address.
+    /// - 27: `initReads`.
+    /// - 28: `appEnvironment.otherMockTabCopies` and `competingDrivers`.
     var captureVersion: Int = 28
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
@@ -258,15 +143,9 @@ struct CaptureResult: Codable {
     /// distinctly, which no amount of byte-level analysis recovers on its own.
     var observedToolCodes: [String]?
     /// Tools this app has ever recorded for this tablet, from the persisted
-    /// device registry — not from this session.
-    ///
-    /// `observedToolCodes` above answers "was a pen used while recording",
-    /// which is silent for a tester who never picked one up. This answers the
-    /// different and often more useful question "has this tablet ever seen a
-    /// pen at all". An empty list on a tablet its owner has used for months is
-    /// a real signal; a capture that only ever reports the first question
-    /// cannot distinguish an unused pen from an undetected one, and on issue
-    /// #14 that ambiguity survived nine captures.
+    /// device registry, not from this session. `observedToolCodes` says
+    /// whether a pen was used while recording; this says whether the tablet
+    /// has ever seen one, which tells an unused pen from an undetected one.
     var everSeenTools: [String]?
     /// True when a decoder read at least one pen frame in proximity or under
     /// pressure this session, from `CaptureActivityProbe`.
@@ -407,13 +286,9 @@ struct CaptureFeatureCoverage: Codable {
     var exercised: Bool?
 }
 
-/// One precomputed observation, for whoever triages the file.
-///
-/// Not shown to the user — they know it's broken and want it fixed. The
-/// reader is a maintainer holding several near-identical files days later,
-/// and the deciding facts must be *derived* by comparing keys across every
-/// interface. On issue #14 "the pen report never fired" was derivable from
-/// the first file and went unnoticed for three rounds.
+/// One precomputed observation, for whoever triages the file. Facts that
+/// otherwise need comparing keys across every interface, such as declared
+/// reports that never arrived.
 ///
 /// Observations, never verdicts: "these declared reports never arrived" is a
 /// fact; "the pen is broken" would be wrong for a user who never touched it
@@ -464,7 +339,7 @@ func captureFindings(for result: CaptureResult) -> [CaptureFinding] {
     for (descriptor, reports, interfaceLabel, interfacePID) in allInterfaces {
         guard let descriptor else { continue }
         // Descriptor keys are "<direction>:0x<id>", `reports` bare "0x<id>"
-        // — same ID formatting, so dropping the prefix is enough.
+        // — same ID formatting, so removing the prefix is enough.
         let declared = descriptor.reports.keys
             .filter { $0.hasPrefix("input:") }
             .map { String($0.dropFirst("input:".count)) }
@@ -742,17 +617,12 @@ func surveyFindings(_ survey: CaptureHardwareSurvey) -> [CaptureFinding] {
     return found
 }
 
-/// The app-side settings in force during a capture.
+/// The app-side settings in force during a capture. Each can explain a
+/// symptom: a flattened pressure curve reads as "no pressure", a cropped
+/// area as "the pen only reaches part of the screen".
 ///
-/// A capture records what the *device* sent, which is half the picture when
-/// reports arrive well-formed and nothing happens. Each field here can
-/// independently explain a symptom: a flattened pressure curve reads as "no
-/// pressure", a cropped area as "the pen only reaches part of the screen".
-///
-/// Excluded because they identify the user rather than explain behavior:
-/// per-app override bundle IDs, nicknames, serial numbers. Button bindings
-/// too — which key a button sends has never been the thing in doubt, only
-/// whether its report arrived, which `reports` answers.
+/// Left out because they identify the user rather than explain behavior:
+/// per-app override bundle IDs, nicknames, and serial numbers.
 /// Which settings namespace the tablet resolved to, without the serial that
 /// picks it. A tablet that reappears as a new unit starts from empty settings,
 /// and these fields tell that apart from settings that are stored but unused.
@@ -815,7 +685,7 @@ struct CaptureAppSettings: Codable {
     /// that explains an offset.
     var hasCalibration: Bool?
 
-    // Pen feel — explains "pressure is wrong" / "strokes lag or get dropped".
+    // Pen feel — explains "pressure is wrong" / "strokes lag or go missing".
     /// Control points as a compact string, the same shape `BezierCurve`
     /// serializes to. `nil` when the curve is linear (the default), so a file
     /// only carries it when it could be the cause.
@@ -868,7 +738,7 @@ struct CaptureTouchSettings: Codable {
     /// stored raw (un-oriented) — same space as `TabletSettings.touchAreaX/
     /// Y/Width/Height`, not the oriented space the Touch pane UI now draws
     /// this rect in (see `DisplayMapper.orientedCropRect`). A crop that
-    /// excludes where the tester's fingers actually landed drops every
+    /// excludes where the tester's fingers actually landed loses every
     /// contact at projection — indistinguishable from dead touch without
     /// this.
     let areaX: Double
@@ -885,55 +755,39 @@ struct CaptureTouchSettings: Codable {
     var tabletOrientationRawValue: Int?
 }
 
-/// How far touch contacts got through the injection pipeline.
-///
-/// Read top to bottom, these localize a touch failure to one stage without
-/// any further round trip: contacts decoded but zero intents posted, with the
-/// drop counted against exactly one gate, names the gate.
+/// How far touch contacts got through the injection pipeline. Read top to
+/// bottom, the counts name the stage that stopped a touch.
 ///
 /// Counts are of *frames* where the whole frame was rejected, and of
-/// *contacts* where individual contacts were filtered out of a surviving
-/// frame — the distinction matters, since a partially filtered frame still
-/// reaches the gesture tracker.
+/// *contacts* filtered out of a surviving frame, which still reaches the
+/// gesture tracker.
 struct CaptureTouchPipeline: Codable {
     /// Frames the decoder emitted (`TabletEvent.touch`), and the total
     /// contacts across them. A nonzero `framesDecoded` with everything else
     /// zero means the decode half is working and the loss is downstream.
     var framesDecoded: Int = 0
     var contactsDecoded: Int = 0
-    /// Frames dropped because "Enable Finger Touch" was off.
+    /// Frames rejected because "Enable Finger Touch" was off.
     var framesTouchDisabled: Int = 0
-    /// Frames dropped because no injection snapshot existed yet — a startup
+    /// Frames rejected because no injection snapshot existed yet — a startup
     /// race, not a user setting.
     var framesNoSnapshot: Int = 0
-    /// Frames dropped by pen arbitration (`touchPenConfirmedBusy` or inside
+    /// Frames rejected by pen arbitration (`touchPenConfirmedBusy` or inside
     /// `touchArbitrationGrace`). A large count here with the pen untouched is
     /// the signature of a latched proximity state.
     var framesPenBusy: Int = 0
-    /// Pen frames actually delivered to `InputInjector.inject(point:settings:)`
-    /// during this capture — i.e. real proximity/tip data flowing, not just
-    /// the arbitration flag. Compared against `framesPenBusy`: pen frames
-    /// streaming continuously while `framesPenBusy` is high means arbitration
-    /// is correctly reacting to genuine sustained proximity (the pen really
-    /// is held in-hand throughout a touch gesture); near-zero pen frames
-    /// during a long busy run instead means `touchPenConfirmedBusy` latched
-    /// stuck true with nothing left to justify it. Same mechanism, opposite
-    /// fixes — see `longestPenBusyStreak`.
+    /// Pen frames delivered to `InputInjector.inject(point:settings:)`.
+    /// Against `framesPenBusy`: pen frames streaming through a busy run mean
+    /// the pen really was in range; near zero means `touchPenConfirmedBusy`
+    /// stuck on. See `longestPenBusyStreak`.
     var framesPenDelivered: Int = 0
     /// Longest unbroken run of touch frames dropped by pen-busy arbitration
     /// in a row, with no non-busy touch frame in between.
     var longestPenBusyStreak: Int = 0
     var currentPenBusyStreak: Int = 0
-    /// Count of `point.inProximity` transitions seen by
-    /// `InputInjector.inject(point:settings:)`, each direction tallied
-    /// separately. `commitProximityExit` — the only thing that clears
-    /// `touchPenConfirmedBusy` for a non-Xencelabs device — fires only on an
-    /// exit transition. `penProximityEnters` far outrunning
-    /// `penProximityExits` means exit frames are being lost somewhere
-    /// between decode and `inject` (a real dispatch/decoder bug, distinct
-    /// from arbitration policy); the two staying roughly equal instead means
-    /// proximity is genuinely toggling as reported and any long busy streak
-    /// reflects the pen really being held in range that whole time.
+    /// `point.inProximity` transitions seen by `inject`, each direction
+    /// counted. Enters far outrunning exits means exit frames are lost
+    /// before `inject`; roughly equal means proximity really toggled.
     var penProximityEnters: Int = 0
     /// Every committed proximity exit, whichever path triggered it — the
     /// report-driven transition, the Xencelabs debounce, or the leak-watchdog.
@@ -982,15 +836,10 @@ struct CaptureTouchPipeline: Codable {
     /// Contacts removed by `TouchPalmRejector`. Only ever nonzero on the
     /// calibrated PTH-660/860 family.
     var contactsPalmRejected: Int = 0
-    /// Count of *entries* into the state where a ≥2-contact frame left palm
-    /// filtering with fewer than two — palm rejection preventing or
-    /// interrupting a two-finger gesture. Counted once per entry, not per held
-    /// frame (a resting palm holds the state at report rate). The number to
-    /// weigh against `contactsPalmRejected` when a "gesture didn't take" report
-    /// comes in: a nonzero value here during a failed pinch/scroll attempt is
-    /// palm rejection being too aggressive, not the gesture tracker failing to
-    /// commit. Name kept `…Frames` for capture-file compatibility though it now
-    /// counts events.
+    /// Times a ≥2-contact frame left palm filtering with fewer than two,
+    /// counted once per entry, not per frame. Nonzero during a failed pinch
+    /// or scroll means palm rejection was too aggressive. The name says
+    /// `Frames` for file compatibility.
     var palmRejectionBrokeTwoFingerFrames: Int = 0
     /// Contacts dropped by `TouchStateTracker.screenPoint` returning nil —
     /// i.e. falling outside the touch-area crop above.
@@ -998,13 +847,9 @@ struct CaptureTouchPipeline: Codable {
     /// Extremes of the raw contact coordinates the decoder produced, in device
     /// units, before any projection.
     ///
-    /// These answer a question the counters cannot: whether the registry's
-    /// `touchMaxX`/`touchMaxY` match what the sensor actually reaches. Touch
-    /// pointer motion is relative, scaled by `coordinate / touchMax`, so a
-    /// ceiling set above the reachable range makes a full-surface swipe cover
-    /// only that fraction of the screen — the PTH-651 report in issue #12,
-    /// where a full sweep stopped short of the right edge. A capture taken
-    /// while tracing the four edges puts the true range in the file.
+    /// Whether the registry's `touchMaxX`/`touchMaxY` match what the sensor
+    /// reaches: a ceiling set too high makes a full swipe cover only part of
+    /// the screen. Trace the four edges during a capture to record the range.
     ///
     /// Nil until the first contact, so a session with no touch records no
     /// misleading zeroes.
@@ -1111,20 +956,12 @@ struct CaptureTouchPipeline: Codable {
     /// large jumps.
     var shortLivedContacts: Int = 0
 
-    /// Longest run of consecutive frames, immediately before a contact
-    /// disappeared, where its reported position did not change at all while
-    /// still "down". A high value — motion frozen right up to the moment a
-    /// touch vanishes, rather than a genuine deliberate hold — is the
-    /// signature of the sensor's coordinate stalling (signal too weak to
-    /// update, likely as contact area collapses near a surface edge) before
-    /// the firmware finally reports liftoff. Neither `sensitivity` nor a
-    /// tighter touch-area crop can compensate for this: both only scale up
-    /// motion that's actually reported, and a frozen coordinate has no delta
-    /// left to scale. `stallAreaAtLift`/`stallX`/`stallY` capture the
-    /// contact area and raw position at that longest stall, so a cluster of
-    /// stalls at a consistent position/shrinking area supports the theory; a
-    /// scatter across the surface argues against it. All nil until some
-    /// contact both moves and later disappears.
+    /// Longest run of frames, just before a contact disappeared, in which its
+    /// position didn't change while still down: the sensor's coordinate
+    /// stalling before liftoff, likely as contact area shrinks near an edge.
+    /// No setting can scale a frozen coordinate. `stallAreaAtLift`,
+    /// `stallX`, and `stallY` record the longest stall; a cluster at one place
+    /// supports the edge theory. Nil until a contact moves and then lifts.
     var maxStallBeforeLift: Int?
     var stallAreaAtLift: Int?
     var stallX: Int?
@@ -1141,33 +978,19 @@ struct CaptureTouchPipeline: Codable {
     var rotates: Int = 0
     var taps: Int = 0
 
-    /// How two-or-more-finger sequences resolved, tallied once per sequence
-    /// (at the moment it commits to a gesture, or at teardown if it never
-    /// commits to anything) — not once per frame, unlike the counts above.
-    /// Answers a question `zooms`/`rotates` alone cannot: whether a "gesture
-    /// didn't work" complaint is a *discrimination* failure (the sequence
-    /// resolved as pan when the user meant to pinch or rotate — check
-    /// `twoFingerResolvedPan` against expectations) or *non-detection*
-    /// (`twoFingerResolvedNone`, nothing ever committed at all). Distinct
-    /// mechanisms, distinct fixes: the former is a dominance/timing tuning
-    /// issue in `TouchStateTracker`, the latter suggests the gesture never
-    /// cleared its own threshold in the first place.
+    /// How two-or-more-finger sequences resolved, once per sequence (at
+    /// commit, or at teardown if nothing committed). Tells a misread gesture
+    /// (resolved as pan) from an undetected one (`twoFingerResolvedNone`).
     var twoFingerResolvedPan: Int = 0
     var twoFingerResolvedPinch: Int = 0
     var twoFingerResolvedRotate: Int = 0
     var twoFingerResolvedNone: Int = 0
 
-    /// Largest combined pen+touch frame count seen in one Bluetooth-batched
-    /// HID report (`BatchFramePacer`/`TransportEventHandler.dispatchBatch`), and
-    /// the number of batches at or above `largeBatchThreshold` (6 — bigger
-    /// than the 4-5 pure-pen batches this pacer was originally measured
-    /// against). `perFrameDelayNs` is the report's real interval divided by
-    /// this count: a report combining several pen frames with several touch
-    /// frames (pen held near the tablet during a touch gesture) drives the
-    /// count well past pure-pen batches, over-slicing the interval and
-    /// delaying the tail frame much longer than pacing was designed for.
-    /// Answers, from a single capture, whether "stalls only when pen is near
-    /// touch" tracks batch size the way that theory predicts.
+    /// Largest combined pen and touch frame count in one Bluetooth-batched
+    /// report, and the number of batches at or above `largeBatchThreshold`.
+    /// Pen and touch frames together over-slice the report interval and
+    /// delay the last frame, so this shows whether stalls with the pen near
+    /// track batch size.
     var maxBatchFrameCount: Int = 0
     var largeBatchCount: Int = 0
     static let largeBatchThreshold = 6
@@ -1200,31 +1023,22 @@ struct CaptureTouchPipeline: Codable {
         currentScrollSingleContactRun = 0
     }
 
-    /// Momentum-tail outcomes at scroll release. `momentumTailStarts` is a coast
-    /// actually beginning. `momentumSuppressedStale` is a release that *had* a
-    /// fast recent sample but the recency gate rejected it because motion
-    /// stopped more than `momentumRecencyWindow` ago — a deliberate brake, or a
-    /// batched-delivery gap that *looks* like one (the suspected cause of
-    /// "Bluetooth scroll doesn't coast"). `momentumSuppressedSlow` is every
-    /// other non-start: genuinely slow motion, or no recent motion and no fast
-    /// sample at all. `maxReleaseVelocity` is the largest release-velocity
-    /// magnitude seen (points/sec) — an implausible value points at a
-    /// delivery-timing bug corrupting the per-frame `dt`.
+    /// Momentum-tail outcomes at scroll release. `momentumTailStarts`: a
+    /// coast began. `momentumSuppressedStale`: a fast sample existed, but
+    /// motion stopped more than `momentumRecencyWindow` before release (a
+    /// brake, or a delivery gap that looks like one). `momentumSuppressedSlow`:
+    /// every other release. `maxReleaseVelocity` (points/sec) that looks
+    /// implausible points at corrupted frame timing.
     var momentumTailStarts: Int = 0
     var momentumSuppressedStale: Int = 0
     var momentumSuppressedSlow: Int = 0
     var maxReleaseVelocity: Double = 0
 
-    /// At each scroll release: the largest gap seen since the last `.scroll`
-    /// frame of any kind (`maxReleaseFrameGap`) and since the last one that
-    /// moved (`maxReleaseMotionGap`), seconds. Plus counts of releases where
-    /// each gap exceeded `releaseGapThreshold` — a single max can't tell one
-    /// outlier from a systematic pattern, these can.
-    ///
-    /// The discriminator for a suppressed coast: `motionGapExceeded` high while
-    /// `frameGapExceeded` stays low ⇒ frames kept arriving but fingers held
-    /// still (a genuine brake — correct suppression). Both high together ⇒
-    /// frames stopped arriving (a batched-delivery gap — bug B).
+    /// At each scroll release, the largest gap since the last `.scroll` frame
+    /// (`maxReleaseFrameGap`) and since the last one that moved
+    /// (`maxReleaseMotionGap`), in seconds, plus how often each exceeded
+    /// `releaseGapThreshold`. Motion gaps high with frame gaps low: fingers
+    /// held still, a real brake. Both high: frames stopped arriving.
     var maxReleaseFrameGap: Double = 0
     var maxReleaseMotionGap: Double = 0
     var releaseFrameGapExceeded: Int = 0
@@ -1255,35 +1069,19 @@ struct CaptureTouchPipeline: Codable {
     var pacerFlushDeliveredFrames: Int = 0
 
     /// Onset-window lifecycle. `onsetWindowsEntered` counts `.idle` → `.pending`
-    /// transitions (one per touch sequence). `onsetWindowsReArmedWithin` counts
-    /// how many of those started within `reArmWindow` of the previous
-    /// sequence's teardown — a single slow finger drag that dips below the
-    /// sensor's contact threshold and re-lands pays the onset delay again each
-    /// time, so a full-surface swipe stutters. `longestSingleContactDragMs` is
-    /// the longest unbroken single-contact pointer drag seen; a large value
-    /// next to a high re-arm count says the "swipe covers only part of the
-    /// screen" report is churn, not a real short drag. The onset delay sets
-    /// each re-arm's cost but doesn't remove the re-arm; these measure whether
-    /// it still matters.
+    /// transitions, one per touch sequence; `onsetWindowsReArmedWithin`, those
+    /// that started within `reArmWindow` of the last teardown. A slow drag
+    /// that dips below the contact threshold pays the onset delay at every
+    /// re-land. `longestSingleContactDragMs` is the longest unbroken drag.
     ///
-    /// `TouchPipelineProbe` is global, so on a bench with two tablets connected
-    /// `onsetWindowsEntered` sums both — don't read
-    /// `onsetWindowsReArmedWithin / onsetWindowsEntered` as a fraction there.
-    /// A single-tablet capture (a normal user, and issue #12's reporter) is fine.
+    /// The probe is global, so with two tablets connected the counts sum both.
     var onsetWindowsEntered: Int = 0
     var onsetWindowsReArmedWithin: Int = 0
     var longestSingleContactDragMs: Int = 0
-    /// Concurrent pinch+rotate. `twoFingerResolvedPinch`/`Rotate` are tallied
-    /// per component per sequence, so a file showing 9 and 29 cannot say
-    /// whether any *one* sequence ran both or whether they were 38 separate
-    /// single-component gestures — the exact question behind "simultaneous
-    /// zoom and rotate is hard to invoke". `twoFingerResolvedBoth` counts
-    /// sequences that ended up running both at once; `twoFingerLateJoins`
-    /// counts components that opened their envelope after the sequence had
-    /// already committed: the late-join path firing. A high `Both` with a high `LateJoins` means concurrency is
-    /// arriving the new way — the first gesture commits, the second joins
-    /// when its evidence shows up — rather than needing both signals to
-    /// qualify in the same frame.
+    /// Concurrent pinch and rotate. The per-component tallies can't say
+    /// whether one sequence ran both; `twoFingerResolvedBoth` counts
+    /// sequences that did, and `twoFingerLateJoins` components that joined
+    /// after the sequence committed.
     var twoFingerResolvedBoth: Int = 0
     var twoFingerLateJoins: Int = 0
     /// Seconds. A gap between one sequence's teardown and the next's onset
@@ -1302,17 +1100,11 @@ struct CaptureTouchPipeline: Codable {
 /// One HID interface of a captured device, with the reports it sent and the
 /// descriptor it declared.
 ///
-/// Multi-interface tablets are the reason this exists. A PTH-850 puts pen data
-/// on one interface and a 64-byte touch frame on another; before this, a
-/// capture recorded exactly one of them and whether it was the interesting one
-/// came down to which attached first. Which interface matters is precisely
-/// what a tester submitting an unknown device can't be asked to judge, so all
-/// of them are recorded and the triage happens later, off the file.
+/// A multi-interface tablet puts pen and touch on separate interfaces, and
+/// which one matters can't be judged up front, so all are recorded.
 ///
-/// An interface with `sampleCount` 0 is kept rather than dropped: "this
-/// interface exists, we listened, and it said nothing for the whole session"
-/// is a real finding — it's what a device sitting in a reduced boot mode looks
-/// like, and it's the evidence a mode-switch write is needed.
+/// An interface with `sampleCount` 0 stays: one that said nothing for a
+/// whole session is what a device in a reduced boot mode looks like.
 struct CaptureInterface: Codable {
     /// HID primary usage page/usage, as hex. Together these name the
     /// interface's role — `0x000D`/`0x0002` a pen digitizer, `0x000D`/`0x0004`
@@ -1412,26 +1204,17 @@ struct CaptureReportSummary: Codable {
     /// Repeating byte-stride structure found in this report's own varying
     /// bytes — see `RepeatingReportStructureDetector` in TabletKit.
     ///
-    /// Exists for exactly the reports `descriptorReadable == false` flags:
-    /// with no descriptor to read, `varyingBytes` is otherwise a flat list of
-    /// positions with no hint that they are, say, four repeats of a 43-byte
-    /// touch frame rather than one 174-byte record. That repeat is the single
-    /// most useful fact in a capture of an unrecognized device, and the
-    /// hardest one to notice by reading the byte list. `nil` when no
-    /// structure cleared the detector's thresholds, which is the correct and
-    /// common answer for reports with real varying bytes and no repeat.
+    /// For reports with no readable descriptor, this shows when the varying
+    /// bytes are, say, four repeats of a 43-byte touch frame rather than one
+    /// 174-byte record. Nil when nothing repeats, the common case.
     var repeatingStructure: CaptureRepeatingStructure?
     /// `byteStats` further split by the value at byte position 1 — see
     /// `CaptureAccumulator.ReportStats.discriminatorByteIndex`. Keyed by
     /// that value as a two-digit uppercase hex string (JSON object keys must
     /// be strings; hex keeps it legible next to `firstSample`).
     ///
-    /// Present only when byte 1 looks like a packet-type/status field rather
-    /// than more coordinate data: more than one but no more than
-    /// `CaptureEngine.discriminatorMaxDistinct` values observed. Below that
-    /// threshold this is genuinely absent, not merely omitted — reading a
-    /// capture file without it means byte 1 was constant for every sample of
-    /// this report, or its own stats already told the whole story.
+    /// Present only when byte 1 looks like a packet-type field: more than
+    /// one but at most `CaptureEngine.discriminatorMaxDistinct` values.
     var byteStatsByDiscriminator: [String: CaptureDiscriminatedStats]?
     /// How long this report ID went between arrivals — `captureVersion` 14+.
     /// `captureVersion` 13 and earlier recorded what each report *contained*
@@ -1447,19 +1230,13 @@ struct CaptureReportSummary: Codable {
 /// gaps between consecutive reports, plus the longest few kept whole with
 /// the session-elapsed time each ended at.
 ///
-/// The histogram shows the *shape* of a stall — one clean multi-hundred-ms
-/// dropout reads as a single count in a high bucket, a gradual thinning as a
-/// spread across the middle buckets. The retained longest gaps show *where*:
-/// clustered at gesture ends, or scattered through the session.
+/// The histogram shows a stall's shape (one long dropout, or a gradual
+/// thinning); the retained gaps show where it fell.
 ///
 /// `inGestureBuckets` / `idleBuckets` split `buckets` by whether a touch
-/// contact was down at both ends of the gap. A finger-off pause between
-/// flicks lands in `idle`; a stall while the finger stays on the tablet
-/// lands in `inGesture` — which is the one that matters for "why did the
-/// coast die". Both are nil unless the driver supplied touch state (it does
-/// for the USB touch report; not yet for the Bluetooth 0x80 wrapper, whose
-/// touch frames are packed inside it and never reach this counter as their
-/// own report — there `buckets` is wrapper-arrival cadence, not touch).
+/// contact was down at both ends of the gap. Both are nil unless the driver
+/// supplied touch state, which it doesn't for the Bluetooth 0x80 wrapper;
+/// there `buckets` is the wrapper's arrival cadence.
 struct CaptureArrivalGaps: Codable {
     /// Upper edges of the histogram buckets, in milliseconds, copied from
     /// `CaptureAccumulator.ReportStats.gapBucketEdgesMs` so a reader has
@@ -1515,16 +1292,9 @@ struct CaptureRepeatingStructure: Codable {
 
 /// An interface a capture session can record from, weakly held.
 ///
-/// Exists because a device with more than one such interface (PTH-850's pen
-/// and touch interfaces both route through `.driver` independently — see
-/// `DeviceContext.hidDevice`'s doc comment) is otherwise only ever reachable
-/// via whichever one `hidDevice` happens to pin to. `CaptureGuideView` records
-/// every one of these at once.
-///
-/// Only interfaces whose reports reach a driver are listed. An interface
-/// without one can never produce a sample, so including it would put a
-/// permanently empty bucket in every capture file and misrepresent a silent
-/// interface (real evidence) as an unlistened one.
+/// A device can have several interfaces that reach a driver (PTH-850 pen
+/// and touch), and `CaptureGuideView` records all of them. Interfaces with
+/// no driver never produce a sample, so they aren't listed.
 final class CaptureInterfaceCandidate {
     weak var device: IOHIDDevice?
     let usagePage: Int
