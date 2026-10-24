@@ -8,6 +8,13 @@
 
 MockTab は、Wacom と Xencelabs のペンタブレット向け macOS ドライバです。Wacom Intuos、Cintiq、Bamboo、Intuos Pro 各ファミリーの USB / Bluetooth タブレットに対応しており、とくに Wacom 純正ドライバが最新の macOS でサポートしなくなった機種を重視しています。加えて、Xencelabs のペンタブレットとペンディスプレイにも対応しています。
 
+## MockTab の削除
+
+MockTab を終了し、ゴミ箱に入れます。設定も削除するには、Finder の **フォルダへ移動**（⇧⌘G）で次の項目を開き、ゴミ箱に入れてください。
+
+- `~/Library/Preferences/com.cyzor.mocktab.plist` – 設定  
+- `~/Library/Application Support/com.cyzor.mocktab` – 以前の設定。別のバージョンを起動するたびに保存されます  
+
 [tabletArea]
 
 ## アクティブエリア

@@ -8,6 +8,13 @@ Una tableta gráfica es un dispositivo de entrada con lápiz que informa la posi
 
 MockTab es un controlador para macOS de tabletas gráficas Wacom y Xencelabs. Es compatible con tabletas USB y Bluetooth de las familias Wacom Intuos, Cintiq, Bamboo e Intuos Pro — con especial foco en hardware que el controlador oficial de Wacom ya no admite en las versiones modernas de macOS — además de tabletas con lápiz y pen displays de Xencelabs.
 
+## Desinstalar MockTab
+
+Sal de MockTab y muévelo a la Papelera. Para borrar también sus ajustes, abre cada elemento de abajo en el Finder con **Ir a la carpeta** (⇧⌘G) y muévelo a la Papelera:
+
+- `~/Library/Preferences/com.cyzor.mocktab.plist` – ajustes  
+- `~/Library/Application Support/com.cyzor.mocktab` – ajustes anteriores, guardados cada vez que arranca una versión distinta  
+
 [tabletArea]
 
 ## Área activa

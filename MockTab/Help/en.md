@@ -8,6 +8,13 @@ A drawing tablet is an input device with a stylus that reports absolute position
 
 MockTab is a macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Cintiq, Bamboo, and Intuos Pro families — focusing on hardware that Wacom's own driver no longer supports on modern macOS releases — as well as Xencelabs pen tablets and pen displays.
 
+## Removing MockTab
+
+Quit MockTab and move it to the Trash. To remove its settings as well, open each item below in Finder with **Go to Folder** (⇧⌘G) and move it to the Trash:
+
+- `~/Library/Preferences/com.cyzor.mocktab.plist` – settings  
+- `~/Library/Application Support/com.cyzor.mocktab` – earlier settings, saved each time a different version starts  
+
 [tabletArea]
 
 ## Active Area

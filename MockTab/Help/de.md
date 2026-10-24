@@ -8,6 +8,13 @@ Ein Grafiktablett ist ein Eingabegerät mit Stift, das absolute Position, Druck,
 
 MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Grafiktabletts aus den Wacom-Familien Intuos, Cintiq, Bamboo und Intuos Pro — mit besonderem Fokus auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt — sowie Xencelabs-Stifttabletts und Pen-Displays.
 
+## MockTab entfernen
+
+Beende MockTab und lege es in den Papierkorb. Um auch die Einstellungen zu entfernen, öffne die folgenden Objekte im Finder mit **Gehe zum Ordner** (⇧⌘G) und lege sie in den Papierkorb:
+
+- `~/Library/Preferences/com.cyzor.mocktab.plist` – Einstellungen  
+- `~/Library/Application Support/com.cyzor.mocktab` – frühere Einstellungen, gesichert bei jedem Start einer anderen Version  
+
 [tabletArea]
 
 ## Aktiver Bereich

@@ -34,6 +34,7 @@
 		AA000009 /* TabletSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000009 /* TabletSettings.swift */; };
 		AA000010 /* BezierCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000010 /* BezierCurve.swift */; };
 		AA002099 /* UnknownFieldsCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB002099 /* UnknownFieldsCodable.swift */; };
+		AA00F808 /* SettingsBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00F808 /* SettingsBackup.swift */; };
 		AA000012 /* TabletAreaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000012 /* TabletAreaView.swift */; };
 		AA000013 /* PenFeelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000013 /* PenFeelView.swift */; };
 		AA000014 /* ButtonMappingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000014 /* ButtonMappingView.swift */; };
@@ -189,6 +190,7 @@
 		AB000009 /* TabletSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletSettings.swift; sourceTree = "<group>"; };
 		AB000010 /* BezierCurve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BezierCurve.swift; sourceTree = "<group>"; };
 		AB002099 /* UnknownFieldsCodable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnknownFieldsCodable.swift; sourceTree = "<group>"; };
+		AB00F808 /* SettingsBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsBackup.swift; sourceTree = "<group>"; };
 		AB000012 /* TabletAreaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabletAreaView.swift; sourceTree = "<group>"; };
 		AB000013 /* PenFeelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PenFeelView.swift; sourceTree = "<group>"; };
 		AB000014 /* ButtonMappingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonMappingView.swift; sourceTree = "<group>"; };
@@ -503,6 +505,7 @@
 				AAAAAA05 /* ImportPlan.swift */,
 				AAAAAA01 /* PresetExporter.swift */,
 				AAAAAA03 /* PresetImporter.swift */,
+				AB00F808 /* SettingsBackup.swift */,
 				AB002099 /* UnknownFieldsCodable.swift */,
 			);
 			path = Serialization;
@@ -899,6 +902,7 @@
 				AA000044 /* ToolSettings.swift in Sources */,
 				AA000010 /* BezierCurve.swift in Sources */,
 				AA002099 /* UnknownFieldsCodable.swift in Sources */,
+				AA00F808 /* SettingsBackup.swift in Sources */,
 				AA000206 /* TabletSettings+Persistence.swift in Sources */,
 				AA000207 /* LEDColorControl.swift in Sources */,
 				AA000208 /* TouchRingModeList.swift in Sources */,

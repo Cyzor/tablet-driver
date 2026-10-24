@@ -547,6 +547,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         // key ever written: device settings, presets, tool settings, registry,
         // and window state.
         if let domain = Bundle.main.bundleIdentifier {
+            SettingsBackup.backUp(label: "before-reset", domain: domain)
             UserDefaults.standard.removePersistentDomain(forName: domain)
             UserDefaults.standard.synchronize()
         }

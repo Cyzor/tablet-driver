@@ -17,6 +17,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // First, before any setting is read, written, or migrated.
+        if let domain = Bundle.main.bundleIdentifier {
+            SettingsBackup.backUpOnBuildChange(build: Bundle.main.versionLabel, domain: domain)
+        }
+
         // Prevent AppKit from inserting a "Quit and Keep Windows" item at ⌘⌥Q.
         // MockTab manages its own window restoration, so the system item is
         // redundant and conflicts with the Factory Reset alternate menu item.
