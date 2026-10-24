@@ -10,21 +10,14 @@ import TabletKit
 /// is held, pen motion is converted into trackpad-style scroll intents
 /// (began/changed/ended) instead of cursor motion.
 ///
-/// Deliberately mirrors `TouchStateTracker`'s shape: no I/O, no clocks, no
-/// globals — everything arrives via `process(...)`/edge calls so tests can
-/// drive it, and the only event-construction site (`InputInjector.postPanScroll`)
-/// stays a single replaceable backend.
+/// Like `TouchStateTracker`, it has no I/O, clocks, or globals, so tests can
+/// drive it; `InputInjector.postPanScroll` builds the events.
 ///
-/// The stream's shape follows the tool's Momentum setting
-/// (`panScrollUsePhases`). On: a began/changed/ended phase envelope, and on
-/// release a synthetic coast (`panMomentumTail`, MomentumTail.swift) seeded
-/// from the release velocity tracked here. Off: phase-free continuous events
-/// and no coast. The phase-free shape exists because recognizers that key on
-/// the phase lifecycle (Calendar Month/Year, WebKit gesture-scroll, Adobe
-/// palettes) have rejected our phased stream; a real trackpad backs its
-/// phases with a companion gesture-event stream, and whether that is what
-/// we lack, or just missing fields, is untested. Smooze, which pans those
-/// apps smoothly, emits the phase-free shape.
+/// The stream follows the tool's Momentum setting (`panScrollUsePhases`). On:
+/// a began/changed/ended phase envelope and, on release, a coast
+/// (`panMomentumTail`) seeded from the velocity tracked here. Off: phase-free
+/// events and no coast, because some apps (Calendar's Month and Year views,
+/// WebKit, Adobe palettes) reject the phased stream.
 ///
 /// Owned by `InputInjector`; HIDThread-confined like its sibling trackers.
 struct PanScrollTracker {
@@ -62,12 +55,9 @@ struct PanScrollTracker {
     private var accumX = 0.0
     private var accumY = 0.0
 
-    /// Recent per-frame instantaneous velocities (points/second) with a
-    /// timestamp on `clock` — the momentum-tail seed. An EMA was tried first
-    /// and rejected: it takes several frames to converge, and a real flick
-    /// is often over before that happens, so the EMA reports well under the
-    /// pen's actual peak speed. Using the fastest sample within a short
-    /// recent window instead captures the peak even from a very brief flick.
+    /// Recent per-frame velocities (points/second), timed on `clock`. The
+    /// momentum seed is the fastest one in a short window, which catches the
+    /// peak of even a brief flick; an average would lag behind it.
     private var recentVelocities: [(time: Double, v: CGVector)] = []
     /// Free-running elapsed-time clock, advanced by each call's `dt` — this
     /// tracker only ever receives relative frame deltas, never wall-clock
@@ -83,17 +73,10 @@ struct PanScrollTracker {
     /// Delta multiplier captured at engage (from `ToolSettings.panScrollSpeed`).
     private var speed = 1.0
 
-    /// Speed-adaptive damping of the anchor point, so slow deliberate pans
-    /// don't shiver. Panning magnifies hand tremor in a way cursor motion
-    /// does not — the whole canvas moves — so this is always on at a fixed
-    /// light setting rather than being exposed as a control. It is
-    /// independent of the pen's Stabilization setting: the point arriving
-    /// here has already been through that filter, or not, if it's off.
-    ///
-    /// The filter is speed-adaptive (1€), which is what keeps it invisible:
-    /// it damps hard near a standstill and is effectively transparent by the
-    /// time the pan is brisk, so gross motion still lands exactly where the
-    /// pen puts it.
+    /// Speed-adaptive (1€) damping of the anchor point, so slow pans don't
+    /// shiver: panning magnifies tremor, since the whole canvas moves. It
+    /// damps near a standstill and is transparent once the pan is brisk, so
+    /// it's always on, independent of the pen's Stabilization setting.
     private var smoother = PanSmoother()
 
     /// Fixed damping strength (0–1). Deliberately light: enough to settle
@@ -101,20 +84,13 @@ struct PanScrollTracker {
     /// pans slowly *on purpose*.
     static let smoothingStrength = 0.3
 
-    /// Dominant scroll axis, once established (see `axisLockRatio`). Real
-    /// trackpad drivers do the same "directional lock": without it, a slight
-    /// diagonal drift during a vertical scroll bleeds a horizontal component
-    /// into the event stream, which some apps (Firefox's swipe-to-navigate
-    /// gesture recognizer, in particular) can mistake for a two-finger swipe
-    /// gesture instead of a scroll — hijacking or truncating it. Locking to
-    /// one axis and zeroing the other for the rest of the gesture avoids that.
+    /// Dominant scroll axis, once established (see `axisLockRatio`), as
+    /// trackpads do. Without it, slight drift during a vertical scroll leaks
+    /// a horizontal component that Firefox can take for a swipe gesture.
     ///
-    /// The lock is decided by the *angle* of travel, not raw distance: a
-    /// near-axis gesture (an ordinary scroll) commits almost immediately,
-    /// while a genuinely diagonal drag (a Hand-tool-style free pan in an app
-    /// like Illustrator or Rebelle) never crosses the ratio and stays
-    /// omnidirectional for the whole gesture. This is what lets one behavior
-    /// serve both cases without a user-facing setting.
+    /// The lock goes by the angle of travel: a near-axis scroll locks almost
+    /// at once, while a diagonal free pan (a Hand tool in Illustrator or
+    /// Rebelle) never crosses the ratio and stays free.
     private enum Axis { case vertical, horizontal }
     private var axisLock: Axis?
     private var preLockAccumX = 0.0
@@ -132,8 +108,7 @@ struct PanScrollTracker {
     /// "direction lock" behavior of trackpad drivers).
     static let axisLockRatio = 2.0
 
-    /// Release velocity in points/second — the momentum seed. Read by the
-    /// posting layer when it gains a tail; unused in v1.
+    /// Release velocity in points/second, the momentum seed.
     private(set) var releaseVelocity: CGVector = .zero
 
     /// Seconds of `process()` calls since the last frame with non-negligible
@@ -198,19 +173,8 @@ struct PanScrollTracker {
     /// barrel-button up-debounce (`InputInjector.handleXencelabsBarrelButton`),
     /// which holds the release for `buttonUpDebounceInterval` (0.05 s) to
     /// bridge contact chatter. Wacom fires its release immediately and always
-    /// passes 0.
-    ///
-    /// **This is hardening, not a fix for an observed bug.** At the current
-    /// 0.05 s window it changes nothing measurable: any real follow-through
-    /// after a flick — even deceleration sharp enough to stop the pen within
-    /// the window — still counts as motion, so `timeSinceMotion` stays reset
-    /// and the peak sample survives `peakVelocityWindow`. Only an
-    /// instantaneous, physically impossible dead stop at the release edge
-    /// loses momentum without this. It earns its place by making the gesture's
-    /// timing independent of debounce length, so a future longer window (the
-    /// 0.25 s `buttonUpDebounceMenuInterval` reaching a drag-style binding,
-    /// say) can't quietly start suppressing flicks. Verified by the checks in
-    /// tools/tests/pan-scroll-tracker-tests/ — do not "restore" a bug narrative here.
+    /// passes 0. Backdating keeps flick detection independent of the debounce
+    /// length, so a longer window can't start suppressing flicks.
     mutating func disengage(backdate: Double = 0) -> Intent {
         guard isActive else { return .none }
         let offset = max(0, backdate)
