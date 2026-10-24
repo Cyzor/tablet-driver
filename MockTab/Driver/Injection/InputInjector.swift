@@ -390,8 +390,7 @@ final class InputInjector: @unchecked Sendable {
     var positionDeadBand = PositionDeadBand()
 
     /// Dead band for tablets whose sensors flicker by several counts on every
-    /// report, wide enough to hold a resting pen still. Older Intuos only;
-    /// newer tablets hold still on their own.
+    /// report, wide enough to hold a resting pen still.
     static func defaultPenDeadBand(productID: Int) -> Int {
         switch productID {
         // Intuos5 and Intuos Pro (2013): PTH-450/650/850, PTK-450/650,
@@ -403,6 +402,9 @@ final class InputInjector: @unchecked Sendable {
         case 0x00B0...0x00B7: return 8
         // Graphire 3 and 4, Bamboo Fun, and CTE-460/660.
         case 0x0013...0x0018, 0x006A, 0x006B: return 5
+        // Intuos Pro (2025): PTK-470/670/870 over USB and Bluetooth, and
+        // their USB revisions. A hand-held tip flickers about 5 counts.
+        case 0x03F5...0x03FA, 0x0401, 0x042D...0x042F: return 6
         default: return 0
         }
     }
