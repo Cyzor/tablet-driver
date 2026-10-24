@@ -69,7 +69,7 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 ## Pan View
 
-Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Pan View. Para usarlo, asigna la acción Pan View a cualquier botón del lápiz, tecla express o botón del puck en Button Mapping.
+Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Pan View. Para usarlo, asigna la acción Pan View a cualquier botón del lápiz, tecla express o botón del puck en el panel Botones.
 
 ## Comportamiento del clic
 

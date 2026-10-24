@@ -69,7 +69,7 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 ## Pan View
 
-Legt fest, wie schnell sich Inhalte verschieben, während eine Pan-View-Taste gedrückt gehalten wird. Weise die Aktion Pan View in Button Mapping einer Stifttaste, Express-Taste oder Puck-Taste zu, um sie zu nutzen.
+Legt fest, wie schnell sich Inhalte verschieben, während eine Pan-View-Taste gedrückt gehalten wird. Weise die Aktion Pan View im Tasten-Bereich einer Stifttaste, Express-Taste oder Puck-Taste zu, um sie zu nutzen.
 
 Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitseinstellung (in Stiftgefühl) aktiv ist. Die Reaktion hängt von der App ab.
 

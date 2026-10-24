@@ -71,8 +71,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         addItem(to: menu, title: String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"),
                 action: #selector(showTabletArea))
-        addItem(to: menu, title: String(localized: "Button Mapping", comment: "Menu item: open Button Mapping tab"),
-                action: #selector(showButtonMapping))
+        addItem(to: menu, title: String(localized: "Buttons", comment: "Menu item: open Buttons tab"),
+                action: #selector(showButtons))
         menu.addItem(.separator())
         addItem(to: menu, title: String(localized: "Detect Tablet", comment: "Menu item: detect and focus active tablet"),
                 action: #selector(detectTablet))
@@ -196,7 +196,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         SettingsWindowManager.shared.showTab(at: 0)
     }
 
-    @objc private func showButtonMapping() {
+    @objc private func showButtons() {
         SettingsWindowManager.shared.showTab(at: 2)
     }
 

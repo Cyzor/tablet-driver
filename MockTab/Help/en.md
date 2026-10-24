@@ -69,7 +69,7 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 ## Pan View
 
-Sets how fast content pans while a Pan View button is held. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping to use it.
+Sets how fast content pans while a Pan View button is held. Assign the Pan View action to any pen barrel, express key, or puck button in the Buttons pane to use it.
 
 Pan View coasts briefly after release when its momentum setting (in Pen Feel) is on. Response varies by app.
 

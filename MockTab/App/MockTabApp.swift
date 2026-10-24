@@ -135,8 +135,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(tabletArea)
 
         let buttons = NSMenuItem(
-            title: String(localized: "Button Mapping", comment: "Dock menu: open Button Mapping tab"),
-            action: #selector(dockShowButtonMapping),
+            title: String(localized: "Buttons", comment: "Dock menu: open Buttons tab"),
+            action: #selector(dockShowButtons),
             keyEquivalent: "")
         buttons.target = self
         menu.addItem(buttons)
@@ -197,7 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SettingsWindowManager.shared.showTab(at: 0)
     }
 
-    @objc private func dockShowButtonMapping() {
+    @objc private func dockShowButtons() {
         SettingsWindowManager.shared.showTab(at: 2)
     }
 

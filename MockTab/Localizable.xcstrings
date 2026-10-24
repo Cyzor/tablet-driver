@@ -3689,37 +3689,8 @@
         }
       }
     },
-    "Button Mapping" : {
-      "comment" : "Dock menu: open Button Mapping tab\nMenu item: open Button Mapping tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tasten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Button Mapping"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Botones"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ボタン"
-          }
-        }
-      }
-    },
     "Buttons" : {
-      "comment" : "Help section title\nLive Input table row label\nMenu item: open Button Mapping tab\nTab name: button and key mapping",
+      "comment" : "Dock menu: open Buttons tab\nHelp section title\nLive Input table row label\nMenu item: open Buttons tab\nTab name: button and key mapping",
       "localizations" : {
         "de" : {
           "stringUnit" : {

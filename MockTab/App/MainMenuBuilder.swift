@@ -94,7 +94,7 @@ enum MainMenuBuilder {
         let tabs: [(tab: SettingsWindowController.Tab, title: String, image: String, key: String)] = [
             (.tabletArea, String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"), "rectangle.dashed", "1"),
             (.penFeel, String(localized: "Pen Feel", comment: "Menu item: open Pen Feel tab"), "scribble.variable", "2"),
-            (.buttons, String(localized: "Buttons", comment: "Menu item: open Button Mapping tab"), "square.grid.2x2.fill", "3"),
+            (.buttons, String(localized: "Buttons", comment: "Menu item: open Buttons tab"), "square.grid.2x2.fill", "3"),
             (.touch, String(localized: "Touch", comment: "Menu item: open Touch tab"), "hand.point.up.left", "4"),
             (.display, String(localized: "Display", comment: "Menu item: open Display Mapping tab"), "display", "5"),
             (.devices, String(localized: "Devices", comment: "Menu item: open Devices tab"), "rectangle.on.rectangle", "6"),
