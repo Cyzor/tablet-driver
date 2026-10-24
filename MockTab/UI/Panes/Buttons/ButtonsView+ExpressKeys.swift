@@ -82,6 +82,12 @@ extension ButtonsView {
             Section(String(localized: "Both Touch Strips", comment: "Section header for a setting shared by a tablet's two touch strips")) {
                 reverseRingDirectionToggle
             }
+        } else if hasTouchStrips && touchStripCount == 1 {
+            let stripLabel = String(localized: "Touch Strip", comment: "Section header for one of a tablet's touch strips")
+            Section(stripLabel) {
+                touchRingSlotsSection(stripLabel, isActive: lb.touchStrip1Active, scrollTarget: .strip(0))
+                reverseRingDirectionToggle
+            }
         } else if hasTouchStrips {
             Section("Touch Strips") {
                 ForEach(0..<2, id: \.self) { place in
@@ -707,7 +713,7 @@ extension ButtonsView {
             }
         }
         if hasTouchStrips {
-            for i in 0..<2 { bits |= 1 << UInt64(ControlTarget.strip(i).bit) }
+            for i in 0..<touchStripCount { bits |= 1 << UInt64(ControlTarget.strip(i).bit) }
         }
         return bits
     }

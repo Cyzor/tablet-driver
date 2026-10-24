@@ -108,6 +108,7 @@ struct ButtonsView: View {
     var hasTouchRing: Bool { spec?.hasTouchRing == true }
     var hasDualRings: Bool { spec?.hasDualRings == true }
     var hasTouchStrips: Bool { spec?.hasTouchStrips == true }
+    var touchStripCount: Int { spec?.touchStripCount ?? 0 }
     /// Each strip has its own toggle and modes (Cintiq 21UX2).
     var hasStripToggles: Bool { spec?.hasStripToggles == true }
     /// True for PTK-470/670/870 (Intuos Pro gen 3): mechanical rotate-only
