@@ -132,7 +132,7 @@ extension TabletSettings {
         let uuid = CalibrationKey.uuidString(for: id)
         guard CalibrationKey.isReliable(uuid) else { return }
         let index = ids.firstIndex(of: id).map { $0 + 1 } ?? targetDisplayIndex
-        // Saved only where the index itself lives on the device; a preset's
+        // Saved only where the index itself lives on the device; a profile's
         // or override's index is matched afresh on each load instead.
         if resolveLayer(for: "targetDisplayIndex") == devicePrefix {
             ud.set(uuid, forKey: devicePrefix + "targetDisplayUUID")
@@ -313,7 +313,7 @@ extension TabletSettings {
 
     // MARK: - Touch Ring Slot persistence
 
-    /// Saves touchRingSlots using the same override/preset/device prefix logic as other fields.
+    /// Saves touchRingSlots using the same override/profile/device prefix logic as other fields.
     func saveTouchRingSlots() {
         guard !isLoading else { return }
         guard !touchRingSlotsLoadFailed else {
@@ -350,7 +350,7 @@ extension TabletSettings {
 
     // MARK: - Per-dial persistence
 
-    /// Saves `rotaries` using the same override/preset/device prefix logic as
+    /// Saves `rotaries` using the same override/profile/device prefix logic as
     /// `saveTouchRingSlots`.
     func saveRotaries() {
         guard !isLoading, !isApplyingRotaryCapability else { return }

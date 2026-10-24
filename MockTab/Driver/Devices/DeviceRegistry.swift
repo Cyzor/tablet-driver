@@ -197,7 +197,7 @@ final class DeviceRegistry: ObservableObject {
     /// instance under the claim-the-legacy-prefix rule: the first instance
     /// ever seen for a PID permanently claims the historical
     /// `device-0x{PID}.` prefix (so existing installs keep every setting,
-    /// preset, and calibration untouched); any other instance of the same
+    /// profile, and calibration untouched); any other instance of the same
     /// PID gets a fresh `device-0x{PID}#{instance}.` namespace. Instances
     /// with no token (no serial, no locationID) always resolve to the
     /// legacy prefix — today's PID-only behavior.
@@ -759,7 +759,7 @@ final class DeviceRegistry: ObservableObject {
         return list
     }
 
-    /// Model-keyed variant (legacy namespace) for preset export, which is
+    /// Model-keyed variant (legacy namespace) for configuration export, which is
     /// deliberately model-keyed — see the archive format.
     func tools(forDevice productID: Int) -> [KnownTool] {
         tools(for: DeviceInstanceKey(productID: productID, instance: ""))

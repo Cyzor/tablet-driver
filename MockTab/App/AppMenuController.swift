@@ -48,7 +48,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         self.settings = settings
 
         insertTabletMenu()
-        insertPresetsMenu()
+        insertProfilesMenu()
         hookAboutMenuItem()
         hookAppMenu()
         hookEditMenu()
@@ -504,7 +504,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             comment: "Alert title: factory reset confirmation")
         alert.informativeText = String(
             localized:
-                "All tablets, tools, presets, and button mappings will be erased. MockTab will restart.",
+                "All tablets, tools, profiles, and button mappings will be erased. MockTab will restart.",
             comment: "Alert body: explaining the consequences of factory reset")
         alert.alertStyle = .warning
         let resetButton = alert.addButton(
@@ -544,7 +544,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         SettingsWindowManager.shared.skipNextWindowSave()
 
         // Wipe the entire UserDefaults domain in one call.  This removes every
-        // key ever written: device settings, presets, tool settings, registry,
+        // key ever written: device settings, profiles, tool settings, registry,
         // and window state.
         if let domain = Bundle.main.bundleIdentifier {
             SettingsBackup.backUp(label: "before-reset", domain: domain)
@@ -726,9 +726,9 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     // MARK: - **Profiles menu
 
-    private var presetsMenu: NSMenu?
+    private var profilesMenu: NSMenu?
 
-    private func insertPresetsMenu() {
+    private func insertProfilesMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
         let profilesTitle = String(
             localized: "Profiles", comment: "Menu header: profile management")
@@ -739,14 +739,14 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         }
 
         // Create the NSMenu only once; reuse on subsequent calls to preserve delegate state.
-        if presetsMenu == nil {
+        if profilesMenu == nil {
             let menu = NSMenu(title: profilesTitle)
             menu.delegate = self
-            presetsMenu = menu
+            profilesMenu = menu
         }
 
         let menuItem = NSMenuItem(title: profilesTitle, action: nil, keyEquivalent: "")
-        menuItem.submenu = presetsMenu
+        menuItem.submenu = profilesMenu
 
         // Locate Edit by its ⌘Z shortcut — reliable regardless of locale or whether
         // SwiftUI exposes an undo: selector on its Button-generated menu items.
@@ -766,7 +766,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     }
 
     /// Rebuild the **Profiles menu every time it is about to open.
-    private func rebuildPresetsMenu(_ menu: NSMenu) {
+    private func rebuildProfilesMenu(_ menu: NSMenu) {
         guard let settings else { return }
         menu.removeAllItems()
 
@@ -785,7 +785,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             for profile in settings.profiles {
                 let item = NSMenuItem(
                     title: profile.name,
-                    action: #selector(activatePreset(_:)),
+                    action: #selector(activateProfile(_:)),
                     keyEquivalent: "")
                 item.target = self
                 item.representedObject = profile.id
@@ -799,7 +799,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             title: String(
                 localized: "Show Saved Configurations…", comment: "Menu item: open the Profiles tab"
             ),
-            action: #selector(showPresetsTab),
+            action: #selector(showProfilesTab),
             keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
@@ -852,12 +852,12 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     @objc private func menuExportConfiguration() {
         SettingsWindowManager.shared.showTab(.profiles)
-        let exporter = PresetExporter(
+        let exporter = ConfigurationExporter(
             registry: DeviceRegistry.shared,
             tabletManager: TabletManager.shared)
         guard let data = exporter.export() else { return }
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = PresetExporter.suggestedFileBaseName
+        panel.nameFieldStringValue = ConfigurationExporter.suggestedFileBaseName
         panel.allowedContentTypes = [.json]
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
@@ -878,8 +878,8 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     func menuNeedsUpdate(_ menu: NSMenu) {
         if menu === tabletMenu {
             rebuildTabletMenu(menu)
-        } else if menu === presetsMenu {
-            rebuildPresetsMenu(menu)
+        } else if menu === profilesMenu {
+            rebuildProfilesMenu(menu)
         }
     }
 
@@ -1002,20 +1002,20 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         }
     }
 
-    // MARK: - Preset actions
+    // MARK: - Profile actions
 
     @objc private func activateDeviceDefaults() {
         settings?.activate(nil)
     }
 
-    @objc private func activatePreset(_ sender: NSMenuItem) {
+    @objc private func activateProfile(_ sender: NSMenuItem) {
         guard let uuid = sender.representedObject as? UUID,
             let profile = settings?.profiles.first(where: { $0.id == uuid })
         else { return }
         settings?.activate(profile)
     }
 
-    @objc private func showPresetsTab() {
+    @objc private func showProfilesTab() {
         SettingsWindowManager.shared.showTab(.profiles)
     }
 

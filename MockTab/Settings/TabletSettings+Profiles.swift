@@ -6,36 +6,34 @@ import AppKit
 import Foundation
 import SwiftUI
 
-// Preset (named profile) handling, split out of TabletSettings.swift:
-// preset management and persistence, the full-state snapshots used for
-// preset-activation undo, and profile import/export. The preset stored
-// state lives on the main class body (Swift class extensions can't hold
-// stored properties).
+// Profiles: management and persistence, the full-state snapshots behind
+// profile-activation undo, and import. Their stored state lives on the main
+// class body, since extensions can't hold stored properties.
 extension TabletSettings {
 
-    // MARK: - Preset management
+    // MARK: - Profile management
 
-    /// UserDefaults key prefix for a specific preset's overridden values.
+    /// UserDefaults key prefix for a specific profile's overridden values.
     func profileKeyPrefix(_ profile: Profile) -> String {
         "\(devicePrefix)preset-\(profile.id.uuidString)."
     }
 
-    /// Activates `preset` (or pass `nil` to revert to raw device settings).
+    /// Activates `profile` (or pass `nil` to revert to raw device settings).
     /// Marks the source as `.manual` and republishes all settings values.
-    func activate(_ preset: (Profile?)) {
-        activeProfile = preset
+    func activate(_ profile: Profile?) {
+        activeProfile = profile
         saveActiveProfileID()
         reloadAll()
         activationSource = .manual
     }
 
-    /// Snapshots the current in-memory settings into a new preset, saves it,
+    /// Snapshots the current in-memory settings into a new profile, saves it,
     /// and makes it active.
-    func saveAsPreset(name: String) {
+    func saveAsProfile(name: String) {
         var profile = Profile(name: name)
         let prefix = profileKeyPrefix(profile)
 
-        // Copy every current live value into the preset namespace.
+        // Copy every current live value into the profile namespace.
         ud.set(activeAreaX, forKey: prefix + "activeAreaX")
         ud.set(activeAreaY, forKey: prefix + "activeAreaY")
         ud.set(activeAreaWidth, forKey: prefix + "activeAreaWidth")
@@ -81,14 +79,14 @@ extension TabletSettings {
         saveActiveProfileID()
     }
 
-    /// Creates a new preset from a parsed import dict (keys are the same internal
-    /// key names used by `saveAsPreset`, values are already in UserDefaults-ready form).
-    /// The preset is appended but not activated.  Returns the new preset.
+    /// Creates a new profile from a parsed import dict (keys are the same internal
+    /// key names used by `saveAsProfile`, values are already in UserDefaults-ready form).
+    /// The profile is appended but not activated.  Returns the new profile.
     ///
-    /// Undoable: unlike overrides/tool settings, an imported preset always
+    /// Undoable: unlike overrides/tool settings, an imported profile always
     /// gets a fresh UUID, so there's no collision to reason about — undo is
-    /// simply removing the exact preset that was just created, via the
-    /// existing `deletePreset`.
+    /// simply removing the exact profile that was just created, via the
+    /// existing `deleteProfile`.
     @discardableResult
     func importProfile(name: String, from values: [String: Any]) -> Profile {
         var profile = Profile(name: name)
@@ -104,12 +102,12 @@ extension TabletSettings {
 
         let importedID = profile.id
         // Self-recursive so this also redoes: undo deletes the imported
-        // preset, then re-registers a fresh "Import Profile" that re-invokes
-        // this same function — a new UUID, but an equivalent preset, same
+        // profile, then re-registers a fresh "Import Profile" that re-invokes
+        // this same function — a new UUID, but an equivalent profile, same
         // trade-off as `ProfilesView.recordSaveProfile`.
         record(String(localized: "Import Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
             guard let self, let match = self.profiles.first(where: { $0.id == importedID }) else { return }
-            self.deletePreset(match)
+            self.deleteProfile(match)
             self.record(String(localized: "Import Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
                 self?.importProfile(name: name, from: values)
             }
@@ -137,10 +135,10 @@ extension TabletSettings {
     /// Imports one tool's settings from a backup.
     ///
     /// Tool identity is the tool's own ID (serial-derived, not a fresh UUID
-    /// like a preset), so an existing local customization for that exact tool
+    /// like a profile), so an existing local customization for that exact tool
     /// is a genuine identity collision. Defaults to skipping unless
     /// `overwrite` is true. Applies immediately — tool settings are live,
-    /// not preset-scoped. Reloads the cached `ToolSettings` instance (if any)
+    /// not profile-scoped. Reloads the cached `ToolSettings` instance (if any)
     /// so the UI reflects the change without requiring a relaunch.
     ///
     /// Returns whether the import was applied.
@@ -179,7 +177,7 @@ extension TabletSettings {
         return true
     }
 
-    /// Returns a preset name that doesn't collide with any existing preset name.
+    /// Returns a profile name that doesn't collide with any existing profile name.
     /// If `name` is already taken, appends " (2)", " (3)", etc.
     func uniqueProfileName(_ name: String) -> String {
         let existing = Set(profiles.map(\.name))
@@ -189,19 +187,17 @@ extension TabletSettings {
         return "\(name) (\(n))"
     }
 
-    /// Renames `preset` to `newName`.
-    func renamePreset(_ profile: Profile, to newName: String) {
+    /// Renames `profile` to `newName`.
+    func renameProfile(_ profile: Profile, to newName: String) {
         guard let idx = profiles.firstIndex(of: profile) else { return }
         profiles[idx].name = newName
         if activeProfile?.id == profile.id { activeProfile?.name = newName }
         saveProfileList()
     }
 
-    /// Deletes `preset` and all its stored values.
-    /// Removes any app bindings pointing to it.  If it was active, reverts to device defaults.
-    /// Every UserDefaults key a preset can hold — shared by `deletePreset`
-    /// (what to erase) and `deletePresetRecordingUndo` (what to snapshot).
-    static let presetKeys = [
+    /// Every UserDefaults key a profile can hold — shared by `deleteProfile`
+    /// (what to erase) and `deleteProfileRecordingUndo` (what to snapshot).
+    static let profileSettingKeys = [
         "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
         "proportionalMapping", "targetDisplayIndex", "targetDisplayUUID", "toggleDisplayIDs",
         "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
@@ -211,9 +207,11 @@ extension TabletSettings {
         "rotariesJSON",
     ]
 
-    func deletePreset(_ profile: Profile) {
+    /// Deletes `profile` and all its stored values, and any app bindings
+    /// pointing to it. If it was active, reverts to device defaults.
+    func deleteProfile(_ profile: Profile) {
         let prefix = profileKeyPrefix(profile)
-        for key in Self.presetKeys { ud.removeObject(forKey: prefix + key) }
+        for key in Self.profileSettingKeys { ud.removeObject(forKey: prefix + key) }
         profiles.removeAll { $0.id == profile.id }
         // Remove app bindings that referenced this profile.
         let before = appBindings.count
@@ -226,25 +224,25 @@ extension TabletSettings {
         }
     }
 
-    /// Deletes `profile` with full undo/redo support. `deletePreset` itself
+    /// Deletes `profile` with full undo/redo support. `deleteProfile` itself
     /// registers no undo — it's a low-level primitive reused by import/
     /// save-profile flows that already handle their own undo. This is the
     /// entry point for a user-initiated delete (e.g. the trash button):
-    /// snapshots the preset's stored values, its position in the list, and
+    /// snapshots the profile's stored values, its position in the list, and
     /// any app bindings pointing to it, so undo restores it exactly and a
     /// subsequent redo deletes it again — self-recursive, same idiom as
     /// everywhere else in this file.
-    func deletePresetRecordingUndo(_ profile: Profile) {
+    func deleteProfileRecordingUndo(_ profile: Profile) {
         let prefix = profileKeyPrefix(profile)
         var snapshot: [String: Any] = [:]
-        for key in Self.presetKeys {
+        for key in Self.profileSettingKeys {
             if let v = ud.object(forKey: prefix + key) { snapshot[key] = v }
         }
         let index = profiles.firstIndex(where: { $0.id == profile.id })
         let affectedBindings = appBindings.filter { $0.profileID == profile.id }
         let wasActive = activeProfile?.id == profile.id
 
-        deletePreset(profile)
+        deleteProfile(profile)
 
         record(String(localized: "Delete Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
             guard let self else { return }
@@ -267,12 +265,12 @@ extension TabletSettings {
                 self.reloadAll()
             }
             self.record(String(localized: "Delete Profile", comment: "Undo action name for a preset/profile change")) { [weak self] in
-                self?.deletePresetRecordingUndo(restored)
+                self?.deleteProfileRecordingUndo(restored)
             }
         }
     }
 
-    // MARK: - Preset persistence
+    // MARK: - Profile persistence
 
     private var profileListKey: String { devicePrefix + "_presets" }
     private var activeProfileIDKey: String { devicePrefix + "_activeProfile" }
@@ -322,10 +320,10 @@ extension TabletSettings {
         }
     }
 
-    // MARK: - Full state snapshots (for preset activation undo)
+    // MARK: - Full state snapshots (for profile activation undo)
 
     /// Captures all current in-memory setting values for undo/redo of structural
-    /// operations like preset activation that republish all settings at once.
+    /// operations like profile activation that republish all settings at once.
     struct FullSnapshot: Equatable {
         var activeAreaX: Double
         var activeAreaY: Double
@@ -387,7 +385,7 @@ extension TabletSettings {
     }
 
     /// Applies a previously captured snapshot, registering undo for the prior state.
-    /// Used for preset activation, deletion, and other structural operations.
+    /// Used for profile activation, deletion, and other structural operations.
     func restoreSnapshot(_ snap: FullSnapshot, actionName: String) {
         record(actionName) { [weak self] in
             guard let self else { return }

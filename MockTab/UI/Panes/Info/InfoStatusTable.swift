@@ -235,7 +235,7 @@ extension InfoView {
 
             row(
                 String(localized: "Profile", comment: "Row label in Info tab status table — active profile name"),
-                value: presetLabel,
+                value: profileLabel,
                 ok: nil)
 
             row(

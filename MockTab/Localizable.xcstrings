@@ -1035,77 +1035,6 @@
       },
       "shouldTranslate" : false
     },
-    "%lld named preset" : {
-      "comment" : "Count of named presets found in the backup for this tablet",
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld benanntes Preset"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld benannte Presets"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "%lld named preset"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "%lld named presets"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld preajuste con nombre"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld preajustes con nombre"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld 名前付きプリセット"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld points" : {
       "comment" : "VoiceOver: a length on screen, in points",
       "localizations" : {
@@ -2431,31 +2360,31 @@
         }
       }
     },
-    "All tablets, tools, presets, and button mappings will be erased. MockTab will restart." : {
+    "All tablets, tools, profiles, and button mappings will be erased. MockTab will restart." : {
       "comment" : "Alert body: explaining the consequences of factory reset",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle Grafiktabletts, Tools, Presets und Tastenbelegungen werden gelöscht. MockTab startet neu."
+            "value" : "Alle Grafiktabletts, Tools, Profile und Tastenbelegungen werden gelöscht. MockTab startet neu."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "All tablets, tools, presets, and button mappings will be erased. MockTab will restart."
+            "value" : "All tablets, tools, profiles, and button mappings will be erased. MockTab will restart."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Todas las tabletas, herramientas, preajustes y asignaciones de botones serán eliminados. MockTab se reiniciará."
+            "value" : "Todas las tabletas, herramientas, perfiles y asignaciones de botones serán eliminados. MockTab se reiniciará."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "すべてのタブレット、ツール、プリセット、ボタン割り当てが削除されます。MockTabが再起動します。"
+            "value" : "すべてのタブレット、ツール、プロファイル、ボタン割り当てが削除されます。MockTabが再起動します。"
           }
         }
       }

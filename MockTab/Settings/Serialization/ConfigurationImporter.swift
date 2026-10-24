@@ -9,7 +9,7 @@ import OSLog
 private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "importer")
 
 /// Parses and decodes JSON backup data into structured ImportPlan.
-struct PresetImporter {
+struct ConfigurationImporter {
 
     enum ParseError: LocalizedError {
         case notJSON
@@ -57,12 +57,12 @@ struct PresetImporter {
                 decodeDeviceSettings(s, into: &values)
             }
 
-            var presets: [ImportPlan.PresetEntry] = []
+            var presets: [ImportPlan.ProfileEntry] = []
             if let profilesRaw = tabletDict["profiles"] as? [[String: Any]] {
                 for p in profilesRaw {
                     guard let name = p["name"] as? String else { continue }
                     let settingsDict = p["settings"] as? [String: Any] ?? [:]
-                    presets.append(ImportPlan.PresetEntry(name: name, values: decodeStoredSettings(settingsDict)))
+                    presets.append(ImportPlan.ProfileEntry(name: name, values: decodeStoredSettings(settingsDict)))
                 }
             }
 
@@ -100,7 +100,7 @@ struct PresetImporter {
                 resolvedProfileName: nickname,
                 profileValues: values,
                 isKnown: isKnown,
-                presets: presets,
+                profiles: presets,
                 overrides: overrides,
                 toolSettings: toolEntries,
             ))
@@ -197,8 +197,8 @@ struct PresetImporter {
         }
     }
 
-    /// Decodes a preset/app-override/tool "settings" dict — as produced by
-    /// `PresetExporter.readUDValue` — into UserDefaults-ready key/value pairs.
+    /// Decodes a profile/app-override/tool "settings" dict — as produced by
+    /// `ConfigurationExporter.readUDValue` — into UserDefaults-ready key/value pairs.
     ///
     /// Unlike `decodeDeviceSettings` (which maps friendlier export-only key
     /// names like "orientation"/"penButton1" to their storage keys), this

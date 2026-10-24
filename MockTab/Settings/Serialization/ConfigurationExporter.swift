@@ -7,7 +7,7 @@ import CoreGraphics
 
 /// Serializes tablet profiles and settings to JSON for backup/restore.
 @MainActor
-final class PresetExporter {
+final class ConfigurationExporter {
     let registry: DeviceRegistry
     let tabletManager: TabletManager
 
@@ -23,7 +23,7 @@ final class PresetExporter {
         fmt.locale = Locale(identifier: "en_US_POSIX")
         fmt.calendar = Calendar(identifier: .gregorian)
         fmt.dateFormat = "yyyy-MM-dd"
-        return "MockTab-Settings-\(fmt.string(from: Date()))"
+        return "mocktab-configuration-\(fmt.string(from: Date()))"
     }
 
     /// Builds a complete JSON backup of all known tablets and their settings.
@@ -61,7 +61,7 @@ final class PresetExporter {
         let overrides = ts.appOverrides.map { exportAppOverride($0, devicePrefix: devicePrefix, filter: nil) }
         if !overrides.isEmpty { d["appOverrides"] = overrides }
 
-        let presets = ts.profiles.map { exportPreset($0, activeID: ts.activeProfile?.id, devicePrefix: devicePrefix) }
+        let presets = ts.profiles.map { exportProfile($0, activeID: ts.activeProfile?.id, devicePrefix: devicePrefix) }
         if !presets.isEmpty { d["profiles"] = presets }
 
         let tools = registry.tools(forDevice: pid).map { exportTool($0, ts: ts, devicePrefix: devicePrefix) }
@@ -76,7 +76,7 @@ final class PresetExporter {
     /// reading the file) and a "...Key" sibling holding a locale-independent
     /// machine value. `displayLabel` is produced via `String(localized:)`, so
     /// a file exported under a non-English system language previously had no
-    /// way to round-trip through `PresetImporter`, whose decoders only ever
+    /// way to round-trip through `ConfigurationImporter`, whose decoders only ever
     /// matched the English label strings. Import prefers the key field and
     /// falls back to the (English-only) label for older export files.
     func exportDeviceSettings(_ s: TabletSettings, devicePrefix: String) -> [String: Any] {
@@ -92,7 +92,7 @@ final class PresetExporter {
         ] as [String: Any]
         d["display"] = exportDisplay(s.targetDisplayIndex, uuid: s.targetDisplayUUID, toggleUUIDs: s.toggleDisplayIDs)
         // Where on the target display the tablet area is mapped (tablet-driver#15).
-        // Always written, even at the default full-display (0,0,1,1): PresetImporter
+        // Always written, even at the default full-display (0,0,1,1): ConfigurationImporter
         // must default these to full-display anyway for files from older exports, so
         // there's no compatibility reason to omit them — this keeps the shape uniform.
         d["displayRegion"] = [
@@ -177,7 +177,7 @@ final class PresetExporter {
     }
 
     /// Exports a named profile's overridden keys by reading UserDefaults directly.
-    func exportPreset(_ preset: TabletSettings.Profile, activeID: UUID?, devicePrefix: String) -> [String: Any] {
+    func exportProfile(_ preset: TabletSettings.Profile, activeID: UUID?, devicePrefix: String) -> [String: Any] {
         let presetPrefix = "\(devicePrefix)preset-\(preset.id.uuidString)."
         var settings: [String: Any] = [:]
         for key in preset.overriddenKeys.sorted() {
@@ -218,7 +218,7 @@ final class PresetExporter {
     ///
     /// `display` is produced via `displayLabel`/`.label`, which are localized strings —
     /// only decodable by an importer running in the same system language the value was
-    /// exported under. `machineKey`, when present, is what `PresetImporter` should prefer:
+    /// exported under. `machineKey`, when present, is what `ConfigurationImporter` should prefer:
     /// a `ButtonBinding.encoded` string, a `TouchRingMode`/`TabletOrientation` rawValue, etc.
     /// Fields that are already locale-independent (numbers, bools, raw ID strings) return
     /// `nil` for `machineKey` — there's nothing to disambiguate.

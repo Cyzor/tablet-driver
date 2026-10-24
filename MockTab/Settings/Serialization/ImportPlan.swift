@@ -8,11 +8,11 @@ import Foundation
 struct ImportPlan: Identifiable {
     let id = UUID()
 
-    /// A named preset found in the backup. Presets always import as a fresh
+    /// A named profile found in the backup. Profiles always import as a fresh
     /// profile (new UUID), so — unlike overrides/tool settings — there is no
     /// identity collision to resolve; only the display name can collide, and
     /// that's already handled by `TabletSettings.uniqueProfileName`.
-    struct PresetEntry {
+    struct ProfileEntry {
         let name: String
         let values: [String: Any]
     }
@@ -38,14 +38,14 @@ struct ImportPlan: Identifiable {
         let productID: Int
         let modelName: String
         let nickname: String
-        /// The preset name that will be created (may have suffix if name already taken).
+        /// The profile name that will be created (may have suffix if name already taken).
         let resolvedProfileName: String
-        /// All keys/values ready to write to UserDefaults for the preset.
+        /// All keys/values ready to write to UserDefaults for the profile.
         let profileValues: [String: Any]
         /// True if this productID is already in the registry.
         let isKnown: Bool
-        /// Named presets found in the backup for this tablet.
-        let presets: [PresetEntry]
+        /// Profiles found in the backup for this tablet.
+        let profiles: [ProfileEntry]
         /// Per-app overrides found in the backup for this tablet.
         let overrides: [OverrideEntry]
         /// Per-tool settings found in the backup for this tablet.

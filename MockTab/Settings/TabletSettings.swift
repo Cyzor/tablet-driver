@@ -24,7 +24,7 @@ let settingsLogger = Logger(subsystem: "com.cyzor.mocktab", category: "settings"
 ///     │    Activated automatically when the bound app is frontmost. │
 ///     │    Stores only keys that diverge from the layer below.       │
 ///     ├──────────────────────────────────────────────────────────────┤
-///     │ 3. Named preset       (overlay; optional)                    │
+///     │ 3. Named profile       (overlay; optional)                    │
 ///     │    User-saved profile, also stores only diffs. Manually      │
 ///     │    selected or auto-activated by an app→profile binding.     │
 ///     ├──────────────────────────────────────────────────────────────┤
@@ -45,8 +45,8 @@ let settingsLogger = Logger(subsystem: "com.cyzor.mocktab", category: "settings"
 ///
 /// The class spans four files: this one holds every stored property (Swift
 /// extensions can't) plus init, per-device loading, and undo/redo, while the
-/// sibling `TabletSettings+*.swift` extensions hold preset handling
-/// (+Presets), per-app overrides and auto-switching (+AppOverrides), and the
+/// sibling `TabletSettings+*.swift` extensions hold profile handling
+/// (+Profiles), per-app overrides and auto-switching (+AppOverrides), and the
 /// UserDefaults layer (+Persistence). Everything runs on the main actor.
 @MainActor
 final class TabletSettings: ObservableObject {
@@ -898,10 +898,10 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    // MARK: - Presets
+    // MARK: - Profiles
 
     /// A named configuration snapshot.  `overriddenKeys` tracks which settings
-    /// the preset stores; all other keys fall through to device defaults.
+    /// the profile stores; all other keys fall through to device defaults.
     struct Profile: Identifiable, Codable, Equatable {
         var id: UUID = UUID()
         var name: String
@@ -944,7 +944,7 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    /// A mapping from one app (by bundle ID) to a preset.
+    /// A mapping from one app (by bundle ID) to a profile.
     /// Stored per device; used by app auto-switching.
     struct AppProfileBinding: Identifiable, Codable, Equatable {
         var id: String { bundleID }
@@ -998,25 +998,25 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    /// All presets saved for the current device.
+    /// All profiles saved for the current device.
     @Published var profiles: [Profile] = []
 
-    /// The currently active preset, or `nil` when using raw device settings.
+    /// The currently active profile, or `nil` when using raw device settings.
     @Published var activeProfile: (Profile?) = nil
 
-    /// How the current preset was activated — for status display only, not persisted.
+    /// How the current profile was activated — for status display only, not persisted.
     enum ActivationSource: Equatable {
         case manual
         case app(bundleID: String, name: String)
     }
     @Published var activationSource: ActivationSource = .manual
 
-    /// When true, switching the frontmost app automatically activates the bound preset.
+    /// When true, switching the frontmost app automatically activates the bound profile.
     @Published var autoSwitchEnabled: Bool = false {
         didSet { persist("autoSwitchEnabled", autoSwitchEnabled) }
     }
 
-    /// Per-app preset assignments for this device.
+    /// Per-app profile assignments for this device.
     @Published var appBindings: [AppProfileBinding] = []
 
     /// All per-app overrides registered for this device.

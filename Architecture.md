@@ -116,7 +116,7 @@ MockTab/
   Help/          The Help window's text, one file per language
 ```
 
-Swift extensions can't add stored properties, so a few large classes keep their data in the main file and split their behavior across extensions: `InputInjector` (pen, touch, tablet buttons and dials, and event posting) and `TabletSettings` (saving, presets, per-app settings).
+Swift extensions can't add stored properties, so a few large classes keep their data in the main file and split their behavior across extensions: `InputInjector` (pen, touch, tablet buttons and dials, and event posting) and `TabletSettings` (saving, profiles, per-app settings).
 
 ## Testing
 

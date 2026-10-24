@@ -1,8 +1,8 @@
 // Checks that ButtonBinding/TouchRingMode's machine-readable encodings
-// round-trip independent of the display label, since PresetExporter/
-// PresetImporter previously relied on `displayLabel` (a localized string)
+// round-trip independent of the display label, since ConfigurationExporter/
+// ConfigurationImporter previously relied on `displayLabel` (a localized string)
 // for import decoding — correct only when the app ran in English at both
-// export and import time. See PresetExporter.swift / PresetImporter.swift.
+// export and import time. See ConfigurationExporter.swift / ConfigurationImporter.swift.
 
 import CoreGraphics
 import Foundation
@@ -55,7 +55,7 @@ check(
 // MARK: - The actual bug this guards against: a foreign-language label must
 // not silently decode when a machine key is present (import prefers the key).
 
-// Simulates PresetImporter.decodeDeviceSettings' penButton1Key branch.
+// Simulates ConfigurationImporter.decodeDeviceSettings' penButton1Key branch.
 func decodePenButtonKeyBranch(key: String?, label: String) -> ButtonBinding {
     if let key, !key.isEmpty {
         return ButtonBinding.decode(key) ?? .none
@@ -83,7 +83,7 @@ for mode in TouchRingMode.allCases {
 check(TouchRingMode(rawValue: "Scrollen") == nil, "sanity check: a German label should not parse as a TouchRingMode rawValue")
 
 if failures == 0 {
-    print("All preset-locale checks passed.")
+    print("All configuration-locale checks passed.")
 } else {
     print("\(failures) check(s) failed.")
     exit(1)

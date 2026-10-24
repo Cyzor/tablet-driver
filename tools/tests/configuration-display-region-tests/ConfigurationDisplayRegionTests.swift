@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// PresetDisplayRegionTests.swift — Standalone checks for the displayRegion
-// preset-import backward compatibility added for tablet-driver#15.
+// ConfigurationDisplayRegionTests.swift — Standalone checks for the displayRegion
+// configuration-import backward compatibility added for tablet-driver#15.
 //
 // The app has no XCTest target, so these run as a small executable compiled
-// against the real PresetImporter.swift (decodeDeviceSettings/decodeStoredSettings)
+// against the real ConfigurationImporter.swift (decodeDeviceSettings/decodeStoredSettings)
 // plus a stand-in for the two types only `parse` (never called here) needs —
 // see StubTypes.swift for why. Run via
-// tools/tests/preset-display-region-tests/run.sh. Exits non-zero on failure.
+// tools/tests/configuration-display-region-tests/run.sh. Exits non-zero on failure.
 
 import Foundation
 
@@ -41,7 +41,7 @@ private func testDeviceSettingsMissingDisplayRegionStaysUnset() {
         "display": "primary"
     ]
     var values: [String: Any] = [:]
-    PresetImporter.decodeDeviceSettings(deviceSettings, into: &values)
+    ConfigurationImporter.decodeDeviceSettings(deviceSettings, into: &values)
     for key in ["displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight"] {
         expect(values[key] == nil, "\(key) must stay unset when the source file predates displayRegion")
     }
@@ -55,7 +55,7 @@ private func testDeviceSettingsDecodesDisplayRegion() {
         "displayRegion": ["x": 0.0, "y": 0.0, "width": 0.6667, "height": 1.0]
     ]
     var values: [String: Any] = [:]
-    PresetImporter.decodeDeviceSettings(deviceSettings, into: &values)
+    ConfigurationImporter.decodeDeviceSettings(deviceSettings, into: &values)
     expect(values["displayRegionX"] as? Double == 0.0, "displayRegionX round-trip")
     expect(values["displayRegionY"] as? Double == 0.0, "displayRegionY round-trip")
     expect(values["displayRegionWidth"] as? Double == 0.6667, "displayRegionWidth round-trip")
@@ -70,7 +70,7 @@ private func testDeviceSettingsRejectsInvalidDisplayRegion() {
         "displayRegion": ["x": 1.5, "y": -0.2, "width": 0.0, "height": Double.nan]
     ]
     var values: [String: Any] = [:]
-    PresetImporter.decodeDeviceSettings(deviceSettings, into: &values)
+    ConfigurationImporter.decodeDeviceSettings(deviceSettings, into: &values)
     for key in ["displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight"] {
         expect(values[key] == nil, "\(key) must be rejected when out of range or non-finite")
     }
@@ -86,11 +86,11 @@ private func testStoredSettingsRoundTripsDisplayRegion() {
         "displayRegionWidth": 0.5,
         "displayRegionHeight": 1.0
     ]
-    let values = PresetImporter.decodeStoredSettings(stored)
+    let values = ConfigurationImporter.decodeStoredSettings(stored)
     expect(values["displayRegionX"] as? Double == 0.25, "decodeStoredSettings displayRegionX")
     expect(values["displayRegionWidth"] as? Double == 0.5, "decodeStoredSettings displayRegionWidth")
 
-    let missing = PresetImporter.decodeStoredSettings(["activeAreaX": 0.1])
+    let missing = ConfigurationImporter.decodeStoredSettings(["activeAreaX": 0.1])
     for key in ["displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight"] {
         expect(missing[key] == nil, "decodeStoredSettings must leave \(key) absent when the source preset predates it")
     }
@@ -98,46 +98,46 @@ private func testStoredSettingsRoundTripsDisplayRegion() {
 
 /// New "span" string token decodes to the Span sentinel.
 private func testDecodeDisplaySpanToken() {
-    let idx = PresetImporter.decodeDisplay("span")
+    let idx = ConfigurationImporter.decodeDisplay("span")
     expect(idx == TabletSettings.displayModeSpan, "\"span\" must decode to displayModeSpan")
 }
 
 /// New dict form (mode + explicit displays list) decodes to the Span sentinel.
 private func testDecodeDisplaySpanDict() {
-    let idx = PresetImporter.decodeDisplay(["mode": "span", "displays": ["1", "2"]])
+    let idx = ConfigurationImporter.decodeDisplay(["mode": "span", "displays": ["1", "2"]])
     expect(idx == TabletSettings.displayModeSpan, "{mode: span} must decode to displayModeSpan")
 }
 
-/// Backward compatibility: old presets only ever emit "toggle" (string or
+/// Backward compatibility: old exports only ever emit "toggle" (string or
 /// dict form) — neither must ever decode to Span, since no old file
 /// contains the new "span" token.
 private func testDecodeDisplayToggleUnaffectedBySpanAddition() {
-    expect(PresetImporter.decodeDisplay("toggle") == TabletSettings.displayModeToggle,
+    expect(ConfigurationImporter.decodeDisplay("toggle") == TabletSettings.displayModeToggle,
            "\"toggle\" must still decode to displayModeToggle")
-    expect(PresetImporter.decodeDisplay(["mode": "toggle", "displays": ["1", "2"]]) == TabletSettings.displayModeToggle,
+    expect(ConfigurationImporter.decodeDisplay(["mode": "toggle", "displays": ["1", "2"]]) == TabletSettings.displayModeToggle,
            "{mode: toggle} must still decode to displayModeToggle, never Span")
 }
 
 private func testDecodeSpecificDisplayByUUID() {
     let v: [String: Any] = ["mode": "display", "index": 2, "uuid": "1552-41055-0", "name": "Studio"]
-    expect(PresetImporter.decodeDisplay(v) == 2, "display dict: index kept as fallback")
-    expect(PresetImporter.decodeDisplayUUID(v) == "1552-41055-0", "display dict: UUID decoded")
+    expect(ConfigurationImporter.decodeDisplay(v) == 2, "display dict: index kept as fallback")
+    expect(ConfigurationImporter.decodeDisplayUUID(v) == "1552-41055-0", "display dict: UUID decoded")
 }
 
 private func testDecodeLegacyDisplayHasNoUUID() {
-    expect(PresetImporter.decodeDisplay("display-2") == 2, "legacy display-N still decodes")
-    expect(PresetImporter.decodeDisplayUUID("display-2") == "", "legacy display-N: no UUID")
+    expect(ConfigurationImporter.decodeDisplay("display-2") == 2, "legacy display-N still decodes")
+    expect(ConfigurationImporter.decodeDisplayUUID("display-2") == "", "legacy display-N: no UUID")
 }
 
 private func testDecodeDisplaySetSkipsSessionNumbers() {
-    expect(PresetImporter.decodeDisplaySet(["mode": "toggle", "displays": ["1", "2"]]) == nil,
+    expect(ConfigurationImporter.decodeDisplaySet(["mode": "toggle", "displays": ["1", "2"]]) == nil,
            "old session display numbers are skipped")
-    expect(PresetImporter.decodeDisplaySet(["mode": "span", "displays": ["1-2-3", "4-5-6"]]) == "1-2-3,4-5-6",
+    expect(ConfigurationImporter.decodeDisplaySet(["mode": "span", "displays": ["1-2-3", "4-5-6"]]) == "1-2-3,4-5-6",
            "UUIDs carry through")
 }
 
 @main
-enum PresetDisplayRegionTestRunner {
+enum ConfigurationDisplayRegionTestRunner {
     static func main() {
         testDecodeSpecificDisplayByUUID()
         testDecodeLegacyDisplayHasNoUUID()

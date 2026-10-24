@@ -268,7 +268,7 @@ extension InfoView {
         }
     }
 
-    var presetLabel: String {
+    var profileLabel: String {
         guard let profile = settings.activeProfile else {
             return String(localized: "None (device defaults)", comment: "Profile row value when no profile is active")
         }
@@ -330,7 +330,7 @@ extension InfoView {
         lines += [String(localized: "Input Monitor  : \(inputMonitoringGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Input Monitoring permission")]
         lines += [String(localized: "Accessibility  : \(accessibilityGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Accessibility permission")]
         lines += [String(localized: "Launch at login: \(launchAtLogin ? String(localized: "enabled", comment: "Launch at login status") : String(localized: "disabled", comment: "Launch at login status"))", comment: "Diagnostic: Launch at login setting")]
-        lines += [String(localized: "Profile        : \(presetLabel)", comment: "Diagnostic: active profile name")]
+        lines += [String(localized: "Profile        : \(profileLabel)", comment: "Diagnostic: active profile name")]
 
         lines += [""]
         if conflicts.isEmpty {

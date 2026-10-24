@@ -5,7 +5,7 @@
 import AppKit
 
 /// Observes NSWorkspace app-activation events and tells TabletSettings to
-/// switch presets automatically when `autoSwitchEnabled` is true.
+/// switch profiles automatically when `autoSwitchEnabled` is true.
 ///
 /// Lives on @MainActor because TabletSettings is @MainActor; NSWorkspace
 /// notifications are always delivered on the main thread when the observer

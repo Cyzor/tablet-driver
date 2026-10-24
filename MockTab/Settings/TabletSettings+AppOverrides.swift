@@ -8,7 +8,7 @@ import SwiftUI
 
 // Per-app behavior, split out of TabletSettings.swift: auto-switching on
 // app focus, per-app override management and persistence, and the
-// app-to-preset binding persistence auto-switching consumes. The override
+// app-to-profile binding persistence auto-switching consumes. The override
 // stored state lives on the main class body (Swift class extensions can't
 // hold stored properties).
 extension TabletSettings {
@@ -16,9 +16,9 @@ extension TabletSettings {
     // MARK: - App auto-switching
 
     /// Called by `AppWatcher` on every app-focus change.
-    /// Switches to the bound preset for `bundleID`, or reverts to device defaults
+    /// Switches to the bound profile for `bundleID`, or reverts to device defaults
     /// if no binding exists.  No-ops when `autoSwitchEnabled` is false or the
-    /// desired preset is already active.
+    /// desired profile is already active.
     func handleAppActivation(bundleID: String, appName: String) {
         guard autoSwitchEnabled else { return }
         let target = appBindings.first(where: { $0.bundleID == bundleID })
@@ -249,7 +249,7 @@ extension TabletSettings {
 
     /// Imports a per-app override's settings from a backup.
     ///
-    /// Unlike presets (always a fresh UUID, so they can't collide with
+    /// Unlike profiles (always a fresh UUID, so they can't collide with
     /// existing data), overrides are identified by `bundleID` — importing one
     /// for an app that already has a local override is a genuine identity
     /// collision. Defaults to skipping (keeping the local override
@@ -257,7 +257,7 @@ extension TabletSettings {
     /// previously-overridden keys not present in the imported `values` are
     /// cleared first, so the result matches the imported override exactly
     /// rather than merging stale leftovers. Applies immediately — app
-    /// overrides are live, device-wide settings, not preset-scoped — and
+    /// overrides are live, device-wide settings, not profile-scoped — and
     /// respects the `appOverridesLoadFailed` fail-closed guard like every
     /// other override mutation.
     ///

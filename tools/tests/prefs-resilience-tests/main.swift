@@ -18,7 +18,7 @@
 //      degrading) when a required field is missing, which is the signal
 //      TabletSettings uses to block a save that would clobber unparseable
 //      newer-format data. See TabletSettings+Persistence.swift,
-//      TabletSettings+Presets.swift, TabletSettings+AppOverrides.swift —
+//      TabletSettings+Profiles.swift, TabletSettings+AppOverrides.swift —
 //      each save function is guarded by a `*LoadFailed` flag set only in
 //      this branch. That guard isn't exercised here because it lives on
 //      TabletSettings, which depends on TabletKit/AppKit runtime state and

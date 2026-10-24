@@ -6,7 +6,7 @@
 //
 // Mode lists are stored as Data and exported as embedded JSON. Older code
 // expected a JSON string, and older files carry neither, so all three shapes
-// are exercised here. Run via tools/tests/preset-rotary-tests/run.sh.
+// are exercised here. Run via tools/tests/configuration-rotary-tests/run.sh.
 
 import Foundation
 
@@ -42,7 +42,7 @@ private func decodedRotaries(_ values: [String: Any]) -> RotarySet? {
 }
 
 private func testStoredRotariesRoundTrip() {
-    let values = PresetImporter.decodeStoredSettings(["rotariesJSON": exported(twoDials)])
+    let values = ConfigurationImporter.decodeStoredSettings(["rotariesJSON": exported(twoDials)])
     guard let set = decodedRotaries(values) else {
         return expect(false, "rotariesJSON must import as decodable Data")
     }
@@ -53,7 +53,7 @@ private func testStoredRotariesRoundTrip() {
 }
 
 private func testStoredSlotsRoundTrip() {
-    let values = PresetImporter.decodeStoredSettings(["touchRingSlotsJSON": exported(slots([.rotate, .zoom]))])
+    let values = ConfigurationImporter.decodeStoredSettings(["touchRingSlotsJSON": exported(slots([.rotate, .zoom]))])
     let decoded = (values["touchRingSlotsJSON"] as? Data)
         .flatMap { try? JSONDecoder().decode([ControlSlot].self, from: $0) }
     expect(decoded?.map(\.action) == [.rotate, .zoom], "ring modes import as Data")
@@ -61,12 +61,12 @@ private func testStoredSlotsRoundTrip() {
 
 private func testStringFormAccepted() {
     let json = String(data: try! JSONEncoder().encode(slots([.scroll])), encoding: .utf8)!
-    let values = PresetImporter.decodeStoredSettings(["touchRingSlotsJSON": json])
+    let values = ConfigurationImporter.decodeStoredSettings(["touchRingSlotsJSON": json])
     expect(values["touchRingSlotsJSON"] is Data, "a JSON string still imports, stored as Data")
 }
 
 private func testMalformedRejected() {
-    let values = PresetImporter.decodeStoredSettings([
+    let values = ConfigurationImporter.decodeStoredSettings([
         "touchRingSlotsJSON": ["not": "a list"],
         "rotariesJSON": "{broken",
     ])
@@ -76,7 +76,7 @@ private func testMalformedRejected() {
 
 private func testOldFileLeavesDialsUnset() {
     var values: [String: Any] = [:]
-    PresetImporter.decodeDeviceSettings(["smoothing": 0.5], into: &values)
+    ConfigurationImporter.decodeDeviceSettings(["smoothing": 0.5], into: &values)
     for key in ["rotariesJSON", "touchRingSlotsJSON", "touchRingButtonBinding2",
                 "reverseRingDirection", "touchRingActiveSlotIndex2"] {
         expect(values[key] == nil, "\(key) stays unset for a file that predates it")
@@ -85,7 +85,7 @@ private func testOldFileLeavesDialsUnset() {
 
 private func testDeviceSettingsCarrySecondDial() {
     var values: [String: Any] = [:]
-    PresetImporter.decodeDeviceSettings([
+    ConfigurationImporter.decodeDeviceSettings([
         "rotaries": exported(twoDials),
         "touchRingButton2Key": ButtonBinding(kind: .ringCycle2).encoded,
         "reverseRingDirection": true,
@@ -108,8 +108,8 @@ testOldFileLeavesDialsUnset()
 testDeviceSettingsCarrySecondDial()
 
 if failures == 0 {
-    print("preset-rotary-tests: \(checks) checks passed")
+    print("configuration-rotary-tests: \(checks) checks passed")
     exit(0)
 }
-FileHandle.standardError.write(Data("preset-rotary-tests: \(failures) of \(checks) checks failed\n".utf8))
+FileHandle.standardError.write(Data("configuration-rotary-tests: \(failures) of \(checks) checks failed\n".utf8))
 exit(1)

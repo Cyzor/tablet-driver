@@ -621,7 +621,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// button bindings) are also reflected.
     ///
     /// Each install also drops the display mapper's cached calibration entry, so
-    /// every path that edits calibration — calibrate, clear, undo/redo, preset
+    /// every path that edits calibration — calibrate, clear, undo/redo, profile
     /// switch, import, reset — picks up the change without its own invalidate call.
     func observeInjectionSnapshot() {
         // Seed at once. Only on HIDThread: reports may already be arriving,

@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// StubTypes.swift — stand-ins so the real PresetImporter.swift typechecks
+// StubTypes.swift — stand-ins so the real ConfigurationImporter.swift typechecks
 // standalone, kept minimal on purpose.
 //
-// This harness only exercises PresetImporter.decodeDeviceSettings and
+// This harness only exercises ConfigurationImporter.decodeDeviceSettings and
 // .decodeStoredSettings (plain `static func`s operating on [String: Any]),
 // never .parse(_:registry:) — but Swift compiles a struct's body as one
 // unit, so `parse`'s signature must still typecheck even though these tests

@@ -9,7 +9,7 @@ import UniformTypeIdentifiers
 
 // MARK: - ProfilesView
 
-/// Full profile management view: preset list, create/rename, auto-switch, summary, and backup/restore.
+/// Full profile management view: profile list, create/rename, auto-switch, summary, and backup/restore.
 struct ProfilesView: View {
     @ObservedObject var settings: TabletSettings
     @ObservedObject var tabletManager: TabletManager
@@ -21,7 +21,7 @@ struct ProfilesView: View {
     // Create/rename state
     @State private var isCreating = false
     @State private var newName = ""
-    @State private var editingPreset: TabletSettings.Profile?
+    @State private var editingProfile: TabletSettings.Profile?
     @State private var editingName = ""
     @FocusState private var createFieldFocused: Bool
 
@@ -44,27 +44,27 @@ struct ProfilesView: View {
         ) {
             Section {
                 activeBanner
-                PresetListView(
+                ProfileListView(
                     profiles: settings.profiles,
                     activeProfile: settings.activeProfile,
                     appOverrides: settings.appOverrides,
-                    editingPreset: $editingPreset,
+                    editingProfile: $editingProfile,
                     editingName: $editingName,
                     onActivate: { settings.activate($0) },
-                    onDelete: { settings.deletePresetRecordingUndo($0) },
+                    onDelete: { settings.deleteProfileRecordingUndo($0) },
                     // Deferred a turn, as in the Devices pane: landing the field
                     // in the same turn as the gesture's own state changes loses
                     // the focus/select-all trigger in `.onAppear`.
                     onRenameBegin: { preset in
                         // Finder-style: starting one rename confirms another.
-                        if editingPreset != nil { commitRename() }
+                        if editingProfile != nil { commitRename() }
                         DispatchQueue.main.async {
-                            editingPreset = preset
+                            editingProfile = preset
                             editingName = preset.name
                         }
                     },
                     onRenameCommit: commitRename,
-                    onRenameCancel: { editingPreset = nil; editingName = "" }
+                    onRenameCancel: { editingProfile = nil; editingName = "" }
                 )
             } header: {
                 Text("Profiles").appFont(.headline)
@@ -98,7 +98,7 @@ struct ProfilesView: View {
         .onTapGesture {
             // Finder-style: a single click outside the field confirms any
             // rename in progress (an empty name reverts to the old one).
-            if editingPreset != nil { commitRename() }
+            if editingProfile != nil { commitRename() }
         }
         .onAppear { populateOfflineSettings() }
         .onChange(of: registry.knownTablets.count) { _ in populateOfflineSettings() }
@@ -235,7 +235,7 @@ struct ProfilesView: View {
             HStack(spacing: 12) {
                 BackupRestoreWell(
                     generateJSON: {
-                        PresetExporter(registry: registry, tabletManager: tabletManager).export()
+                        ConfigurationExporter(registry: registry, tabletManager: tabletManager).export()
                     },
                     onExport: saveExportToFile,
                     onImportData: handleImportData,
@@ -352,7 +352,7 @@ struct ProfilesView: View {
                         completion(data, nil)
                         return nil
                     }
-                    provider.suggestedName = PresetExporter.suggestedFileBaseName
+                    provider.suggestedName = ConfigurationExporter.suggestedFileBaseName
                     return provider
                 }
                 .contextMenu {
@@ -385,10 +385,10 @@ struct ProfilesView: View {
     }
 
     private func saveExportToFile() {
-        let exporter = PresetExporter(registry: registry, tabletManager: tabletManager)
+        let exporter = ConfigurationExporter(registry: registry, tabletManager: tabletManager)
         guard let data = exporter.export() else { return }
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = PresetExporter.suggestedFileBaseName
+        panel.nameFieldStringValue = ConfigurationExporter.suggestedFileBaseName
         panel.allowedContentTypes = [.json]
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
@@ -401,9 +401,9 @@ struct ProfilesView: View {
     private func handleImportData(_ data: Data) {
         importError = nil
         do {
-            let plan = try PresetImporter.parse(data, registry: registry)
+            let plan = try ConfigurationImporter.parse(data, registry: registry)
             pendingImport = plan
-        } catch let e as PresetImporter.ParseError {
+        } catch let e as ConfigurationImporter.ParseError {
             importError = e.localizedDescription
         } catch {
             importError = String(
@@ -434,7 +434,7 @@ struct ProfilesView: View {
         guard !trimmed.isEmpty else { return }
 
         let snap = settings.snapshot()
-        settings.saveAsPreset(name: trimmed)
+        settings.saveAsProfile(name: trimmed)
 
         if let newPreset = settings.profiles.last(where: { $0.name == trimmed }) {
             recordSaveProfile(created: newPreset, previousSnapshot: snap, name: trimmed)
@@ -445,17 +445,17 @@ struct ProfilesView: View {
     }
 
     /// Self-recursive so "Save Profile" also redoes: undoing deletes the
-    /// preset just created and restores the prior settings snapshot; that
-    /// closure then re-creates an equivalent preset (same name, new UUID —
+    /// profile just created and restores the prior settings snapshot; that
+    /// closure then re-creates an equivalent profile (same name, new UUID —
     /// exact identity isn't preserved, but the visible result is) and
     /// re-registers itself with the roles swapped, same shape as
     /// `TabletSettings.restoreSnapshot`.
     private func recordSaveProfile(created preset: TabletSettings.Profile, previousSnapshot snap: TabletSettings.FullSnapshot, name: String) {
         settings.record(String(localized: "Save Profile", comment: "Undo action name: creating a new named preset in the Profiles pane")) {
             let currentSnap = self.settings.snapshot()
-            self.settings.deletePreset(preset)
+            self.settings.deleteProfile(preset)
             self.settings.applySnapshot(snap)
-            self.settings.saveAsPreset(name: name)
+            self.settings.saveAsProfile(name: name)
             if let recreated = self.settings.profiles.last(where: { $0.name == name }) {
                 self.recordSaveProfile(created: recreated, previousSnapshot: currentSnap, name: name)
             }
@@ -463,35 +463,35 @@ struct ProfilesView: View {
     }
 
     private func commitRename() {
-        guard let preset = editingPreset else { return }
+        guard let preset = editingProfile else { return }
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty {
             let oldName = preset.name
             let presetID = preset.id
-            settings.renamePreset(preset, to: trimmed)
+            settings.renameProfile(preset, to: trimmed)
             // `Profile`'s Equatable compares every field (including `name`),
-            // and `renamePreset` looks its target up by value equality — so
+            // and `renameProfile` looks its target up by value equality — so
             // a stale captured `preset` (old name) would stop matching after
             // the first rename. Re-fetch the live profile by id each time
             // this fires, so repeated undo/redo cycles keep working.
             settings.recordToggle(String(localized: "Rename Profile", comment: "Undo action name: renaming a preset in the Profiles pane"), from: oldName, to: trimmed) { name in
                 guard let current = settings.profiles.first(where: { $0.id == presetID }) else { return }
-                settings.renamePreset(current, to: name)
+                settings.renameProfile(current, to: name)
             }
         }
-        editingPreset = nil
+        editingProfile = nil
     }
 }
 
-// MARK: - PresetListView
+// MARK: - ProfileListView
 
-/// Isolated preset list: only re-evaluates body when profiles, activeProfile, or appOverrides
+/// Isolated profile list: only re-evaluates body when profiles, activeProfile, or appOverrides
 /// change — insulated from 133 Hz driver updates and unrelated ProfilesView state changes.
-private struct PresetListView: View {
+private struct ProfileListView: View {
     let profiles: [TabletSettings.Profile]
     let activeProfile: TabletSettings.Profile?
     let appOverrides: [TabletSettings.AppOverride]
-    @Binding var editingPreset: TabletSettings.Profile?
+    @Binding var editingProfile: TabletSettings.Profile?
     @Binding var editingName: String
     let onActivate: (TabletSettings.Profile) -> Void
     let onDelete: (TabletSettings.Profile) -> Void
@@ -514,16 +514,16 @@ private struct PresetListView: View {
                 .padding(.vertical, 4)
             } else {
                 ForEach(profiles, id: \.id) { preset in
-                    presetRow(preset)
+                    profileRow(preset)
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func presetRow(_ preset: TabletSettings.Profile) -> some View {
+    private func profileRow(_ preset: TabletSettings.Profile) -> some View {
         let isActive = activeProfile?.id == preset.id
-        let isEditing = editingPreset?.id == preset.id
+        let isEditing = editingProfile?.id == preset.id
 
         HStack(spacing: 10) {
             Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
@@ -572,7 +572,7 @@ private struct PresetListView: View {
             }
 
             if !preset.overriddenKeys.isEmpty {
-                appBindingsForPreset(preset)
+                appBindingsForProfile(preset)
             }
 
             RowActionsMenu(accessibilityLabel: "Profile actions", subject: preset.name) {
@@ -607,7 +607,7 @@ private struct PresetListView: View {
             Label("Delete", systemImage: "trash")
         }
         .disabled(preset.name == "Default")
-        // `onDelete` is `deletePresetRecordingUndo`, which snapshots the
+        // `onDelete` is `deleteProfileRecordingUndo`, which snapshots the
         // profile's stored values, its list position, and any app bindings
         // that referenced it — so this genuinely undoes and redoes. The
         // tooltip said "cannot be undone" through 2026-09, which was simply
@@ -624,7 +624,7 @@ private struct PresetListView: View {
     }
 
     @ViewBuilder
-    private func appBindingsForPreset(_ preset: TabletSettings.Profile) -> some View {
+    private func appBindingsForProfile(_ preset: TabletSettings.Profile) -> some View {
         let overrideApps = appOverrides.filter {
             $0.overriddenKeys.intersection(preset.overriddenKeys).isEmpty == false
         }
