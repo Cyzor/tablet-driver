@@ -666,14 +666,21 @@ struct TabletAreaView: View {
             layer.clip(to: clipPath)
             layer.fill(badgePath, with: .color(.black.opacity(0.42)))
 
+            // Drawn in the rects they were measured in: drawn at a point, a
+            // name too wide for the area stayed on one line and ran past
+            // the badge, which was sized for it wrapped.
+            func lineRect(_ size: CGSize, centerY: CGFloat) -> CGRect {
+                let w = size.width.rounded(.up) + 1
+                return CGRect(x: areaRect.midX - w / 2, y: centerY - size.height / 2, width: w, height: size.height)
+            }
             if twoLines, let r2 = line2Resolved {
-                let y1 = areaRect.midY - (gap / 2 + s1.height / 2)
-                let y2 = areaRect.midY + (gap / 2 + s2.height / 2)
-                layer.draw(line1Resolved, at: CGPoint(x: areaRect.midX, y: y1), anchor: .center)
-                layer.draw(r2,            at: CGPoint(x: areaRect.midX, y: y2), anchor: .center)
+                let top = areaRect.midY - textH / 2
+                let y1 = top + s1.height / 2
+                let y2 = top + s1.height + gap + s2.height / 2
+                layer.draw(line1Resolved, in: lineRect(s1, centerY: y1))
+                layer.draw(r2, in: lineRect(s2, centerY: y2))
             } else {
-                layer.draw(line1Resolved, at: CGPoint(x: areaRect.midX, y: areaRect.midY),
-                           anchor: .center)
+                layer.draw(line1Resolved, in: lineRect(s1, centerY: areaRect.midY))
             }
         }
     }
