@@ -618,6 +618,17 @@ extension InputInjector {
         finalizeAndPost(m)
     }
 
+    /// The pen a tool code belongs to: an eraser end's own code maps to its
+    /// tip's, so both ends of one pen get the same type and unique ID
+    /// whichever end was announced last.
+    private static let tipCodeForEraser: [UInt16: UInt16] = Dictionary(
+        ToolCatalog.allTools.values.compactMap { spec in spec.eraserToolCode.map { ($0, spec.toolCode) } },
+        uniquingKeysWith: { first, _ in first })
+
+    static func penCode(_ toolCode: UInt16) -> UInt16 {
+        tipCodeForEraser[toolCode] ?? toolCode
+    }
+
     private func stampProximityFields(_ e: CGEvent, entering: Bool, eraser: Bool) {
         e.setIntegerValueField(
             .tabletProximityEventVendorID,
@@ -635,7 +646,7 @@ extension InputInjector {
         // Wacom sends each pen's serial; both ends share it, and the unique
         // ID below tells them apart. Photoshop, Krita, and Rebelle don't key
         // tool settings on it.
-        let toolCode = activeToolCode
+        let toolCode = Self.penCode(activeToolCode)
         if activeToolSerial != 0 {
             e.setIntegerValueField(
                 .tabletProximityEventVendorPointerSerialNumber,
