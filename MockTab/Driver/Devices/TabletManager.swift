@@ -202,7 +202,11 @@ final class TabletManager: ObservableObject {
     func context(forKey key: DeviceInstanceKey?) -> DeviceContext? {
         guard let key else { return nil }
         if !key.instance.isEmpty {
-            return deviceContexts[key]
+            if let exact = deviceContexts[key] { return exact }
+            // The claimed unit connects over Bluetooth without its serial,
+            // under the empty instance its key normalizes to.
+            let normalized = DeviceRegistry.shared.normalizedKey(key)
+            return normalized.instance.isEmpty ? deviceContexts[normalized] : nil
         }
         return contexts[key.productID]
     }
