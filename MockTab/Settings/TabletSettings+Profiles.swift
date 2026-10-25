@@ -18,13 +18,12 @@ extension TabletSettings {
         "\(devicePrefix)preset-\(profile.id.uuidString)."
     }
 
-    /// Activates `profile` (or pass `nil` to revert to raw device settings).
-    /// Marks the source as `.manual` and republishes all settings values.
+    /// Activates `profile` (or pass `nil` to revert to raw device settings)
+    /// and republishes all settings values.
     func activate(_ profile: Profile?) {
         activeProfile = profile
         saveActiveProfileID()
         reloadAll()
-        activationSource = .manual
     }
 
     /// Snapshots the current in-memory settings into a new profile, saves it,
@@ -207,16 +206,12 @@ extension TabletSettings {
         "rotariesJSON",
     ]
 
-    /// Deletes `profile` and all its stored values, and any app bindings
-    /// pointing to it. If it was active, reverts to device defaults.
+    /// Deletes `profile` and all its stored values. If it was active, reverts
+    /// to device defaults.
     func deleteProfile(_ profile: Profile) {
         let prefix = profileKeyPrefix(profile)
         for key in Self.profileSettingKeys { ud.removeObject(forKey: prefix + key) }
         profiles.removeAll { $0.id == profile.id }
-        // Remove app bindings that referenced this profile.
-        let before = appBindings.count
-        appBindings.removeAll { $0.profileID == profile.id }
-        if appBindings.count != before { saveAppBindings() }
         if activeProfile?.id == profile.id {
             activate(nil)
         } else {
@@ -228,10 +223,9 @@ extension TabletSettings {
     /// registers no undo — it's a low-level primitive reused by import/
     /// save-profile flows that already handle their own undo. This is the
     /// entry point for a user-initiated delete (e.g. the trash button):
-    /// snapshots the profile's stored values, its position in the list, and
-    /// any app bindings pointing to it, so undo restores it exactly and a
-    /// subsequent redo deletes it again — self-recursive, same idiom as
-    /// everywhere else in this file.
+    /// snapshots the profile's stored values and its position in the list,
+    /// so undo restores it exactly and a subsequent redo deletes it again —
+    /// self-recursive, same idiom as everywhere else in this file.
     func deleteProfileRecordingUndo(_ profile: Profile) {
         let prefix = profileKeyPrefix(profile)
         var snapshot: [String: Any] = [:]
@@ -239,7 +233,6 @@ extension TabletSettings {
             if let v = ud.object(forKey: prefix + key) { snapshot[key] = v }
         }
         let index = profiles.firstIndex(where: { $0.id == profile.id })
-        let affectedBindings = appBindings.filter { $0.profileID == profile.id }
         let wasActive = activeProfile?.id == profile.id
 
         deleteProfile(profile)
@@ -254,10 +247,6 @@ extension TabletSettings {
                 self.profiles.append(restored)
             }
             for (key, value) in snapshot { self.ud.set(value, forKey: prefix + key) }
-            if !affectedBindings.isEmpty {
-                self.appBindings.append(contentsOf: affectedBindings)
-                self.saveAppBindings()
-            }
             self.saveProfileList()
             if wasActive {
                 self.activeProfile = restored
@@ -350,7 +339,6 @@ extension TabletSettings {
         var touchRingActiveSlotIndex: Int
         var touchRingActiveSlotIndex2: Int
         var rotaries: RotarySet
-        var autoSwitchEnabled: Bool
     }
 
     /// Creates a snapshot of all current settings values.
@@ -380,8 +368,7 @@ extension TabletSettings {
             touchRingSlots: touchRingSlots,
             touchRingActiveSlotIndex: touchRingActiveSlotIndex,
             touchRingActiveSlotIndex2: touchRingActiveSlotIndex2,
-            rotaries: rotaries,
-            autoSwitchEnabled: autoSwitchEnabled)
+            rotaries: rotaries)
     }
 
     /// Applies a previously captured snapshot, registering undo for the prior state.
@@ -423,7 +410,6 @@ extension TabletSettings {
         touchRingActiveSlotIndex = snap.touchRingActiveSlotIndex
         touchRingActiveSlotIndex2 = snap.touchRingActiveSlotIndex2
         rotaries = snap.rotaries
-        autoSwitchEnabled = snap.autoSwitchEnabled
     }
 
     // MARK: - Profile import / export

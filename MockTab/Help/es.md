@@ -210,8 +210,6 @@ Si otro controlador de tabletas, como el controlador oficial de Wacom, se ejecut
 
 Un perfil es una instantánea de la configuración de la tableta: área activa, curva de presión, asignaciones de botones y mapeo de pantalla. Al cambiar de perfil, todos esos ajustes se aplican de inmediato.
 
-**Cambio automático** – Cambia automáticamente al perfil correspondiente en cuanto se conecta su tableta.
-
 ## Crear y renombrar
 
 Haz clic en **Crear perfil** para guardar la configuración actual como un perfil nuevo. Haz doble clic en el nombre de un perfil para cambiarlo.

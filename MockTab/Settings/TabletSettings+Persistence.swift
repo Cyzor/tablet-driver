@@ -62,7 +62,6 @@ extension TabletSettings {
         touchRingActiveSlotIndex2 = loadInt("touchRingActiveSlotIndex2", default: 0)
         loadRotaries(controlCount: rotaries.controls.count)
         reverseRingDirection = loadBool("reverseRingDirection", default: false)
-        autoSwitchEnabled = loadBool("autoSwitchEnabled", default: false)
         invertRotation = loadBool("invertRotation", default: false)
         penDeadBand = Swift.max(-1, Swift.min(loadInt("penDeadBand", default: -1), 40))
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)

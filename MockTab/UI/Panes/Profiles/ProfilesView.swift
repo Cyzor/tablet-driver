@@ -75,11 +75,6 @@ struct ProfilesView: View {
                 Text("New Profile").appFont(.headline)
             }
             Section {
-                autoSwitchSection
-            } header: {
-                Text("Auto-Switch").appFont(.headline)
-            }
-            Section {
                 ConfigurationSummaryView(
                     tablets: registry.knownTablets,
                     tabletManager: tabletManager,
@@ -194,27 +189,6 @@ struct ProfilesView: View {
                 .buttonStyle(.bordered)
                 .help("Save the current settings as a new profile")
             }
-        }
-    }
-
-    // MARK: - Auto-Switch Section
-
-    @ViewBuilder
-    private var autoSwitchSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle(
-                String(
-                    localized:
-                        "Automatically switch to the matching profile when this tablet connects",
-                    comment: "Toggle: auto-activate profile when tablet connects"),
-                isOn: settings.recordingBinding(
-                    String(localized: "Auto-Switch"),
-                    get: { settings.autoSwitchEnabled },
-                    set: { settings.autoSwitchEnabled = $0 }
-                )
-            )
-            .appFont(.settingsLabel)
-            .help("Restore the active profile automatically when this tablet is connected")
         }
     }
 
@@ -572,7 +546,7 @@ private struct ProfileListView: View {
             }
 
             if !preset.overriddenKeys.isEmpty {
-                appBindingsForProfile(preset)
+                overrideAppsForProfile(preset)
             }
 
             RowActionsMenu(accessibilityLabel: "Profile actions", subject: preset.name) {
@@ -608,8 +582,8 @@ private struct ProfileListView: View {
         }
         .disabled(preset.name == "Default")
         // `onDelete` is `deleteProfileRecordingUndo`, which snapshots the
-        // profile's stored values, its list position, and any app bindings
-        // that referenced it, so deleting really is undoable.
+        // profile's stored values and its list position, so deleting really
+        // is undoable.
         .help("Delete this profile (undoable).")
     }
 
@@ -622,7 +596,7 @@ private struct ProfileListView: View {
     }
 
     @ViewBuilder
-    private func appBindingsForProfile(_ preset: TabletSettings.Profile) -> some View {
+    private func overrideAppsForProfile(_ preset: TabletSettings.Profile) -> some View {
         let overrideApps = appOverrides.filter {
             $0.overriddenKeys.intersection(preset.overriddenKeys).isEmpty == false
         }

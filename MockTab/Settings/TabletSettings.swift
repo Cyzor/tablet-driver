@@ -68,7 +68,6 @@ final class TabletSettings: ObservableObject {
     /// Cleared as soon as that blob is next saved successfully.
     var profileListLoadFailed = false
     var appOverridesLoadFailed = false
-    var appBindingsLoadFailed = false
     var pressureCurveLoadFailed = false
     var touchRingSlotsLoadFailed = false
     /// Separate from `touchRingSlotsLoadFailed` so an unreadable
@@ -944,15 +943,6 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    /// A mapping from one app (by bundle ID) to a profile.
-    /// Stored per device; used by app auto-switching.
-    struct AppProfileBinding: Identifiable, Codable, Equatable {
-        var id: String { bundleID }
-        var bundleID: String
-        var appName: String  // display name captured at bind time
-        var profileID: UUID
-    }
-
     /// A per-app function override.  Stores only keys that differ from the device
     /// baseline (or any active named profile).  Applied automatically whenever the
     /// registered application is frontmost — no toggle required.
@@ -1004,21 +994,6 @@ final class TabletSettings: ObservableObject {
     /// The currently active profile, or `nil` when using raw device settings.
     @Published var activeProfile: (Profile?) = nil
 
-    /// How the current profile was activated — for status display only, not persisted.
-    enum ActivationSource: Equatable {
-        case manual
-        case app(bundleID: String, name: String)
-    }
-    @Published var activationSource: ActivationSource = .manual
-
-    /// When true, switching the frontmost app automatically activates the bound profile.
-    @Published var autoSwitchEnabled: Bool = false {
-        didSet { persist("autoSwitchEnabled", autoSwitchEnabled) }
-    }
-
-    /// Per-app profile assignments for this device.
-    @Published var appBindings: [AppProfileBinding] = []
-
     /// All per-app overrides registered for this device.
     @Published var appOverrides: [AppOverride] = []
 
@@ -1057,7 +1032,6 @@ final class TabletSettings: ObservableObject {
         if let pid = productID {
             devicePrefix = DeviceInstanceClaims.prefix(productID: pid)
             loadProfileList()
-            loadAppBindings()
             loadAppOverrides()
         }
         activeTool = ToolSettings(prefix: devicePrefix)
@@ -1098,13 +1072,11 @@ final class TabletSettings: ObservableObject {
         // Clear undo stack to prevent cross-device undo entries
         undoManager?.removeAllActions()
         loadProfileList()
-        loadAppBindings()
         loadAppOverrides()
         driverOverride = nil
         activeAppOverride = nil
         activeTool.overridePrefix = nil
         reloadAll()
-        activationSource = .manual
     }
 
     // MARK: - Undo/Redo support

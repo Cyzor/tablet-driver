@@ -212,8 +212,6 @@ If another tablet driver (such as the official Wacom driver) runs at the same ti
 
 A profile is a snapshot of tablet settings: active area, pressure curve, button assignments, and display mapping. Switching profiles applies all of these settings immediately.
 
-**Auto-Switch** – Automatically switches to the matching profile when its tablet connects.
-
 ## Creating and Renaming
 
 Click **Create Profile** to capture the current settings. Double-click a profile name to rename it.

@@ -132,16 +132,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func profileMenuTitle(settings: TabletSettings) -> String {
-        switch settings.activationSource {
-        case .manual:
-            return String(
-                localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")",
-                comment: "Menu label showing current active profile")
-        case .app(_, let appName):
-            return String(
-                localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")  (\(appName))",
-                comment: "Menu label showing current active profile and triggering app")
-        }
+        String(
+            localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")",
+            comment: "Menu label showing current active profile")
     }
 
     private func buildProfileSubmenu(settings: TabletSettings) -> NSMenu {

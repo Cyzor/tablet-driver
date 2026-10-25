@@ -212,8 +212,6 @@ Wenn gleichzeitig ein anderer Grafiktablett-Treiber läuft, etwa der offizielle 
 
 Ein Profil ist eine Momentaufnahme der Grafiktablett-Einstellungen: aktiver Bereich, Druckkurve, Tastenbelegungen und Display-Mapping. Beim Wechseln eines Profils werden all diese Einstellungen sofort angewendet.
 
-**Automatisches Umschalten** – Wechselt automatisch zum passenden Profil, sobald dessen Grafiktablett verbunden wird.
-
 ## Erstellen und Umbenennen
 
 Klicke auf **Profil erstellen**, um die aktuellen Einstellungen als neues Profil zu speichern. Mit einem Doppelklick auf einen Profilnamen kannst du ihn umbenennen.

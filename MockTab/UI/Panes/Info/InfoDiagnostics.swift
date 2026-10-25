@@ -266,12 +266,7 @@ extension InfoView {
         guard let profile = settings.activeProfile else {
             return String(localized: "None (device defaults)", comment: "Profile row value when no profile is active")
         }
-        switch settings.activationSource {
-        case .manual:
-            return "\(profile.name)"
-        case .app(_, let appName):
-            return "\(profile.name)  \(String(localized: "(Auto: \(appName))", comment: "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'"))"
-        }
+        return profile.name
     }
 
     /// Builds a snapshot of diagnostic text as of the moment it's called.

@@ -6,31 +6,10 @@ import AppKit
 import Foundation
 import SwiftUI
 
-// Per-app behavior: auto-switching on app focus, per-app override management and persistence, and the
-// app-to-profile binding persistence auto-switching consumes. The override
-// stored state lives on the main class body (Swift class extensions can't
-// hold stored properties).
+// Per-app override management and persistence. The override stored state
+// lives on the main class body (Swift class extensions can't hold stored
+// properties).
 extension TabletSettings {
-
-    // MARK: - App auto-switching
-
-    /// Called by `AppWatcher` on every app-focus change.
-    /// Switches to the bound profile for `bundleID`, or reverts to device defaults
-    /// if no binding exists.  No-ops when `autoSwitchEnabled` is false or the
-    /// desired profile is already active.
-    func handleAppActivation(bundleID: String, appName: String) {
-        guard autoSwitchEnabled else { return }
-        let target = appBindings.first(where: { $0.bundleID == bundleID })
-            .flatMap { b in profiles.first { $0.id == b.profileID } }
-        if target?.id != activeProfile?.id {
-            activeProfile = target
-            saveActiveProfileID()
-            reloadAll()
-        }
-        // Set only on a change: every publish rebuilds each tablet's snapshot.
-        let source = ActivationSource.app(bundleID: bundleID, name: appName)
-        if activationSource != source { activationSource = source }
-    }
 
     // MARK: - App override management
 
@@ -366,36 +345,5 @@ extension TabletSettings {
         }
         appOverridesLoadFailed = false
         appOverrides = list
-    }
-
-    // MARK: - App binding persistence
-
-    private var appBindingsKey: String { devicePrefix + "_appBindings" }
-
-    func saveAppBindings() {
-        guard !appBindingsLoadFailed else {
-            settingsLogger.error("Refusing to save app bindings: last load couldn't parse existing data")
-            return
-        }
-        guard let data = try? JSONEncoder().encode(appBindings) else { return }
-        ud.set(data, forKey: appBindingsKey)
-    }
-
-    func loadAppBindings() {
-        guard let data = ud.data(forKey: appBindingsKey) else {
-            appBindingsLoadFailed = false
-            appBindings = []
-            return
-        }
-        guard let list = try? JSONDecoder().decode([AppProfileBinding].self, from: data) else {
-            // Data exists but this build can't parse it — likely a newer
-            // version's format. Don't let a later save clobber it.
-            appBindingsLoadFailed = true
-            settingsLogger.error("App binding data exists but failed to decode; blocking overwrite")
-            appBindings = []
-            return
-        }
-        appBindingsLoadFailed = false
-        appBindings = list
     }
 }
