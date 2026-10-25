@@ -101,6 +101,7 @@ extension InputInjector {
             snap: snap, settings: settings, tool: tool)
         lastTipDown = tipDown
         if !tipDown { syncBarrelEraser(at: screenPoint) }
+        if !tipDown, proximityOwedToFrontApp { reannounceProximity() }
 
         dispatchPenButtons(point: point, at: screenPoint, snap: snap, settings: settings, tool: tool)
 
@@ -644,6 +645,7 @@ extension InputInjector {
         activeToolIsEraser = false
         lastEraserMode = false
         barrelEraserActive = false
+        proximityOwedToFrontApp = false
         // The release below supersedes it.
         tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         tipUpDebounceTimer = nil

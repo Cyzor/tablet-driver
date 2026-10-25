@@ -208,15 +208,27 @@ extension InputInjector {
             self?.touchMomentumTail.stop()
             // Proximity goes to the frontmost app, so one brought forward with
             // the pen already in range never saw it arrive. Rebelle then paints
-            // the pen as a mouse, at full pressure, until it leaves and returns.
-            // Not mid-stroke: the stroke's own app keeps it.
-            if let self, self.lastProximity, !self.lastTipDown, !self.activeToolIsMouse {
-                let eraser = self.shimLastPoint?.eraser ?? self.activeToolIsEraser
-                self.postProximityEvent(entering: false, at: self.shimLastScreen, eraser: eraser)
-                self.postProximityEvent(entering: true, at: self.shimLastScreen, eraser: eraser)
+            // the pen as a mouse, or with the other end's brush, until it leaves
+            // and returns. A click that brings the app forward is mid-stroke, and
+            // the stroke's own app keeps it, so that one waits for tip-up.
+            if let self, self.lastProximity, !self.activeToolIsMouse {
+                if self.lastTipDown {
+                    self.proximityOwedToFrontApp = true
+                } else {
+                    self.reannounceProximity()
+                }
             }
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
+    }
+
+    /// Leaves and re-enters proximity in place, so the frontmost app learns
+    /// which pen end is in range.
+    func reannounceProximity() {
+        proximityOwedToFrontApp = false
+        let eraser = shimLastPoint?.eraser ?? activeToolIsEraser
+        postProximityEvent(entering: false, at: shimLastScreen, eraser: eraser)
+        postProximityEvent(entering: true, at: shimLastScreen, eraser: eraser)
     }
 
     /// Post a finished event. Callers set flags: `currentEventFlags` for state

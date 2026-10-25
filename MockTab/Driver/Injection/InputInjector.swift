@@ -335,6 +335,9 @@ final class InputInjector: @unchecked Sendable {
     private let _proximityForMain = OSAllocatedUnfairLock<Bool>(initialState: false)
     var proximityForMain: Bool { _proximityForMain.withLock { $0 } }
     var lastTipDown = false
+    /// The front app changed mid-stroke, so the pen's proximity still has to
+    /// reach it; sent at tip-up.
+    var proximityOwedToFrontApp = false
     /// True after the first leftMouseDragged is posted following a tip-down.
     /// Used to guarantee Pages sees at least one drag event even when deltas are tiny.
     var didEmitDragSinceDown = false
