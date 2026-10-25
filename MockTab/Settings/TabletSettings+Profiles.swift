@@ -271,7 +271,7 @@ extension TabletSettings {
             activeProfile = nil
             return
         }
-        guard let list = try? JSONDecoder().decode([Profile].self, from: data) else {
+        guard var list = try? JSONDecoder().decode([Profile].self, from: data) else {
             // Data exists but this build can't parse it — likely a newer
             // version's format. Don't let a later save clobber it.
             profileListLoadFailed = true
@@ -281,6 +281,8 @@ extension TabletSettings {
             return
         }
         profileListLoadFailed = false
+        // The retired Auto-Switch toggle saved into the selected profile.
+        for i in list.indices { list[i].overriddenKeys.remove("autoSwitchEnabled") }
         profiles = list
         if let uuidStr = ud.string(forKey: activeProfileIDKey),
             let uuid = UUID(uuidString: uuidStr),

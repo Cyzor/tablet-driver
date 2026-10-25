@@ -335,7 +335,7 @@ extension TabletSettings {
             appOverrides = []
             return
         }
-        guard let list = try? JSONDecoder().decode([AppOverride].self, from: data) else {
+        guard var list = try? JSONDecoder().decode([AppOverride].self, from: data) else {
             // Data exists but this build can't parse it — likely a newer
             // version's format. Don't let a later save clobber it.
             appOverridesLoadFailed = true
@@ -344,6 +344,8 @@ extension TabletSettings {
             return
         }
         appOverridesLoadFailed = false
+        // The retired Auto-Switch toggle saved into the selected override.
+        for i in list.indices { list[i].overriddenKeys.remove("autoSwitchEnabled") }
         appOverrides = list
     }
 }
