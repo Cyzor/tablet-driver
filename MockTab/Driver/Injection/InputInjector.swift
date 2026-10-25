@@ -649,8 +649,6 @@ final class InputInjector: @unchecked Sendable {
     /// flickers for a frame or two at the edge. No hand can release and re-press
     /// in ~15 ms, so bridging that window reads intent. Kept small so a real
     /// double-tap (~120 ms) stays two clicks; a 0.15–0.25 s window felt sticky.
-    /// Tune live:
-    ///   defaults write <bundle-id> MockTabXencelabsButtonDebounceMS 60
     var button1UpDebounceTimer: CFRunLoopTimer?
     var button2UpDebounceTimer: CFRunLoopTimer?
     var button3UpDebounceTimer: CFRunLoopTimer?
@@ -659,10 +657,7 @@ final class InputInjector: @unchecked Sendable {
     /// is committing; 0 otherwise. Pan View reads it to judge momentum from the
     /// real release (`PanScrollTracker.disengage(backdate:)`).
     var pendingButtonUpBackdate: TimeInterval = 0
-    let buttonUpDebounceInterval: TimeInterval = {
-        let ms = UserDefaults.standard.integer(forKey: "MockTabXencelabsButtonDebounceMS")
-        return ms > 0 ? Double(ms) / 1000.0 : 0.05
-    }()
+    let buttonUpDebounceInterval: TimeInterval = 0.05
 
     /// Tip chatter debounce for any device, gated on Steadiness. Press is
     /// immediate; a release waits, and a re-press cancels it. Scales from 0 to
