@@ -121,7 +121,10 @@ struct DevicesView: View {
         }
         .onAppear { syncTools() }
         .onChange(of: focusedTabletID) { id in
-            guard let tablet = registry.knownTablets.first(where: { $0.id == id }) else { return }
+            // The rename field focusing inside its own row reports here too;
+            // selecting would commit the rename the moment it opens.
+            guard id != editingTabletID,
+                let tablet = registry.knownTablets.first(where: { $0.id == id }) else { return }
             selectTablet(tablet)
         }
         .onChange(of: tabletManager.connectedProductIDs) { _ in
