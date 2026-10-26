@@ -467,17 +467,21 @@ final class CaptureSessionCoordinator: ObservableObject {
                 // still up, so packaging at dismiss time would zip a log
                 // that hadn't been flushed yet.
                 let rawLogURL = self.onFinalizeRawCapture?()
-                let packaged = DiagnosticPackage.build(
-                    summaryURL: summaryURL, rawLogURL: rawLogURL,
-                    productID: result.deviceInfo.productID)
+                let productID = result.deviceInfo.productID
+                // Off main: packaging copies files and waits for ditto.
+                let packaged = await Task.detached(priority: .utility) {
+                    let packaged = DiagnosticPackage.build(
+                        summaryURL: summaryURL, rawLogURL: rawLogURL, productID: productID)
+                    if packaged != nil {
+                        // Only once the archive holds them.
+                        try? FileManager.default.removeItem(at: summaryURL)
+                        if let rawLogURL { try? FileManager.default.removeItem(at: rawLogURL) }
+                    }
+                    return packaged
+                }.value
                 // Falls back to the loose summary when packaging fails, so a
                 // zip problem can never cost the user their capture.
                 self.savedURL = packaged ?? summaryURL
-                if packaged != nil {
-                    // Only once the archive holds them.
-                    try? FileManager.default.removeItem(at: summaryURL)
-                    if let rawLogURL { try? FileManager.default.removeItem(at: rawLogURL) }
-                }
             }
         }
         // Everything past this tablet's own interfaces was swept up for
