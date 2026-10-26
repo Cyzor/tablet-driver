@@ -106,8 +106,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             title: String(localized: "Launch at Login", comment: "Menu toggle: start app automatically on login"),
             action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         loginItem.target = self
-        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        // The cached state; reading the service here would hold the menu open.
+        loginItem.state = InfoView.knownLaunchAtLogin ? .on : .off
         menu.addItem(loginItem)
+        Task { _ = await InfoView.readLaunchAtLogin() }
 
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
             ? true
@@ -181,15 +183,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggleLaunchAtLogin() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
-        } catch {
-            // Leave the toggle reflecting the actual (unchanged) status; it's
-            // re-read fresh from SMAppService on the next menu open.
+        Task {
+            await Task.detached {
+                // On failure the status stays as it was; the re-read below shows that.
+                if SMAppService.mainApp.status == .enabled {
+                    try? SMAppService.mainApp.unregister()
+                } else {
+                    try? SMAppService.mainApp.register()
+                }
+            }.value
+            _ = await InfoView.readLaunchAtLogin()
         }
     }
 
