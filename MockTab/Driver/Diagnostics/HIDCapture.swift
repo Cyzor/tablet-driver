@@ -29,7 +29,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 /// Thread safety: `record(...)` runs on HIDThread; `start/stop/clear/
 /// flushIfDue` and the published reads run on main. State is guarded by one
 /// unfair lock.
-final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush timer is main-only
+final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush timer and condenser are main-only
 
     static let shared = HIDCapture()
     private init() {}
@@ -137,8 +137,6 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         /// Destination file, fixed at `start()`.
         var fileURL: URL?
         var lastFlushAt: Date = .init()
-        /// Carries run continuity across flush boundaries.
-        var condenser = Condenser()
         var headerWritten = false
         var lastSample: LiveSample?
     }
@@ -150,6 +148,11 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// `self`, not `state`'s lock (`Timer` isn't `Sendable`); only touched
     /// from main.
     private var backgroundFlushTimer: Timer?
+
+    /// Carries run continuity across flush boundaries. Main-only, outside
+    /// `state`'s lock: condensing formats thousands of lines, and `record()`
+    /// on HIDThread would wait for it.
+    private var condenser = Condenser()
 
     var isCapturing: Bool { state.withLock { $0.isCapturing } }
     var reportCount: Int { state.withLock { $0.reportCount } }
@@ -170,11 +173,11 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             $0.startTime = Date()
             $0.fileURL = url
             $0.lastFlushAt = Date()
-            $0.condenser = Condenser()
             $0.headerWritten = false
             $0.lastSample = nil
             $0.isCapturing = true
         }
+        condenser = Condenser()
         Self.writeHeader(to: url, startTime: state.withLock { $0.startTime })
         state.withLock { $0.headerWritten = true }
 
@@ -253,36 +256,37 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         // One lock acquisition for split + removal — two separate
         // `withLock` calls would let a concurrent `record()` append get
         // silently dropped by a wholesale reassignment.
-        let result: (lines: [String], url: URL)? = state.withLock {
+        let taken: (old: [Sample], url: URL)? = state.withLock {
             guard let url = $0.fileURL, !$0.samples.isEmpty else { return nil }
             let split = Self.splitByGraceWindow($0.samples, graceWindow: Self.graceWindow)
             guard !split.old.isEmpty else { return nil }
             $0.samples.removeAll { $0.elapsed <= split.cutoff }
-            let lines = $0.condenser.feed(split.old)
             $0.lastFlushAt = Date()
-            return (lines, url)
+            return (split.old, url)
         }
-        guard let result, !result.lines.isEmpty else { return nil }
+        guard let taken else { return nil }
+        let lines = condenser.feed(taken.old)
+        guard !lines.isEmpty else { return nil }
 
-        Self.append(lines: result.lines, to: result.url)
-        return result.url
+        Self.append(lines: lines, to: taken.url)
+        return taken.url
     }
 
     /// Flushes everything remaining, closing out any still-open run. Call
     /// after `stop()`.
     @discardableResult
     func finish() -> URL? {
-        let snapshot: (samples: [Sample], url: URL?)? = state.withLock {
-            ($0.samples, $0.fileURL)
-        }
-        guard let url = snapshot?.url else { return nil }
-
-        let lines: [String] = state.withLock {
-            var result = $0.condenser.feed($0.samples)
-            result.append(contentsOf: $0.condenser.finish())
+        let taken: (samples: [Sample], url: URL)? = state.withLock {
+            guard let url = $0.fileURL else { return nil }
+            let samples = $0.samples
             $0.samples.removeAll()
-            return result
+            return (samples, url)
         }
+        guard let taken else { return nil }
+        let url = taken.url
+
+        var lines = condenser.feed(taken.samples)
+        lines.append(contentsOf: condenser.finish())
         if !lines.isEmpty {
             Self.append(lines: lines, to: url)
         }
