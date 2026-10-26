@@ -21,7 +21,7 @@ Quit MockTab and move it to the Trash. To remove its settings as well, open each
 
 The active area is the portion of the tablet surface that maps to the screen. Pen input outside this rectangle has no effect.
 
-**Resizing** – Drag any handle in the preview to reposition or resize the active area. Hold **Shift** while dragging a corner to lock the aspect ratio to the display's proportions. Exact values can also go into the Width and Height fields.
+**Resizing** – Drag the area or its handles; it snaps to the screen area's shape when close (hold **⌘** to skip, **Shift** to keep its shape). Click the width or height below to type an exact size.
 
 **Proportional mapping** – Keeps the tablet-to-screen ratio proportional so the cursor travels equal distances horizontally and vertically. Disable this option to deliberately stretch or compress the mapping.
 

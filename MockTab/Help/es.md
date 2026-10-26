@@ -21,7 +21,7 @@ Sal de MockTab y muévelo a la Papelera. Para borrar también sus ajustes, abre 
 
 El área activa es la parte de la superficie de la tableta que se asigna a la pantalla. La entrada del lápiz fuera de este rectángulo no tiene efecto.
 
-**Redimensionar** – Arrastra cualquier tirador de la vista previa para mover o redimensionar el área activa. Mantén pulsada **Shift** al arrastrar una esquina para fijar la proporción de la pantalla. También puedes introducir valores exactos en los campos Width y Height.
+**Redimensionar** – Arrastra el área o sus tiradores; cerca de la forma del área de pantalla se ajusta a ella (**⌘** lo evita, **Shift** conserva su forma). Haz clic en la anchura o la altura de abajo para escribir un tamaño exacto.
 
 **Asignación proporcional** – Mantiene proporcional la relación entre la tableta y la pantalla para que el cursor recorra distancias iguales en horizontal y vertical. Desactívalo si quieres estirar o comprimir el mapeo a propósito.
 

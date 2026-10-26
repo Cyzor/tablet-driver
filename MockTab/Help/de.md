@@ -21,7 +21,7 @@ Beende MockTab und lege es in den Papierkorb. Um auch die Einstellungen zu entfe
 
 Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bildschirm abgebildet wird. Stifteingaben außerhalb dieses Rechtecks haben keine Wirkung.
 
-**Größe ändern** – Ziehe einen beliebigen Griff in der Vorschau, um den aktiven Bereich zu verschieben oder zu skalieren. Halte beim Ziehen einer Ecke **Shift** gedrückt, um das Seitenverhältnis an die Display-Proportionen zu binden. Genaue Werte kannst du auch in die Felder Width und Height eingeben.
+**Größe ändern** – Ziehe den Bereich oder seine Griffe; nahe der Form des Bildschirmbereichs rastet er ein (**⌘** verhindert das, **Shift** behält seine Form bei). Für eine genaue Größe klicke auf Breite oder Höhe darunter.
 
 **Proportionale Projektion** – Hält das Verhältnis zwischen Grafiktablett und Bildschirm proportional, sodass der Cursor horizontal und vertikal gleich weit zurücklegt. Deaktiviere diese Option, wenn du das Mapping absichtlich strecken oder stauchen willst.
 
