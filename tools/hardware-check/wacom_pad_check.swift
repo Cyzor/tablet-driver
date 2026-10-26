@@ -62,7 +62,7 @@ func isDone(_ pid: Int, via receiver: Int? = nil) -> Bool {
 }
 
 // Touch sensors that enumerate under their own product ID, and the decoder
-// MockTab reads them with (WacomKnownDevice's touch-sensor table).
+// TabletKit reads them with (`DeviceDecoder.fixedLayoutTouch`).
 let separateTouchSensors: Set<Int> = [0x0335, 0x00F6, 0x005E, 0x005D]
 
 // MARK: Tablets

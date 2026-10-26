@@ -215,16 +215,19 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
 
-            // Kind icon. The puck glyph reads much smaller than the plain
-            // rectangle at the same point size (it's a thin outline shape,
-            // not a filled block), so it gets a 50% size bump — the
-            // surrounding frame stays fixed at 20pt so row spacing/alignment
-            // with every other row is unaffected.
-            Image(systemName: kindSymbolName(forProductID: tablet.productID))
-                .appFont(size: isPuckKind(forProductID: tablet.productID) ? 19.5 : 13)
-                .foregroundStyle(.secondary)
-                .frame(width: 20, alignment: .center)
-                .accessibilityHidden(true)
+            // Kind icon: the tablet drawn from parts, or a symbol for a device
+            // with no surface. The symbols run large to match the icons' weight.
+            Group {
+                if let figure = tabletFigure(forProductID: tablet.productID, vendorID: tablet.vendorID) {
+                    TabletIconView(figure: figure).equatable()
+                } else {
+                    Image(systemName: kindSymbolName(forProductID: tablet.productID))
+                        .appFont(size: isPuckKind(forProductID: tablet.productID) ? 19.5 : 16)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 28, height: 22)
+            .accessibilityHidden(true)
 
             // Two-line row: nickname on top, catalog name and identifier
             // in a small gray subtitle. Nothing competes for width, so
@@ -367,7 +370,22 @@ struct DevicesView: View {
     /// use a symbol that actually resembles their shape; everything else
     /// keeps the generic tablet rectangle.
     private func kindSymbolName(forProductID productID: Int) -> String {
-        isPuckKind(forProductID: productID) ? "appletvremote.gen4.fill" : "rectangle"
+        // Without a surface, it's a puck or a wireless receiver.
+        isPuckKind(forProductID: productID) ? "appletvremote.gen4.fill" : "mediastick"
+    }
+
+    /// The tablet drawn as an icon, or nil for a device with no surface,
+    /// like a puck or a wireless receiver. Only Wacom models have layouts; a
+    /// tablet saved before vendors were recorded counts as Wacom.
+    private func tabletFigure(forProductID productID: Int, vendorID: Int?) -> TabletFigure? {
+        let key = DeviceInstanceKey(productID: productID, instance: "")
+        guard let size = tabletManager.surfaceSizeMM(for: key) else { return nil }
+        let vendor = VendorDeviceRegistry.profile(forProductID: productID)
+        let isWacom = vendor == nil && (vendorID ?? 0x056A) == 0x056A
+        return TabletFigure(
+            layoutProductID: isWacom ? productID : nil, surfaceMM: size,
+            aspect: size.width / size.height,
+            isPenDisplay: vendor?.isPenDisplay ?? WacomDeviceRegistry.spec(for: productID)?.isPenDisplay ?? false)
     }
 
     private func isPuckKind(forProductID productID: Int) -> Bool {
@@ -472,10 +490,10 @@ struct DevicesView: View {
                 .frame(width: 20, alignment: .center)
                 .accessibilityHidden(true)
 
-            // Kind icon
+            // Kind icon, as wide as a tablet's so names line up across sections
             Image(systemName: toolIcon(for: tool))
                 .foregroundStyle(.secondary)
-                .frame(width: 20, alignment: .center)
+                .frame(width: 28, alignment: .center)
                 .accessibilityHidden(true)
 
             // Two-line row — see tabletRow. Renaming swaps only the nickname
@@ -678,9 +696,8 @@ struct DevicesView: View {
 
     private func commitToolRename() {
         guard let toolID = editingToolID else { return }
-        // End the edit unconditionally — a failed lookup below must not
-        // leave the row stuck in edit mode (click-away used to do exactly
-        // that for all-tablets tools, which aren't in `knownTools`).
+        // End the edit unconditionally: a failed lookup below must not leave
+        // the row stuck in edit mode (all-tablets tools aren't in `knownTools`).
         editingToolID = nil
         let trimmed = String(editingName.prefix(Self.maxNicknameLength))
             .trimmingCharacters(in: .whitespaces)
@@ -706,7 +723,7 @@ struct DevicesView: View {
                 let eraser = registry.allKnownTools.first(where: { $0.id == eraserID })
             {
                 let oldEraserName = eraser.nickname
-                let newEraserName = "\(trimmed) (Eraser)"
+                let newEraserName = DeviceRegistry.eraserName(trimmed)
                 registry.renameToolEverywhere(id: eraserID, to: newEraserName)
                 registerRenameUndo(
                     renameToolAction,
@@ -734,7 +751,7 @@ struct DevicesView: View {
             let eraser = registry.knownTools.first(where: { $0.id == eraserID })
         {
             let oldEraserName = eraser.nickname
-            let newEraserName = "\(trimmed) (Eraser)"
+            let newEraserName = DeviceRegistry.eraserName(trimmed)
             registry.renameTool(id: eraserID, to: newEraserName, forDevice: deviceID)
             registerRenameUndo(
                 renameToolAction,

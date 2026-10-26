@@ -57,23 +57,13 @@ final class MomentumTail {
     static let tickInterval: TimeInterval = 1.0 / 60.0
 
     /// Constant deceleration (points/second²) applied to the momentum
-    /// velocity every tick, replacing an earlier exponential-decay model
-    /// (`momentumDecayPer10ms`, sourced from a Wacom native-driver trace —
-    /// wrong target: the user's comparison has always been a real Apple
-    /// trackpad, not Wacom's own touch feel, and Wacom's captured rate
-    /// produced a slow, grinding coast that never sat right). Exponential
-    /// decay also structurally cannot match a real trackpad's flick
-    /// signature — a decisive flick coasts hard and briefly (a real
-    /// trackpad: roughly a quarter second) while still covering a large
-    /// distance, then stops cleanly, rather than asymptotically crawling to
-    /// a near-stop and lingering there. Constant deceleration reaches
-    /// exactly zero in bounded time and its distance scales with the square
-    /// of release speed, so a decisive flick travels disproportionately
-    /// farther than a gentle one — matching both complaints in one change.
-    /// This value is a starting point derived from a rough target (a firm
-    /// flick decaying to a stop in ~0.25s while covering several thousand
-    /// points), not a hardware measurement — expect it to need retuning
-    /// once real release-velocity numbers are observed on hardware.
+    /// velocity every tick. The target is a real trackpad's flick: a firm
+    /// flick coasts hard and briefly (about a quarter second), then stops
+    /// cleanly. Exponential decay can't do that; it crawls toward zero and
+    /// lingers. Constant deceleration stops in bounded time, and its
+    /// distance grows with the square of release speed, so a decisive flick
+    /// travels much farther than a gentle one. A starting point, not a
+    /// hardware measurement.
     static let deceleration: CGFloat = 6000.0
 
     /// Velocity magnitude (points/second) below which a tail never starts —

@@ -1,7 +1,7 @@
 // gpu_bandwidth_stress_probe.swift — saturate unified-memory bandwidth, not
 // GPU compute occupancy, standing in for local-LLM inference load.
 //
-// `gpu_stress_probe.swift` fully pegged GPU compute occupancy (confirmed via
+// An earlier compute-only probe fully pegged GPU compute occupancy (confirmed via
 // the GPU History graph) with zero effect on cursor lag, and the fan never
 // spun up — that kernel is register-resident math with almost no memory
 // traffic. LLM inference streams huge weight tensors through unified memory

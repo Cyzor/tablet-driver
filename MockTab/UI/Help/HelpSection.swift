@@ -8,8 +8,8 @@ import Foundation
 ///
 /// Help content is sourced from `en.md` (or the best-match language file) in
 /// the app bundle via `HelpContent`. To revise help text, edit the `.md` file
-/// directly — no recompile needed. To add a language, add a matching `.md`
-/// file to the Help group and the Copy Bundle Resources build phase.
+/// directly — no recompile needed. To add a language, put a matching `.md`
+/// file in `MockTab/Help/`.
 enum HelpSection: String, CaseIterable, Identifiable {
     case about
     case tabletArea

@@ -906,7 +906,7 @@ private func testBurstFrameDoesNotPoisonReleaseVelocity() {
 /// recency gate would see "no motion in 200 ms" and suppress it as a brake;
 /// the gap-tolerant path recognises `frameGap ≈ motionGap` (both grew, so
 /// frames stopped, not the finger) and seeds from the last good pre-stall
-/// sample. This is the `project_bt_scroll_stuck_and_nocoast` bug B fix.
+/// sample.
 private func testDeliveryGapStillCoasts() {
     var tracker = TouchStateTracker()
     _ = panProcess(&tracker, [(id: 1, screen: .zero)], at: 0)
@@ -1555,7 +1555,7 @@ private func testTapStabilizationDoesNotAffectAbsoluteMode() {
 
 /// Fingers spread cleanly first (pinch commits alone), then twist. The twist
 /// must join the gesture in progress rather than being locked out for the
-/// rest of the sequence — the behaviour that made simultaneous zoom-and-
+/// rest of the sequence — the behavior that made simultaneous zoom-and-
 /// rotate nearly impossible to invoke before 2026-08-27.
 private func testRotateJoinsACommittedPinch() {
     var tracker = TouchStateTracker()

@@ -7,8 +7,7 @@ import CoreGraphics
 import os
 import TabletKit
 
-// Capacitive finger-touch injection, split out of InputInjector.swift. The
-// per-sequence touch state it reads (`touchTracker`, `cachedTouch*`,
+// Capacitive finger-touch injection. The per-sequence touch state it reads (`touchTracker`, `cachedTouch*`,
 // `penProximityExitTime`) lives on the main class body — Swift class
 // extensions can't hold stored properties — and stays HIDThread-confined
 // exactly as documented there.
@@ -16,7 +15,7 @@ extension InputInjector {
 
     /// Inject a touch contact frame.
     ///
-    /// Behaviour:
+    /// Behavior:
     ///   • `touchEnabled == false` → no-op.
     ///   • Pen confirmed busy (`touchPenConfirmedBusy` — in proximity past
     ///     `touchBusyHoldOff`, or already down), or lifted within
@@ -64,7 +63,7 @@ extension InputInjector {
             // rather than collapsing every contact into one corner. The
             // registry still wins where set, since fixed-format decoders on
             // verified tablets don't read the descriptor's coordinate space.
-            let described = WacomKnownDevice.descriptorTouchRanges.withLock { $0[effectiveTouchPID] }
+            let described = DescribedTouchRanges.range(forProductID: effectiveTouchPID)
             if let described, (spec?.touchMaxX ?? 0) == 0 {
                 cachedTouchMaxX = Swift.max(1, described.x)
                 cachedTouchMaxY = Swift.max(1, described.y)
@@ -84,12 +83,8 @@ extension InputInjector {
 
         // Pen arbitration: pen takes priority.  Drop frames and reset tracker
         // so a half-formed gesture doesn't resume after the pen lifts.
-        //
-        // An iPad-style "scroll while the pen is in use" mode was prototyped
-        // and removed (2026-06): firmware does stream touch with the pen busy,
-        // but palm rejection wasn't shippable — scrolls died mid-gesture and
-        // per-app event arbitration was inconsistent.  Git history has the
-        // prototype if another attempt is ever made.
+        // Touch during pen use isn't offered: the firmware streams it, but
+        // palm rejection wasn't reliable enough to ship.
         let now = CFAbsoluteTimeGetCurrent()
         // `staleBusy` is much narrower than that prototype: it only lets
         // touch through once a busy pen has sat with no tip contact at all
@@ -277,7 +272,7 @@ extension InputInjector {
 
         // Diagnostic: a committed pan scroll running on fewer than two contacts
         // is the "stuck scroll" signature — see
-        // `DiscoveryTouchPipeline.scrollSingleContactFrames`. Sampled here, from
+        // `CaptureTouchPipeline.scrollSingleContactFrames`. Sampled here, from
         // the injector, so `TouchStateTracker` keeps taking no dependency on the
         // probe. `now` is the same wall clock the tracker sees, so a
         // sub-millisecond gap between touch frames — the batched-Bluetooth
@@ -320,7 +315,7 @@ extension InputInjector {
 
         // Diagnostic: tally how this two-or-more-finger sequence resolves,
         // once per sequence rather than per frame — see
-        // `DiscoveryTouchPipeline.twoFingerResolved*`. A lift with no prior
+        // `CaptureTouchPipeline.twoFingerResolved*`. A lift with no prior
         // commit closes out a sequence that saw 2+ fingers but never
         // resolved to any gesture; the commit side is tallied in the intent
         // switch below.
@@ -445,7 +440,7 @@ extension InputInjector {
 
         if prevTouchMode == .idle, mode == .pending {
             let reArmed = lastTouchTeardownTime != 0
-                && now - lastTouchTeardownTime < DiscoveryTouchPipeline.reArmWindow
+                && now - lastTouchTeardownTime < CaptureTouchPipeline.reArmWindow
             TouchPipelineProbe.note {
                 $0.onsetWindowsEntered += 1
                 if reArmed { $0.onsetWindowsReArmedWithin += 1 }
@@ -674,8 +669,8 @@ extension InputInjector {
         // this stream instead of — or in addition to — the wheel event. Posted
         // first to avoid a stutter seen the other way round, though a real
         // trackpad posts the wheel event first. Matching the trackpad's order
-        // and marker fields (137, 135, MayBegin) didn't fix sites that reject
-        // this phased stream (event-probe, 2026-09-30); only the phase-free
+        // and marker fields (137, 135, MayBegin) doesn't fix sites that reject
+        // this phased stream; only the phase-free
         // mode reaches them. Only meaningful with a real phase.
         if usePhases {
             postTouchScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
@@ -765,14 +760,9 @@ extension InputInjector {
     /// its internal `atan2` math); converted here to degrees on the
     /// assumption the field expects what `NSEvent.rotation` — the public API
     /// apps actually read a real trackpad rotation through — documents.
-    /// Hardware feedback 2026-08-08: rotate is responsive when it engages,
-    /// which is consistent with this scaling being roughly right (a 57×
-    /// unit error would have been obvious as "nothing happens" or "spins
-    /// wildly"), but that's corroborating evidence, not a controlled
-    /// measurement — MMF's own source never states what its `rotation`
-    /// parameter's unit actually is. Direction was independently confirmed
-    /// wrong and fixed at the source (see `TouchStateTracker`'s `.rotate`
-    /// case doc comment); magnitude scaling has not had the same scrutiny.
+    /// Rotation feels right in use, so the scale is at least roughly
+    /// correct, but nothing documents the field's unit; the magnitude hasn't
+    /// been measured.
     /// Not `private`: ring/dial `.rotate` slot actions (`postRingGesture`,
     /// +CGEvents.swift) call this too — same event technique, different
     /// envelope source.
@@ -875,35 +865,5 @@ extension InputInjector {
         let loc = currentCursorPosition()
         postMouseDown(button: .right, at: loc, pressure: 1.0, clickCount: 1, snapshot: snapshot)
         postMouseUp(button: .right, at: loc, clickCount: 1, snapshot: snapshot)
-    }
-
-    // MARK: - Touch scroll momentum tail
-
-    /// Sole event-construction site for the touch-scroll momentum tail; the
-    /// decay itself lives in `touchMomentumTail` (see MomentumTail.swift).
-    ///
-    /// `postTouchScroll`'s phased began/changed/ended stream is enough for
-    /// `NSScrollView` apps to synthesize their own coast, but apps that read
-    /// gesture-scroll deltas directly and build their own physics (Safari,
-    /// Firefox, Affinity — confirmed by hardware test 2026-08-05) never see
-    /// one, because `CGEventPost` carries no real trackpad hardware behind it
-    /// to generate a `kCGMomentumScrollPhase` stream.
-    func postTouchScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
-        guard
-            let e = CGEvent(
-                scrollWheelEvent2Source: sessionSource,
-                units: .pixel,
-                wheelCount: 2,
-                wheel1: Int32(dy),
-                wheel2: Int32(dx),
-                wheel3: 0)
-        else { return }
-        e.location = currentCursorPosition()
-        e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: 0)
-        e.setIntegerValueField(.scrollWheelEventMomentumPhase, value: phase.rawValue)
-        applyTrackpadDeltaFields(e, dx: dx, dy: dy)
-        e.flags = moveSafeEventFlags
-        finalizeAndPost(e)
     }
 }

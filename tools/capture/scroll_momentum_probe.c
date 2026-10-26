@@ -14,7 +14,7 @@
 // receives from MockTab. v2 reproduces that full contract.
 //
 // Field set mirrors MockTab's InputInjector+CGEvents.swift postPanScroll /
-// postPanScrollGesture / postPanScrollMomentum / applyTrackpadDeltaFields
+// postPanScrollGesture / postScrollMomentum / applyTrackpadDeltaFields
 // exactly (per the 2026-08-10 code audit): pixel units, continuous=1,
 // live phase carried in scrollWheelEventScrollPhase (began=1/changed=2/
 // ended=4) with scrollWheelEventMomentumPhase=0, then during the tail

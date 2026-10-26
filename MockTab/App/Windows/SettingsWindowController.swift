@@ -121,20 +121,11 @@ final class ResizableTabViewController: NSTabViewController {
     }
 
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
-        // Root cause of the long-standing "window permanently unresizable after
-        // switching tabs" bug (introduced in 7c01f64): this used to also set
-        // `tabViewItem.viewController.preferredContentSize` to the window's
-        // *current* frame size whenever `userHasResized` was true, to stop
-        // NSTabViewController's native per-tab auto-resize from fighting a
-        // user-resized window. But `showTab(at:)` calls `suppressAutoResize()`
-        // (which sets `userHasResized = true`) *before* the window is ever
-        // shown — including on the very first tab display — so that line could
-        // fire before the window had been laid out, capturing a bogus/zero
-        // frame size and pinning the tab's preferredContentSize to it
-        // permanently. `applyDefaultSize`'s own `!userHasResized` guard below
-        // already prevents the window from being force-resized back to
-        // per-tab defaults once the user has taken ownership of the size, so
-        // this extra line was both redundant and the actual source of the bug.
+        // Don't set the tab's preferredContentSize here: `showTab(at:)` calls
+        // `suppressAutoResize()` before the window is laid out, so it would
+        // pin a zero size and leave the window unresizable.
+        // `applyDefaultSize`'s `!userHasResized` guard already keeps a
+        // user-sized window as it is.
         super.tabView(tabView, didSelect: tabViewItem)
         applyDefaultSize(for: tabViewItem)
         onTabSelected?(tabViewItem?.label)
@@ -574,13 +565,13 @@ final class SettingsWindowController: NSWindowController {
             label: Self.tabLabels[Tab.buttons.rawValue], symbol: "square.grid.2x2.fill",
             height: 575
         ) {
-            ButtonMappingView(
+            ButtonsView(
                 settings: s, tabletManager: tm, registry: dr,
                 instanceKey: instanceKey)
         }
         // Touch tab is only registered for devices whose spec declares finger touch.
         // The pane itself also guards against being shown for a non-touch device
-        // (defence-in-depth in case the spec lookup changes).
+        // (defense-in-depth in case the spec lookup changes).
         if hasTouchTab {
             addTab(
                 label: Self.tabLabels[Tab.touch.rawValue], symbol: "hand.point.up.left", height: 480
@@ -590,7 +581,7 @@ final class SettingsWindowController: NSWindowController {
         }
         if !isAuxOnly {
             addTab(label: Self.tabLabels[Tab.display.rawValue], symbol: "display", height: 370) {
-                DisplayMappingView(
+                DisplayView(
                     settings: s, tabletManager: tm, registry: dr, instanceKey: instanceKey)
             }
         }
@@ -746,9 +737,8 @@ final class SettingsWindowController: NSWindowController {
     /// every tab rather than just Info.
     ///
     /// Deliberately observes two *narrow* publishers rather than
-    /// `TabletManager.objectWillChange`: that fires at pen-report rate, and
-    /// riding it for UI state has previously caused a measurable hover-CPU
-    /// spike. `deviceContexts` changes only on connect/disconnect/re-key, and
+    /// `TabletManager.objectWillChange`: that fires at pen-report rate, which
+    /// costs CPU while the pen hovers. `deviceContexts` changes only on connect/disconnect/re-key, and
     /// `isConnected` only on a real transition.
     private func observeConnectionState() {
         // The generic (no-device) window has nothing to report.

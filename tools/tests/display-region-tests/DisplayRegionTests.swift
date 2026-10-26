@@ -142,6 +142,20 @@ enum DisplayRegionTestRunner {
             203.0 / 162.5, 1e-9, "portrait crop uses the cropped physical size")
     }
 
+    /// A pen leaning toward a spot on the tablet leans toward where that spot
+    /// lands once turned, in every orientation.
+    static func testTiltTurnsWithPosition() {
+        let (maxX, maxY) = (100.0, 60.0)
+        let from = (x: 50.0, y: 30.0), to = (x: 80.0, y: 10.0)
+        for orientation in [TabletOrientation.landscape, .portrait, .landscapeFlipped, .portraitFlipped] {
+            let a = DisplayMapper.orient(x: from.x, y: from.y, maxX: maxX, maxY: maxY, orientation: orientation)
+            let b = DisplayMapper.orient(x: to.x, y: to.y, maxX: maxX, maxY: maxY, orientation: orientation)
+            let tilt = DisplayMapper.orientTilt(x: to.x - from.x, y: to.y - from.y, orientation: orientation)
+            expectClose(tilt.x, b.ox - a.ox, 1e-9, "\(orientation) tilt x follows position")
+            expectClose(tilt.y, b.oy - a.oy, 1e-9, "\(orientation) tilt y follows position")
+        }
+    }
+
     // tablet-driver#17: two spanned displays with unaligned bottoms. The left
     // one is 2560×1440; the right one is 1920×1080 and sits 200 pt lower, so
     // its bottom is 160 pt above the union's.
@@ -263,6 +277,7 @@ enum DisplayRegionTestRunner {
         testCacheInvalidatesOnRegionChangeAlone()
         testTouchAspectFollowsOrientation()
         testTouchAspectFollowsCrop()
+        testTiltTurnsWithPosition()
         testEdgePinningFollowsEachDisplay()
         testSpecificDisplayResolution()
 

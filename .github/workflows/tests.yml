@@ -1,9 +1,8 @@
 name: Tests
 
-# Build and check on every push to main or next and every pull request. Deliberately
-# separate from release.yml and snapshot.yml, which are manual-only so that
-# the local release script can never double-fire a signed release. Nothing
-# here signs or notarizes, so this job needs no secrets.
+# Build and check on every push to main or next and every pull request.
+# Nothing here signs or notarizes, so this job needs no secrets. Releases and
+# snapshots are built locally with the scripts in tools/release/.
 on:
   push:
     branches: [main, next]

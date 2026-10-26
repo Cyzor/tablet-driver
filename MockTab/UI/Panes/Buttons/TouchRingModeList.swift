@@ -8,9 +8,7 @@ import TabletKit
 /// The ring/strip/dial mode block: every mode stays visible as a one-line
 /// readable summary ("Scroll · 1.5×", "Keys ⌘= / ⌘－", …), and selecting a
 /// mode — by clicking its row or its wedge in the ring diagram — expands a
-/// labeled editor for just that mode beneath it. Replaces the old
-/// all-controls-inline rows (`TouchRingSlotRowView`), whose mixed picker/
-/// slider/recorder rows never aligned with each other.
+/// labeled editor for just that mode beneath it.
 ///
 /// One instance renders as a single Form row containing the whole block.
 /// Bindings come in as per-index factories so the caller keeps owning its
@@ -37,49 +35,6 @@ final class RingMenuTarget: NSObject, @unchecked Sendable {  // stateless
 
     @objc func selectAction(_ sender: NSMenuItem) {
         (sender.representedObject as? RingMenuAction)?.perform()
-    }
-}
-
-/// Serves a right-click menu for the diagram without stealing any other
-/// mouse event: `hitTest` returns nil for everything but a right mouse-down,
-/// so left-click/drag falls through untouched to the SwiftUI gesture layer
-/// beneath it. Builds and pops the `NSMenu` itself, synchronously, inside
-/// `rightMouseDown` — SwiftUI's `.contextMenu` reads its content closure
-/// against `@State` at menu-open time, which raced the state write from the
-/// same click and showed the *previous* selection's menu; going straight to
-/// AppKit avoids that state round-trip entirely, and it's still one-shot
-/// (no continuous tracking), so it carries none of the hover-driven
-/// invalidation cost the equatable-core split above exists to avoid.
-struct RightClickMenuHost: NSViewRepresentable {
-    let menuBuilder: (CGPoint) -> NSMenu?
-
-    func makeNSView(context: Context) -> NSView {
-        let view = CatcherView()
-        view.menuBuilder = menuBuilder
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? CatcherView)?.menuBuilder = menuBuilder
-    }
-
-    final class CatcherView: NSView {
-        var menuBuilder: ((CGPoint) -> NSMenu?)?
-
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            guard let event = NSApp.currentEvent, event.type == .rightMouseDown else { return nil }
-            return super.hitTest(point)
-        }
-
-        override func rightMouseDown(with event: NSEvent) {
-            let point = convert(event.locationInWindow, from: nil)
-            // AppKit's y-axis grows upward; the SwiftUI-side hit-testing
-            // (`region(at:in:)`) expects the same top-left origin GeometryReader
-            // reports, so flip once here rather than teach that math two origins.
-            let flipped = CGPoint(x: point.x, y: bounds.height - point.y)
-            guard let menu = menuBuilder?(flipped) else { return }
-            NSMenu.popUpContextMenu(menu, with: event, for: self)
-        }
     }
 }
 
@@ -390,8 +345,8 @@ private struct TouchRingModeListCore: View, Equatable {
     ///
     /// Rounds to the nearest notch so a stored value that predates the
     /// notching still reads as its closest level — `.rounded()` is
-    /// away-from-zero, so an exact midpoint rounds up (a stored 3.0 zoom,
-    /// the value the old clamp bug pinned everyone to, reads "Medium").
+    /// away-from-zero, so an exact midpoint rounds up (a stored 3.0 zoom
+    /// reads "Medium").
     private func bucketedSpeedLabel(
         _ speed: Double, ceiling: Double, intervals: Int
     ) -> String {
@@ -436,12 +391,12 @@ private struct TouchRingModeListCore: View, Equatable {
                 .fixedSize()
             }
 
-            // Greyed (not hidden) while the mode is off/skip — the value is
+            // Grayed (not hidden) while the mode is off/skip — the value is
             // kept and comes back when the mode does.
             //
             // `.disabled()` alone doesn't visibly dim this row: AppKit dims
             // disabled *controls* natively (which is why the slider's accent
-            // does grey out), but `Text` carrying an explicit
+            // does gray out), but `Text` carrying an explicit
             // `.foregroundStyle(.secondary)` — the row label and the speed
             // readout both do — renders that style at full strength either
             // way. Hence the explicit opacity, matching how TouchView pairs

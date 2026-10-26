@@ -19,23 +19,23 @@ let settingsLogger = Logger(subsystem: "com.cyzor.mocktab", category: "settings"
 /// that has the key wins. A write goes to whichever layer is currently
 /// "selected" for editing (the device default unless an override is active).
 ///
-///     ┌──────────────────────────────────────────────────────────────┐
-///     │ 4. Per-app override   keys: "device-0x0357.app-com.adobe.…" │  highest
+///     ┌─────────────────────────────────────────────────────────────┐
+///     │ 4. Per-app override   keys: "device-0x357.app-com.adobe.…"  │  highest
 ///     │    Activated automatically when the bound app is frontmost. │
-///     │    Stores only keys that diverge from the layer below.       │
-///     ├──────────────────────────────────────────────────────────────┤
-///     │ 3. Named preset       (overlay; optional)                    │
-///     │    User-saved profile, also stores only diffs. Manually      │
-///     │    selected or auto-activated by an app→profile binding.     │
-///     ├──────────────────────────────────────────────────────────────┤
-///     │ 2. Per-tool settings  keys: "device-0x0357.tool-<serial>.…" │
-///     │    One namespace per stylus serial (or "stylus"/"eraser"/    │
-///     │    "mouse" for the device-default tool, which shares prefix  │
-///     │    with layer 1 to avoid migration).                         │
-///     ├──────────────────────────────────────────────────────────────┤
-///     │ 1. Device defaults    keys: "device-0x0357.…"                │  lowest
-///     │    The baseline for this product ID.                         │
-///     └──────────────────────────────────────────────────────────────┘
+///     │    Stores only keys that diverge from the layer below.      │
+///     ├─────────────────────────────────────────────────────────────┤
+///     │ 3. Named profile      (overlay; optional)                   │
+///     │    User-saved profile, also stores only diffs. Manually     │
+///     │    selected or auto-activated by an app→profile binding.    │
+///     ├─────────────────────────────────────────────────────────────┤
+///     │ 2. Per-tool settings  keys: "device-0x357.tool-<serial>.…"  │
+///     │    One namespace per stylus serial (or "stylus"/"eraser"/   │
+///     │    "mouse" for the device-default tool, which shares prefix │
+///     │    with layer 1 to avoid migration).                        │
+///     ├─────────────────────────────────────────────────────────────┤
+///     │ 1. Device defaults    keys: "device-0x357.…"                │  lowest
+///     │    The baseline for this product ID.                        │
+///     └─────────────────────────────────────────────────────────────┘
 ///
 /// Legacy unprefixed keys (from before per-device support) are read as a
 /// fallback on first load for a given device, providing seamless migration.
@@ -45,15 +45,15 @@ let settingsLogger = Logger(subsystem: "com.cyzor.mocktab", category: "settings"
 ///
 /// The class spans four files: this one holds every stored property (Swift
 /// extensions can't) plus init, per-device loading, and undo/redo, while the
-/// sibling `TabletSettings+*.swift` extensions hold preset handling
-/// (+Presets), per-app overrides and auto-switching (+AppOverrides), and the
+/// sibling `TabletSettings+*.swift` extensions hold profile handling
+/// (+Profiles), per-app overrides and auto-switching (+AppOverrides), and the
 /// UserDefaults layer (+Persistence). Everything runs on the main actor.
 @MainActor
 final class TabletSettings: ObservableObject {
 
     // MARK: - Per-device backing store
 
-    /// Current UserDefaults key prefix, e.g. `"device-0x0357."`.
+    /// Current UserDefaults key prefix, e.g. `"device-0x357."`.
     /// Changed by `loadForDevice(_:)` when a tablet connects.
     private(set) var devicePrefix = "device-default."
 
@@ -68,7 +68,6 @@ final class TabletSettings: ObservableObject {
     /// Cleared as soon as that blob is next saved successfully.
     var profileListLoadFailed = false
     var appOverridesLoadFailed = false
-    var appBindingsLoadFailed = false
     var pressureCurveLoadFailed = false
     var touchRingSlotsLoadFailed = false
     /// Separate from `touchRingSlotsLoadFailed` so an unreadable
@@ -384,6 +383,16 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+    /// Wireless kit sleep timer, in minutes (0 = the tablet's own timer). -1 =
+    /// never set here; nothing is sent, so the receiver keeps what it holds.
+    /// Hardware state, like `quickKeysSleepMinutes`.
+    @Published var wirelessSleepMinutes: Int = -1 {
+        didSet {
+            guard !isLoading else { return }
+            ud.set(wirelessSleepMinutes, forKey: devicePrefix + "wirelessSleepMinutes")
+        }
+    }
+
     /// Quick Keys OLED brightness, 0 (off) through 3 (bright). -1 = never set
     /// here; nothing is sent, so the puck keeps its own stored brightness.
     /// Hardware state — same semantics as `displayBrightness`.
@@ -543,7 +552,7 @@ final class TabletSettings: ObservableObject {
 
     /// Master enable for finger-touch input.  When false, `InputInjector.injectTouch`
     /// becomes a no-op regardless of incoming reports.  Defaults to true so that
-    /// Off by default: Wacom's touch behaviour is widely disliked, and many
+    /// Off by default: Wacom's touch behavior is widely disliked, and many
     /// users prefer to opt in deliberately rather than discover the cursor
     /// jumping the first time they rest a hand on the tablet.
     @Published var touchEnabled: Bool = false {
@@ -652,7 +661,7 @@ final class TabletSettings: ObservableObject {
     /// When true (and two-finger scroll is on), a pinch gesture posts
     /// ⌘+Keypad-Plus/Minus keystrokes as a zoom stand-in, one step per pinch
     /// increment. Off by default — pan scroll stays the primary two-finger
-    /// behaviour.
+    /// behavior.
     @Published var pinchZoomEnabled: Bool = false {
         didSet { persist("pinchZoomEnabled", pinchZoomEnabled) }
     }
@@ -667,7 +676,7 @@ final class TabletSettings: ObservableObject {
     }
     /// Active-touch-area mapping — independent from the pen's active area because
     /// users typically want the full surface for touch but a cropped area for pen
-    /// work.  Coordinates are normalised 0..1 over the device's full touch surface.
+    /// work.  Coordinates are normalized 0..1 over the device's full touch surface.
     /// Defaults to the full surface.
     @Published var touchAreaX: Double = 0.0 {
         didSet { persist("touchAreaX", touchAreaX) }
@@ -795,6 +804,12 @@ final class TabletSettings: ObservableObject {
         }
     }
     private var _bezelButtonCache: [ButtonBinding]?
+    /// What the bezel slots do until set: the 21UX2's strip toggles cycle
+    /// their own strip. `DeviceContext` sets it from the model.
+    @Published var defaultBezelButtonBindings = TabletSettings.noBezelButtonBindings {
+        didSet { _bezelButtonCache = nil }
+    }
+    static let noBezelButtonBindings = [ButtonBinding](repeating: .none, count: 3)
     @Published var touchRingButtonRaw: String = "" {
         didSet { persist("touchRingButtonBinding", touchRingButtonRaw) }
     }
@@ -830,10 +845,7 @@ final class TabletSettings: ObservableObject {
         get {
             if let cached = _expressKeyCache { return cached }
             let result: [ButtonBinding]
-            if !expressKeyRaw.isEmpty,
-                let data = expressKeyRaw.data(using: .utf8),
-                let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
-            {
+            if let arr = ButtonBinding.decodeList(expressKeyRaw) {
                 var r = arr
                 while r.count < 16 { r.append(.none) }
                 result = Array(r.prefix(16))
@@ -844,6 +856,10 @@ final class TabletSettings: ObservableObject {
             return result
         }
         set {
+            guard !ButtonBinding.isUnreadableList(expressKeyRaw) else {
+                settingsLogger.error("Refusing to save expressKeyBindings: stored data couldn't be parsed")
+                return
+            }
             guard let data = try? JSONEncoder().encode(newValue),
                 let s = String(data: data, encoding: .utf8)
             else { return }
@@ -859,20 +875,21 @@ final class TabletSettings: ObservableObject {
         get {
             if let cached = _bezelButtonCache { return cached }
             let result: [ButtonBinding]
-            if !bezelButtonRaw.isEmpty,
-                let data = bezelButtonRaw.data(using: .utf8),
-                let arr = try? JSONDecoder().decode([ButtonBinding].self, from: data)
-            {
+            if let arr = ButtonBinding.decodeList(bezelButtonRaw) {
                 var r = arr
                 while r.count < 3 { r.append(.none) }
                 result = Array(r.prefix(3))
             } else {
-                result = Array(repeating: .none, count: 3)
+                result = defaultBezelButtonBindings
             }
             _bezelButtonCache = result
             return result
         }
         set {
+            guard !ButtonBinding.isUnreadableList(bezelButtonRaw) else {
+                settingsLogger.error("Refusing to save bezelButtonBindings: stored data couldn't be parsed")
+                return
+            }
             guard let data = try? JSONEncoder().encode(newValue),
                 let s = String(data: data, encoding: .utf8)
             else { return }
@@ -880,10 +897,10 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    // MARK: - Presets
+    // MARK: - Profiles
 
     /// A named configuration snapshot.  `overriddenKeys` tracks which settings
-    /// the preset stores; all other keys fall through to device defaults.
+    /// the profile stores; all other keys fall through to device defaults.
     struct Profile: Identifiable, Codable, Equatable {
         var id: UUID = UUID()
         var name: String
@@ -924,15 +941,6 @@ final class TabletSettings: ObservableObject {
         static func == (lhs: Profile, rhs: Profile) -> Bool {
             lhs.id == rhs.id && lhs.name == rhs.name && lhs.overriddenKeys == rhs.overriddenKeys
         }
-    }
-
-    /// A mapping from one app (by bundle ID) to a preset.
-    /// Stored per device; used by app auto-switching.
-    struct AppProfileBinding: Identifiable, Codable, Equatable {
-        var id: String { bundleID }
-        var bundleID: String
-        var appName: String  // display name captured at bind time
-        var profileID: UUID
     }
 
     /// A per-app function override.  Stores only keys that differ from the device
@@ -980,26 +988,11 @@ final class TabletSettings: ObservableObject {
         }
     }
 
-    /// All presets saved for the current device.
+    /// All profiles saved for the current device.
     @Published var profiles: [Profile] = []
 
-    /// The currently active preset, or `nil` when using raw device settings.
+    /// The currently active profile, or `nil` when using raw device settings.
     @Published var activeProfile: (Profile?) = nil
-
-    /// How the current preset was activated — for status display only, not persisted.
-    enum ActivationSource: Equatable {
-        case manual
-        case app(bundleID: String, name: String)
-    }
-    @Published var activationSource: ActivationSource = .manual
-
-    /// When true, switching the frontmost app automatically activates the bound preset.
-    @Published var autoSwitchEnabled: Bool = false {
-        didSet { persist("autoSwitchEnabled", autoSwitchEnabled) }
-    }
-
-    /// Per-app preset assignments for this device.
-    @Published var appBindings: [AppProfileBinding] = []
 
     /// All per-app overrides registered for this device.
     @Published var appOverrides: [AppOverride] = []
@@ -1037,10 +1030,8 @@ final class TabletSettings: ObservableObject {
     /// constructing a pre-loaded settings object inside a `DeviceContext`.
     init(productID: Int? = nil) {
         if let pid = productID {
-            let hex = String(pid, radix: 16, uppercase: true)
-            devicePrefix = "device-0x\(hex)."
+            devicePrefix = DeviceInstanceClaims.prefix(productID: pid)
             loadProfileList()
-            loadAppBindings()
             loadAppOverrides()
         }
         activeTool = ToolSettings(prefix: devicePrefix)
@@ -1060,8 +1051,7 @@ final class TabletSettings: ObservableObject {
     /// Switches the settings backing store to the given device's namespace
     /// and reloads all values.  Called by TabletManager when a device connects.
     func loadForDevice(_ productID: Int) {
-        let hex = String(productID, radix: 16, uppercase: true)
-        loadForDevice(prefix: "device-0x\(hex).")
+        loadForDevice(prefix: DeviceInstanceClaims.prefix(productID: productID))
     }
 
     /// Instance-aware variant: resolves the namespace through the registry's
@@ -1082,13 +1072,11 @@ final class TabletSettings: ObservableObject {
         // Clear undo stack to prevent cross-device undo entries
         undoManager?.removeAllActions()
         loadProfileList()
-        loadAppBindings()
         loadAppOverrides()
         driverOverride = nil
         activeAppOverride = nil
         activeTool.overridePrefix = nil
         reloadAll()
-        activationSource = .manual
     }
 
     // MARK: - Undo/Redo support
@@ -1099,46 +1087,6 @@ final class TabletSettings: ObservableObject {
         var y: Double
         var w: Double
         var h: Double
-    }
-
-    /// Registers an undoable action with the current undoManager.
-    ///
-    /// `NSUndoManager` treats any `registerUndo` call made while it is
-    /// actively undoing as belonging to the *redo* stack — so an `undo`
-    /// closure that itself calls `record(...)` again (typically by calling
-    /// the same mutating method with before/after swapped, as
-    /// `recordAreaDrag` and `renameAppOverride` already do) gets real,
-    /// indefinite undo/redo toggling for free. Call sites whose `undo`
-    /// closure is a one-shot "restore to the old value" (most property
-    /// setters) won't redo unless they're written the same self-recursive
-    /// way. The undo block is responsible for restoring state; `persist()`
-    /// fires normally either way.
-    func record(_ actionName: String, undo: @escaping () -> Void) {
-        guard let um = undoManager else { return }
-        um.setActionName(actionName)
-        um.registerUndo(withTarget: self) { [weak self] target in
-            // Liveness check only — don't replay undo against a deallocated
-            // settings object. `self` itself is deliberately unused.
-            guard self != nil else { return }
-            undo()
-        }
-    }
-
-    /// Records an undoable/redoable change to a single value, given its old
-    /// and new states and a closure that applies either one. Each invocation
-    /// (by Undo or by Redo) re-registers itself with the two values swapped,
-    /// so the change toggles back and forth indefinitely — the mechanical
-    /// shape most `record(...)` call sites in this codebase already have
-    /// (`let old = x; x = new; record("Name") { self.x = old }`), just
-    /// generalized so it also supports redo. Prefer this over calling
-    /// `record` directly for a plain property swap; use `record` directly
-    /// when the change touches more than one value (see e.g.
-    /// `importAppOverride`, `removeAppOverride`).
-    func recordToggle<T>(_ actionName: String, from oldValue: T, to newValue: T, apply: @escaping (T) -> Void) {
-        record(actionName) { [weak self] in
-            apply(oldValue)
-            self?.recordToggle(actionName, from: newValue, to: oldValue, apply: apply)
-        }
     }
 
     /// Records a coalesced tablet area drag (one undo entry per completed gesture, not per frame).
@@ -1221,4 +1169,57 @@ final class TabletSettings: ObservableObject {
         }
     }
 
+}
+
+extension TabletSettings: UndoRecording {}
+
+// MARK: - Undo registration
+
+/// Undo and redo for a settings object, shared by `TabletSettings` and
+/// `ToolSettings`, which each hold the device's undo manager.
+@MainActor
+protocol UndoRecording: AnyObject {
+    var undoManager: UndoManager? { get }
+}
+
+extension UndoRecording {
+    /// Registers an undoable action with the current undoManager.
+    ///
+    /// `NSUndoManager` treats any `registerUndo` call made while it is
+    /// actively undoing as belonging to the *redo* stack — so an `undo`
+    /// closure that itself calls `record(...)` again (typically by calling
+    /// the same mutating method with before/after swapped, as
+    /// `recordAreaDrag` and `renameAppOverride` already do) gets real,
+    /// indefinite undo/redo toggling for free. Call sites whose `undo`
+    /// closure is a one-shot "restore to the old value" (most property
+    /// setters) won't redo unless they're written the same self-recursive
+    /// way. The undo block is responsible for restoring state; `persist()`
+    /// fires normally either way.
+    func record(_ actionName: String, undo: @escaping () -> Void) {
+        guard let um = undoManager else { return }
+        um.setActionName(actionName)
+        um.registerUndo(withTarget: self) { [weak self] target in
+            // Liveness check only — don't replay undo against a deallocated
+            // settings object. `self` itself is deliberately unused.
+            guard self != nil else { return }
+            undo()
+        }
+    }
+
+    /// Records an undoable/redoable change to a single value, given its old
+    /// and new states and a closure that applies either one. Each invocation
+    /// (by Undo or by Redo) re-registers itself with the two values swapped,
+    /// so the change toggles back and forth indefinitely — the mechanical
+    /// shape most `record(...)` call sites in this codebase already have
+    /// (`let old = x; x = new; record("Name") { self.x = old }`), just
+    /// generalized so it also supports redo. Prefer this over calling
+    /// `record` directly for a plain property swap; use `record` directly
+    /// when the change touches more than one value (see e.g.
+    /// `importAppOverride`, `removeAppOverride`).
+    func recordToggle<T>(_ actionName: String, from oldValue: T, to newValue: T, apply: @escaping (T) -> Void) {
+        record(actionName) { [weak self] in
+            apply(oldValue)
+            self?.recordToggle(actionName, from: newValue, to: oldValue, apply: apply)
+        }
+    }
 }

@@ -91,6 +91,19 @@ final class DeviceContext: ObservableObject, Identifiable {
 
     var hasAnyDriverSlot: Bool { !driverSlots.isEmpty }
 
+    /// Whether the tablet currently runs through the Wacom wireless kit.
+    var isOnWirelessKit: Bool { activeDriverRawProductID == Self.wirelessKitRawProductID }
+
+    private static let wirelessKitRawProductID = 0x0084
+
+    /// The connection as shown: the kit's receiver is a USB device, but
+    /// "USB" would read as a cable.
+    var connectionName: String {
+        isOnWirelessKit
+            ? String(localized: "Wireless Kit", comment: "Connection value for a tablet on the Wacom wireless kit")
+            : transport
+    }
+
     func driverSlot(forRawProductID rawPID: Int) -> (any TabletDevice)? {
         driverSlots[rawPID]
     }
@@ -98,6 +111,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     func installDriver(_ driver: any TabletDevice, forRawProductID rawPID: Int) {
         driverSlots[rawPID] = driver
         applyRotaryHardware()
+        showKitBatteryOnlyWhileKitDrives()
     }
 
     /// Tells the settings how many rotary controls this tablet has. Two are
@@ -105,18 +119,24 @@ final class DeviceContext: ObservableObject, Identifiable {
     private func applyRotaryHardware() {
         // Registry, not `tabletDevice.spec`: `DigitizerSpec` lacks these flags.
         guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
+        let twoRotaries = spec.hasDualRings || spec.hasIndependentStrips
+        settings.defaultBezelButtonBindings = spec.hasStripToggles
+            ? [ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2), .none]
+            : TabletSettings.noBezelButtonBindings
         settings.applyRotaryHardware(
-            controlCount: spec.hasDualRings ? 2 : 1,
-            independent: spec.hasDualRings,
+            controlCount: twoRotaries ? 2 : 1,
+            independent: twoRotaries,
             seedFromSharedModes: !spec.hasMechanicalDial,
-            defaultSlots: ButtonMappingView.hasSplitPadLayout(spec) ? ControlSlot.splitPadDefaults : ControlSlot.defaults)
+            defaultSlots: spec.hasSplitPadLayout || spec.hasStripToggles
+                ? ControlSlot.splitPadDefaults : ControlSlot.defaults)
     }
 
     /// Removes and returns the driver for a departing transport, if any.
     /// Does not touch other slots — a surviving transport keeps running.
     @discardableResult
     func removeDriverSlot(forRawProductID rawPID: Int) -> (any TabletDevice)? {
-        driverSlots.removeValue(forKey: rawPID)
+        defer { showKitBatteryOnlyWhileKitDrives() }
+        return driverSlots.removeValue(forKey: rawPID)
     }
 
     /// Re-applies every persisted display-affecting setting directly to the
@@ -139,11 +159,12 @@ final class DeviceContext: ObservableObject, Identifiable {
         let quickKeysOrientation = settings.quickKeysOrientation
         let quickKeysSleepMinutes = settings.quickKeysSleepMinutes
         let quickKeysOledBrightness = settings.quickKeysOledBrightness
+        let wirelessSleepMinutes = settings.wirelessSleepMinutes
         // Every TabletDevice control-surface write is confined to HIDThread —
         // see the header comment on `onHIDThread`. Values are snapshotted
-        // above on the main actor since `device` isn't Sendable.
-        onHIDThread {
-            (device as? WacomKnownDevice)?.pendingLEDIndex2 = activeSlotIndex2
+        // above on the main actor.
+        onHIDThread(device) { device in
+            device.controls.ringLED?.setRingLED2(index: activeSlotIndex2)
             device.controls.ringLED?.setRingLED(index: activeSlotIndex)
             if displayBrightness >= 0 {
                 device.controls.displayPanel?.setDisplayBrightness(displayBrightness)
@@ -170,6 +191,9 @@ final class DeviceContext: ObservableObject, Identifiable {
             if quickKeysOledBrightness >= 0 {
                 device.controls.quickKeys?.setQuickKeysOledBrightness(quickKeysOledBrightness)
             }
+            if wirelessSleepMinutes >= 0 {
+                device.controls.wirelessKit?.setSleepMinutes(wirelessSleepMinutes)
+            }
         }
         pushDeviceDisplayState()
     }
@@ -177,26 +201,14 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// The raw IOHIDDevice handle for this context's primary digitizer
     /// interface — weak because IOKit owns the lifetime.
     ///
-    /// A multi-interface tablet (touch, pad/aux, LED-only siblings alongside
-    /// the pen interface) enumerates one `IOHIDDevice` per interface, all
-    /// mapped to this same context, but only one of them is the interface the
-    /// driver actually reads pen reports from and passes to
-    /// `CaptureEngine.recordRaw`. `TabletManager.deviceConnected` sets this
-    /// only the first time a `.driver`-routed interface attaches for this raw
-    /// product ID (see `firstDriverInterfaceClaimed`) — never overwritten by a
-    /// sibling interface that attaches later. Before that guard existed, an
-    /// `.intuosV1`-family device with `seizeUSB: false` (no defer/seize
-    /// gating in `DeviceRouter.route`) would route *every* interface through
-    /// `.driver` independently, and this property took whichever one attached
-    /// last — order-dependent and silently wrong. Confirmed on a PTH-850: two
-    /// discovery captures both came back scoped to its touch interface
-    /// instead of the pen interface, because that was the one that happened
-    /// to attach second. Only consumer today is `CaptureGuideView`, which
-    /// hands this to `CaptureEngine.startDiscovery(device:)`; if it pointed
-    /// at the wrong interface, that session would silently record zero events
-    /// for the whole capture window (0 events despite reports flowing
-    /// normally through the app) because `recordRaw`'s device never matches
-    /// the registered accumulator's key.
+    /// A multi-interface tablet enumerates one `IOHIDDevice` per interface,
+    /// all mapped to this context, but only the pen interface is the one the
+    /// driver reads and passes to `CaptureEngine.recordRaw`.
+    /// `TabletManager.beginConnecting` sets this only for the first
+    /// `.driver`-routed interface (see `firstDriverInterfaceClaimed`), so a
+    /// sibling that attaches later can't take its place. `CaptureGuideView`
+    /// hands it to `CaptureEngine.startCapture(device:)`; the wrong
+    /// interface would record nothing for the whole capture.
     weak var hidDevice: IOHIDDevice?
 
     /// True once `hidDevice` has been claimed by a `.driver`-routed interface
@@ -216,7 +228,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// ever being able to record whichever one `hidDevice` happened to claim.
     /// Weakly held via `CaptureInterfaceCandidate`, mirroring `hidDevice`,
     /// since IOKit owns the lifetime; pruned on disconnect in
-    /// `TabletManager.deviceDisconnected`.
+    /// `TabletManager.forgetInterface(_:of:)`.
     ///
     /// `@Published`, unlike `hidDevice` — a second interface routinely
     /// attaches a moment after `CaptureGuideView` opens (its own capture
@@ -241,8 +253,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// zeroed back out — it exists so the Buttons pane can keep showing the
     /// right button layout (e.g. Pro Pen 3's 3rd button) across a brief
     /// proximity gap instead of falling back to a generic default the moment
-    /// the pen lifts off, which is what both MockTab and Wacom's own driver
-    /// did before this field existed.
+    /// the pen lifts off.
     @Published var lastKnownToolCode: UInt16 = 0
 
     /// The ToolSettings for the pen currently in proximity.
@@ -273,6 +284,54 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// level: the wireless kit's level reads high while the tablet charges.
     @Published var batteryPercent: Int? = nil {
         didSet { if batteryPercent != nil { noteBatteryReported() } }
+    }
+
+    /// The kit's last reading, held while a cable drives the tablet: a cable
+    /// carries no battery level, and the kit reports only changes, so a
+    /// cleared reading wouldn't come back when the kit drives again.
+    private var heldKitBattery: (percent: Int?, charging: Bool)?
+
+    /// Stores a battery reading. A tablet with the kit attached hears its
+    /// level only from the kit, so a reading while a cable drives is held.
+    func applyBatteryReading(percent: Int?, charging: Bool) {
+        if driverSlots[Self.wirelessKitRawProductID] != nil && !isOnWirelessKit {
+            heldKitBattery = (percent, charging)
+        } else {
+            batteryPercent = percent
+            batteryCharging = charging
+        }
+    }
+
+    private func showKitBatteryOnlyWhileKitDrives() {
+        if driverSlots[Self.wirelessKitRawProductID] == nil {
+            heldKitBattery = nil
+        } else if isOnWirelessKit {
+            guard let held = heldKitBattery else { return }
+            heldKitBattery = nil
+            batteryPercent = held.percent
+            batteryCharging = held.charging
+        } else if heldKitBattery == nil {
+            heldKitBattery = (batteryPercent, batteryCharging)
+            batteryPercent = nil
+            batteryCharging = false
+        }
+    }
+
+    /// For a tablet on the wireless kit, whether it's linked (false while it
+    /// sleeps); nil otherwise. Its battery reading is the last one before.
+    @Published var wirelessLinked: Bool? = nil
+
+    /// The tablet sleeps on the wireless kit. The kit's receiver keeps
+    /// reporting a lost link after the tablet moves to a cable, so the flag
+    /// counts only while the kit drives.
+    var isAsleepOnWirelessKit: Bool {
+        isConnected && isOnWirelessKit && wirelessLinked == false
+    }
+
+    /// A tablet on the wireless kit is linked, but its level hasn't held long
+    /// enough to show yet.
+    var awaitingBatteryReading: Bool {
+        isConnected && isOnWirelessKit && wirelessLinked == true && batteryPercent == nil && !batteryCharging
     }
 
     /// True if the device is currently charging.
@@ -313,7 +372,7 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// @Published: TabletManager forwards every context.objectWillChange up
     /// to its own objectWillChange, which every SwiftUI view holding
     /// @ObservedObject tabletManager observes — including panes (e.g.
-    /// ButtonMappingView) that never read livePoint at all. With this
+    /// ButtonsView) that never read livePoint at all. With this
     /// published, plain hovering (no button change) re-ran those views' full,
     /// expensive bodies at ~16 Hz for no reason, which is what caused the
     /// Buttons pane's 100% CPU/choppy-scroll behavior while a pen hovered.
@@ -329,6 +388,16 @@ final class DeviceContext: ObservableObject, Identifiable {
 
     /// Live button state for the pen/stylus and device.
     @Published var liveButtons: LiveButtonState = .init()
+
+    /// Each mechanical dial, true while it's turning: from its first step
+    /// until it's been still a moment. A dial has no touch to report, so the
+    /// Buttons pane lights it from this.
+    @Published var dialsTurning: [Bool] = [false, false]
+
+    /// A mouse's wheel, true while it's turning, so the Buttons pane lights it.
+    @Published var mouseWheelTurning = false
+    /// When the mouse wheel last stepped, in system uptime.
+    var mouseWheelLastStep: TimeInterval = 0
 
     /// Subscriptions managed by this context (e.g., to TabletManager for change propagation).
     var cancellables: Set<AnyCancellable> = []
@@ -361,25 +430,33 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Settings sinks that called the driver from main raced those writes, so
     /// every write here and in `pushDeviceDisplayState`/
     /// `resyncActiveDriverDisplayState` hops first.
-    private func onHIDThread(_ body: @escaping () -> Void) {
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue, body)
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
+    ///
+    /// `body` takes the device rather than capturing it, since `TabletDevice`
+    /// isn't Sendable.
+    private func onHIDThread(
+        _ device: any TabletDevice, _ body: @escaping @Sendable (any TabletDevice) -> Void
+    ) {
+        nonisolated(unsafe) let device = device  // used only on HIDThread from here
+        HIDThread.shared.perform { body(device) }
     }
 
     /// Subscribe to ring slot changes so the physical LED tracks the active mode.
     /// Call this once after `tabletDevice` is assigned.
     func observeRingLED() {
+        // A reload republishes unchanged slots; only a change goes to the LEDs.
         settings.$touchRingActiveSlotIndex
+            .removeDuplicates()
             .sink { [weak self] index in
                 guard let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.ringLED?.setRingLED(index: index) }
+                self.onHIDThread(device) { device in device.controls.ringLED?.setRingLED(index: index) }
                 self.pushDeviceDisplayState(activeSlotIndex: index)
             }
             .store(in: &cancellables)
         settings.$touchRingActiveSlotIndex2
+            .removeDuplicates()
             .sink { [weak self] index in
-                guard let self, let device = self.tabletDevice as? WacomKnownDevice else { return }
-                self.onHIDThread { device.setRingLED2(index: index) }
+                guard let self, let device = self.tabletDevice else { return }
+                self.onHIDThread(device) { device in device.controls.ringLED?.setRingLED2(index: index) }
             }
             .store(in: &cancellables)
         // Intuos4 key OLEDs turn with the tablet.
@@ -398,21 +475,20 @@ final class DeviceContext: ObservableObject, Identifiable {
         settings.$displayBrightness
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.displayPanel?.setDisplayBrightness(value) }
+                self.onHIDThread(device) { device in device.controls.displayPanel?.setDisplayBrightness(value) }
             }
             .store(in: &cancellables)
         // Panel contrast and gamma ride the same 0xB5 control family and
         // replay-on-connect the same way; -1 means untouched, leave the panel's
         // own value alone. Named color presets (Adobe RGB, sRGB, etc.) own
-        // their own contrast/gamma internally — the vendor driver only
-        // exposes these controls in Custom/User Mode, and writing them under
-        // a named preset visibly corrupts its color transform.
+        // their contrast and gamma; writing them under a named preset
+        // visibly corrupts its color transform, so only Custom takes them.
         settings.$displayContrast
             .sink { [weak self] value in
                 guard value >= 0, let self, self.isCustomColorMode,
                     let device = self.tabletDevice
                 else { return }
-                self.onHIDThread { device.controls.displayPanel?.setDisplayContrast(value) }
+                self.onHIDThread(device) { device in device.controls.displayPanel?.setDisplayContrast(value) }
             }
             .store(in: &cancellables)
         settings.$displayGamma
@@ -420,7 +496,7 @@ final class DeviceContext: ObservableObject, Identifiable {
                 guard value >= 0, let self, self.isCustomColorMode,
                     let device = self.tabletDevice
                 else { return }
-                self.onHIDThread { device.controls.displayPanel?.setDisplayGamma(value) }
+                self.onHIDThread(device) { device in device.controls.displayPanel?.setDisplayGamma(value) }
             }
             .store(in: &cancellables)
         // Bezel-button backlight LED (Xencelabs pen displays). Same wire
@@ -433,7 +509,7 @@ final class DeviceContext: ObservableObject, Identifiable {
                 guard let self, let device = self.tabletDevice,
                     let c = TabletSettings.bezelLEDColor(from: value)
                 else { return }
-                self.onHIDThread {
+                self.onHIDThread(device) { device in
                     device.controls.displayPanel?.setBezelLEDColor(LEDColor(
                         r: UInt8(Int(c.r) * Int(c.a) / 255),
                         g: UInt8(Int(c.g) * Int(c.a) / 255),
@@ -449,7 +525,7 @@ final class DeviceContext: ObservableObject, Identifiable {
                 let customMode = self.isCustomColorMode
                 let contrast = self.settings.displayContrast
                 let gamma = self.settings.displayGamma
-                self.onHIDThread {
+                self.onHIDThread(device) { device in
                     device.controls.displayPanel?.setColorMode(value)
                     guard customMode else { return }
                     if contrast >= 0 { device.controls.displayPanel?.setDisplayContrast(contrast) }
@@ -463,19 +539,25 @@ final class DeviceContext: ObservableObject, Identifiable {
         settings.$quickKeysOrientation
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.quickKeys?.setQuickKeysOrientation(steps: value) }
+                self.onHIDThread(device) { device in device.controls.quickKeys?.setQuickKeysOrientation(steps: value) }
             }
             .store(in: &cancellables)
         settings.$quickKeysSleepMinutes
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.quickKeys?.setQuickKeysSleepMinutes(value) }
+                self.onHIDThread(device) { device in device.controls.quickKeys?.setQuickKeysSleepMinutes(value) }
             }
             .store(in: &cancellables)
         settings.$quickKeysOledBrightness
             .sink { [weak self] value in
                 guard value >= 0, let self, let device = self.tabletDevice else { return }
-                self.onHIDThread { device.controls.quickKeys?.setQuickKeysOledBrightness(value) }
+                self.onHIDThread(device) { device in device.controls.quickKeys?.setQuickKeysOledBrightness(value) }
+            }
+            .store(in: &cancellables)
+        settings.$wirelessSleepMinutes
+            .sink { [weak self] value in
+                guard value >= 0, let self, let device = self.tabletDevice else { return }
+                self.onHIDThread(device) { device in device.controls.wirelessKit?.setSleepMinutes(value) }
             }
             .store(in: &cancellables)
     }
@@ -504,17 +586,17 @@ final class DeviceContext: ObservableObject, Identifiable {
         }
         let modeNames = settings.rotaryModeNames
         let isMechanicalDial = (WacomDeviceRegistry.spec(for: productID)
-            ?? TabletManager.vendorDeviceSpec(forVendorID: vendorID, productID: productID))?.hasMechanicalDial ?? false
+            ?? VendorDeviceRegistry.drivableSpec(forVendorID: vendorID, productID: productID))?.hasMechanicalDial ?? false
         let keyLabels = settings.expressKeyBindings.map {
             $0.modeFunctionLabel(modeNames: modeNames, isMechanicalDial: isMechanicalDial) ?? $0.displayLabel
         }
         let keyOLEDsRotated = settings.tabletOrientation == .landscapeFlipped
         // See `onHIDThread`'s header comment: every TabletDevice write is
         // confined to HIDThread, so this hops rather than calling inline.
-        onHIDThread {
+        onHIDThread(device) { device in
             if let ringModeLabel { device.controls.labels?.setRingModeLabel(ringModeLabel) }
             device.controls.ringLED?.setRingLEDColors(ringColors)
-            (device as? WacomKnownDevice)?.setKeyOLEDsRotated180(keyOLEDsRotated)
+            device.controls.labels?.setKeyOLEDsRotated180(keyOLEDsRotated)
             device.controls.labels?.setAuxKeyLabels(keyLabels)
         }
     }
@@ -523,31 +605,30 @@ final class DeviceContext: ObservableObject, Identifiable {
     ///
     /// `objectWillChange` fires *before* the new value is published, so we hop through
     /// `RunLoop.main` and debounce so the rebuild reads the post-update state. Each
-    /// rebuild is published onto HIDThread via `CFRunLoopPerformBlock`, so inject()
+    /// rebuild is published onto HIDThread, so inject()
     /// reads the snapshot from the same thread that wrote it (HIDThread is a serial
     /// run-loop thread). The inner ToolSettings subscription is replaced whenever
     /// `activeTool` swaps, so per-tool field edits (pressure curve, smoothing,
     /// button bindings) are also reflected.
     ///
     /// Each install also drops the display mapper's cached calibration entry, so
-    /// every path that edits calibration — calibrate, clear, undo/redo, preset
+    /// every path that edits calibration — calibrate, clear, undo/redo, profile
     /// switch, import, reset — picks up the change without its own invalidate call.
     func observeInjectionSnapshot() {
         // Seed at once. Only on HIDThread: reports may already be arriving,
         // and a write from main could tear the snapshot mid-read.
         let initial = settings.makeInjectionSnapshot(pairedProductID: pairedProductID)
         let injectorRef = injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             injectorRef.injectionSnapshot = initial
             injectorRef.displayMapper.invalidateCalibrationCache()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
 
         let rebuild: () -> Void = { [weak self] in
             guard let self else { return }
             let snap = self.settings.makeInjectionSnapshot(pairedProductID: self.pairedProductID)
             let injectorRef = self.injector
-            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            HIDThread.shared.perform {
                 injectorRef.injectionSnapshot = snap
                 // Drop the mapper's cached calibration in the same block that
                 // installs the snapshot it was read from. Invalidating from the
@@ -555,7 +636,6 @@ final class DeviceContext: ObservableObject, Identifiable {
                 // arrives, letting an inject() in the gap re-cache the old entry.
                 injectorRef.displayMapper.invalidateCalibrationCache()
             }
-            CFRunLoopWakeUp(HIDThread.shared.runLoop)
             // Binding/slot renames should reach devices with their own display
             // (Quick Keys OLED); deduped downstream, cheap when nothing changed.
             self.pushDeviceDisplayState()

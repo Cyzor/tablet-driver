@@ -90,7 +90,7 @@ final class DDCLink: @unchecked Sendable {
 
     /// Get VCP Feature. Nil unless the reply echoes the code with a nonzero
     /// maximum; an unimplemented code still echoes, with max 0.
-    func readVCP(_ code: UInt8) -> DiscoveryVCPValue? {
+    func readVCP(_ code: UInt8) -> CaptureVCPValue? {
         for variant in orderedChecksums() {
             guard let reply = transact([0x82, 0x01, code], checksum: variant, replyLength: 12),
                   reply[2] == 0x02, reply[4] == code
@@ -98,7 +98,7 @@ final class DDCLink: @unchecked Sendable {
             let max = Int(reply[6]) << 8 | Int(reply[7])
             guard max > 0 else { return nil }
             checksum = variant
-            return DiscoveryVCPValue(current: Int(reply[8]) << 8 | Int(reply[9]), max: max)
+            return CaptureVCPValue(current: Int(reply[8]) << 8 | Int(reply[9]), max: max)
         }
         return nil
     }
@@ -204,18 +204,18 @@ final class DDCLink: @unchecked Sendable {
 
     /// One brightness read at `offset`, no retries, for captures: says where
     /// it failed and keeps the reply even when it fails.
-    func probeBrightness(readOffset offset: UInt32) -> DiscoveryDDCProbe {
+    func probeBrightness(readOffset offset: UInt32) -> CaptureDDCProbe {
         let label = String(format: "0x%02X", offset)
         guard send(Self.packet([0x82, 0x01, 0x10], checksum: checksum)) else {
-            return DiscoveryDDCProbe(readOffset: label, result: "writeFailed")
+            return CaptureDDCProbe(readOffset: label, result: "writeFailed")
         }
         usleep(50_000)
         guard let reply = readReply(length: 12, offset: offset) else {
-            return DiscoveryDDCProbe(readOffset: label, result: "readFailed")
+            return CaptureDDCProbe(readOffset: label, result: "readFailed")
         }
         let result = !Self.replyChecksumMatches(reply) ? "badChecksum"
             : (reply[2] == 0x02 && reply[4] == 0x10) ? "ok" : "wrongReply"
-        return DiscoveryDDCProbe(
+        return CaptureDDCProbe(
             readOffset: label, result: result,
             reply: reply.map { String(format: "%02X", $0) }.joined())
     }
@@ -227,15 +227,10 @@ extension DDCLink {
     /// EISA ID "WAC", the manufacturer code in every Wacom display's EDID.
     static let wacomDisplayVendor: UInt32 = 0x5C23
 
-    /// The DDC channel of the Wacom display the tablet named `modelName` is
-    /// built into. With several Wacom displays online, picks the one whose
-    /// EDID name leads the model name ("Cintiq 27QHDT" for "Cintiq 27QHD
-    /// Touch (DTH-2700)"); nil when that can't settle it.
-    static func wacomPanel(modelName: String) -> DDCLink? {
-        wacomPanelDisplay(modelName: modelName).flatMap { DDCLink(displayLocation: $0.location) }
-    }
-
-    /// The display ID and IOKit location of that same panel.
+    /// The display ID and IOKit location of the panel built into the tablet
+    /// named `modelName`. With several Wacom displays online, picks the one
+    /// whose EDID name leads the model name ("Cintiq 27QHDT" for "Cintiq
+    /// 27QHD Touch (DTH-2700)"); nil when that can't settle it.
     static func wacomPanelDisplay(
         modelName: String
     ) -> (id: CGDirectDisplayID, location: String)? {

@@ -103,10 +103,10 @@ three languages filled in.
   regenerates catalog entries automatically on build, so don't hand-edit the
   English source string in the JSON — change the Swift call site and let the
   build add the new entry, then translate it. One exception: a control's
-  *display label* used for preset import/export round-tripping must not be
+  *display label* used for configuration import/export round-tripping must not be
   the only thing carrying its identity across locales — see the encoded/decode
   split in `ButtonBinding`/`TouchRingMode` and the note in
-  `tools/tests/preset-locale-tests/main.swift`.
+  `tools/tests/configuration-locale-tests/main.swift`.
 
 ## Pull requests
 

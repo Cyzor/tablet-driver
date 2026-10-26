@@ -23,7 +23,7 @@ extension InfoView {
 
     /// Connected aux-only companion peripheral (currently only the Xencelabs
     /// Quick Keys puck/dongle) — same resolution `DeviceStatusBar` and
-    /// `ButtonMappingView` use for their own companion sections.
+    /// `ButtonsView` use for their own companion sections.
     var companionContext: DeviceContext? {
         guard let productID else { return nil }
         let companionPID = DeviceCompanions.connectedCompanion(
@@ -31,19 +31,14 @@ extension InfoView {
         return companionPID.flatMap { tabletManager.contexts[$0] }
     }
 
-    var fallbackDevice: WacomFallbackDevice? {
-        deviceContext?.tabletDevice as? WacomFallbackDevice
+    /// The driver for a tablet the registry doesn't know, or nil.
+    var unrecognizedDriver: SessionDriver? {
+        (deviceContext?.tabletDevice as? SessionDriver).flatMap { $0.guessedAs != nil || $0.isSelfDescribed ? $0 : nil }
     }
 
-    var genericDigitizer: GenericHIDDigitizer? {
-        deviceContext?.tabletDevice as? GenericHIDDigitizer
-    }
-
-    /// Brand/category guessed from USB strings for an unrecognized device,
-    /// when available — `WacomFallbackDevice` already knows it's Wacom, so
-    /// only `GenericHIDDigitizer` carries a heuristic guess.
+    /// Brand guessed from USB strings for another maker's unknown tablet.
     var detectedBrand: String? {
-        genericDigitizer?.detectedBrand
+        unrecognizedDriver?.detectedBrand
     }
 
     var androidModeBanner: some View {
@@ -76,8 +71,17 @@ extension InfoView {
                 .foregroundStyle(.orange)
                 .imageScale(.large)
             VStack(alignment: .leading, spacing: 4) {
-                Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when active device is on the generic fallback driver"))
-                    .appFont(.headline)
+                if unrecognizedDriver?.isSelfDescribed == true {
+                    Text(String(localized: "Experimental support", comment: "Banner title shown when another maker's tablet is read from its own description"))
+                        .appFont(.headline)
+                    Text(String(localized: "Some features may not work yet.", comment: "Banner line shown when another maker's tablet is read from its own description"))
+                        .appFont(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(String(localized: "Unrecognized tablet", comment: "Banner title shown when the active tablet isn't in the registry"))
+                        .appFont(.headline)
+                }
                 if let detectedBrand {
                     Text(String(localized: "Looks like \(detectedBrand), but MockTab doesn't know this model yet.", comment: "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand"))
                         .appFont(.callout)
@@ -117,7 +121,7 @@ extension InfoView {
 
             row(
                 String(localized: "Connection", comment: "Row label in Info tab status table"),
-                value: deviceContext?.transport ?? "—",
+                value: deviceContext?.connectionName ?? "—",
                 ok: isConnected ? true : nil)
 
             // One row in every state, so a report arriving changes its value
@@ -125,7 +129,8 @@ extension InfoView {
             // before keeps the row while it connects, so rows below don't shift.
             let batteryPercent = deviceContext?.batteryPercent
             let charging = deviceContext?.batteryCharging ?? false
-            if batteryPercent != nil || charging
+            let checking = deviceContext?.awaitingBatteryReading == true
+            if batteryPercent != nil || charging || checking
                 || (instanceKey ?? deviceContext?.instanceKey).map(DeviceContext.expectsBatteryReport(for:)) == true
             {
                 row(
@@ -138,14 +143,18 @@ extension InfoView {
                         ? String(
                             localized: "Charging",
                             comment: "Status bar and Info battery value while a tablet charges and doesn't report its level")
-                        : "—"),
+                        : checking
+                            ? String(localized: "Checking…", comment: "Battery value while a wireless tablet's level settles after it links")
+                            : "—"),
                     ok: batteryPercent.map { $0 < 20 ? false : nil } ?? nil,
                     leadingSymbol: BatteryIndicator.symbolName(pct: batteryPercent ?? 100, charging: charging),
                     // Affirmative green when healthy — this table is the
                     // place users come to check on the device.
-                    symbolColor: batteryPercent.map {
+                    // Gray while the tablet sleeps: the reading is from before.
+                    symbolColor: deviceContext?.isAsleepOnWirelessKit == true ? .secondary : batteryPercent.map {
                         BatteryIndicator.tint(pct: $0, charging: charging, healthy: .green)
-                    } ?? (charging ? .green : .secondary))
+                    } ?? (charging ? .green : .secondary),
+                    accessory: offersWirelessSleep ? AnyView(wirelessSleepPicker) : nil)
             }
 
             if let pct = companionContext?.batteryPercent {
@@ -169,12 +178,15 @@ extension InfoView {
                 value: deviceContext?.usbSpeed ?? "—",
                 ok: isConnected ? true : nil)
 
+            let asleep = deviceContext?.isAsleepOnWirelessKit == true
             row(
                 String(localized: "Status", comment: "Row label in Info tab status table — driver status"),
-                value: isConnected
+                value: asleep
+                    ? String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep")
+                    : isConnected
                     ? String(localized: "Active", comment: "Driver status value — device is active")
                     : String(localized: "Idle", comment: "Driver status value — device is idle"),
-                ok: isConnected ? true : nil)
+                ok: isConnected && !asleep ? true : nil)
 
             // Labeled with System Settings' own names. Granted rows keep a
             // button rather than going bare: revoking is the user's to do,
@@ -223,7 +235,7 @@ extension InfoView {
 
             row(
                 String(localized: "Profile", comment: "Row label in Info tab status table — active profile name"),
-                value: presetLabel,
+                value: profileLabel,
                 ok: nil)
 
             row(
@@ -284,7 +296,8 @@ extension InfoView {
         actionLabel: String? = nil,
         actionHelp: String? = nil,
         actionDisabled: Bool = false,
-        reservesActionSpace: Bool = false
+        reservesActionSpace: Bool = false,
+        accessory: AnyView? = nil
     ) -> some View {
         GridRow {
             Text(label)
@@ -296,8 +309,15 @@ extension InfoView {
             // column so values and buttons stay together.
             HStack(spacing: 8) {
                 if let sym = leadingSymbol {
-                    Image(systemName: sym)
-                        .foregroundStyle(symbolColor ?? .primary)
+                    // Centered in a status icon's width, so the value lines
+                    // up with the rows above and below however wide it is.
+                    statusIcon(nil)
+                        .hidden()
+                        .overlay {
+                            Image(systemName: sym)
+                                .foregroundStyle(symbolColor ?? .primary)
+                                .fixedSize()
+                        }
                         .accessibilityHidden(true)
                 } else {
                     statusIcon(ok)
@@ -318,7 +338,9 @@ extension InfoView {
             HStack(spacing: 0) {
                 // actionLabel required alongside action — no generic fallback,
                 // since that could silently pick the wrong ellipsis convention.
-                if let action, let actionLabel {
+                if let accessory {
+                    accessory
+                } else if let action, let actionLabel {
                     Button(actionLabel, action: action)
                         .buttonStyle(.bordered)
                         .appControlSize(.small)
@@ -339,6 +361,44 @@ extension InfoView {
             }
             .gridColumnAlignment(.leading)
         }
+    }
+
+    /// A model that runs on the Wacom wireless kit, which holds a sleep timer.
+    var offersWirelessSleep: Bool {
+        let pid = deviceContext?.productID ?? productID ?? 0
+        return WacomDeviceRegistry.spec(for: pid)?.offeredControls.contains(.wirelessKit) == true
+    }
+
+    /// The kit's sleep timer, live only while the tablet runs on its receiver.
+    var wirelessSleepPicker: some View {
+        let live = deviceContext?.tabletDevice?.controls.wirelessKit != nil
+        return HStack(spacing: 6) {
+            Text("Sleep After", comment: "Label before the sleep timer menu in the Info pane's Battery row")
+                .foregroundStyle(.secondary)
+            Picker(
+                String(localized: "Sleep Timer", comment: "Quick Keys auto-sleep timer row label"),
+                selection: settings.recordingBinding(
+                    String(localized: "Sleep Timer", comment: "Quick Keys auto-sleep timer row label"),
+                    get: { max(settings.wirelessSleepMinutes, 0) },
+                    set: { settings.wirelessSleepMinutes = $0 })
+            ) {
+                // Tags are minutes; the receiver counts 5-minute steps.
+                Text("5 minutes", comment: "Wireless kit sleep timer choice").tag(5)
+                Text("10 minutes", comment: "Wireless kit sleep timer choice").tag(10)
+                Text("15 minutes", comment: "Wireless kit sleep timer choice").tag(15)
+                Text("30 minutes", comment: "Quick Keys sleep timer choice").tag(30)
+                Text("60 minutes", comment: "Quick Keys sleep timer choice").tag(60)
+                Divider()
+                Text("Default", comment: "Wireless kit sleep timer choice: the tablet's own timer").tag(0)
+            }
+            .labelsHidden()
+            .appControlSize(.small)
+            .fixedSize()
+        }
+        .disabled(!live)
+        .help(live
+            ? String(localized: "Puts the tablet to sleep when it sits unused this long.", comment: "Tooltip on the wireless kit sleep timer in the Info pane")
+            : String(localized: "Works only through the wireless receiver.", comment: "Tooltip on the wireless kit sleep timer while the tablet is on USB"))
     }
 
     @ViewBuilder

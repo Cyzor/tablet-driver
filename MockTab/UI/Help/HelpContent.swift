@@ -8,8 +8,8 @@ import Foundation
 ///
 /// Files live at `<Bundle>/en.md`, `<Bundle>/de.md`, etc. Each file uses
 /// `[section-id]` lines as section delimiters, where the id matches a
-/// `HelpSection.rawValue`. To add a new language, drop the appropriately
-/// named `.md` file into the Help group and add it to Copy Bundle Resources.
+/// `HelpSection.rawValue`. To add a language, put its `.md` file in
+/// `MockTab/Help/`.
 ///
 /// `HelpContent` is loaded once at first access. Call `reload()` to re-read
 /// the file from disk — useful during development with a running app.

@@ -7,7 +7,7 @@ import IOBluetooth
 import TabletKit
 
 /// Samples RSSI and link quality for one Bluetooth-connected tablet during a
-/// discovery capture, so a report of choppy Bluetooth cursor motion can be
+/// capture, so a report of choppy Bluetooth cursor motion can be
 /// checked against signal strength instead of guessed at.
 ///
 /// **The address match is a best-effort guess, not a verified fact.** macOS

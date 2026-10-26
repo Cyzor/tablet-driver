@@ -3,7 +3,7 @@
  * ([0x02, 0xB4, 0x10, ...]) and logs every HID input report that comes
  * back, so we can find which tag/offset actually carries the battery
  * percentage. The app already sends this same poll during its normal
- * resync (see WacomKnownDevice.swift, resyncXencelabsOutputsAfterRelink)
+ * resync (see TabletKit's TabletOutput.resyncAfterRelink)
  * but nothing currently decodes the reply.
  *
  * Opens the device directly via IOHIDManager (kIOHIDOptionsTypeNone — not
@@ -31,8 +31,8 @@
  *
  * Over the wireless dongle, an unaddressed poll is silently dropped by the
  * firmware — the app always appends the puck's 6-byte identity (read from
- * offset 10 of the connect-time status frame; see xencelabsDongleIdentity
- * in WacomKnownDevice.swift). This tool now does the same: it watches every
+ * offset 10 of the connect-time status frame; see TabletKit's
+ * XencelabsRelayWatcher). This tool now does the same: it watches every
  * incoming report for one at least 16 bytes long, grabs bytes [10..15] as
  * the identity the first time it sees one, and appends that identity to
  * every poll from then on (both the initial send and the periodic resend).

@@ -10,7 +10,7 @@ import SwiftUI
 
 /// Brightness and contrast for a Wacom pen display, sent over its video
 /// cable. Shown for every Wacom pen display and enabled only once the panel
-/// answers, so a Mac or adapter that can't reach it just greys it out.
+/// answers, so a Mac or adapter that can't reach it just grays it out.
 struct CintiqPanelSection: View {
     @StateObject private var panel: CintiqPanelControl
 

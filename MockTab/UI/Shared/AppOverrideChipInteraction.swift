@@ -80,8 +80,7 @@ func renderChipGhost<V: View>(_ view: V, scale: CGFloat) -> NSImage? {
 /// Owns tap, double-tap, and hold-to-arm detection for a chip via raw AppKit
 /// mouse events, sidestepping SwiftUI's gesture idiosyncratic recognition on this view
 /// entirely. Sits as a transparent overlay above the chip's
-/// visual content and carries the chip's accessibility element, which
-/// previously rode free on `Button`.
+/// visual content and carries the chip's accessibility element.
 ///
 /// Hold-to-arm: pressing and holding for `armDuration` without drifting more
 /// than `armMaxDrift` from the down point fires `onArm` (which enables the

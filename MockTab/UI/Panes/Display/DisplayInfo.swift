@@ -28,7 +28,7 @@ struct DisplayInfo {
     /// 1-based index into CGGetActiveDisplayList — the value stored in targetDisplayIndex.
     var listIndex: Int
     var bounds: CGRect  // in CGDisplayBounds / Quartz coordinates
-    var name: String  // localised device name if available
+    var name: String  // localized device name if available
     var resolution: String  // e.g. "2560×1440"
     /// Desktop image thumbnail, or nil when none could be loaded.
     ///

@@ -27,6 +27,9 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// The device identity actually written into the capture file, kept so the
     /// issue-submission text describes the same hardware.
     @Published private(set) var resolvedInfo: CaptureDeviceInfo? = nil
+    /// The recorded tablet's name as the status bar shows it, for when the
+    /// window's own tablet isn't connected and another one was recorded.
+    @Published private(set) var recordedTabletName: String? = nil
     /// The finished package, or the loose summary when packaging failed.
     @Published private(set) var savedURL: URL? = nil
     /// Set when the device's own descriptor names a feature report carrying a
@@ -213,9 +216,9 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// Mapping and pen-feel settings for the capture file. Unconditional,
     /// unlike `touchSettingsSnapshot()` — gating these the same way left
     /// non-Wacom captures with no app-side configuration at all.
-    private func appSettingsSnapshot(_ source: DeviceContext?) -> DiscoveryAppSettings? {
+    private func appSettingsSnapshot(_ source: DeviceContext?) -> CaptureAppSettings? {
         guard let s = source?.settings else { return nil }
-        return DiscoveryAppSettings(
+        return CaptureAppSettings(
             activeAreaX: s.activeAreaX,
             activeAreaY: s.activeAreaY,
             activeAreaWidth: s.activeAreaWidth,
@@ -272,11 +275,11 @@ final class CaptureSessionCoordinator: ObservableObject {
         }
     }
 
-    private func knownTabletsSnapshot() -> [DiscoveryKnownTablet]? {
+    private func knownTabletsSnapshot() -> [CaptureKnownTablet]? {
         let tablets = DeviceRegistry.shared.knownTablets
         guard !tablets.isEmpty else { return nil }
         return tablets.map { row in
-            DiscoveryKnownTablet(
+            CaptureKnownTablet(
                 productID: String(format: "0x%04X", row.productID),
                 model: row.modelName,
                 connected: tabletManager.context(for: row)?.isConnected == true,
@@ -300,13 +303,13 @@ final class CaptureSessionCoordinator: ObservableObject {
         }
     }
 
-    private func settingsIdentitySnapshot(_ source: DeviceContext?) -> DiscoverySettingsIdentity? {
+    private func settingsIdentitySnapshot(_ source: DeviceContext?) -> CaptureSettingsIdentity? {
         guard let context = source else { return nil }
         let registry = DeviceRegistry.shared
         let prefix = context.settings.devicePrefix
         let key = registry.normalizedKey(context.instanceKey)
         let row = registry.knownTablets.first { $0.instanceKey == key }
-        return DiscoverySettingsIdentity(
+        return CaptureSettingsIdentity(
             usbSerialReported: row.map { !($0.usbSerial ?? "").isEmpty },
             sharedNamespace: !prefix.contains("#"),
             knownUnitsOfModel: registry.knownTablets.filter { $0.productID == context.productID }.count,
@@ -316,19 +319,27 @@ final class CaptureSessionCoordinator: ObservableObject {
                 ? nil : String(format: "0x%04X", productID))
     }
 
-    private func appEnvironmentSnapshot() -> DiscoveryAppEnvironment {
+    private func appEnvironmentSnapshot() -> CaptureAppEnvironment {
         let path = Bundle.main.bundlePath
         let location =
             path.contains("/AppTranslocation/") ? "translocated"
             : (path.hasPrefix("/Applications/") ? "applications" : "other")
-        return DiscoveryAppEnvironment(
+        let running = NSWorkspace.shared.runningApplications
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let otherCopies = running.filter {
+            $0.bundleIdentifier == Bundle.main.bundleIdentifier && $0.processIdentifier != ownPID
+        }.count
+        let names = Set(running.compactMap(\.localizedName) + running.compactMap(\.bundleIdentifier))
+        return CaptureAppEnvironment(
             accessibilityGranted: AXIsProcessTrusted(),
             inputMonitoringGranted:
                 IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted,
-            installLocation: location)
+            installLocation: location,
+            otherMockTabCopies: otherCopies,
+            competingDrivers: ConflictProcessMatcher.matchedLabels(liveNames: names))
     }
 
-    private func touchSettingsSnapshot(_ source: DeviceContext?) -> DiscoveryTouchSettings? {
+    private func touchSettingsSnapshot(_ source: DeviceContext?) -> CaptureTouchSettings? {
         guard let source else { return nil }
         let settings = source.settings
         // Omitted only when a spec positively says the device has no finger
@@ -340,7 +351,7 @@ final class CaptureSessionCoordinator: ObservableObject {
         if let spec = WacomDeviceRegistry.spec(for: source.productID), !spec.hasFingerTouch {
             return nil
         }
-        return DiscoveryTouchSettings(
+        return CaptureTouchSettings(
             touchEnabled: settings.touchEnabled,
             tapToClick: settings.tapToClick,
             twoFingerScroll: settings.twoFingerScroll,
@@ -449,27 +460,31 @@ final class CaptureSessionCoordinator: ObservableObject {
         startupError = nil
         applyAutoDetectedModeSwitch(from: targets)
 
-        engine.onDiscoveryComplete = { [weak self] result in
+        engine.onCaptureComplete = { [weak self] result in
             Task { @MainActor in
                 guard let self,
-                    let summaryURL = self.engine.exportDiscoveryJSON(result: result)
+                    let summaryURL = self.engine.exportCaptureJSON(result: result)
                 else { return }
                 // Finalized here rather than on dismiss: the summary is
                 // written when the user clicks Done, while this sheet is
                 // still up, so packaging at dismiss time would zip a log
                 // that hadn't been flushed yet.
                 let rawLogURL = self.onFinalizeRawCapture?()
-                let packaged = DiagnosticPackage.build(
-                    summaryURL: summaryURL, rawLogURL: rawLogURL,
-                    productID: result.deviceInfo.productID)
+                let productID = result.deviceInfo.productID
+                // Off main: packaging copies files and waits for ditto.
+                let packaged = await Task.detached(priority: .utility) {
+                    let packaged = DiagnosticPackage.build(
+                        summaryURL: summaryURL, rawLogURL: rawLogURL, productID: productID)
+                    if packaged != nil {
+                        // Only once the archive holds them.
+                        try? FileManager.default.removeItem(at: summaryURL)
+                        if let rawLogURL { try? FileManager.default.removeItem(at: rawLogURL) }
+                    }
+                    return packaged
+                }.value
                 // Falls back to the loose summary when packaging fails, so a
                 // zip problem can never cost the user their capture.
                 self.savedURL = packaged ?? summaryURL
-                if packaged != nil {
-                    // Only once the archive holds them.
-                    try? FileManager.default.removeItem(at: summaryURL)
-                    if let rawLogURL { try? FileManager.default.removeItem(at: rawLogURL) }
-                }
             }
         }
         // Everything past this tablet's own interfaces was swept up for
@@ -479,7 +494,9 @@ final class CaptureSessionCoordinator: ObservableObject {
             !ownInterfaces.contains { $0 === candidate }
         }
         let source = settingsSource(recording: primary.0, ownInterfaces: ownInterfaces)
-        engine.startDiscovery(
+        recordedTabletName = source.flatMap { DeviceRegistry.shared.row(forKey: $0.instanceKey)?.nickname }
+            ?? primary.1.name
+        engine.startCapture(
             devices: targets, duration: HIDCapture.maxCaptureDuration, touchSettings: touchSettingsSnapshot(source),
             appSettings: appSettingsSnapshot(source),
             everSeenTools: everSeenToolsSnapshot(source),
@@ -506,8 +523,8 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// ID this specific device actually uses.
     ///
     /// The usage list lives in TabletKit beside the lookup
-    /// (`DescriptorLayout.modeSwitchUsages`) because `WacomFallbackDevice`
-    /// consults the same one when initializing an unrecognized device. A
+    /// (`DescriptorLayout.modeSwitchUsages`) because TabletKit's guess for an
+    /// unknown Wacom consults the same one for its init. A
     /// second copy here would let the tester's pre-filled value and the
     /// driver's actual write drift apart, which is the one discrepancy this
     /// screen must never introduce.
@@ -536,21 +553,15 @@ final class CaptureSessionCoordinator: ObservableObject {
     static let wacomVendorID = 0x056A
 
     /// Build the capture header from the **device itself**, not from what the
-    /// app guessed about it.
+    /// app guessed about it: both IDs come off the `IOHIDDevice`, and the
+    /// Wacom registry is consulted only once the vendor ID says Wacom. A
+    /// header whose job is to say what the hardware is mustn't fall back to
+    /// a guess.
     ///
-    /// Both IDs used to come from the wrong place: the vendor ID fell back to
-    /// Wacom's when unreadable, and the product ID was the `contexts` dictionary
-    /// key rather than the device's own. A submitted capture (issue #2) came
-    /// back describing a Pro-One PDT6002 as vendor `0x056A`, product `0x0000`,
-    /// name "PenPartner" — three fabrications in a header whose entire job is
-    /// to say what the hardware is. Read both off the `IOHIDDevice`, and only
-    /// consult the Wacom registry once the vendor ID says Wacom.
-    ///
-    /// Deliberately free of side effects, unlike the single-device version it
-    /// replaced: it now runs once per interface, and a sibling that can't name
-    /// itself is a dropped interface rather than a failed session. Deciding
-    /// that is the caller's job — see `startCollection`, which raises the
-    /// error only when *no* interface could be described.
+    /// Free of side effects: it runs once per interface, and a sibling that
+    /// can't name itself is left out rather than failing the session. The
+    /// caller decides; `startCollection` raises the error only when *no*
+    /// interface could be described.
     private func deviceInfo(device dev: IOHIDDevice) -> CaptureDeviceInfo? {
         let vendorID = IOHIDDeviceGetProperty(dev, kIOHIDVendorIDKey as CFString) as? Int
         let deviceProductID = IOHIDDeviceGetProperty(dev, kIOHIDProductIDKey as CFString) as? Int

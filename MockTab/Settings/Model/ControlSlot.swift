@@ -107,8 +107,8 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// action has one — a no-op for `.scroll`/`.keyPress`/`.off`/`.skip`,
     /// whose ceiling is UI-configurable (`maxSpeed`) rather than fixed.
     /// Shared write-side guard used by every "set this slot's speed"
-    /// binding (`ButtonMappingBindings`'s slot0-3SpeedBinding,
-    /// `ButtonMappingQuickKeys.slotSpeedBinding`), so a stored `speed` can
+    /// binding (`ButtonsView+Bindings.swift`'s slot0-3SpeedBinding,
+    /// `QuickKeysSectionView.slotSpeedBinding`), so a stored `speed` can
     /// never exceed its action's actual range regardless of which binding
     /// wrote it — see `Action.fixedSpeedCeiling`'s doc comment for the bug
     /// this (and the matching read-side clamp in `slotSpeedBinding`) fixed.
@@ -190,6 +190,7 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     }
 
     /// Cintiq 24HD rings: three modes, each with its own key beside the ring.
+    /// The 21UX2's strips start with the same modes.
     static let splitPadDefaults: [ControlSlot] = [
         ControlSlot(label: String(localized: "Scroll", comment: "Default ring slot label"), action: .scroll),
         ControlSlot(label: String(localized: "Zoom", comment: "Ring/strip action: analog pinch-zoom"), action: .zoom),
@@ -288,18 +289,11 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         /// from the caller instead (see `TouchRingModeList.speedRange(for:)`).
         /// The single source of truth for both the UI slider's range
         /// (`TouchRingModeList.speedRange(for:)` defers to this) and every
-        /// binding's stored-value clamp (`ButtonMappingQuickKeys.
-        /// slotSpeedBinding`, `ButtonMappingBindings`'s slot0-3SpeedBinding)
-        /// — before this existed, `slotSpeedBinding`'s getter clamped to a
-        /// stale scroll-only constant regardless of action, silently
-        /// capping `.zoom`'s displayed/effective speed at 3.0 out of its
-        /// intended 0...8 while the slider's thumb (and the speed label,
-        /// reading the unclamped stored value) disagreed with each other —
-        /// confirmed on hardware (Xencelabs puck, 2026-09): slider looked
-        /// pinned around 37.5% of its travel yet read "Max".
+        /// binding's stored-value clamp (`QuickKeysSectionView.
+        /// slotSpeedBinding`, `ButtonsView+Bindings.swift`'s slot0-3SpeedBinding),
+        /// so the slider's thumb and its speed label always agree.
         ///
-        /// `.zoom`: hardware feedback (PTH-860, 2026-09) found the old
-        /// shared 3x ceiling too low for a comfortable feel;
+        /// `.zoom`: a shared 3x ceiling felt too low;
         /// `dialGestureZoomScale` (InputInjector+CGEvents.swift) has no
         /// physical 1:1 anchor to derive a ceiling from, so 8x is an
         /// empirical choice matching what felt right, with headroom above it.

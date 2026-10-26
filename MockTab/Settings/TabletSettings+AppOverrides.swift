@@ -6,35 +6,10 @@ import AppKit
 import Foundation
 import SwiftUI
 
-// Per-app behavior, split out of TabletSettings.swift: auto-switching on
-// app focus, per-app override management and persistence, and the
-// app-to-preset binding persistence auto-switching consumes. The override
-// stored state lives on the main class body (Swift class extensions can't
-// hold stored properties).
+// Per-app override management and persistence. The override stored state
+// lives on the main class body (Swift class extensions can't hold stored
+// properties).
 extension TabletSettings {
-
-    // MARK: - App auto-switching
-
-    /// Called by `AppWatcher` on every app-focus change.
-    /// Switches to the bound preset for `bundleID`, or reverts to device defaults
-    /// if no binding exists.  No-ops when `autoSwitchEnabled` is false or the
-    /// desired preset is already active.
-    func handleAppActivation(bundleID: String, appName: String) {
-        guard autoSwitchEnabled else { return }
-        let target = appBindings.first(where: { $0.bundleID == bundleID })
-            .flatMap { b in profiles.first { $0.id == b.profileID } }
-        guard target?.id != activeProfile?.id || activationSource == .manual else {
-            // Same profile already active via auto-switch — just refresh the label.
-            activationSource = .app(bundleID: bundleID, name: appName)
-            return
-        }
-        if target?.id != activeProfile?.id {
-            activeProfile = target
-            saveActiveProfileID()
-            reloadAll()
-        }
-        activationSource = .app(bundleID: bundleID, name: appName)
-    }
 
     // MARK: - App override management
 
@@ -249,7 +224,7 @@ extension TabletSettings {
 
     /// Imports a per-app override's settings from a backup.
     ///
-    /// Unlike presets (always a fresh UUID, so they can't collide with
+    /// Unlike profiles (always a fresh UUID, so they can't collide with
     /// existing data), overrides are identified by `bundleID` — importing one
     /// for an app that already has a local override is a genuine identity
     /// collision. Defaults to skipping (keeping the local override
@@ -257,7 +232,7 @@ extension TabletSettings {
     /// previously-overridden keys not present in the imported `values` are
     /// cleared first, so the result matches the imported override exactly
     /// rather than merging stale leftovers. Applies immediately — app
-    /// overrides are live, device-wide settings, not preset-scoped — and
+    /// overrides are live, device-wide settings, not profile-scoped — and
     /// respects the `appOverridesLoadFailed` fail-closed guard like every
     /// other override mutation.
     ///
@@ -360,7 +335,7 @@ extension TabletSettings {
             appOverrides = []
             return
         }
-        guard let list = try? JSONDecoder().decode([AppOverride].self, from: data) else {
+        guard var list = try? JSONDecoder().decode([AppOverride].self, from: data) else {
             // Data exists but this build can't parse it — likely a newer
             // version's format. Don't let a later save clobber it.
             appOverridesLoadFailed = true
@@ -369,37 +344,8 @@ extension TabletSettings {
             return
         }
         appOverridesLoadFailed = false
+        // The retired Auto-Switch toggle saved into the selected override.
+        for i in list.indices { list[i].overriddenKeys.remove("autoSwitchEnabled") }
         appOverrides = list
-    }
-
-    // MARK: - App binding persistence
-
-    private var appBindingsKey: String { devicePrefix + "_appBindings" }
-
-    func saveAppBindings() {
-        guard !appBindingsLoadFailed else {
-            settingsLogger.error("Refusing to save app bindings: last load couldn't parse existing data")
-            return
-        }
-        guard let data = try? JSONEncoder().encode(appBindings) else { return }
-        ud.set(data, forKey: appBindingsKey)
-    }
-
-    func loadAppBindings() {
-        guard let data = ud.data(forKey: appBindingsKey) else {
-            appBindingsLoadFailed = false
-            appBindings = []
-            return
-        }
-        guard let list = try? JSONDecoder().decode([AppProfileBinding].self, from: data) else {
-            // Data exists but this build can't parse it — likely a newer
-            // version's format. Don't let a later save clobber it.
-            appBindingsLoadFailed = true
-            settingsLogger.error("App binding data exists but failed to decode; blocking overwrite")
-            appBindings = []
-            return
-        }
-        appBindingsLoadFailed = false
-        appBindings = list
     }
 }

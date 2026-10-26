@@ -26,8 +26,7 @@ struct DisplayMapper {
     /// aspect ratio matches the display's, avoiding stretching. Shared by
     /// `mapToScreen` (runtime injection), `CalibrationSession.normalizeRawPoint`
     /// (calibration-sample normalization), and the Active Area editor's
-    /// preview overlay — previously three near-identical copies of this
-    /// formula existed; consolidated 2026-09-17.
+    /// preview overlay.
     ///
     /// `surfaceAspect` should already reflect orientation (swapped if the
     /// device is in a portrait orientation) and any vendor-profile physical
@@ -128,7 +127,7 @@ struct DisplayMapper {
     /// report after proximity entry) so it can't drift from reality.
     private var ownedRelativePosition: CGPoint? = nil
 
-    /// Cached physical active-area size in millimetres, used to convert
+    /// Cached physical active-area size in millimeters, used to convert
     /// relative-mode deltas into a gain expressed relative to real pen
     /// travel rather than tablet-model-specific raw units. Invalidated when
     /// the device's productID changes.
@@ -190,8 +189,7 @@ struct DisplayMapper {
     /// Rotates a raw device-space point (and its axis maxima) into oriented
     /// (post-rotation) space. Shared by `mapToScreen`, `resolveRelativePoint`,
     /// the touch injection path (`InputInjector+Touch.swift`), and
-    /// `CalibrationSession.normalizeRawPoint` — previously duplicated inline
-    /// in all of the above; consolidated 2026-09-18.
+    /// `CalibrationSession.normalizeRawPoint`.
     static func orient(
         x: Double, y: Double, maxX: Double, maxY: Double, orientation: TabletOrientation
     ) -> (ox: Double, oy: Double, effMaxX: Double, effMaxY: Double) {
@@ -205,6 +203,16 @@ struct DisplayMapper {
         case .portraitFlipped:  // 90° CW — USB port moves to left
             return (maxY - y, x, maxY, maxX)
         }
+    }
+
+    /// Turns a tilt vector the way `orient` turns a position, so a pen leaning
+    /// toward you on a turned tablet still reads as leaning toward you. A
+    /// vector has no origin, so the maxima are zero.
+    static func orientTilt(
+        x: Double, y: Double, orientation: TabletOrientation
+    ) -> (x: Double, y: Double) {
+        let o = orient(x: x, y: y, maxX: 0, maxY: 0, orientation: orientation)
+        return (o.ox, o.oy)
     }
 
     /// Rotates a raw-space crop rect (fractions of the raw axes) into
@@ -394,10 +402,7 @@ struct DisplayMapper {
         // pinned at a monitor's edge while the mouse keeps moving past it.
         // Overshoot past the boundary simply doesn't matter once clamped,
         // however far or erratic it gets, so there's no need to detect or
-        // filter it upstream (see the PTK-870 BLE bezel/express-key-band
-        // investigation this replaced, in
-        // `project_ptk870_ble_new_report_protocol` memory). Matches the
-        // existing touch-at-screen-edges precedent
+        // filter it upstream. Matches the existing touch-at-screen-edges precedent
         // (`DisplayMapper.pinNearEdges`, +Touch.swift) that made
         // touch-triggered Dock reveal reliable the same way.
         let relX = Swift.min(Swift.max((ox - areaX) / areaW, 0), 1)

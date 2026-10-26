@@ -15,7 +15,10 @@ struct TabletColorTheme {
             return Color(NSColor.controlBackgroundColor)
         }
 
-        let hue = CGFloat(abs(pid.hashValue) % 360) / 360.0
+        // A multiplicative hash, not `hashValue`, which Swift seeds anew at
+        // each launch. It also spreads neighboring product IDs apart.
+        let mixed = UInt32(truncatingIfNeeded: pid) &* 2_654_435_761
+        let hue = CGFloat((mixed >> 16) % 360) / 360.0
 
         let nsColor = NSColor(
             name: nil,

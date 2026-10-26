@@ -101,6 +101,7 @@ extension InputInjector {
             snap: snap, settings: settings, tool: tool)
         lastTipDown = tipDown
         if !tipDown { syncBarrelEraser(at: screenPoint) }
+        if !tipDown, proximityOwedToFrontApp { reannounceProximity() }
 
         dispatchPenButtons(point: point, at: screenPoint, snap: snap, settings: settings, tool: tool)
 
@@ -634,9 +635,8 @@ extension InputInjector {
     /// `proximityExitDebounceTimer`.
     func commitProximityExit(snap: InjectionSnapshot) {
         ThreadContract.expectPenThread()
-        // Posted here, not by the caller, so every exit tells apps: the
-        // Xencelabs debounce, the stuck-proximity watchdog, and disconnect
-        // used to skip it. Exit reports carry no tool, so a leaving eraser
+        // Posted here, not by the caller, so every exit tells apps, including
+        // the Xencelabs debounce, the stuck-proximity watchdog, and disconnect. Exit reports carry no tool, so a leaving eraser
         // takes the identity it entered with.
         if lastProximity {
             postProximityEvent(
@@ -645,11 +645,12 @@ extension InputInjector {
         activeToolIsEraser = false
         lastEraserMode = false
         barrelEraserActive = false
+        proximityOwedToFrontApp = false
         // The release below supersedes it.
         tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         tipUpDebounceTimer = nil
         let exitPoint = smoother.smoothedPoint
-        // Lifting the pen away ends Click Lock, as in the Xencelabs driver.
+        // Lifting the pen away ends Click Lock.
         releaseClickLock(at: exitPoint, snapshot: snap)
         if lastTipDown && tipClickSwallowed {
             tipClickSwallowed = false

@@ -17,7 +17,11 @@ func buttonRow(
     offersEraser: Bool = false,
     modeNames: [[String]] = [],
     isMechanicalDialHardware: Bool = false,
+    isStripHardware: Bool = false,
     dialToggleControl: RotaryIndex? = nil,
+    placement: RotaryPlacement = .upright,
+    offersRingModes: Bool = false,
+    offersModeJumps: Bool = false,
     recordRequestToken: Int = 0
 ) -> some View {
     HStack(spacing: 0) {
@@ -32,7 +36,11 @@ func buttonRow(
             offersEraser: offersEraser,
             modeNames: modeNames,
             isMechanicalDialHardware: isMechanicalDialHardware,
+            isStripHardware: isStripHardware,
             dialToggleControl: dialToggleControl,
+            placement: placement,
+            offersRingModes: offersRingModes,
+            offersModeJumps: offersModeJumps,
             recordRequestToken: recordRequestToken)
             .equatable()
         Spacer(minLength: 0)
@@ -95,10 +103,12 @@ private struct LabelText: View {
     let label: String
     let isActive: Bool
     @Environment(\.liveInputMuffled) private var muffled
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Text(label)
-            .foregroundStyle(Color.primary)
+            // An explicit style ignores the disabled state, so dim it here.
+            .foregroundStyle(isEnabled ? Color.primary : Color(nsColor: .disabledControlTextColor))
             .fontWeight(isActive && !muffled ? .semibold : .regular)
             .padding(.horizontal, 5)
             .padding(.vertical, 2)

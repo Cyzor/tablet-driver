@@ -10,11 +10,46 @@ import SwiftUI
 /// Orientation selector with a native radio button on the left of each row.
 struct OrientationPickerView: View {
     @ObservedObject var settings: TabletSettings
+    /// The bound tablet, drawn turned to each orientation.
+    let figure: TabletFigure
+    /// Its ring has a lamp at each corner; see `TabletControlMap.ringLampsTurn`.
+    var ringLampsTurn = false
+
+    @State private var windowRef = WindowRef()
+    @State private var keyMonitor: Any?
 
     var body: some View {
         ForEach(TabletOrientation.allCases, id: \.rawValue) { orientation in
             orientationRow(orientation)
         }
+        .background(WindowReader(ref: windowRef))
+        .onAppear(perform: startShortcuts)
+        .onDisappear(perform: stopShortcuts)
+    }
+
+    // MARK: - Shortcuts
+
+    /// ⌘⌥1–4 pick the rows in order, a quick way back from a wrong pick. A
+    /// key monitor, because SwiftUI drops keyboard shortcuts on buttons in
+    /// form rows. Matched by physical key, so layouts that need Shift for
+    /// digits work too.
+    private static let digitKeys: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4]
+
+    private func startShortcuts() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [windowRef] event in
+            guard event.window === windowRef.window,
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.command, .option],
+                  let number = Self.digitKeys[event.keyCode]
+            else { return event }
+            selectOrientation(TabletOrientation.allCases[number - 1])
+            return nil
+        }
+    }
+
+    private func stopShortcuts() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
     }
 
     // MARK: - Row builder
@@ -26,7 +61,10 @@ struct OrientationPickerView: View {
                 NativeRadioIndicator(isSelected: settings.tabletOrientation == orientation)
                     .frame(width: 18, height: 18)
                     .allowsHitTesting(false)
-                OrientationGlyph(orientation: orientation)
+                // Decorative: the row's label already names the orientation.
+                TabletGlyphView(figure: figure.oriented(orientation),
+                                isSelected: settings.tabletOrientation == orientation)
+                    .equatable()
                     .frame(width: 50, height: 50)
                 Text(orientation.pickerLabel)
                 Spacer(minLength: 0)
@@ -35,53 +73,23 @@ struct OrientationPickerView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(orientation.helpText)
+        .help(Text(orientation.helpText) + Text(verbatim: "  ⌘⌥\(shortcutNumber(orientation))"))
+        // VoiceOver reads the shortcut on its own; the hint stays in words.
+        .accessibilityHint(Text(orientation.helpText))
+    }
+
+    private func shortcutNumber(_ orientation: TabletOrientation) -> Int {
+        (TabletOrientation.allCases.firstIndex(of: orientation) ?? 0) + 1
     }
 
     // MARK: - Action
 
+    /// Turning the tablet moves its assignments with it, so every place keeps
+    /// its action; undo reverts both.
     private func selectOrientation(_ orientation: TabletOrientation) {
-        let oldValue = settings.tabletOrientation
-        settings.tabletOrientation = orientation
-        settings.recordToggle(String(localized: "Orientation"), from: oldValue, to: orientation) {
-            settings.tabletOrientation = $0
+        settings.turn(to: orientation) { [figure, ringLampsTurn] old, new in
+            figure.turnCarry(from: old, to: new, ringLampsTurn: ringLampsTurn)
         }
-    }
-}
-
-// MARK: - Native radio button indicator
-
-/// Display-only native macOS radio button. A real `NSButton`, so it fades
-/// with its window like any system control.
-/// Position (circle left, label right) is controlled by the enclosing HStack.
-/// Interaction is handled by the parent — this view ignores hit-testing.
-struct NativeRadioIndicator: NSViewRepresentable {
-    let isSelected: Bool
-
-    func makeNSView(context: Context) -> RadioIndicatorView { RadioIndicatorView() }
-
-    func updateNSView(_ view: RadioIndicatorView, context: Context) {
-        view.button.state = isSelected ? .on : .off
-    }
-
-    final class RadioIndicatorView: NSView {
-        let button = NSButton(radioButtonWithTitle: "", target: nil, action: nil)
-
-        override init(frame: NSRect) {
-            super.init(frame: frame)
-            button.imagePosition = .imageOnly
-            button.translatesAutoresizingMaskIntoConstraints = false
-            button.setAccessibilityElement(false)
-            addSubview(button)
-            NSLayoutConstraint.activate([
-                button.centerXAnchor.constraint(equalTo: centerXAnchor),
-                button.centerYAnchor.constraint(equalTo: centerYAnchor),
-            ])
-        }
-
-        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }
 
@@ -103,27 +111,8 @@ extension TabletOrientation {
         switch self {
         case .landscape:        return "Standard orientation, with the tablet's long edge horizontal."
         case .portrait:         return "Rotate the active surface 90° clockwise. Hold the tablet in portrait orientation."
-        case .landscapeFlipped: return "Flip 180° for left-handed use or reversed cable routing."
+        case .landscapeFlipped: return "Rotate the active surface 180°, with the tablet's long edge horizontal."
         case .portraitFlipped:  return "Rotate the active surface 90° counter-clockwise."
         }
-    }
-}
-
-// MARK: - Orientation glyph
-
-/// Small tablet icon for each orientation radio button.
-/// The landscape SVG is rotated by the orientation's angle to produce all four variants.
-/// No fixed frame is applied here — the caller controls the display size.
-struct OrientationGlyph: View {
-    let orientation: TabletOrientation
-
-    var body: some View {
-        Image("TabletOrientation")
-            .resizable()
-            .scaledToFit()
-            .rotationEffect(Angle(radians: orientation.rotationAngle))
-            // Orientation is redundantly conveyed by the parent radio row's
-            // localised text label, so the rotated glyph is decorative.
-            .accessibilityHidden(true)
     }
 }

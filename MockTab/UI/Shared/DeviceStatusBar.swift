@@ -228,6 +228,7 @@ struct DeviceStatusBar: View {
 
     private var connectionSymbol: String {
         guard let context = context else { return "cable.connector.horizontal" }
+        if context.isOnWirelessKit { return "mediastick" }
         let t = context.transport.lowercased()
         if t.contains("bluetooth") { return "wave.3.right" }
         return "cable.connector.horizontal"
@@ -237,11 +238,19 @@ struct DeviceStatusBar: View {
         guard let context = context, context.isConnected else {
             return String(localized: "Not connected", comment: "Connection status when this window's tablet is disconnected")
         }
-        return context.transport
+        return context.connectionName
     }
 
     private var batteryItem: (String, String)? {
         guard let context = context else { return nil }
+        if context.isAsleepOnWirelessKit {
+            return ("moon.zzz", String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep"))
+        }
+        if context.awaitingBatteryReading {
+            return (
+                BatteryIndicator.symbolName(pct: 100, charging: false),
+                String(localized: "Checking…", comment: "Battery value while a wireless tablet's level settles after it links"))
+        }
         guard let pct = context.batteryPercent else {
             guard context.batteryCharging else { return nil }
             return (
@@ -266,13 +275,14 @@ struct DeviceStatusBar: View {
 
     private var batteryTint: Color {
         guard let context = context else { return .secondary }
+        if context.isAsleepOnWirelessKit { return .secondary }
         guard let pct = context.batteryPercent else { return context.batteryCharging ? .green : .secondary }
         // Neutral when healthy — the slim footer shouldn't draw the eye.
         return BatteryIndicator.tint(pct: pct, charging: context.batteryCharging, healthy: .secondary)
     }
 
     /// PID of a connected aux-only companion peripheral (currently only the
-    /// Xencelabs Quick Keys puck/dongle) — same resolution `ButtonMappingView`
+    /// Xencelabs Quick Keys puck/dongle) — same resolution `ButtonsView`
     /// uses for its companion section, kept independent here rather than
     /// shared, since this view has no other companion state to coordinate.
     private var companionProductID: Int? {

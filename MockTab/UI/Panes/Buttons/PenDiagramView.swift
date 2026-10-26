@@ -7,15 +7,17 @@ import TabletKit
 
 // MARK: - PenDiagramView
 
-/// Renders a schematic side-view of the stylus pen, rotated 90° so the tip
-/// faces right and the eraser faces left.  Segments illuminate in accent color
-/// when the corresponding physical input is active.
+/// Renders a schematic side view of the tool, tip at left and eraser at
+/// right, drawn from a `PenRecipe` so its barrel, buttons, and eraser match
+/// the tool. Parts illuminate in accent color when the corresponding
+/// physical input is active.
 ///
 /// Thin non-equatable wrapper owning the pressed-part state — not in the
 /// equatable core below — because a Form row swallows @State-driven
 /// re-renders inside an EquatableView (same trap as TouchRingModeListView).
 struct PenDiagramView: View {
     let liveButtons: LiveButtonState
+    var recipe: PenRecipe = .classic
     /// Called when a pen part is clicked — callers use it to start recording
     /// in that part's binding field (direct manipulation, same pattern as
     /// TouchRingModeListView's diagram). nil leaves the diagram inert.
@@ -37,7 +39,7 @@ struct PenDiagramView: View {
     @Environment(\.liveInputMuffled) private var muffled
 
     var body: some View {
-        PenDiagramCore(liveButtons: liveButtons, pressedPart: pressedPart, muffled: muffled)
+        PenDiagramCore(recipe: recipe, down: PenDiagramCore.down(liveButtons), pressedPart: pressedPart, muffled: muffled)
             .equatable()
             .overlay {
                 if onPartTap != nil {
@@ -67,32 +69,24 @@ struct PenDiagramView: View {
             .accessibilityHidden(true)
     }
 
-    /// Maps a click in the rendered diagram back to a pen part by inverting
-    /// the body's transform into SVG space, then splitting along the pen's
-    /// long axis (0 = eraser end, 344.8 = tip). Ranges come from the path
-    /// data in the core, padded a little — the barrel buttons and the round
-    /// third button are thin targets at this display size.
+    /// Maps a click back to a pen part through the drawing's transform.
     private func part(at point: CGPoint, in size: CGSize) -> Part? {
-        let scale = min(size.width / PenDiagramCore.svgH, size.height / PenDiagramCore.svgW)
-        guard scale > 0 else { return nil }
-        let tx = (size.width + PenDiagramCore.svgH * scale) / 2.0
-        let ty = (size.height - PenDiagramCore.svgW * scale) / 2.0
-        let svgX = (point.y - ty) / scale
-        let svgY = (tx - point.x) / scale
-        // Reject clicks off the pen's width (SVG x spans 0…44.6).
-        guard svgX > -6, svgX < PenDiagramCore.svgW + 6 else { return nil }
-        let hit: Part?
-        switch svgY {
-        case ..<24: hit = .eraser
-        case 226..<258: hit = .button2
-        case 258..<292: hit = .button1
-        case 292..<310: hit = .button3
-        case 315...: hit = .tip
-        default: hit = nil
-        }
-        guard let hit else { return nil }
+        let t = PenDiagramCore.transform(for: size)
+        guard let hit = recipe.part(at: point.applying(t.inverted())).map(Part.init) else { return nil }
         if let enabledParts, !enabledParts.contains(hit) { return nil }
         return hit
+    }
+}
+
+extension PenDiagramView.Part {
+    init(_ part: PenRecipe.Part) {
+        switch part {
+        case .tip: self = .tip
+        case .eraser: self = .eraser
+        case .button(1): self = .button1
+        case .button(2): self = .button2
+        default: self = .button3
+        }
     }
 }
 
@@ -100,98 +94,302 @@ struct PenDiagramView: View {
 
 /// The drawn diagram, equatable over its visible state so the ~16 Hz
 /// liveButtons/livePoint invalidations streaming through the pane
-/// short-circuit when nothing visible has changed.
+/// short-circuit when nothing visible has changed. It sees only the pen's
+/// own parts, so ExpressKey and ring traffic never redraws it.
 private struct PenDiagramCore: View, Equatable {
-    let liveButtons: LiveButtonState
+    let recipe: PenRecipe
+    /// One bit per part that's down; see `bit(_:)`.
+    let down: UInt8
     let pressedPart: PenDiagramView.Part?
     /// Outline-only highlights; see `EnvironmentValues.liveInputMuffled`.
     let muffled: Bool
 
-    // SVG viewBox origin and dimensions (tablet-generic-stylus.svg: 0 0 44.6 344.8)
-    fileprivate static let svgW = 44.6
-    fileprivate static let svgH = 344.8
+    @Environment(\.controlActiveState) private var controlActiveState
 
-    // Pre-parse once at app launch (static let is lazy in Swift)
-    // swiftlint:disable:next line_length
-    private static let outlineD: String = "M22.3,2c5.3,0,9.6,4.3,9.6,9.6v5.5c0,.4,0,.8-.2,1.1,2.8.5,5,2.9,5.1,5.8l1.9,131.7c0,.8-.2,1.6-.7,2.3,1.4.6,2.4,2,2.4,3.6l2.1,134.3c.2,7.9-1.7,15.8-5.6,22.9h0c-.4.8-2.3,3.6-3,4.8-.4.6-1,1.1-1.7,1.3,0,.6,0,1.3-.5,1.8l-3.6,5c-.5.7-1.2,1.4-1.9,1.8.1.3.2.6.1,1l-.3,4.9c-.1,2-1.8,3.5-3.8,3.5s-3.6-1.6-3.8-3.5l-.3-4.9c0-.3,0-.7.1-1-.7-.5-1.4-1.1-1.9-1.8l-3.6-5c-.4-.5-.5-1.2-.5-1.8-.7-.2-1.3-.6-1.7-1.3-.7-1.1-2.6-4-3-4.7h0c-3.9-7.1-5.8-15.1-5.6-23l2.1-134.3c0-1.6,1-3,2.4-3.6-.4-.7-.7-1.5-.7-2.3L7.8,24c0-3,2.3-5.4,5.1-5.9-.1-.3-.2-.7-.2-1.1v-5.5c0-5.3,4.3-9.6,9.6-9.6M22.3,0h0C15.9,0,10.7,5.2,10.7,11.6v5.1c-2.8,1.2-4.8,4-4.9,7.2l-1.9,131.7c0,.5,0,1.1.2,1.6-1.2,1.1-1.9,2.6-1.9,4.3L0,295.8c-.3,8.3,1.8,16.6,5.8,23.9h0c0,.1,0,.2,0,.2.5.8,2.6,4.1,3,4.7.4.6.9,1.1,1.5,1.5.1.6.4,1.1.8,1.6l3.6,5c.4.6.9,1.1,1.4,1.5v.2l.3,4.9c.2,3,2.7,5.4,5.8,5.4s5.6-2.4,5.8-5.4l.3-4.9v-.2c.5-.5,1-1,1.4-1.5l3.6-5c.4-.5.6-1.1.8-1.6.6-.4,1.1-.9,1.5-1.5.6-1,2.6-4,3-4.7h0s0,0,0,0h0c4.1-7.5,6.1-15.8,5.9-24.1l-2.1-134.3c0-1.7-.8-3.2-1.9-4.3.1-.5.2-1,.2-1.6l-1.9-131.7c-.1-3.2-2.1-6-4.9-7.2v-5.1C33.9,5.2,28.7,0,22.3,0h0Z"
-    private static let outlinePath = Path(svgData: outlineD)
-    // swiftlint:disable:next line_length
-    private static let bodyD: String = "M7.9,155.8l1.9-131.7c0-2.2,1.9-4,4.1-4h16.7c2.2,0,4.1,1.8,4.1,4l1.9,131.7c0,1.1-.9,2-2,2H9.9c-1.1,0-2-.9-2-2ZM40.5,295.9c.2,7.6-1.6,15.2-5.3,21.9-.4.7-2.3,3.5-3,4.6-.2.3-.5.5-.8.5H13.2c-.3,0-.7-.2-.8-.5-.7-1.1-2.5-4-3-4.6-3.7-6.7-5.6-14.3-5.3-21.9l2.1-134.3c0-1.1.9-2,2-2h28.3c1.1,0,2,.9,2,2l2.1,134.3ZM16.7,230.6l.7,28.6h9.8l.6-28.6c0-3.1-2.4-5.6-5.5-5.6h-.2c-3.1,0-5.5,2.5-5.5,5.6ZM27.2,261.2h-9.8l-.6,24.1c0,3.1,2.4,5.6,5.5,5.6s5.6-2.5,5.5-5.6l-.6-24.1ZM27.9,300.2c0-3.1-2.5-5.6-5.6-5.6s-5.6,2.5-5.6,5.6,2.5,5.6,5.6,5.6,5.6-2.5,5.6-5.6Z"
-    private static let bodyPath = Path(svgData: bodyD)
-    private static let eraserPath = Path(
-        svgData:
-            "M29.9,11.6c0-4.2-3.4-7.6-7.6-7.6s-7.6,3.4-7.6,7.6v5.5c0,.5.4,1,1,1h13.2"
-            + "c.5,0,1-.5,1-1,0,0,0-5.5,0-5.5Z")
-    private static let tipPath = Path(
-        svgData:
-            "M22.3,324.6h7.4c.4,0,.6.5.4.8l-3.6,5c-1,1.4-2.6,2.1-4.2,2.1s-3.2-.7-4.2-2.1l-3.6-5"
-            + "c-.2-.3,0-.8.4-.8h7.4ZM24.1,339.1l.3-4.9c0-.3-.3-.6-.6-.5-.3,0-.8.1-1.5.1s-1.1,0-1.5-.1"
-            + "c-.3,0-.6.2-.6.5l.3,4.9c0,.9.8,1.7,1.8,1.7h0c.9,0,1.7-.7,1.8-1.7Z"
-    )
-    private static let btn2Path = Path(
-        svgData:
-            "M19.3,257.2l-.6-26.7c0-.9.3-1.8,1-2.5.7-.7,1.5-1,2.5-1h.2c.9,0,1.8.4,2.5,1"
-            + ",.7.7,1,1.6,1,2.5l-.6,26.7h-5.9Z")
-    private static let btn1Path = Path(
-        svgData:
-            "M22.3,289c-.9,0-1.8-.4-2.5-1-.7-.7-1-1.6-1-2.5l.5-22.2h5.9l.5,22.2"
-            + "c0,.9-.3,1.8-1,2.5-.7.7-1.5,1-2.5,1Z")
-    private static let btn3Path = Path(
-        svgData:
-            "M22.3,303.9c-2,0-3.6-1.6-3.6-3.6s1.6-3.6,3.6-3.6,3.6,1.6,3.6,3.6-1.6,3.6-3.6,3.6Z")
+    // Environment changes refresh the view on their own, so equality
+    // compares only the drawn state.
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        // SwiftUI compares views on the main actor.
+        MainActor.assumeIsolated {
+            a.recipe == b.recipe && a.down == b.down && a.pressedPart == b.pressedPart && a.muffled == b.muffled
+        }
+    }
+
+    static func bit(_ part: PenDiagramView.Part) -> UInt8 {
+        switch part {
+        case .tip: return 1 << 0
+        case .eraser: return 1 << 1
+        case .button1: return 1 << 2
+        case .button2: return 1 << 3
+        case .button3: return 1 << 4
+        }
+    }
+
+    static func down(_ live: LiveButtonState) -> UInt8 {
+        (live.tipDown ? bit(.tip) : 0) | (live.eraserDown ? bit(.eraser) : 0)
+            | (live.button1Down ? bit(.button1) : 0) | (live.button2Down ? bit(.button2) : 0)
+            | (live.button3Down ? bit(.button3) : 0)
+    }
+
+    /// Recipe space to view space: scaled to fit, turned so the tip faces
+    /// left. Every recipe shares one frame, so pens compare in size.
+    static func transform(for size: CGSize) -> CGAffineTransform {
+        let f = PenRecipe.frame
+        let scale = min(size.width / f.height, size.height / f.width)
+        // (x, y) → (−y·scale + tx, x·scale + ty)
+        return CGAffineTransform(a: 0, b: scale, c: -scale, d: 0,
+                                 tx: size.width / 2 + f.midY * scale, ty: size.height / 2 - f.midX * scale)
+    }
 
     var body: some View {
+        let _ = BodyCounter.note("PenDiagramCore")
         Canvas { context, size in
-            // Scale to fit, preserving aspect ratio.
-            // Pen is displayed rotated 90° counterclockwise: tip at left, eraser at right.
-            // SVG (x,y) → display (-y·scale + tx,  x·scale + ty)
-            let scale = min(size.width / Self.svgH, size.height / Self.svgW)
-            let tx = (size.width + Self.svgH * scale) / 2.0
-            let ty = (size.height - Self.svgW * scale) / 2.0
-            var t = CGAffineTransform(a: 0, b: scale, c: -scale, d: 0, tx: tx, ty: ty)
-
-            func draw(_ path: Path, fill: Color, stroke: Color, pressed: Bool = false) {
-                guard let xp = path.cgPath.copy(using: &t) else { return }
-                let p = Path(xp)
-                context.fill(p, with: .color(fill))
-                if pressed {
-                    // Pushed-button feedback: primary darkens in light mode
-                    // and lightens in dark mode, like AppKit's press state.
-                    context.fill(p, with: .color(.primary.opacity(0.15)))
-                }
-                context.stroke(p, with: .color(stroke), style: StrokeStyle(lineWidth: 0.1))
-            }
+            let t = Self.transform(for: size)
+            func view(_ path: CGPath) -> Path { Path(path).applying(t) }
 
             // Light mode swaps the fills: a darker body under lighter
             // buttons keeps the highlighted part leading.
             let isDark = context.environment.colorScheme == .dark
             let passive = isDark ? Color.secondary : Color.primary.opacity(0.35)
             let bodyFill = isDark ? Color.primary.opacity(0.80) : Color.secondary
-            let strokeDim = Color.secondary
-            let accent = Color.accentColor
+            let accent = Color.windowAccent(controlActiveState)
 
-            draw(Self.outlinePath, fill: bodyFill, stroke: strokeDim)
-            draw(Self.bodyPath, fill: bodyFill, stroke: strokeDim)
-            draw(
-                Self.eraserPath, fill: liveButtons.eraserDown && !muffled ? accent : passive,
-                stroke: liveButtons.eraserDown ? (muffled ? Color.primary : accent) : strokeDim,
-                pressed: pressedPart == .eraser)
-            draw(
-                Self.btn2Path, fill: liveButtons.button2Down && !muffled ? accent : passive,
-                stroke: liveButtons.button2Down ? (muffled ? Color.primary : accent) : strokeDim,
-                pressed: pressedPart == .button2)
-            draw(
-                Self.btn1Path, fill: liveButtons.button1Down && !muffled ? accent : passive,
-                stroke: liveButtons.button1Down ? (muffled ? Color.primary : accent) : strokeDim,
-                pressed: pressedPart == .button1)
-            draw(
-                Self.btn3Path, fill: liveButtons.button3Down && !muffled ? accent : passive,
-                stroke: liveButtons.button3Down ? (muffled ? Color.primary : accent) : strokeDim,
-                pressed: pressedPart == .button3)
-            draw(
-                Self.tipPath, fill: liveButtons.tipDown && !muffled ? accent : passive,
-                stroke: liveButtons.tipDown ? (muffled ? Color.primary : accent) : strokeDim,
-                pressed: pressedPart == .tip)
+            context.fill(view(recipe.outline), with: .color(bodyFill))
+            context.fill(view(recipe.bodyFill), with: .color(bodyFill))
+            for (part, path) in recipe.parts {
+                let p = view(path)
+                let shown = PenDiagramView.Part(part)
+                let down = self.down & Self.bit(shown) != 0
+                context.fill(p, with: .color(down && !muffled ? accent : passive))
+                if pressedPart == shown {
+                    // Pushed-button feedback: primary darkens in light mode
+                    // and lightens in dark mode, like AppKit's press state.
+                    context.fill(p, with: .color(.primary.opacity(0.15)))
+                }
+                if down && muffled {
+                    context.stroke(p, with: .color(.primary), lineWidth: 1)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Recipe for a tool
+
+extension PenRecipe {
+    /// The barrel for a tool, with its button count and eraser. Grip and Art
+    /// Pens are classic, Pro Pen 2 and 3 slim (the Pro Pen 2 with a rocker),
+    /// Art Pen 2 and the Xencelabs 3 Button Pen their own, and the rest
+    /// straight; an airbrush is a fatter straight barrel for now.
+    init(tool: ToolSpec?, buttonCount: Int, hasEraser: Bool? = nil) {
+        let name = tool?.name ?? ""
+        var recipe: PenRecipe
+        switch tool?.toolType {
+        // A mouse keeps the pen it has always shown, until it has a drawing of its own.
+        case .mouse: recipe = .classic
+        case .airbrush: recipe = .straight.girth(1.3)
+        case .inkingPen: recipe = .straight.girth(0.85)
+        case .artPen: recipe = name == "Art Pen 2" ? .artPen2 : .classic
+        default:
+            if tool == nil || name.contains("Grip Pen") || name == "Pro Pen" { recipe = .classic }
+            else if name.hasPrefix("Xencelabs 3") { recipe = .xencelabs }
+            else if name.hasPrefix("Pro Pen 2") { recipe = .slim; recipe.buttons = .rocker(dot: false) }
+            else if name.hasPrefix("Pro Pen") { recipe = .slim }
+            else { recipe = .straight }
+        }
+        recipe.eraser = hasEraser ?? tool?.hasEraserVariant ?? true
+        self = recipe.buttons(buttonCount)
+    }
+}
+
+// MARK: - MouseDiagramView
+
+/// A mouse seen from above, upright, drawn in the pen diagram's style.
+/// Left, right, and middle always show; buttons 4 and 5 sit in the middle
+/// column on mice that have them. The middle part lights for the middle
+/// button and while the wheel turns.
+struct MouseDiagramView: View {
+    let liveButtons: LiveButtonState
+    var wheelTurning = false
+    /// Whether buttons 4 and 5 are drawn.
+    var hasSideButtons = false
+    var onPartTap: ((Part) -> Void)? = nil
+
+    enum Part: CaseIterable {
+        case left, right, middle, button4, button5
+    }
+
+    @State private var pressedPart: Part? = nil
+    @Environment(\.liveInputMuffled) private var muffled
+
+    var body: some View {
+        MouseDiagramCore(down: down, hasSideButtons: hasSideButtons, pressedPart: pressedPart, muffled: muffled)
+            .equatable()
+            .overlay {
+                if onPartTap != nil {
+                    GeometryReader { geo in
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .gesture(DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let start = part(at: value.startLocation, in: geo.size)
+                                    let current = part(at: value.location, in: geo.size)
+                                    let held = (start != nil && current == start) ? start : nil
+                                    if pressedPart != held { pressedPart = held }
+                                }
+                                .onEnded { value in
+                                    pressedPart = nil
+                                    if let start = part(at: value.startLocation, in: geo.size),
+                                       part(at: value.location, in: geo.size) == start {
+                                        onPartTap?(start)
+                                    }
+                                })
+                    }
+                }
+            }
+            // Redundant with the binding rows, as on the pen.
+            .accessibilityHidden(true)
+    }
+
+    private var down: Set<Part> {
+        var parts: Set<Part> = []
+        if liveButtons.button1Down { parts.insert(.left) }
+        if liveButtons.button2Down { parts.insert(.right) }
+        if liveButtons.button3Down || wheelTurning { parts.insert(.middle) }
+        if liveButtons.button4Down { parts.insert(.button4) }
+        if liveButtons.button5Down { parts.insert(.button5) }
+        return parts
+    }
+
+    private func part(at point: CGPoint, in size: CGSize) -> Part? {
+        let p = point.applying(MouseDiagramCore.transform(for: size).inverted())
+        return MouseDiagramCore.parts(hasSideButtons: hasSideButtons).first { $0.path.contains(p) }?.part
+    }
+}
+
+private struct MouseDiagramCore: View, Equatable {
+    let down: Set<MouseDiagramView.Part>
+    let hasSideButtons: Bool
+    let pressedPart: MouseDiagramView.Part?
+    let muffled: Bool
+
+    @Environment(\.controlActiveState) private var controlActiveState
+
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        MainActor.assumeIsolated {
+            a.down == b.down && a.hasSideButtons == b.hasSideButtons && a.pressedPart == b.pressedPart
+                && a.muffled == b.muffled
+        }
+    }
+
+    /// The drawing's own box, upright.
+    static let frame = CGSize(width: 112.27, height: 167.81)
+
+    /// Drawing space to view space: upright, scaled to fit, and centered.
+    static func transform(for size: CGSize) -> CGAffineTransform {
+        let scale = min(size.width / frame.width, size.height / frame.height)
+        return CGAffineTransform(scaleX: scale, y: scale)
+            .concatenating(CGAffineTransform(translationX: (size.width - frame.width * scale) / 2,
+                                             y: (size.height - frame.height * scale) / 2))
+    }
+
+    /// The outline's path and the body inside its gap.
+    static let shell: (outer: Path, body: Path) = {
+        var outer = Path()
+        outer.move(to: CGPoint(x: 56.74, y: 159.34))
+        outer.addCurve(to: CGPoint(x: 12.74, y: 115.34), control1: CGPoint(x: 32.48, y: 159.34), control2: CGPoint(x: 12.74, y: 139.6))
+        outer.addLine(to: CGPoint(x: 12.74, y: 48.66))
+        outer.addCurve(to: CGPoint(x: 48.74, y: 12.66), control1: CGPoint(x: 12.74, y: 28.81), control2: CGPoint(x: 28.89, y: 12.66))
+        outer.addLine(to: CGPoint(x: 64.74, y: 12.66))
+        outer.addCurve(to: CGPoint(x: 100.74, y: 48.66), control1: CGPoint(x: 84.59, y: 12.66), control2: CGPoint(x: 100.74, y: 28.81))
+        outer.addLine(to: CGPoint(x: 100.74, y: 115.33))
+        outer.addCurve(to: CGPoint(x: 56.74, y: 159.33), control1: CGPoint(x: 100.74, y: 139.59), control2: CGPoint(x: 81, y: 159.33))
+        outer.closeSubpath()
+
+        var body = Path()
+        body.move(to: CGPoint(x: 56.74, y: 157.34))
+        body.addCurve(to: CGPoint(x: 14.74, y: 115.34), control1: CGPoint(x: 33.58, y: 157.34), control2: CGPoint(x: 14.74, y: 138.5))
+        body.addLine(to: CGPoint(x: 14.74, y: 48.66))
+        body.addCurve(to: CGPoint(x: 48.74, y: 14.66), control1: CGPoint(x: 14.74, y: 29.91), control2: CGPoint(x: 29.99, y: 14.66))
+        body.addLine(to: CGPoint(x: 64.74, y: 14.66))
+        body.addCurve(to: CGPoint(x: 98.74, y: 48.66), control1: CGPoint(x: 83.49, y: 14.66), control2: CGPoint(x: 98.74, y: 29.91))
+        body.addLine(to: CGPoint(x: 98.74, y: 115.33))
+        body.addCurve(to: CGPoint(x: 56.74, y: 157.33), control1: CGPoint(x: 98.74, y: 138.49), control2: CGPoint(x: 79.9, y: 157.33))
+        body.closeSubpath()
+        return (outer, body)
+    }()
+
+    /// Each button's slot, in drawing space; its face sits a border's width
+    /// inside. Without side buttons the middle column keeps only its middle key.
+    static func parts(hasSideButtons: Bool) -> [(part: MouseDiagramView.Part, path: Path)] {
+        var left = Path()
+        left.move(to: CGPoint(x: 20.74, y: 88.01))
+        left.addCurve(to: CGPoint(x: 18.74, y: 86.01), control1: CGPoint(x: 19.64, y: 88.01), control2: CGPoint(x: 18.74, y: 87.11))
+        left.addLine(to: CGPoint(x: 18.74, y: 48.66))
+        left.addCurve(to: CGPoint(x: 48.07, y: 18.67), control1: CGPoint(x: 18.74, y: 32.34), control2: CGPoint(x: 31.84, y: 19.02))
+        left.addLine(to: CGPoint(x: 48.07, y: 68.93))
+        left.addCurve(to: CGPoint(x: 53.41, y: 74.27), control1: CGPoint(x: 48.07, y: 71.87), control2: CGPoint(x: 50.47, y: 74.27))
+        left.addCurve(to: CGPoint(x: 54.75, y: 75.61), control1: CGPoint(x: 54.15, y: 74.27), control2: CGPoint(x: 54.75, y: 74.87))
+        left.addLine(to: CGPoint(x: 54.75, y: 86))
+        left.addCurve(to: CGPoint(x: 52.75, y: 88), control1: CGPoint(x: 54.75, y: 87.1), control2: CGPoint(x: 53.85, y: 88))
+        left.closeSubpath()
+
+        var right = Path()
+        right.move(to: CGPoint(x: 60.72, y: 88.01))
+        right.addCurve(to: CGPoint(x: 58.72, y: 86.01), control1: CGPoint(x: 59.62, y: 88.01), control2: CGPoint(x: 58.72, y: 87.11))
+        right.addLine(to: CGPoint(x: 58.72, y: 75.62))
+        right.addCurve(to: CGPoint(x: 60.06, y: 74.28), control1: CGPoint(x: 58.72, y: 74.88), control2: CGPoint(x: 59.32, y: 74.28))
+        right.addCurve(to: CGPoint(x: 65.4, y: 68.94), control1: CGPoint(x: 63.01, y: 74.28), control2: CGPoint(x: 65.4, y: 71.88))
+        right.addLine(to: CGPoint(x: 65.4, y: 18.67))
+        right.addCurve(to: CGPoint(x: 94.73, y: 48.66), control1: CGPoint(x: 81.64, y: 19.03), control2: CGPoint(x: 94.73, y: 32.34))
+        right.addLine(to: CGPoint(x: 94.73, y: 86.01))
+        right.addCurve(to: CGPoint(x: 92.73, y: 88.01), control1: CGPoint(x: 94.73, y: 87.11), control2: CGPoint(x: 93.83, y: 88.01))
+        right.closeSubpath()
+
+        func key(_ y: Double) -> Path {
+            Path(roundedRect: CGRect(x: 52.07, y: y, width: 9.33, height: 14.54), cornerRadius: 1)
+        }
+        var parts: [(MouseDiagramView.Part, Path)] = [(.left, left), (.right, right), (.middle, key(37.2))]
+        if hasSideButtons { parts += [(.button4, key(18.66)), (.button5, key(55.74))] }
+        return parts
+    }
+
+    var body: some View {
+        let _ = BodyCounter.note("MouseDiagramCore")
+        Canvas { context, size in
+            let t = Self.transform(for: size)
+            // The pen diagram's fills, so the two read as one family.
+            let isDark = context.environment.colorScheme == .dark
+            let passive = isDark ? Color.secondary : Color.primary.opacity(0.35)
+            let bodyFill = isDark ? Color.primary.opacity(0.80) : Color.secondary
+            let accent = Color.windowAccent(controlActiveState)
+
+            let parts = Self.parts(hasSideButtons: hasSideButtons)
+            // A thin outline ring, a cleared gap, then the body with each
+            // button cut out of it, as the pen's are.
+            context.drawLayer { layer in
+                let outer = Self.shell.outer.applying(t)
+                layer.stroke(outer, with: .color(bodyFill), lineWidth: 4 * hypot(t.a, t.b))
+                layer.blendMode = .destinationOut
+                layer.fill(outer, with: .color(.black))
+                layer.blendMode = .normal
+                layer.fill(Self.shell.body.applying(t), with: .color(bodyFill))
+                layer.blendMode = .destinationOut
+                for (_, path) in parts { layer.fill(path.applying(t), with: .color(.black)) }
+            }
+            // Each face a unit inside its slot, leaving a border like the pen's.
+            let border = 2 * hypot(t.a, t.b)
+            for (part, path) in parts {
+                let p = path.applying(t)
+                let isDown = down.contains(part)
+                context.drawLayer { layer in
+                    layer.fill(p, with: .color(isDown && !muffled ? accent : passive))
+                    if pressedPart == part { layer.fill(p, with: .color(.primary.opacity(0.15))) }
+                    layer.blendMode = .destinationOut
+                    layer.stroke(p, with: .color(.black), lineWidth: border)
+                }
+                if isDown && muffled { context.stroke(p, with: .color(.primary), lineWidth: 1) }
+            }
         }
     }
 }

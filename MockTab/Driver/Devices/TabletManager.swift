@@ -18,7 +18,7 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 /// on its own visibility — when the scratchpad tab is hidden or the app
 /// resigns active, the HID-thread closure skips both the throttle bookkeeping
 /// and the main-thread dispatch entirely.
-final class LiveTouchPublisher: ObservableObject {
+final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // split as each property notes
     @MainActor @Published var contacts: [TouchContact] = []
 
     /// HID-thread reads, main-thread writes, behind a lock.
@@ -59,7 +59,8 @@ final class TabletManager: ObservableObject {
 
     static let shared = TabletManager()
 
-    private let manager: IOHIDManager
+    /// Finds, connects, and decodes the tablets; set in `start()`.
+    private var session: TabletSession?
 
     // MARK: - Per-device state
 
@@ -159,7 +160,7 @@ final class TabletManager: ObservableObject {
     }
 
     /// Physical width ÷ height of a tablet's whole surface, before rotation.
-    /// Vendor millimetres where registered: raw units aren't square on every
+    /// Vendor millimeters where registered: raw units aren't square on every
     /// tablet (Xencelabs' Pen Display differs per axis), so maxX ÷ maxY alone
     /// can draw a landscape surface as portrait.
     func surfaceAspectRatio(for key: DeviceInstanceKey?) -> Double {
@@ -201,7 +202,11 @@ final class TabletManager: ObservableObject {
     func context(forKey key: DeviceInstanceKey?) -> DeviceContext? {
         guard let key else { return nil }
         if !key.instance.isEmpty {
-            return deviceContexts[key]
+            if let exact = deviceContexts[key] { return exact }
+            // The claimed unit connects over Bluetooth without its serial,
+            // under the empty instance its key normalizes to.
+            let normalized = DeviceRegistry.shared.normalizedKey(key)
+            return normalized.instance.isEmpty ? deviceContexts[normalized] : nil
         }
         return contexts[key.productID]
     }
@@ -210,7 +215,7 @@ final class TabletManager: ObservableObject {
     /// `didSet` keeps `injector.isActive` in lockstep so the HIDThread fast path in
     /// `onTablet` is gated by a flag that exactly mirrors `activeContext`. Without
     /// this, `injector.isActive` would only flip on a context *change*; the very
-    /// first device (where `deviceConnected` does `if activeContext == nil` …)
+    /// first device (where `installDriver` does `if activeContext == nil` …)
     /// would have its activation skipped and the cursor would never move.
     @Published var activeContext: DeviceContext? = nil {
         didSet {
@@ -236,7 +241,7 @@ final class TabletManager: ObservableObject {
     /// not every settings pane that observes `TabletManager`.  Broadcasting
     /// touch updates through `TabletManager` collapsed every pane's body
     /// at touch-frame rate, which was the dominant CPU cost under a palm.
-    let liveTouch = LiveTouchPublisher()
+    nonisolated let liveTouch = LiveTouchPublisher()
 
     private var hidDeviceMap: [IOHIDDevice: DeviceContext] = [:]
     /// Raw (transport-specific) PID each registered interface belongs to —
@@ -248,21 +253,15 @@ final class TabletManager: ObservableObject {
     /// moves a dongle's driver slot onto its tablet's context; this tracks
     /// where it went so late interfaces, re-pairing and teardown can follow.
     private var dongleTransports: [DeviceInstanceKey: DongleTransport] = [:]
-    /// Interfaces deferred because they arrived before the control interface (0xFF00) for their PID.
-    /// Drained into registerDevice() once a WacomKnownDevice is created for that raw PID.
-    /// Keyed by raw PID, not canonical PID — two transports that fold onto
-    /// the same canonical identity (Xencelabs puck/dongle) build separate
-    /// drivers and must not drain into each other's.
-    private var pendingInterfaces = HeldInterfaces<IOHIDDevice>()
-    /// Touch sensors that enumerate under their own PID (Cintiq 27QHD Touch's
-    /// 0x032C) and arrived before the pen interface that claims them via
-    /// `touchCompanionPID`. Keyed by the sensor's own PID; drained when the
-    /// claiming tablet's driver appears. `pendingInterfaces` can't serve this:
-    /// it's keyed by the driver's raw PID, which a cross-PID companion by
-    /// definition doesn't share. Enumeration order is arrival luck, so without
-    /// this the sensor's fate would depend on which interface macOS reports
-    /// first.
-    private var pendingTouchCompanions = HeldInterfaces<IOHIDDevice>()
+    /// Each session transport's driver slot, and the handle its callbacks
+    /// reach their context through.
+    private var sessionDrivers: [TabletTransport.ID: SessionDriver] = [:]
+    private var transportHandles: [TabletTransport.ID: DriverContextHandle] = [:]
+    /// Each transport's identity as it connected; a dongle keeps its own
+    /// after it moves onto the tablet it relays.
+    private var transportProbes: [TabletTransport.ID: DeviceIdentityProbe] = [:]
+    /// The context each session tablet's transports share.
+    private var tabletContexts: [ConnectedTablet.ID: DeviceContext] = [:]
 
     // MARK: - Manager-level published state
     //
@@ -322,8 +321,7 @@ final class TabletManager: ObservableObject {
     /// still in proximity.
     func resyncLiveStateForVisibility() {
         guard let context = activeContext, context.livePoint != nil else { return }
-        let injector = context.injector
-        guard !HIDThread.shared.performAndWait({ injector.lastProximity }) else { return }
+        guard !context.injector.proximityForMain else { return }
         context.activeToolID = nil
         context.activeToolCode = 0
         context.liveButtons = LiveButtonState()
@@ -351,9 +349,9 @@ final class TabletManager: ObservableObject {
     private static let uiUpdateInterval = 8  // every 8th report ≈ 16 Hz at 133 Hz
 
     /// A contact alive this many frames or fewer when it disappears counts
-    /// as "short-lived" for `DiscoveryTouchPipeline.shortLivedContacts` — at
+    /// as "short-lived" for `CaptureTouchPipeline.shortLivedContacts` — at
     /// ~100 Hz touch reporting, roughly 30 ms, well under any deliberate tap.
-    private static let shortLivedContactFrames = 3
+    private nonisolated static let shortLivedContactFrames = 3
 
     // MARK: - Device name helpers
 
@@ -387,27 +385,6 @@ final class TabletManager: ObservableObject {
         return WacomDeviceRegistry.deviceName(forProductID: pid)
     }
 
-    var connectedDeviceName: String {
-        switch connectedProductIDs.count {
-        case 0: return "No tablet"
-        case 1: return Self.deviceName(forProductID: connectedProductIDs[0])
-        default:
-            let first = Self.deviceName(forProductID: connectedProductIDs[0])
-            return "\(first) + \(connectedProductIDs.count - 1) more"
-        }
-    }
-
-    // MARK: - Legacy single-device accessors
-
-    var settings: TabletSettings? {
-        get { activeContext?.settings }
-        set { /* no-op: settings are now per-context */  }
-    }
-
-    var injector: InputInjector? {
-        activeContext?.injector
-    }
-
     // MARK: - Known vendors
 
     /// Every USB vendor whose tablets MockTab recognizes, decoded or not.
@@ -431,56 +408,50 @@ final class TabletManager: ObservableObject {
 
     // MARK: - Init
 
-    private init() {
-        manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
-    }
+    private init() {}
 
     func start() {
         IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
 
-        // Matched by vendor (see `knownVendorIDs`). Only Wacom is actually
-        // decoded; the rest are recognition-only — deviceConnected logs them
-        // by name and returns, so the user can see in
-        // `log show --predicate 'subsystem == "com.cyzor.mocktab"'` that the
-        // device was recognised even though MockTab can't drive it yet. This
-        // keeps the unknown-device discovery flow honest: "your tablet is a
-        // Huion H1060P, and we don't support it" beats "your tablet is
-        // invisible to us."
-        let matching: [[String: Any]] =
-            Self.knownVendorIDs.map { [kIOHIDVendorIDKey: $0 as NSNumber] } + [
-            // Universal floor: any vendor's standards-compliant pen digitizer
-            // (top-level usage Digitizer/Pen). Matching on the Pen usage — not
-            // just the page — excludes trackpads (0x05) and touch screens (0x04),
-            // so we never claim the built-in trackpad.
-            [kIOHIDDeviceUsagePageKey: 0x0D as NSNumber,
-             kIOHIDDeviceUsageKey: 0x02 as NSNumber],  // any-vendor pen digitizer
-        ]
-        IOHIDManagerSetDeviceMatchingMultiple(manager, matching as CFArray)
-
-        let ctx = Unmanaged.passRetained(self).toOpaque()
-
-        IOHIDManagerRegisterDeviceMatchingCallback(
-            manager,
-            { ctx, _, _, device in
-                guard let ctx else { return }
-                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-                // Hop to main — TabletManager is @MainActor; HIDThread fires this callback.
-                Task { @MainActor in mgr.deviceConnected(device) }
-            }, ctx)
-
-        IOHIDManagerRegisterDeviceRemovalCallback(
-            manager,
-            { ctx, _, _, device in
-                guard let ctx else { return }
-                let mgr = Unmanaged<TabletManager>.fromOpaque(ctx).takeUnretainedValue()
-                Task { @MainActor in mgr.deviceDisconnected(device) }
-            }, ctx)
-
-        // Schedule on the dedicated HID thread so report delivery is not gated
-        // on main-thread availability (e.g. during SwiftUI rendering passes).
-        IOHIDManagerScheduleWithRunLoop(
-            manager, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
-        let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        // Matched by vendor (see `knownVendorIDs`), plus any vendor's
+        // standards-compliant pen digitizer, the universal floor. Devices the
+        // session recognizes but can't drive are named in the log, so a user
+        // can see the tablet was found even though MockTab can't drive it.
+        let session = TabletSession(vendorIDs: Self.knownVendorIDs, anyPenDigitizer: true, delegate: self)
+        self.session = session
+        #if DEBUG
+        // Reads one owned tablet as unknown, for testing the guesses:
+        // `defaults write com.cyzor.mocktab debugFallbackProductID -int 855` (0x0357, in decimal).
+        // `debugGenericFallback` reads it as another maker's standard pen.
+        // Both last one launch, so a relaunch undoes a test that goes wrong.
+        let defaults = UserDefaults.standard
+        let fallbackPID = defaults.integer(forKey: "debugFallbackProductID")
+        session.readsUnknownWacomAsGeneric = defaults.bool(forKey: "debugGenericFallback")
+        defaults.removeObject(forKey: "debugFallbackProductID")
+        defaults.removeObject(forKey: "debugGenericFallback")
+        if fallbackPID != 0 {
+            session.unregisteredProductIDs = [fallbackPID]
+            logger.notice("debug: reading 0x\(String(fallbackPID, radix: 16, uppercase: true), privacy: .public) as an unknown tablet")
+        }
+        // Switches on other makers' tablets, by brand, until removed:
+        // `defaults write com.cyzor.mocktab enabledTabletBrands -array huion xppen`.
+        // Brands: huion, gaomon, xppen, ugee, and parblo.
+        for name in defaults.stringArray(forKey: "enabledTabletBrands") ?? [] {
+            if let brand = TabletBrand(name: name) {
+                session.experimentalTabletBrands.insert(brand)
+            } else {
+                logger.notice("debug: enabledTabletBrands has \(name, privacy: .public), which isn't a brand MockTab knows")
+            }
+        }
+        if !session.experimentalTabletBrands.isEmpty {
+            logger.notice("debug: switching on \(session.experimentalTabletBrands.map(\.description).sorted().joined(separator: ", "), privacy: .public) tablets")
+        }
+        // Reads a Xencelabs tablet the way an XP-Pen is read, for one launch:
+        // `defaults write com.cyzor.mocktab debugXencelabsAsUGEE -bool YES`.
+        session.readsXencelabsAsUGEE = defaults.bool(forKey: "debugXencelabsAsUGEE")
+        defaults.removeObject(forKey: "debugXencelabsAsUGEE")
+        #endif
+        let ret = session.start()
         hidManagerOpen = (ret == kIOReturnSuccess)
         if !hidManagerOpen {
             logger.error("TabletManager: failed to open HID manager (\(ret, privacy: .public)). Check Input Monitoring permission or uninstall any existing tablet driver.")
@@ -501,24 +472,19 @@ final class TabletManager: ObservableObject {
         }
     }
 
-    /// Re-attempt the manager open after an Input Monitoring grant.
+    /// Re-attempt the HID open after an Input Monitoring grant.
     ///
-    /// A denied grant makes `IOHIDManagerOpen` fail outright, so the permission
-    /// arriving later doesn't retroactively bring the tablet to life — matching
-    /// callbacks were registered but the manager was never opened. Deliberately
-    /// *not* a second `start()`: that would re-register the callbacks and leak
-    /// another `passRetained` self-reference. Everything except the open is
-    /// already in place from launch, so only the open is repeated, and only
-    /// when it previously failed.
+    /// A denied grant makes the open fail outright, so the permission
+    /// arriving later doesn't bring the tablet to life by itself. Only the
+    /// open is repeated, and only when it previously failed.
     @discardableResult
     func reopenIfClosed() -> Bool {
-        guard !hidManagerOpen else { return true }
-        let ret = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeNone))
+        guard !hidManagerOpen, let session else { return hidManagerOpen }
+        let ret = session.retryOpen()
         hidManagerOpen = (ret == kIOReturnSuccess)
-        // .notice, not .info: this fires at most once per launch and only on a
-        // state change, and it's the difference between a working tablet and a
-        // row that says Granted over a dead one — exactly what a support dump
-        // needs to show. .info wouldn't survive to the log store.
+        // .notice: this fires at most once per launch, and it's the
+        // difference between a working tablet and a dead one, which a
+        // support log needs to show.
         if hidManagerOpen {
             logger.notice("TabletManager: HID manager opened on retry after permission grant.")
         } else {
@@ -527,12 +493,19 @@ final class TabletManager: ObservableObject {
         return hidManagerOpen
     }
 
+    /// Closes every tablet, restoring what connecting changed, as at quit.
     func stop() {
-        IOHIDManagerUnscheduleFromRunLoop(
-            manager, HIDThread.shared.runLoop, RunLoop.Mode.common.rawValue as CFString)
-        IOHIDManagerClose(manager, IOOptionBits(kIOHIDOptionsTypeNone))
-        for (_, ctx) in hidDeviceMap { ctx.tabletDevice?.close() }
+        // Fallback drivers close themselves; the session closes its own.
+        for ctx in hidDeviceMap.values { ctx.tabletDevice?.close() }
+        session?.stop()
+        session = nil
         hidDeviceMap.removeAll()
+        deviceRawProductID.removeAll()
+        sessionDrivers.removeAll()
+        transportHandles.removeAll()
+        transportProbes.removeAll()
+        tabletContexts.removeAll()
+        dongleTransports.removeAll()
         deviceContexts.removeAll()
         activeContext = nil
         connectedProductIDs = []
@@ -554,145 +527,10 @@ final class TabletManager: ObservableObject {
         let vendorID = DeviceRegistry.shared.vendorID(forProductID: productID)
             ?? lastSeenVendorID[productID]
             ?? 0x056A
-        return vendorDeviceSpec(forVendorID: vendorID, productID: productID)
+        return VendorDeviceRegistry.drivableSpec(forVendorID: vendorID, productID: productID)
     }
 
-    /// Synthesizes the `TabletSpec` for a drivable non-Wacom device from
-    /// its `VendorDeviceRegistry` profile. Shared by `deviceConnected` (which
-    /// needs it live, to attach a driver) and UI callers like
-    /// `ButtonMappingView` (which need the same shape — `hasTouchRing`,
-    /// `buttonCount`, etc. — even when no live `DeviceContext` spec is
-    /// reachable, since these devices aren't in the Wacom-only
-    /// `WacomDeviceRegistry` the UI otherwise consults).
-    static func vendorDeviceSpec(forVendorID vendorID: Int, productID: Int) -> TabletSpec? {
-        guard !WacomDeviceRegistry.vendorIDs.contains(vendorID),
-            let profile = VendorDeviceRegistry.drivableProfile(
-                forVendorID: vendorID, productID: productID)
-        else { return nil }
-        // Profiles without coordinate maxima are aux-only devices
-        // (Quick Keys: express keys + dial, no pen digitizer).
-        let isAuxOnly = profile.maxX == nil
-        return TabletSpec(
-            productID: productID,
-            name: profile.productName,
-            format: .xencelabs,
-            maxX: profile.maxX ?? 0,
-            maxY: profile.maxY ?? 0,
-            maxPressure: profile.maxPressure ?? 8191,
-            buttonCount: profile.auxButtonCount ?? 0,
-            bezelButtonCount: profile.bezelButtonCount ?? 0,
-            // hasTouchRing reuses the entire Wacom touch-ring UI/LED
-            // architecture for the Quick Keys dial (4 modes on both,
-            // ringSlotCount defaults to 4) — see XencelabsDecoder's
-            // touchRingButtonDown/buttons[8] mapping. Only the aux-only
-            // puck/dongle has a dial; the pen tablets/display themselves
-            // have neither express keys nor a ring of their own (those are
-            // the companion's, folded into the tablet's Buttons pane
-            // instead — see ButtonMappingView's Quick Keys section), so
-            // this must not be forced on for every Xencelabs PID.
-            // The Quick Keys dial is a bare mechanical encoder, same
-            // mechanism as PTK-470/670/870's gen-3 dials — no finger-presence
-            // sensing, rotation only. See hasMechanicalDial's doc comment.
-            hasTouchRing: isAuxOnly, hasMechanicalDial: isAuxOnly,
-            hasEraser: !isAuxOnly, hasTilt: !isAuxOnly,
-            // Hardware-confirmed — see ReportFormat.tiltMaxDegrees.
-            tiltMaxDegrees: isAuxOnly ? nil : ReportFormat.xencelabs.tiltMaxDegrees,
-            isPenDisplay: profile.isPenDisplay,
-            seizeUSB: false,
-            // Tablet-mode handshake; without it the device stays in
-            // mouse emulation (see Xencelabs-G1D-Feasibility note).
-            initSteps: [.outputReport([0x02, 0xB0, 0x04])],
-            confidence: .experimental,
-            activeWidthMM: profile.activeWidthMM,
-            activeHeightMM: profile.activeHeightMM)
-    }
-
-    /// Outcome of `vendorGate`: whether `deviceConnected` should continue
-    /// routing this interface, and with what synthesized spec (if any) — or
-    /// bail out immediately because this is a recognized-but-undrivable
-    /// vendor device, or a non-pen interface from an unrecognized vendor.
-    private enum VendorGateDecision {
-        /// Continue routing. `spec` is non-nil only for drivable non-Wacom
-        /// vendors (the Xencelabs allowlist); nil for Wacom and for the
-        /// generic-pen-digitizer fallback (DeviceRouter attaches
-        /// GenericHIDDigitizer in that case).
-        case proceed(spec: TabletSpec?)
-        /// `deviceConnected` should return immediately — no further state
-        /// touched.
-        case bail
-    }
-
-    /// Decides whether this interface is Wacom, a drivable non-Wacom vendor
-    /// (Xencelabs), a standards-compliant pen digitizer from an unrecognized
-    /// vendor (falls through to the universal floor), or something to name,
-    /// log, and ignore. Reads only `device`'s HID properties plus the
-    /// already-extracted `vendorID`/`rawProductID` — no captured state, no
-    /// mutation. Does its own logging: the three decision branches and their
-    /// log lines are tightly coupled (product/vendor names, candidate
-    /// counts), so splitting the log out would mean threading most of that
-    /// data back through `VendorGateDecision` just to keep this "pure" —
-    /// not worth it for a private, single-call-site helper.
-    private static func vendorGate(
-        _ device: IOHIDDevice, vendorID: Int, rawProductID: Int
-    ) -> VendorGateDecision {
-        // Non-Wacom path. Devices on the drivable allowlist (currently the two
-        // Xencelabs Pen Tablets) get a spec synthesized from their vendor
-        // profile and continue through the normal routing below; everything
-        // else is recognition-only — name it, log it, and bail out before any
-        // Wacom-specific state touches it.
-        guard !WacomDeviceRegistry.vendorIDs.contains(vendorID) else { return .proceed(spec: nil) }
-        if let profile = VendorDeviceRegistry.drivableProfile(
-            forVendorID: vendorID, productID: rawProductID)
-        {
-            logger.info("TabletManager: drivable \(profile.vendor, privacy: .public) device — \(profile.productName, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — attaching experimental decoder")
-            return .proceed(spec: Self.vendorDeviceSpec(forVendorID: vendorID, productID: rawProductID))
-        }
-        // Not on the drivable allowlist. If this interface is a
-        // standards-compliant pen digitizer (top-level usage Pen), let it
-        // fall through to normal routing with no spec — DeviceRouter
-        // attaches the vendor-agnostic GenericHIDDigitizer (universal
-        // floor: pen motion + tap + absolute). Otherwise it's a non-pen
-        // interface or a vendor we only recognise: name it and bail.
-        let primaryUsagePage = hidIntProperty(device, kIOHIDPrimaryUsagePageKey)
-        let primaryUsage = hidIntProperty(device, kIOHIDPrimaryUsageKey)
-        // Xencelabs' whole family declares a standards-compliant
-        // report-7 digitizer collection on every interface (dongle,
-        // puck) but never actually sends data on it — confirmed live,
-        // see XencelabsDecoder's header comment. Attaching the generic
-        // floor there produces a phantom tablet-area window sized off
-        // that decorative descriptor (which mirrors the real display's
-        // logical bounds, hence looking plausible) for hardware that
-        // isn't a digitizer at all.
-        //
-        // 0xFEED/0xBEEF is Karabiner-Elements' VirtualHIDDevice (its
-        // well-known synthetic keyboard/pointer identity) — not real
-        // drawing hardware. It also exposes a digitizer usage page,
-        // and it's not just cosmetic here: attaching the generic
-        // floor to it lets its synthetic events assert proximity,
-        // which steals `activeContext` (and with it CGEvent posting)
-        // away from a real connected tablet whenever Karabiner is
-        // running, so real pen motion silently stops reaching the
-        // screen.
-        let isPenDigitizer =
-            primaryUsagePage == 0x0D && primaryUsage == 0x02
-            && vendorID != 0x28BD && vendorID != 0xFEED
-        let profiles = VendorDeviceRegistry.profiles(
-            forVendorID: vendorID, productID: rawProductID)
-        let name = profiles.first?.productName ?? "(unknown product)"
-        let vendorName = profiles.first?.vendor
-            ?? "non-Wacom vendor 0x\(String(vendorID, radix: 16))"
-        if isPenDigitizer {
-            logger.info("TabletManager: \(vendorName, privacy: .public) \(name, privacy: .public) (PID=0x\(String(rawProductID, radix: 16), privacy: .public)) — generic pen digitizer, attaching universal floor")
-            // spec stays nil; fall through to routing below.
-            return .proceed(spec: nil)
-        } else {
-            let candidateCount = profiles.count
-            logger.info("TabletManager: recognised \(vendorName, privacy: .public) device — \(name, privacy: .public) (VID=0x\(String(vendorID, radix: 16), privacy: .public) PID=0x\(String(rawProductID, radix: 16), privacy: .public), \(candidateCount, privacy: .public) profile candidates) — no decoder support yet")
-            return .bail
-        }
-    }
-
-    /// Everything `deviceConnected` needs to know about one `IOHIDDevice`
+    /// Everything connecting needs to know about one `IOHIDDevice`
     /// before it touches any mutable state — pure property reads plus
     /// canonicalization, no side effects. Split out so the two steps read as
     /// what they are: figure out what this interface is, then decide what to
@@ -714,10 +552,10 @@ final class TabletManager: ObservableObject {
         let instanceKey: DeviceInstanceKey
     }
 
-    /// Reads the HID properties `deviceConnected` needs and folds transport
+    /// Reads the HID properties connecting needs and folds transport
     /// variants (BT/dongle PIDs) onto the canonical PID this device's
     /// context, settings namespace, and window key off. See the inline
-    /// comments at the `deviceConnected` call site for the serial/locationID
+    /// comments in `beginConnecting` for the serial/locationID
     /// trust caveats this bakes in.
     private static func probeIdentity(
         _ device: IOHIDDevice, rawProductID: Int, vendorID: Int
@@ -735,7 +573,7 @@ final class TabletManager: ObservableObject {
         let isBLE = transport.lowercased().contains("bluetooth")
         // kIOHIDSerialNumberKey is only trusted for instance identity on
         // non-Bluetooth transports — see the doc comment at the
-        // `deviceConnected` call site for why BT serial is untrusted here.
+        // comment in `beginConnecting` for why BT serial is untrusted here.
         let rawSerialProbe =
             IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String
         let usbSerial = isBLE ? nil : rawSerialProbe
@@ -776,291 +614,92 @@ final class TabletManager: ObservableObject {
         }
     }
 
-    private func deviceConnected(_ device: IOHIDDevice, holdTouchCompanion: Bool = true) {
-        // Connect-phase work (handshakes, paced writes) stalls report
-        // delivery; keep those episodes out of the steady-state latency stats.
-        // The probe belongs to the pen thread.
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+    /// The context a connecting interface joins, set up for connecting.
+    /// `joining` is the context the interface's tablet already has, if any.
+    private func beginConnecting(
+        _ device: IOHIDDevice, joining: DeviceContext? = nil
+    ) -> (context: DeviceContext, probe: DeviceIdentityProbe, rawProductID: Int, vendorID: Int) {
+        // Connect-phase work stalls report delivery; keep those episodes out
+        // of the steady-state latency stats. The probe belongs to the pen thread.
+        HIDThread.shared.perform {
             LatencyProbe.shared.noteDeviceConnected()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         let vendorID = hidIntProperty(device, kIOHIDVendorIDKey)
         let rawProductID = hidIntProperty(device, kIOHIDProductIDKey)
         Self.lastSeenVendorID[rawProductID] = vendorID
 
-        let vendorGateDecision = Self.vendorGate(device, vendorID: vendorID, rawProductID: rawProductID)
-        let vendorSpec: TabletSpec?
-        switch vendorGateDecision {
-        case .bail:
-            return
-        case .proceed(let spec):
-            vendorSpec = spec
-        }
-
-        // Fold transport variants into one device identity — the context,
-        // settings namespace, and window all key off the canonical PID.
-        // Wacom BT/dongle PIDs map to the USB PID; the Xencelabs Quick Keys
-        // dongle maps to the wired puck. The driver layer keeps the raw PID
-        // (via `vendorSpec` above) because relay handling is
-        // transport-specific.
-        //
-        // Instance-identity probe: serial and locationID are logged per
-        // interface to establish, on real hardware, whether the interfaces of
-        // one USB device share a locationID (serial is uniform; locationID is
-        // unverified) before DeviceInstanceKey's fallback relies on it.
-        //
-        // kIOHIDSerialNumberKey is only trusted for instance identity on
-        // non-Bluetooth transports. macOS's Bluetooth HID stack
-        // (IOBluetoothHIDDriver) doesn't reliably mirror the same-device
-        // USB serial string here — it's commonly a different, transport-
-        // specific value rather than empty, so it can't be caught by the
-        // empty-token merge fallback below. Trusting it caused the same
-        // physical tablet (e.g. PTH-660) to split into separate USB and BT
-        // device contexts. Ignoring it over Bluetooth degrades that
-        // interface to PID-only identity, which correctly folds onto
-        // whatever context the model already has (USB or a prior BT
-        // connect) via the empty-instance fallback path.
+        // Transport variants fold into one identity: the context, settings
+        // namespace, and window all key off the canonical PID. The serial is
+        // trusted for identity only off Bluetooth, whose stack reports a
+        // different one for the same tablet; that split a PTH-660 into
+        // separate USB and Bluetooth contexts.
         let probe = Self.probeIdentity(device, rawProductID: rawProductID, vendorID: vendorID)
         let productID = probe.productID
-        let usagePage = probe.usagePage
-        let usage = probe.usage
-        let maxRptSize = probe.maxRptSize
-        let transport = probe.transport
-        let productString = probe.productString
-        let isBLE = probe.isBLE
-        let locationID = probe.locationID
-        let instanceKey = probe.instanceKey
         Self.lastSeenVendorID[productID] = vendorID
         let pidStr =
             rawProductID == productID
             ? "0x\(String(productID, radix:16))"
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
-        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(usagePage, radix:16), privacy: .public) usage=0x\(String(usage, radix:16), privacy: .public) maxRptSize=\(maxRptSize, privacy: .public) transport=\(transport, privacy: .public) product=\"\(productString, privacy: .public)\" serial=\(probe.rawSerialProbe ?? "—", privacy: .public)\(isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(locationID, radix:16), privacy: .public)")
+        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(probe.usagePage, radix:16), privacy: .public) usage=0x\(String(probe.usage, radix:16), privacy: .public) maxRptSize=\(probe.maxRptSize, privacy: .public) transport=\(probe.transport, privacy: .public) product=\"\(probe.productString, privacy: .public)\" serial=\(probe.rawSerialProbe ?? "—", privacy: .public)\(probe.isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(probe.locationID, radix:16), privacy: .public)")
 
-        // BLE tablets expose multiple interfaces. Log all of them; skip the ghost
-        // HID-mouse collection only — usagePage 0x01 also carries other legitimate
-        // top-level collections (e.g. usage 0x80 System Control on PTK-870 gen 3),
-        // which must not be dropped alongside the real mouse ghost interface.
-        if isBLE && usagePage == 0x01 && usage == 0x02 {
-            logger.debug("TabletManager: BLE usagePage=0x01 usage=0x02 interface — maxRptSize=\(maxRptSize, privacy: .public) — skipping ghost mouse")
-            return
-        }
-
-        let context = resolveContext(probe: probe, rawProductID: rawProductID, vendorID: vendorID)
+        let context = joining ?? resolveContext(probe: probe, rawProductID: rawProductID, vendorID: vendorID)
         deviceContexts[context.instanceKey] = context
-        // context.hidDevice is set later, only for the interface DeviceRouter
-        // identifies as the primary digitizer (the `.driver` case below) —
-        // never here unconditionally. A multi-interface tablet enumerates one
-        // IOHIDDevice per interface, calling this function once each; setting
-        // it here would make the property last-write-wins across interfaces
-        // that have nothing to do with the actual report stream, breaking
-        // device-data collection (which reads it) with no effect on normal
-        // operation (nothing else reads it). See the property's doc comment.
-
         prepareConnectingContext(context)
-
-        // Set initial connection state for this device. Cleared here rather
-        // than only on success — a fresh connection attempt deserves a clean
-        // slate, and if `.driver`'s open() below fails, onOpenFailed sets
-        // this again within the same call.
+        // A fresh connection attempt gets a clean slate; an open failure sets
+        // the message again.
         context.connectionErrorMessage = nil
         context.isConnected = true
-        context.transport = transport
+        context.transport = probe.transport
         context.usbSpeed = Self.connectionInfo(for: device).speed
-        // Diagnostic-only candidate for BluetoothLinkMonitor — see that
-        // property's doc comment for why this is never used for identity.
-        if isBLE { context.bluetoothAddressCandidate = probe.rawSerialProbe }
+        // Diagnostic only; see `bluetoothAddressCandidate`.
+        if probe.isBLE { context.bluetoothAddressCandidate = probe.rawSerialProbe }
 
-        // First tablet is the moment injection becomes possible — prompt for
-        // Accessibility here rather than at launch so the request has context.
+        // The first tablet is when injection becomes possible, so ask for
+        // Accessibility here, where the request has context.
         promptForAccessibilityIfNeeded()
-
-        // The callbacks from `makeCallbacks` reach their context through this
-        // handle rather than capturing it, so a transport can later be moved
-        // onto another context (dongle → paired tablet) without rebuilding
-        // its driver.
-        let contextHandle = DriverContextHandle(context)
-
-        // ── Create the device driver ─────────────────────────────────────────
-        // Multi-interface devices (e.g. ACK-40401 dongle) enumerate separate
-        // IOHIDDevices for each interface (digitizer, wireless status, touch,
-        // etc). We create one driver per *raw* (transport-specific) PID and
-        // reuse it across that transport's interfaces; each IOHIDDevice still
-        // registers independently for its own reports. A canonical identity
-        // reachable over more than one transport at once (Xencelabs Quick
-        // Keys wired + dongle) gets one driver per transport, ranked in
-        // `DeviceContext.tabletDevice` — see the reuse check just below.
-        // Reuse only applies to another interface of the *same* transport —
-        // keyed by raw PID, not "the context already has some driver".
-        // Xencelabs' wired puck (0x5202) and dongle (0x5203) fold onto one
-        // canonical context, so `context.tabletDevice` (the current winner)
-        // is the wrong thing to check here: it would silently register the
-        // dongle's interfaces onto the wired driver, or vice versa, instead
-        // of building each transport its own driver and slot.
-        if let existingDriver = context.driverSlot(forRawProductID: rawProductID) as? WacomKnownDevice {
-            hidDeviceMap[device] = context
-            deviceRawProductID[device] = rawProductID
-            existingDriver.registerDevice(device)
-            // This interface never reaches the `.driver` case below — same
-            // omission `captureInterfaces` exists to avoid there applies
-            // here too, since this is exactly PTH-850's path (touch
-            // interface attaches after the pen interface already has a
-            // driver installed for the same raw product ID).
-            Self.offerForCapture(device, usagePage: usagePage, on: context, driver: existingDriver)
-            return
-        }
-
-        let callbacks = makeCallbacks(
-            context: context, contextHandle: contextHandle, device: device,
-            productID: productID, instanceKey: instanceKey)
-
-        let route = DeviceRouter.route(
-            device: device, productID: productID, usagePage: usagePage,
-            isBLE: isBLE, contexts: deviceContexts, callbacks: callbacks,
-            overrideSpec: vendorSpec, holdTouchCompanion: holdTouchCompanion)
-        applyRoute(
-            route, device: device, context: context, contextHandle: contextHandle,
-            probe: probe, rawProductID: rawProductID, vendorID: vendorID)
+        return (context, probe, rawProductID, vendorID)
     }
 
-    /// Acts on `DeviceRouter`'s decision for one connecting interface.
-    private func applyRoute(
-        _ route: DeviceRouter.Routed, device: IOHIDDevice, context: DeviceContext,
+    /// Installs a driver into its context's slot for its transport and
+    /// finishes connecting the context.
+    private func installDriver(
+        _ driver: any TabletDevice, device: IOHIDDevice, context: DeviceContext,
         contextHandle: DriverContextHandle, probe: DeviceIdentityProbe,
-        rawProductID: Int, vendorID: Int
+        rawProductID: Int, vendorID: Int, delivers: Bool
     ) {
         let productID = probe.productID
-        let usagePage = probe.usagePage
-        switch route {
-        case .deferred:
-            pendingInterfaces.hold(device, under: rawProductID)
-            return
-
-        case .ledCompanion(let parentCtx):
-            if let driver = parentCtx.tabletDevice as? WacomKnownDevice {
-                driver.registerLEDDevice(device)
-                hidDeviceMap[device] = parentCtx
-            }
-            return
-
-        case .deferredTouchCompanion:
-            pendingTouchCompanions.hold(device, under: productID)
-            // Siblings enumerate within a second. A sensor still waiting
-            // after this gets a window of its own, as before it could be
-            // held, so a desk whose pen never appears can still be captured.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-                guard let self, self.pendingTouchCompanions.take(device, under: productID)
-                else { return }
-                logger.info("Wacom 0x\(String(productID, radix: 16, uppercase: true), privacy: .public) — touch sensor's tablet never appeared, routing on its own")
-                self.deviceConnected(device, holdTouchCompanion: false)
-            }
-            return
-
-        case .touchCompanion(let parentCtx):
-            guard let driver = parentCtx.tabletDevice as? WacomKnownDevice else { return }
-            hidDeviceMap[device] = parentCtx
-            // Keyed to the parent's raw PID, not this interface's own: the
-            // sensor is now part of that driver, and `deviceRawProductID`
-            // is what teardown and driver-slot lookup both consult.
-            deviceRawProductID[device] = parentCtx.productID
-            driver.attachTouchSensor(device)
-            // Same reason `.driver` and the reuse path above both offer their
-            // interfaces: an interface a driver reads is capturable, and the
-            // sensor is the one a touch problem needs in the file.
-            Self.offerForCapture(device, usagePage: usagePage, on: parentCtx, driver: driver)
-            return
-
-        case .skip:
-            return
-
-        case .driver(let wacomDevice, _):
-            installRoutedDriver(
-                wacomDevice, device: device, context: context, contextHandle: contextHandle,
-                probe: probe, rawProductID: rawProductID, vendorID: vendorID)
-        }
-    }
-
-    /// Installs the driver `DeviceRouter` built for this interface and
-    /// finishes connecting its context.
-    private func installRoutedDriver(
-        _ wacomDevice: any TabletDevice, device: IOHIDDevice, context: DeviceContext,
-        contextHandle: DriverContextHandle, probe: DeviceIdentityProbe,
-        rawProductID: Int, vendorID: Int
-    ) {
-        let productID = probe.productID
-        let usagePage = probe.usagePage
-        let usbSerial = probe.usbSerial
-        let productString = probe.productString
         let instanceKey = probe.instanceKey
         let hadNoDriverYet = !context.hasAnyDriverSlot
-        context.installDriver(wacomDevice, forRawProductID: rawProductID)
+        context.installDriver(driver, forRawProductID: rawProductID)
+        updateDockBadge()
         if rawProductID == Self.ack40401ProductID {
             dongleTransports[instanceKey] = DongleTransport(handle: contextHandle, home: context)
         }
-        // Only the first `.driver`-routed interface for this context
-        // claims `hidDevice` — see that property's doc comment for why a
-        // later sibling interface must never overwrite it.
+        // Only the first driver interface claims `hidDevice`; see its doc comment.
         if !context.firstDriverInterfaceClaimed {
             context.firstDriverInterfaceClaimed = true
             context.hidDevice = device
         }
-        Self.offerForCapture(
-            device, usagePage: usagePage, on: context,
-            driver: wacomDevice as? WacomKnownDevice)
+        Self.offerForCapture(device, usagePage: probe.usagePage, on: context, delivers: delivers)
         hidDeviceMap[device] = context
         deviceRawProductID[device] = rawProductID
-        wacomDevice.open()
-        // Drain any interfaces that arrived before this driver was created.
-        for pending in pendingInterfaces.release(rawProductID) {
-            hidDeviceMap[pending] = context
-            deviceRawProductID[pending] = rawProductID
-            (wacomDevice as? WacomKnownDevice)?.registerDevice(pending)
-            // Deferred interfaces are registered for reports exactly like
-            // the ones that arrive after the driver exists, so they are
-            // just as capturable — and this is the path an interface takes
-            // whenever it enumerates ahead of the pen interface, which is
-            // arrival-order luck, not a property of the hardware.
-            Self.offerForCapture(
-                pending, usagePage: hidIntProperty(pending, kIOHIDPrimaryUsagePageKey),
-                on: context, driver: wacomDevice as? WacomKnownDevice)
-        }
-        // Same drain for a touch sensor that enumerated ahead of the
-        // tablet claiming it — held under its own PID, not this driver's.
-        if let touchPID = WacomDeviceRegistry.spec(for: productID)?.touchCompanionPID,
-            let driver = wacomDevice as? WacomKnownDevice
-        {
-            for sensor in pendingTouchCompanions.release(touchPID) {
-                hidDeviceMap[sensor] = context
-                deviceRawProductID[sensor] = rawProductID
-                driver.attachTouchSensor(sensor)
-                Self.offerForCapture(
-                    sensor, usagePage: hidIntProperty(sensor, kIOHIDPrimaryUsagePageKey),
-                    on: context, driver: driver)
-            }
-        }
+        driver.open()
         if hadNoDriverYet {
-            // First transport this context has ever seen — wire the
-            // settings-driven hardware sinks once. A second transport
-            // (e.g. the dongle joining a context the wired puck already
-            // owns) must not repeat this: these sinks target whichever
-            // slot currently wins, so a second subscription fires every
-            // write twice. (after open() so initial LED sync reaches it)
+            // The first transport this context has seen wires the settings
+            // sinks, once: they target whichever slot wins, so a second
+            // subscription would send every write twice.
             context.observeRingLED()
             context.observeInjectionSnapshot()
             context.hasWiredDriverLifecycle = true
         } else if context.activeDriverRawProductID == rawProductID {
-            // This transport just outranked whatever was already
-            // installed (USB puck connecting while the dongle was
-            // driving) — it never received the settings writes that
-            // fired while it was still a losing slot.
+            // This transport just outranked the one already installed, and
+            // missed the settings writes made while it wasn't driving.
             context.resyncActiveDriverDisplayState()
         }
-        // Aux-only accessories (Quick Keys puck/dongle, ExpressKey
-        // Remote; spec.maxX == 0) move no pointer, so a display-toggle
-        // press on them must steer the tablet driving the cursor, not
-        // the accessory's own — invisible — mapping. Pen-bearing
-        // devices never get a forwarder.
-        if wacomDevice.spec.maxX == 0 {
+        // Aux-only accessories (Quick Keys, ExpressKey Remote) move no
+        // pointer, so their display toggles steer the tablet driving the
+        // cursor.
+        if driver.spec.maxX == 0 {
             let accessoryVendor = context.vendorID
             context.injector.displayToggleForwarder = { [weak self] in
                 Task { @MainActor in self?.toggleDisplayOnPenTablet(vendorID: accessoryVendor) }
@@ -1074,29 +713,28 @@ final class TabletManager: ObservableObject {
         }
         context.settings.applyExpressKeyDefaults(
             vendorID: context.vendorID,
-            splitPad: ButtonMappingView.hasSplitPadLayout(WacomDeviceRegistry.spec(for: context.productID)))
+            splitPad: WacomDeviceRegistry.spec(for: context.productID)?.hasSplitPadLayout == true)
         refreshConnectedIDs(mostRecent: productID)
 
         context.settings.penDisplayLocator = { Self.penDisplayID(forProductID: productID) }
         context.settings.migrateTargetDisplayUUID()
 
         // First connection of a pen display: map it to its own screen.
-        let prefix = "device-0x\(String(productID, radix: 16, uppercase: true))."
+        let prefix = DeviceInstanceClaims.prefix(productID: productID)
         if UserDefaults.standard.object(forKey: prefix + "proportionalMapping") == nil,
             let screen = Self.penDisplayID(forProductID: productID)
         {
             context.settings.applyPenDisplayDefaults(display: screen)
         }
 
-        // A bare/still-pairing dongle must never become the active
-        // context — `activeDeviceKey()` reads it before any dongle filter.
+        // A dongle still pairing must never become the active context.
         if activeContext == nil && !isDongleAwaitingPairing(productID: productID) {
             activeContext = context
         }
 
         DeviceRegistry.shared.recordTablet(
-            instanceKey: context.instanceKey, usbSerial: usbSerial,
-            vendorID: vendorID, productString: productString)
+            instanceKey: context.instanceKey, usbSerial: probe.usbSerial,
+            vendorID: vendorID, productString: probe.productString)
         if rawProductID == Self.ack40401ProductID {
             // Undo the paired-model rename earlier builds gave its row.
             DeviceRegistry.shared.updateModelName(
@@ -1154,10 +792,13 @@ final class TabletManager: ObservableObject {
     private func makeCallbacks(
         context: DeviceContext, contextHandle: DriverContextHandle, device: IOHIDDevice,
         productID: Int, instanceKey: DeviceInstanceKey
-    ) -> DeviceRouter.Callbacks {
+    ) -> SessionDriver.Callbacks {
+        // Only handed back to main.
+        nonisolated(unsafe) let device = device
+
         // ── Tool-enter closure (IntuosV2 only) ──────────────────────────────
         // Called on HIDThread — hop to main before touching @Published properties.
-        let onToolEnter: (ToolIdentity) -> Void = { [weak self, contextHandle] identity in
+        let onToolEnter: @Sendable (ToolIdentity) -> Void = { [weak self, contextHandle] identity in
             let context = contextHandle.context
             // Set synchronously: pen points inject inline on this thread, so
             // the main-actor Task below loses the race by ~6 ms.
@@ -1202,17 +843,16 @@ final class TabletManager: ObservableObject {
             // like "same tool" and strand the outgoing tool's held buttons.
             if identity.toolCode != previousToolCode {
                 let injector = context.injector
-                CFRunLoopPerformBlock(
-                    HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue
-                ) {
+                HIDThread.shared.perform {
                     injector.releaseHeldStateForToolChange()
                 }
-                CFRunLoopWakeUp(HIDThread.shared.runLoop)
             }
-            context.activeToolSerial = identity.serial
-            context.activeToolIsMouse = identity.isMouse
-            context.activeToolCode = identity.toolCode
-            context.lastKnownToolCode = identity.toolCode
+            // Published values are set only on a change, so a repeated enter
+            // from the same tool doesn't redraw the panes.
+            if context.activeToolSerial != identity.serial { context.activeToolSerial = identity.serial }
+            if context.activeToolIsMouse != identity.isMouse { context.activeToolIsMouse = identity.isMouse }
+            if context.activeToolCode != identity.toolCode { context.activeToolCode = identity.toolCode }
+            if context.lastKnownToolCode != identity.toolCode { context.lastKnownToolCode = identity.toolCode }
             // Propagate tool code to calibration session so tool changes are tracked.
             CaptureEngine.updateToolCode(identity.toolCode, device: device)
             let toolID = DeviceRegistry.shared.recordTool(
@@ -1221,8 +861,9 @@ final class TabletManager: ObservableObject {
             // doesn't swap the settings panes to a second copy of the pen.
             let settingsID = DeviceRegistry.tipSiblingID(of: toolID) ?? toolID
             let toolSets = context.settings.toolSettings(forID: settingsID, isMouse: identity.isMouse)
-            context.activeTool = toolSets
-            context.settings.activeTool = toolSets
+            // Reassigning the same tool would reload all its settings.
+            if context.activeTool !== toolSets { context.activeTool = toolSets }
+            if context.settings.activeTool !== toolSets { context.settings.activeTool = toolSets }
             // Settings must resolve here — the lookup needs the registry and
             // settings store, neither reachable from HIDThread. Arriving late
             // affects only tuning, not tool recognition. Handed over on
@@ -1231,26 +872,25 @@ final class TabletManager: ObservableObject {
             // above always sets them, and a late copy could overwrite a newer
             // pen's.
             let injector = context.injector
-            CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+            HIDThread.shared.perform {
                 injector.activeToolSettings = toolSets
             }
-            CFRunLoopWakeUp(HIDThread.shared.runLoop)
             context.activeToolID = toolID
             } // end Task @MainActor
         }
 
         // ── Tablet point closure ─────────────────────────────────────────────
-        // Called on HIDThread (the dedicated CFRunLoop thread that drives IOHIDManager).
+        // Called on HIDThread.
         //
         // Fast path: when this device's injector is the active one, inject() runs
         // inline on HIDThread — no Task @MainActor hop, no scheduler wait. Inject
         // reads everything it needs from `injectionSnapshot`, which the main side
-        // pushes via CFRunLoopPerformBlock whenever settings change.
+        // pushes onto HIDThread whenever settings change.
         //
         // Slow path: active-context switching (proximity-enter from a non-active
         // device) and per-report UI updates still hop to main. Throughput-critical
         // CGEvent posting never waits on either.
-        let onTablet: (TabletPoint) -> Void = { [weak self, contextHandle] point in
+        let onTablet: @Sendable (TabletPoint) -> Void = { [weak self, contextHandle] point in
             guard let context = contextHandle.context else { return }
             let injector = context.injector
 
@@ -1264,9 +904,8 @@ final class TabletManager: ObservableObject {
             }
 
             // ── HID-thread gate: skip the Task hop when nothing needs to run.
-            // At 200 Hz USB report rate the active-pen-backgrounded case used to
-            // spawn a Task per report whose body did nothing; this short-circuit
-            // collapses that to zero allocations on the dominant idle path.
+            // At 200 Hz, a Task per report with nothing to do would allocate on
+            // the most common path.
             let needsHop: Bool
             if isActive {
                 needsHop = !point.inProximity  // proximity-exit cleanup
@@ -1302,7 +941,7 @@ final class TabletManager: ObservableObject {
                 let outgoingInjector = outgoing?.injector
                 let outgoingSettings = outgoing?.settings
                 let settings = context.settings
-                CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+                HIDThread.shared.perform {
                     if let outgoingInjector, outgoingInjector.lastProximity {
                         let exitPoint = TabletPoint(
                             x: 0, y: 0, maxX: 1, maxY: 1,
@@ -1318,7 +957,6 @@ final class TabletManager: ObservableObject {
                         injector.inject(point: point, settings: settings)
                     }
                 }
-                CFRunLoopWakeUp(HIDThread.shared.runLoop)
             }
 
             // Only the active context updates UI.
@@ -1340,6 +978,7 @@ final class TabletManager: ObservableObject {
                 context.activeToolID = nil
                 context.activeToolCode = 0
                 context.liveButtons = LiveButtonState()
+                context.mouseWheelTurning = false
                 context.livePoint = nil
                 return
             }
@@ -1353,6 +992,10 @@ final class TabletManager: ObservableObject {
             // tab isn't visible. This eliminates every @Published write during
             // normal drawing use, including when MockTab is backgrounded.
             guard appIsFrontmost && infoViewVisible else { return }
+
+            // Ahead of the throttle, which would drop most single wheel steps.
+            let now = ProcessInfo.processInfo.systemUptime
+            if point.mouseWheelDelta != 0 { context.mouseWheelLastStep = now }
 
             // Throttle continuous updates to ~16 Hz.
             self.uiUpdateCounter += 1
@@ -1376,7 +1019,8 @@ final class TabletManager: ObservableObject {
                 eraserDown: tipDown && point.eraser,
                 button1Down: point.penButton1,
                 button2Down: point.penButton2,
-                button3Down: point.penButton3,
+                // A mouse's middle button stands in the third slot, which mice leave empty.
+                button3Down: point.penButton3 || (toolIsMouse && point.mouseMiddleButton),
                 button4Down: point.penButton4,
                 button5Down: point.penButton5,
                 expressKeys: context.liveButtons.expressKeys,
@@ -1390,6 +1034,10 @@ final class TabletManager: ObservableObject {
             )
             // Only assign when values changed — avoids spurious objectWillChange.
             if newButtons != context.liveButtons { context.liveButtons = newButtons }
+            // Lit from a step until the wheel has been still a moment; a mouse
+            // in range keeps reporting, so the next update turns it off.
+            let wheelTurning = toolIsMouse && now - context.mouseWheelLastStep < 0.35
+            if wheelTurning != context.mouseWheelTurning { context.mouseWheelTurning = wheelTurning }
             context.livePoint = point
             } // end Task @MainActor
         }
@@ -1397,7 +1045,7 @@ final class TabletManager: ObservableObject {
         // ── Express key closure ──────────────────────────────────────────────
         // Called on HIDThread. injectAux runs inline (it reads from injectionSnapshot
         // and posts CGEvents — both thread-safe). UI state mutations hop to main.
-        let onAux: (PadState) -> Void = { [weak self, contextHandle] aux in
+        let onAux: @Sendable (PadState) -> Void = { [weak self, contextHandle] aux in
             guard let context = contextHandle.context else { return }
             context.injector.injectAux(pad: aux, settings: context.settings)
             // HID-thread gate: skip the Task hop entirely when no UI is watching.
@@ -1450,14 +1098,19 @@ final class TabletManager: ObservableObject {
         // Fires only when the reading changes, not on every report. A nil
         // percentage while charging means the level is unknown.
         // Called on HIDThread — hop to main.
-        let onBattery: (Int?, Bool) -> Void = { [weak self, contextHandle] percent, charging in
+        let onBattery: @Sendable (Int?, Bool) -> Void = { [weak self, contextHandle] percent, charging in
             let context = contextHandle.context
             Task { @MainActor [weak self, weak context] in
             guard let self, let context else { return }
-            context.batteryPercent = percent
-            context.batteryCharging = charging
+            context.applyBatteryReading(percent: percent, charging: charging)
             self.updateDockBadge()
             } // end Task @MainActor
+        }
+
+        // Called on HIDThread when a wireless kit's tablet links or sleeps.
+        let onWirelessLink: @Sendable (Bool) -> Void = { [contextHandle] linked in
+            let context = contextHandle.context
+            Task { @MainActor [weak context] in context?.wirelessLinked = linked }
         }
 
         // ── USB HID mouse button closure (KC-100 cordless mouse) ────────────────
@@ -1465,62 +1118,59 @@ final class TabletManager: ObservableObject {
         // (usagePage=0x01, seized).  Routes directly to the injector so buttons
         // fire at the current screen cursor position without a position remap.
         // Called on HIDThread; injectMouseButtons runs inline.
-        let onMouseButton: (UInt8) -> Void = { [contextHandle] mask in
+        let onMouseButton: @Sendable (UInt8) -> Void = { [contextHandle] mask in
             guard let context = contextHandle.context else { return }
             context.injector.injectMouseButtons(mask: mask, settings: context.settings)
-        }
-
-        // ── Hardware serial closure (device unification) ─────────────────────
-        // Called when a WACOM_REPORT_USB (Report ID 0x03) feature report query
-        // succeeds on USB or wireless dongle. Serial is 0 if the query fails or
-        // the device does not support Report ID 0x03 (e.g. old models).
-        // Used to unify multi-transport variants of the same physical tablet.
-        // Called on HIDThread — hop to main (DeviceRegistry is @MainActor).
-        let onHardwareSerial: (UInt32) -> Void = { serial in
-            Task { @MainActor in
-                DeviceRegistry.shared.recordHardwareSerial(serial, forDevice: productID)
-            }
-        }
-
-        // ── Open-failure closure ──────────────────────────────────────────────
-        // Called when IOHIDDeviceOpen fails — most often another process
-        // (typically the vendor's own driver) already holds this interface
-        // exclusively. Without this, the device silently never decodes
-        // anything and the only trace is an os_log line nobody's watching.
-        // Called on the calling thread (open() runs on main); hop anyway to
-        // match every other closure here and keep this file's convention
-        // uniform regardless of which thread a future call site uses.
-        let onOpenFailed: (IOReturn) -> Void = { [weak context] ret in
-            Task { @MainActor [weak context] in
-                guard let context else { return }
-                let hex = String(format: "0x%08x", ret)
-                context.connectionErrorMessage = String(
-                    localized: "Couldn't open this device (\(hex)) — another tablet driver may already be using it.",
-                    comment: "Shown when IOHIDDeviceOpen fails, with the IOReturn code substituted")
-            }
         }
 
         // ── Relative wheel closure (IntuosV3 PTK-x70 scroll wheels) ────────────
         // Called on HIDThread; injectWheel runs inline (same threading contract
         // as injectAux).
-        let onWheel: (Int, Int) -> Void = { [contextHandle] index, delta in
+        // When each dial last stepped, and whether the pane shows it turning.
+        // Written on HIDThread, read by the main-actor watch below.
+        let dialActivity = OSAllocatedUnfairLock(initialState: (lastStep: [0.0, 0.0], lit: [false, false]))
+        let onWheel: @Sendable (Int, Int) -> Void = { [weak self, contextHandle] index, delta in
             guard let context = contextHandle.context else { return }
             context.injector.injectWheel(index: index, delta: delta, settings: context.settings)
+            // Same gate as onAux: no hop while no pane is watching. Only the
+            // step that starts a turn hops; later steps just move the time.
+            guard index < 2, self?.appIsFrontmost == true && self?.infoViewVisible == true else { return }
+            let now = ProcessInfo.processInfo.systemUptime
+            let starts = dialActivity.withLock { a -> Bool in
+                a.lastStep[index] = now
+                guard !a.lit[index] else { return false }
+                a.lit[index] = true
+                return true
+            }
+            guard starts else { return }
+            Task { @MainActor [weak context] in
+                guard let context else { return }
+                context.dialsTurning[index] = true
+                // Off once the dial has been still for a third of a second.
+                while true {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    let still = dialActivity.withLock { a -> Bool in
+                        guard ProcessInfo.processInfo.systemUptime - a.lastStep[index] > 0.35 else { return false }
+                        a.lit[index] = false
+                        return true
+                    }
+                    if still { break }
+                }
+                context.dialsTurning[index] = false
+            }
         }
 
         // ── Touch closure (capacitive finger input on touch-capable Cintiqs) ───
         // Called on HIDThread when a decoder emits a `.touch` result.  When
         // touch is disabled in settings, return early — the hardware switch
         // on PTH-660/860 streams 0x21 reports at ~100 Hz, and publishing
-        // them to `liveTouchContacts` invalidates every view that observes
-        // `TabletManager` (which is every settings pane), making the UI
-        // choppy and burning CPU even though no input is being injected.
+        // them would redraw panes and burn CPU with no input injected.
         // Per-contact-id position, area, and lifetime, purely to derive the
         // erratic-touch diagnostics below (`maxContactJump`/
         // `shortLivedContacts`/`maxStallBeforeLift`) — not used by
         // injection. Lives for this device connection's lifetime, same as
         // the closures below.
-        var touchContactTrack: [Int: (x: Int, y: Int, area: Int?, framesAlive: Int, stalledFrames: Int)] = [:]
+        nonisolated(unsafe) var touchContactTrack: [Int: (x: Int, y: Int, area: Int?, framesAlive: Int, stalledFrames: Int)] = [:]  // HIDThread-only
 
         // mm per touch unit, for the contact-spacing diagnostic; nil when the
         // registry has no physical size for this tablet.
@@ -1532,7 +1182,7 @@ final class TabletManager: ObservableObject {
                 return (w / Double(spec.touchMaxX), h / Double(spec.touchMaxY))
             }
 
-        let onTouch: ([TouchContact]) -> Void = { [weak self, contextHandle] contacts in
+        let onTouch: @Sendable ([TouchContact]) -> Void = { [weak self, contextHandle] contacts in
             // Erratic-touch diagnostics: a same-id jump far larger than a
             // finger can move in one ~10ms report period, a contact that
             // flickers away again within a couple of frames, or a contact
@@ -1623,96 +1273,63 @@ final class TabletManager: ObservableObject {
             }
         }
 
-        // ── Wireless dongle paired PID ──────────────────────────────────────────
-        // Called on HIDThread when the 0x80 status report reveals the paired
-        // tablet's PID (once per RF link — re-fires on a genuine re-pairing,
-        // e.g. a different tablet swapped onto the same dongle). Moves the
-        // dongle's transport onto that tablet's context, as BT/USB share one.
-        let onPairedPID: (Int) -> Void = { [weak self] pid in
-            Task { @MainActor [weak self] in
-                self?.rehomeDongleTransport(dongleKey: instanceKey, pairedProductID: pid)
-            }
-        }
-
-        return DeviceRouter.Callbacks(
+        return SessionDriver.Callbacks(
             onTablet: onTablet, onAux: onAux, onToolEnter: onToolEnter,
-            onMouseButton: onMouseButton, onBattery: onBattery,
-            onHardwareSerial: onHardwareSerial, onWheel: onWheel,
-            onTouch: onTouch, onPairedPID: onPairedPID,
-            onOpenFailed: onOpenFailed)
+            onMouseButton: onMouseButton, onBattery: onBattery, onWirelessLink: onWirelessLink,
+            onWheel: onWheel, onTouch: onTouch)
     }
 
-    /// List `device` as an interface a capture session may record from, unless
-    /// the driver never installed a report callback on it.
+    /// List `device` as an interface a capture session may record from, if
+    /// its reports reach a driver.
     ///
-    /// The filter is what keeps a capture file honest. `CaptureEngine` records
-    /// every listed interface at once and reports each one's sample count, so
-    /// an interface that reads zero is stated as a fact about the *hardware* —
-    /// it stayed silent, which is what a device awaiting a mode-switch write
-    /// looks like. An interface nobody was listening to would read zero for a
-    /// reason that has nothing to do with the hardware and say so in the same
-    /// words. `WacomKnownDevice.deliversReports(from:)` is the same predicate
-    /// `registerDevice` used to decide, so the two can't disagree.
-    ///
-    /// Called from all three paths an interface can reach a driver by —
-    /// first `.driver` route, sibling onto an existing driver, and the
-    /// deferred-interface drain — because which one a given interface takes is
-    /// enumeration-order luck.
+    /// The filter keeps a capture file honest. `CaptureEngine` records every
+    /// listed interface and reports each one's sample count, so a zero reads
+    /// as a fact about the hardware: it stayed silent, as a device awaiting a
+    /// mode switch does. An interface nobody listened to would read zero for
+    /// a reason that has nothing to do with the hardware.
     private static func offerForCapture(
-        _ device: IOHIDDevice, usagePage: Int, on context: DeviceContext,
-        driver: WacomKnownDevice?
+        _ device: IOHIDDevice, usagePage: Int, on context: DeviceContext, delivers: Bool
     ) {
-        guard driver?.deliversReports(from: device) ?? true else { return }
+        guard delivers else { return }
         guard !context.captureInterfaces.contains(where: { $0.device === device }) else { return }
         context.captureInterfaces.append(
             CaptureInterfaceCandidate(device: device, usagePage: usagePage))
     }
 
-    private func deviceDisconnected(_ device: IOHIDDevice) {
-        pendingTouchCompanions.drop(device)
-        // Drop deferred interfaces that leave before their driver exists, or
-        // the next connect registers them dead.
-        pendingInterfaces.drop(device)
-        guard let context = hidDeviceMap.removeValue(forKey: device) else { return }
-        // Only clear hidDevice when the disconnecting interface is the one it
-        // actually points to (the primary digitizer interface). A secondary
-        // interface (touch, pad/aux, LED) disconnecting while the primary
-        // stays connected must not blank it — same class of bug as the
-        // unconditional set this mirrors on the connect side; see
-        // `DeviceContext.hidDevice`'s doc comment.
+
+    /// Drops one interface from the maps and from its context.
+    private func forgetInterface(_ device: IOHIDDevice, of context: DeviceContext) {
+        hidDeviceMap.removeValue(forKey: device)
+        deviceRawProductID.removeValue(forKey: device)
+        // Only the interface `hidDevice` points to clears it; see its doc comment.
         if context.hidDevice === device {
             context.hidDevice = nil
             context.firstDriverInterfaceClaimed = false
         }
         context.captureInterfaces.removeAll { $0.device == nil || $0.device === device }
-        let rawPID = deviceRawProductID.removeValue(forKey: device)
+    }
 
-        // Owner-aware teardown: a canonical context can have more than one
-        // live transport slot (Xencelabs wired puck + dongle). Unplugging
-        // one interface of one transport must not blank a context whose
-        // other transport is still connected — that was the bug behind
-        // "wireless dongle didn't take over on unplug": every interface
-        // shared one driver slot, so the first departure nuked all of it.
-        if let rawPID {
-            let wasOwner = context.activeDriverRawProductID == rawPID
-            let removed = context.removeDriverSlot(forRawProductID: rawPID)
-            removed?.close()
-            if removed != nil, rawPID == Self.ack40401ProductID {
-                dongleTransports = dongleTransports.filter { $0.value.home !== context }
-            }
-            if let survivorPID = context.activeDriverRawProductID {
-                if wasOwner {
-                    // The departing transport was driving; the survivor was
-                    // sitting in a losing slot the whole time and never got
-                    // the settings-driven writes meant for the active driver.
-                    context.resyncActiveDriverDisplayState()
-                    logger.info("TabletManager: \(Self.deviceName(forProductID: context.productID), privacy: .public) — transport 0x\(String(rawPID, radix: 16), privacy: .public) disconnected, promoted 0x\(String(survivorPID, radix: 16), privacy: .public)")
-                }
-                refreshConnectedIDs(mostRecent: nil)
-                return
-            }
+    /// Removes one transport's driver slot. A context can have more than one
+    /// live transport (Quick Keys on its cable and receiver), and losing one
+    /// mustn't blank a context whose other transport is still connected.
+    private func releaseSlot(_ rawPID: Int, of context: DeviceContext) {
+        let wasOwner = context.activeDriverRawProductID == rawPID
+        let removed = context.removeDriverSlot(forRawProductID: rawPID)
+        removed?.close()
+        updateDockBadge()
+        if removed != nil, rawPID == Self.ack40401ProductID {
+            dongleTransports = dongleTransports.filter { $0.value.home !== context }
         }
-
+        if let survivorPID = context.activeDriverRawProductID {
+            if wasOwner {
+                // The survivor sat in a losing slot and missed the settings
+                // writes meant for the active driver.
+                context.resyncActiveDriverDisplayState()
+                logger.info("TabletManager: \(Self.deviceName(forProductID: context.productID), privacy: .public) — transport 0x\(String(rawPID, radix: 16), privacy: .public) disconnected, promoted 0x\(String(survivorPID, radix: 16), privacy: .public)")
+            }
+            refreshConnectedIDs(mostRecent: nil)
+            return
+        }
         markFullyDisconnected(context)
     }
 
@@ -1723,10 +1340,9 @@ final class TabletManager: ObservableObject {
         // to release it — there's no more device to send one. Same release call as a tool
         // change; see `releaseHeldStateForToolChange`.
         let injector = context.injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             injector.releaseHeldStateForDisconnect()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         // Drop the sinks with the flag that gates installing them: reconnect
         // re-runs the observers and `.store(in:)` appends.
         context.teardownDriverLifecycleObservers()
@@ -1736,6 +1352,7 @@ final class TabletManager: ObservableObject {
         context.usbSpeed = "—"
         context.batteryPercent = nil
         context.batteryCharging = false
+        context.wirelessLinked = nil
         context.activeToolID = nil
         context.activeToolCode = 0
         context.livePoint = nil
@@ -1770,12 +1387,11 @@ final class TabletManager: ObservableObject {
     private func toggleDisplayOnPenTablet(vendorID: Int) {
         guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             if let snap = injector.injectionSnapshot {
                 injector.cycleToggleDisplay(snapshot: snap)
             }
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         target.settings.targetDisplayIndex = TabletSettings.displayModeToggle
     }
 
@@ -1791,10 +1407,9 @@ final class TabletManager: ObservableObject {
     private func toggleRelativeModeOnPenTablet(vendorID: Int) {
         guard let target = penTablet(forAccessoryVendor: vendorID) else { return }
         let injector = target.injector
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             injector.displayMapper.clearRelativeAnchor()
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
         target.settings.relativeCursorMovement.toggle()
     }
 
@@ -1850,10 +1465,9 @@ final class TabletManager: ObservableObject {
         // Retarget on HIDThread, between reports, so none is split across
         // the two contexts.
         let handle = transport.handle
-        CFRunLoopPerformBlock(HIDThread.shared.runLoop, CFRunLoopMode.commonModes.rawValue) {
+        HIDThread.shared.perform {
             handle.context = target
         }
-        CFRunLoopWakeUp(HIDThread.shared.runLoop)
 
         for (device, context) in hidDeviceMap
         where context === source && deviceRawProductID[device] == rawPID {
@@ -1882,6 +1496,7 @@ final class TabletManager: ObservableObject {
             target.batteryPercent = source.batteryPercent
             target.batteryCharging = source.batteryCharging
         }
+        target.wirelessLinked = source.wirelessLinked
         if !target.hasWiredDriverLifecycle {
             target.observeRingLED()
             target.observeInjectionSnapshot()
@@ -1891,7 +1506,7 @@ final class TabletManager: ObservableObject {
         }
         target.settings.applyExpressKeyDefaults(
             vendorID: target.vendorID,
-            splitPad: ButtonMappingView.hasSplitPadLayout(WacomDeviceRegistry.spec(for: target.productID)))
+            splitPad: WacomDeviceRegistry.spec(for: target.productID)?.hasSplitPadLayout == true)
 
         if activeContext == nil || activeContext === source {
             activeContext = target
@@ -1942,11 +1557,9 @@ final class TabletManager: ObservableObject {
             reason: "Pen in proximity — latency-critical input injection")
     }
 
-    /// Whether any connected tablet has a pen in range, read on the pen
-    /// thread, which owns that state.
+    /// Whether any connected tablet has a pen in range.
     private func anyPenInProximity() -> Bool {
-        let injectors = deviceContexts.values.filter(\.isConnected).map(\.injector)
-        return HIDThread.shared.performAndWait { injectors.contains { $0.lastProximity } }
+        deviceContexts.values.contains { $0.isConnected && $0.injector.proximityForMain }
     }
 
     /// Schedules assertion drop after `proximityIdleDelay` seconds, unless another
@@ -2035,6 +1648,14 @@ extension TabletSpec {
     var isAuxOnly: Bool {
         maxX == 0 && (format == .xencelabs || format == .expressKeyRemote)
     }
+
+    /// Each touch strip has its own mode toggle and its own modes, as on the
+    /// Cintiq 21UX2 and 22HD. The toggles are buttons 16 and 17, so they
+    /// arrive in bezel slots 0 and 1. The 21UX, 12WX, and 20WSX have none.
+    var hasStripToggles: Bool { format == .cintiqV1 && hasTouchStrips && buttonCount > 16 }
+
+    /// Two touch strips, each with its own modes, as two rings or dials have.
+    var hasIndependentStrips: Bool { touchStripCount == 2 }
 }
 
 /// Accessories folded into a pen tablet's window while both are connected:
@@ -2094,10 +1715,136 @@ enum DeviceCompanions {
     }
 }
 
+// MARK: - The session
+
+extension TabletManager: TabletSessionDelegate {
+    func session(_ session: TabletSession, didAttach transport: TabletTransport, to tablet: ConnectedTablet) {
+        guard let device = (transport.primary as? IOKitHIDInterface)?.device else { return }
+        let (context, probe, rawProductID, vendorID) = beginConnecting(device, joining: tabletContexts[tablet.id])
+        tabletContexts[tablet.id] = context
+        // The callbacks reach their context through this handle, so a
+        // dongle's transport can move onto its tablet's context.
+        let handle = DriverContextHandle(context)
+        let callbacks = makeCallbacks(
+            context: context, contextHandle: handle, device: device,
+            productID: probe.productID, instanceKey: probe.instanceKey)
+        let driver = SessionDriver(transport, callbacks: callbacks)
+        sessionDrivers[transport.id] = driver
+        transportHandles[transport.id] = handle
+        transportProbes[transport.id] = probe
+        logger.info("\(transport.spec.name, privacy: .public) connected")
+        let delivers = transport.spec.format != .xencelabs || probe.usagePage == 0xFF0A
+        installDriver(
+            driver, device: device, context: context, contextHandle: handle, probe: probe,
+            rawProductID: rawProductID, vendorID: vendorID, delivers: delivers)
+    }
+
+    func session(_ session: TabletSession, inputSinkFor transport: TabletTransport) -> any TabletInputSink {
+        sessionDrivers[transport.id]?.handler ?? DiscardingSink()
+    }
+
+    func session(_ session: TabletSession, didAdd interface: any HIDInterface, to transport: TabletTransport) {
+        guard let device = (interface as? IOKitHIDInterface)?.device,
+            let context = self.context(of: transport),
+            let handler = sessionDrivers[transport.id]?.handler
+        else { return }
+        HIDThread.shared.perform {
+            LatencyProbe.shared.noteDeviceConnected()
+            handler.siblingCount += 1
+        }
+        hidDeviceMap[device] = context
+        deviceRawProductID[device] = transport.rawProductID
+        // A touch sensor is the interface a touch problem needs in the file,
+        // and an interface that arrives early is just as capturable as one
+        // that arrives late.
+        Self.offerForCapture(
+            device, usagePage: interface.usagePage, on: context,
+            delivers: transport.deliveringInterfaces.contains { $0 === interface })
+        refreshConnectedIDs(mostRecent: nil)
+    }
+
+    func session(_ session: TabletSession, transportDidChangeState transport: TabletTransport) {
+        guard case .faulted(let failure) = transport.state,
+            let context = self.context(of: transport)
+        else { return }
+        let ret: IOReturn
+        switch failure {
+        case .permissionDenied: ret = kIOReturnNotPermitted
+        case .openFailed(let code): ret = code
+        }
+        let hex = String(format: "0x%08x", ret)
+        context.connectionErrorMessage = String(
+            localized: "Couldn't open this device (\(hex)) — another tablet driver may already be using it.",
+            comment: "Shown when IOHIDDeviceOpen fails, with the IOReturn code substituted")
+    }
+
+    func session(_ session: TabletSession, transport: TabletTransport, didReadSerial serial: UInt32) {
+        guard let probe = transportProbes[transport.id] else { return }
+        DeviceRegistry.shared.recordHardwareSerial(serial, forDevice: probe.productID)
+    }
+
+    func session(_ session: TabletSession, transport: TabletTransport, didPairWith productID: Int) {
+        sessionDrivers[transport.id]?.pairedTabletChanged()
+        guard let probe = transportProbes[transport.id] else { return }
+        rehomeDongleTransport(dongleKey: probe.instanceKey, pairedProductID: productID)
+    }
+
+    func session(
+        _ session: TabletSession, didRegroup transport: TabletTransport, from old: ConnectedTablet, to new: ConnectedTablet
+    ) {
+        if tabletContexts[new.id] == nil { tabletContexts[new.id] = self.context(of: transport) }
+        if old.transports.isEmpty { tabletContexts.removeValue(forKey: old.id) }
+    }
+
+    func session(_ session: TabletSession, didDetach transport: TabletTransport, from tablet: ConnectedTablet) {
+        let context = self.context(of: transport)
+        transportHandles.removeValue(forKey: transport.id)
+        sessionDrivers.removeValue(forKey: transport.id)
+        transportProbes.removeValue(forKey: transport.id)
+        if tablet.transports.isEmpty { tabletContexts.removeValue(forKey: tablet.id) }
+        guard let context else { return }
+        let rawPID = transport.rawProductID
+        for (device, owner) in hidDeviceMap where owner === context && deviceRawProductID[device] == rawPID {
+            forgetInterface(device, of: context)
+        }
+        releaseSlot(rawPID, of: context)
+    }
+
+    /// The context a transport delivers into, as main sees it. A dongle's
+    /// handle is retargeted on HIDThread, so its main-actor view is `home`.
+    private func context(of transport: TabletTransport) -> DeviceContext? {
+        if let key = transportProbes[transport.id]?.instanceKey, let dongle = dongleTransports[key] {
+            return dongle.home
+        }
+        return transportHandles[transport.id]?.context
+    }
+
+    nonisolated func transport(_ id: TabletTransport.ID, didRun step: ConnectStep) {
+        // Recorded whether or not a capture is running: this happens at open,
+        // long before one starts, and a device left in a reduced mode
+        // otherwise yields a capture that looks healthy.
+        switch step {
+        case .wrote(let reportID, let value, let result, let usagePage):
+            CaptureEngine.recordAutoInitReport(
+                reportID: reportID, value: value, ioReturn: result, usagePage: usagePage)
+        case .read(let purpose, let reportID, let result, let reply, let usagePage):
+            CaptureEngine.recordAutoInitRead(
+                purpose: purpose, reportID: reportID, ioReturn: result, reply: reply, usagePage: usagePage)
+        case .inputMode:
+            break
+        }
+    }
+}
+
+/// A sink for a transport the app lost track of.
+private final class DiscardingSink: TabletInputSink {
+    func didDecode(_ events: [TabletEvent], from report: HIDReport, on interface: any HIDInterface, at receivedNs: UInt64) {}
+}
+
 /// The context a driver's HIDThread callbacks deliver into. Retargeted only
 /// on HIDThread, the same thread that reads it, so a report is never decoded
 /// into one context and delivered to another.
-final class DriverContextHandle {
+final class DriverContextHandle: @unchecked Sendable {  // HIDThread-confined after init
     weak var context: DeviceContext?
 
     init(_ context: DeviceContext) {

@@ -214,7 +214,7 @@ struct ScratchpadView: View {
                     .lineLimit(1)
                     .accessibilityHidden(true)
 
-                TiltVisualizerCanvas(tabletManager: tabletManager)
+                TiltVisualizerCanvas(tabletManager: tabletManager, orientation: settings.tabletOrientation)
                     .scaledFrame(width: 100, height: 100)
                     .help("Live tilt direction and magnitude from the active pen.")
             }
@@ -229,7 +229,8 @@ struct ScratchpadView: View {
 
                     TouchVisualizer(
                         liveTouch: liveTouch,
-                        maxContacts: spec?.maxTouchContacts ?? 10
+                        maxContacts: spec?.maxTouchContacts ?? 10,
+                        orientation: settings.tabletOrientation
                     )
                     .scaledFrame(width: 100, height: 100)
                     .help("Live finger-touch contacts from the active device's touch surface.")

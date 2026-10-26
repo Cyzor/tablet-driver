@@ -44,7 +44,7 @@ extension CaptureGuideView {
     /// Deliberately supplemental rather than a gating step: collection is
     /// already running when this appears, so a tester can send a write and
     /// watch the event counter for a response without restarting. Most devices
-    /// never need it — hence collapsed, and labelled advanced.
+    /// never need it — hence collapsed, and labeled advanced.
     var deviceModeInitControl: some View {
         DisclosureRow(
             label: String(localized: "Experimental: switch the tablet into data mode", comment: "Disclosure row label for the advanced device mode init control"),
@@ -281,7 +281,7 @@ extension CaptureGuideView {
             }
         }
         // Finger touch is counted by the injection pipeline rather than the
-        // decoder, and is likewise zeroed per session by `startDiscovery`.
+        // decoder, and is likewise zeroed per session by `startCapture`.
         if TouchPipelineProbe.snapshot().contactsDecoded > 0 {
             satisfied.insert(.fingerTouch)
         }

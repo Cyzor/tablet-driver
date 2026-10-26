@@ -8,6 +8,13 @@ Una tableta gráfica es un dispositivo de entrada con lápiz que informa la posi
 
 MockTab es un controlador para macOS de tabletas gráficas Wacom y Xencelabs. Es compatible con tabletas USB y Bluetooth de las familias Wacom Intuos, Cintiq, Bamboo e Intuos Pro — con especial foco en hardware que el controlador oficial de Wacom ya no admite en las versiones modernas de macOS — además de tabletas con lápiz y pen displays de Xencelabs.
 
+## Desinstalar MockTab
+
+Sal de MockTab y muévelo a la Papelera. Para borrar también sus ajustes, abre cada elemento de abajo en el Finder con **Ir a la carpeta** (⇧⌘G) y muévelo a la Papelera:
+
+- `~/Library/Preferences/com.cyzor.mocktab.plist` – ajustes  
+- `~/Library/Application Support/com.cyzor.mocktab` – ajustes anteriores, guardados cada vez que arranca una versión distinta  
+
 [tabletArea]
 
 ## Área activa
@@ -19,6 +26,14 @@ El área activa es la parte de la superficie de la tableta que se asigna a la pa
 **Asignación proporcional** – Mantiene proporcional la relación entre la tableta y la pantalla para que el cursor recorra distancias iguales en horizontal y vertical. Desactívalo si quieres estirar o comprimir el mapeo a propósito.
 
 **Restablecer a área completa** – Restablece el área activa a toda la superficie de la tableta. Esta acción se puede deshacer con ⌘Z.
+
+## Orientación
+
+Elige la orientación cuya imagen coincida con cómo está la tableta en tu mesa. En el panel Área de tableta, ⌘⌥1 a ⌘⌥4 las eligen por orden. El lápiz, el toque y la inclinación siguen la elección, y el panel Botones dibuja la tableta tal como está.
+
+Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, así que cada lugar conserva su acción, en todos los perfiles y overrides por app. Deshacer restaura a la vez la orientación y las asignaciones.
+
+**Invertir asignaciones** – Haz clic derecho en el dibujo de la tableta del panel Botones para pasar cada asignación a la tecla del lugar opuesto sin cambiar la orientación. Elígelo de nuevo para dejarlo todo como estaba.
 
 ## Calibración (pen displays)
 
@@ -54,7 +69,7 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 ## Pan View
 
-Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Pan View. Para usarlo, asigna la acción Pan View a cualquier botón del lápiz, tecla express o botón del puck en Button Mapping.
+Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Pan View. Para usarlo, asigna la acción Pan View a cualquier botón del lápiz, tecla express o botón del puck en el panel Botones.
 
 ## Comportamiento del clic
 
@@ -70,18 +85,26 @@ Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado
 
 Pulsa cualquier botón mientras la ventana está abierta para resaltar su posición; así puedes identificar qué botón físico corresponde a cada ranura de asignación. Al hacer clic en una parte del diagrama — la punta, el borrador o un botón lateral — comienza la grabación de una nueva asignación para esa parte.
 
-**Hover drag** – Mantén pulsado Button 1 (el botón lateral inferior) mientras el lápiz flota sobre la superficie para mover el cursor sin tocar con la punta y hacer gestos de arrastre en el aire.
+**Hover drag** – Mantén pulsado un botón con clic izquierdo, derecho o central mientras el lápiz flota para arrastrar sin tocar la superficie.
+
+## Ratones
+
+Un ratón o puck de Wacom tiene su propio diagrama y sus propias filas de botones. Sus tres primeros botones empiezan como clic izquierdo, derecho y central.
+
+## Diagrama de la tableta
+
+El diagrama muestra la posición de las teclas, anillos y diales de una tableta. Haz clic en un elemento para asignarle una acción.
 
 ## Tipos de asignación
 
-- **Botones del ratón** – Clic izquierdo, derecho, central o doble clic  
+- **Botones del ratón** – Clic izquierdo, derecho y central, doble clic y bloqueo de clic, que mantiene pulsado el botón izquierdo hasta la siguiente pulsación  
 - **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
 - **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
-- **Acciones especiales** – Cambiar pantalla, Distribuir en pantallas, Borrador, selección de modo del Touch Ring  
+- **Acciones especiales** – Desplazar vista, Borrador, Barra espaciadora, Escape, Cambiar pantalla, Distribuir en pantallas, Cambiar modo relativo y modos de anillos, diales y franjas  
 
 ## Touch Ring y dial
 
-Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto.
+Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto. Cada franja tiene sus propios modos. En las Cintiq 21UX2 y 22HD, cada franja tiene al lado un botón **Cambiar franja**.
 
 **Desplazar** – Convierte el anillo o dial en una rueda de desplazamiento. La velocidad es un multiplicador: 1× equivale a una línea por paso.
 
@@ -90,6 +113,10 @@ Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece co
 **Tecla** – Envía un atajo de teclado en cada dirección.
 
 En Zoom y Girar la velocidad va de Desactivado a Máximo en lugar de un número.
+
+## Pantallas de teclas
+
+Una Intuos4 con pantallas de teclas muestra la acción de cada tecla a su lado mientras está conectada por USB. Las pantallas se atenúan tras 5 minutos sin actividad y se apagan a los 10. Cualquier uso del lápiz o de una tecla las reactiva.
 
 ## Iluminación
 
@@ -110,6 +137,10 @@ La barra de overrides de la parte superior permite asignar botones distintos a u
 Las tabletas con superficie táctil capacitiva informan de los contactos de los dedos junto con la entrada del lápiz. MockTab lo mantiene desactivado de forma predeterminada; activa **Habilitar toque con el dedo** para usarlo. La respuesta varía según la app.
 
 **Tocar para hacer clic** – Un toque breve sin movimiento apreciable envía un clic izquierdo.
+
+**Clic derecho con dos dedos** – Un toque breve con dos dedos, separados el ancho de una yema, envía un clic derecho.
+
+**Arrastrar con tres dedos** – Al apoyar tres dedos a la vez, el botón del ratón queda pulsado. Muévelos para arrastrar y levántalos para soltar.
 
 **Velocidad del cursor** – Ajusta la velocidad del puntero al arrastrar con un solo dedo. Los valores más bajos permiten un control más fino; los más altos cubren más distancia con menos movimiento.
 
@@ -167,6 +198,8 @@ Al seleccionar una fila de dispositivo, en el panel de detalles de la derecha ap
 
 Los dispositivos desconectados permanecen en la lista para que sus perfiles sigan disponibles para inspección o ajuste aunque estén desenchufados. Cuando un dispositivo de la lista vuelve a conectarse, MockTab aplica automáticamente su configuración guardada.
 
+En una Intuos5 o Intuos Pro (2013) con el kit inalámbrico de Wacom, la fila **Batería** del panel Info establece cuánto tiempo puede estar la tableta sin usarse antes de entrar en reposo.
+
 ## Detección de conflictos
 
 Si otro controlador de tabletas, como el controlador oficial de Wacom, se ejecuta al mismo tiempo, MockTab intenta detectar el conflicto y mostrar una advertencia.
@@ -176,8 +209,6 @@ Si otro controlador de tabletas, como el controlador oficial de Wacom, se ejecut
 ## Perfiles
 
 Un perfil es una instantánea de la configuración de la tableta: área activa, curva de presión, asignaciones de botones y mapeo de pantalla. Al cambiar de perfil, todos esos ajustes se aplican de inmediato.
-
-**Cambio automático** – Cambia automáticamente al perfil correspondiente en cuanto se conecta su tableta.
 
 ## Crear y renombrar
 
@@ -225,4 +256,4 @@ Los informes de errores y las preguntas van a [github.com/Cyzor/tablet-driver/is
 
 ## Agradecimientos
 
-Los datos de dispositivos y la investigación de protocolos de MockTab se apoyan en el trabajo de dos proyectos de código abierto: [OpenTabletDriver](https://opentabletdriver.net/), cuyas configuraciones cubren modelos de muchas marcas, y [Linux Wacom Project](https://linuxwacom.github.io/), fuente de referencia para las dimensiones de dispositivos Wacom a través de su biblioteca libwacom.
+Los datos de dispositivos y la investigación de protocolos de MockTab se apoyan en el trabajo de dos proyectos de código abierto: [OpenTabletDriver](https://opentabletdriver.net/), cuyas configuraciones cubren modelos de muchas marcas, y [Linux Wacom Project](https://linuxwacom.github.io/), fuente de referencia para las dimensiones y la disposición de controles de dispositivos Wacom a través de su biblioteca libwacom.

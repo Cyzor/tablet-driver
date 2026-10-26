@@ -36,7 +36,7 @@ struct DeviceInstanceClaims {
     /// Instances with no token always resolve to the legacy prefix.
     func settingsPrefix(for key: DeviceInstanceKey) -> String {
         let pidHex = String(key.productID, radix: 16, uppercase: true)
-        let legacyPrefix = "device-0x\(pidHex)."
+        let legacyPrefix = Self.prefix(productID: key.productID)
         guard !key.instance.isEmpty else { return legacyPrefix }
 
         var claims = claimMap()
@@ -63,10 +63,15 @@ struct DeviceInstanceClaims {
     /// Pure prefix formatting for a row-normalized key (no claim lookup —
     /// use `settingsPrefix(for:)` for live-device resolution).
     func prefix(for key: DeviceInstanceKey) -> String {
-        let pidHex = String(key.productID, radix: 16, uppercase: true)
-        return key.instance.isEmpty
-            ? "device-0x\(pidHex)."
-            : "device-0x\(pidHex)#\(key.instance)."
+        Self.prefix(productID: key.productID, instance: key.instance)
+    }
+
+    /// The settings key prefix for a model, `device-0x357.` (uppercase hex,
+    /// no padding), or `device-0x357#<instance>.` for a later unit. Every
+    /// stored device setting starts with one, so the format must not change.
+    static func prefix(productID: Int, instance: String = "") -> String {
+        let pidHex = String(productID, radix: 16, uppercase: true)
+        return instance.isEmpty ? "device-0x\(pidHex)." : "device-0x\(pidHex)#\(instance)."
     }
 
     /// Claim-normalized form: the claimed unit's key folds to the empty

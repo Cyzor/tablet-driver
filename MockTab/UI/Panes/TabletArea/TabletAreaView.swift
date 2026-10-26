@@ -62,8 +62,8 @@ struct TabletAreaView: View {
 
     /// True if the bound device is a pen display (Cintiq / Xencelabs-class),
     /// connected or not. Resolved from a persistent registry so the calibration
-    /// section stays visible — greyed out — while the display is unplugged, per
-    /// the grey-out-vs-hide convention. The `VendorDeviceRegistry` fallback is
+    /// section stays visible — grayed out — while the display is unplugged, per
+    /// the gray-out-vs-hide convention. The `VendorDeviceRegistry` fallback is
     /// what keeps Xencelabs displays (absent from `WacomDeviceRegistry`) from
     /// collapsing to false and hiding the section on disconnect.
     private var activeDeviceIsPenDisplay: Bool {
@@ -73,6 +73,27 @@ struct TabletAreaView: View {
             if let p = VendorDeviceRegistry.profile(forProductID: pid) { return p.isPenDisplay }
         }
         return false
+    }
+
+    /// The bound tablet drawn from parts, before turning for orientation.
+    /// Only Wacom models have layouts; other brands draw as a plain body.
+    private var tabletFigure: TabletFigure {
+        let pid = boundProductID ?? TabletFigure.fallbackProductID
+        // The live device's vendor, else the saved one; a tablet saved before
+        // vendors were recorded counts as Wacom.
+        let vendorID = tabletManager.context(forKey: boundKey)?.vendorID
+            ?? registry.knownTablets.first { $0.productID == pid }?.vendorID ?? 0x056A
+        let isWacom = vendorID == 0x056A && VendorDeviceRegistry.profile(forProductID: pid) == nil
+        // Other brands' product IDs can match a Wacom model's, so only their own layouts count.
+        let hasLayout = isWacom || TabletLayoutExtras.productIDs.contains(pid)
+        var figure = TabletFigure(
+            layoutProductID: hasLayout ? pid : nil,
+            surfaceMM: tabletManager.surfaceSizeMM(for: boundKey),
+            aspect: activeAspectRatio,
+            isPenDisplay: activeDeviceIsPenDisplay)
+        // Drawn like the Buttons pane's diagram, at low contrast.
+        if hasLayout { figure.controls = TabletControlMap.figureControls(productID: pid) }
+        return figure
     }
 
     /// True if the bound device is currently physically connected.
@@ -143,51 +164,53 @@ struct TabletAreaView: View {
             onResetToDefaults: resetToDefaults
         ) {
                 Section {
-                    NormalizedAreaEditor(
-                        aspectRatio: orientedAspectRatio,
-                        rect: activeAreaBinding,
-                        onCommit: { oldRect in
-                            settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
-                                x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
-                        }
-                    ) { areaRect, cs in
-                        Canvas { ctx, _ in
-                            // areaRect is the crop box's LIVE canvas-pixel
-                            // rect (tracks a drag in progress), not the
-                            // last-committed settings value — converting it
-                            // back to a fraction here (rather than reading
-                            // activeAreaBinding) is what makes the
-                            // letterbox preview track the drag instead of
-                            // only updating on drag-end.
-                            let liveFraction = NormalizedRect(
-                                x: areaRect.minX / cs.width, y: areaRect.minY / cs.height,
-                                w: areaRect.width / cs.width, h: areaRect.height / cs.height)
-                            if let crop = proportionalCropRect(insetting: liveFraction) {
-                                let cropRect = CGRect(
-                                    x: crop.x * cs.width, y: crop.y * cs.height,
-                                    width: crop.w * cs.width, height: crop.h * cs.height)
-                                letterboxOverlay(ctx: ctx, activeAreaRect: areaRect, liveRect: cropRect)
+                    TabletBezelFrame(figure: tabletFigure.oriented(settings.tabletOrientation)) {
+                        NormalizedAreaEditor(
+                            aspectRatio: orientedAspectRatio,
+                            rect: activeAreaBinding,
+                            onCommit: { oldRect in
+                                settings.recordAreaDrag(before: TabletSettings.AreaSnapshot(
+                                    x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
                             }
-                            tabletBadge(ctx: ctx, areaRect: areaRect)
+                        ) { areaRect, cs in
+                            Canvas { ctx, _ in
+                                // areaRect is the crop box's LIVE canvas-pixel
+                                // rect (tracks a drag in progress), not the
+                                // last-committed settings value — converting it
+                                // back to a fraction here (rather than reading
+                                // activeAreaBinding) is what makes the
+                                // letterbox preview track the drag instead of
+                                // only updating on drag-end.
+                                let liveFraction = NormalizedRect(
+                                    x: areaRect.minX / cs.width, y: areaRect.minY / cs.height,
+                                    w: areaRect.width / cs.width, h: areaRect.height / cs.height)
+                                if let crop = proportionalCropRect(insetting: liveFraction) {
+                                    let cropRect = CGRect(
+                                        x: crop.x * cs.width, y: crop.y * cs.height,
+                                        width: crop.w * cs.width, height: crop.h * cs.height)
+                                    letterboxOverlay(ctx: ctx, activeAreaRect: areaRect, liveRect: cropRect)
+                                }
+                                tabletBadge(ctx: ctx, areaRect: areaRect)
+                            }
+                            .frame(width: cs.width, height: cs.height)
                         }
-                        .frame(width: cs.width, height: cs.height)
-                    }
-                    .snapping(
-                        to: screenAreaAspect,
-                        label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
-                    .speaking(
-                        as: String(localized: "Tablet Area"),
-                        size: .tablet(tabletManager.surfaceSizeMM(for: boundKey), orientation: settings.tabletOrientation))
-                    .editMappingMenu(enabled: screenAreaAspect != nil) {
-                        MappingSheetPresenter.present(
-                            from: windowRef.window, settings: settings,
-                            tabletAspect: orientedAspectRatio,
-                            tabletCaption: deviceLabel,
-                            tabletSizeMM: tabletManager.surfaceSizeMM(for: boundKey),
-                            destination: MappingDestination.current(for: settings))
+                        .snapping(
+                            to: screenAreaAspect,
+                            label: String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
+                        .speaking(
+                            as: String(localized: "Tablet Area"),
+                            size: .tablet(tabletManager.surfaceSizeMM(for: boundKey), orientation: settings.tabletOrientation))
+                        .editMappingMenu(enabled: screenAreaAspect != nil) {
+                            MappingSheetPresenter.present(
+                                from: windowRef.window, settings: settings,
+                                tabletAspect: orientedAspectRatio,
+                                tabletCaption: deviceLabel,
+                                tabletSizeMM: tabletManager.surfaceSizeMM(for: boundKey),
+                                destination: MappingDestination.current(for: settings))
+                        }
                     }
                     .background(WindowReader(ref: windowRef))
-                    .frame(height: 200)
+                    .frame(height: TabletBezelFrame<EmptyView>.height(settings.tabletOrientation))
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
 
@@ -293,7 +316,7 @@ struct TabletAreaView: View {
                                 .foregroundStyle(.secondary)
                                 .scaledFrame(width: Self.statusGutter)
                                 .accessibilityHidden(true)
-                            // `.disabled` greys the controls but not plain Text
+                            // `.disabled` grays the controls but not plain Text
                             // labels, so dim this one to match the status row
                             // above when the display is unplugged.
                             Text("Pointer Offset")
@@ -332,7 +355,7 @@ struct TabletAreaView: View {
                         }
                         .help("Apply a small constant offset on top of calibration for sub-pixel fine-tuning.")
                     }
-                    // Whole section greys out when the display is unplugged: the
+                    // Whole section grays out when the display is unplugged: the
                     // status row already explains why ("Display not connected"),
                     // and nothing here — calibrating or nudging the offset — is
                     // meaningful without the panel in front of you.
@@ -340,7 +363,10 @@ struct TabletAreaView: View {
                 }
 
                 Section("Orientation") {
-                    OrientationPickerView(settings: settings)
+                    OrientationPickerView(
+                        settings: settings, figure: tabletFigure,
+                        ringLampsTurn: boundProductID.flatMap(WacomDeviceRegistry.spec(for:))
+                            .map(TabletControlMap.ringLampsTurn) ?? false)
                 }
         }
     }
@@ -640,14 +666,21 @@ struct TabletAreaView: View {
             layer.clip(to: clipPath)
             layer.fill(badgePath, with: .color(.black.opacity(0.42)))
 
+            // Drawn in the rects they were measured in: drawn at a point, a
+            // name too wide for the area stayed on one line and ran past
+            // the badge, which was sized for it wrapped.
+            func lineRect(_ size: CGSize, centerY: CGFloat) -> CGRect {
+                let w = size.width.rounded(.up) + 1
+                return CGRect(x: areaRect.midX - w / 2, y: centerY - size.height / 2, width: w, height: size.height)
+            }
             if twoLines, let r2 = line2Resolved {
-                let y1 = areaRect.midY - (gap / 2 + s1.height / 2)
-                let y2 = areaRect.midY + (gap / 2 + s2.height / 2)
-                layer.draw(line1Resolved, at: CGPoint(x: areaRect.midX, y: y1), anchor: .center)
-                layer.draw(r2,            at: CGPoint(x: areaRect.midX, y: y2), anchor: .center)
+                let top = areaRect.midY - textH / 2
+                let y1 = top + s1.height / 2
+                let y2 = top + s1.height + gap + s2.height / 2
+                layer.draw(line1Resolved, in: lineRect(s1, centerY: y1))
+                layer.draw(r2, in: lineRect(s2, centerY: y2))
             } else {
-                layer.draw(line1Resolved, at: CGPoint(x: areaRect.midX, y: areaRect.midY),
-                           anchor: .center)
+                layer.draw(line1Resolved, in: lineRect(s1, centerY: areaRect.midY))
             }
         }
     }

@@ -21,9 +21,8 @@ import TabletKit
 ///   • Force Touch
 ///   • Native multi-touch `NSTouch` events that apps like Final Cut consume
 ///
-/// The first group is unimplemented, not impossible — see project memory
-/// `project_dock_swipe_gesture_feasibility`. The rest is a genuine platform
-/// ceiling.
+/// The first group is unimplemented, not impossible. The rest is a genuine
+/// platform ceiling.
 struct TouchView: View {
 
     @ObservedObject var settings: TabletSettings
@@ -226,8 +225,8 @@ struct TouchView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
 
-            TouchAreaCropView(settings: settings, spec: spec, productID: productID)
-                .frame(height: 200)
+            TouchAreaCropView(settings: settings, spec: spec, productID: effectiveProductID)
+                .frame(height: TabletBezelFrame<EmptyView>.height(settings.tabletOrientation))
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
                 // A pen display's touch always covers its whole screen.
@@ -249,7 +248,7 @@ struct TouchView: View {
                 .appControlSize(.small)
                 // Gated on `touchEnabled` only — deliberately not also on
                 // "the rect is already full", which the pen pane doesn't do
-                // either. A reset button that greys out at exactly the state
+                // either. A reset button that grays out at exactly the state
                 // it produces reads as broken rather than as already-done.
                 .disabled(!areaEditable)
                 .help("Reset the touch area to the full touch surface (undoable).")
@@ -268,15 +267,9 @@ struct TouchView: View {
         let spec: TabletSpec?
         let productID: Int?
 
-        /// Sourced from the tablet's own physical/pen-digitizer proportions —
-        /// same derivation as `TabletAreaView.activeAspectRatio` — rather than
-        /// touch's own sensor maxima, so this tool's preview box matches the
-        /// Tablet Area pane's shape for the same device. (Touch's actual
-        /// sensor resolution is more square on some models — PTH-850 and
-        /// PTH-651's kernel-reported 4096×4096 touch space against a physical
-        /// 1.60 aspect — but this box aims for cross-pane visual consistency,
-        /// not touch-sensor precision.) Physical millimetres first; the pen
-        /// digitizer's raw maxima only as a fallback.
+        /// The surface's shape as the Tablet Area pane derives it, not the
+        /// touch sensor's maxima (4096×4096 on some models), so both panes
+        /// draw the same box. Millimeters first, pen maxima as a fallback.
         private var aspectRatio: Double {
             if let pid = productID,
                 let profile = VendorDeviceRegistry.profile(forProductID: pid),
@@ -341,19 +334,34 @@ struct TouchView: View {
             )
         }
 
+        /// The same tablet the Tablet Area pane draws behind its editor.
+        private var figure: TabletFigure {
+            let pid = productID ?? TabletFigure.fallbackProductID
+            let isWacom = VendorDeviceRegistry.profile(forProductID: pid) == nil
+            var figure = TabletFigure(
+                layoutProductID: isWacom ? pid : nil,
+                surfaceMM: sizeMM,
+                aspect: aspectRatio,
+                isPenDisplay: spec?.isPenDisplay == true)
+            if isWacom { figure.controls = TabletControlMap.figureControls(productID: pid) }
+            return figure
+        }
+
         var body: some View {
             // `onCommit` fires once on drag-end, so a crop drag is undoable
             // here exactly as it is in the pen pane.
-            NormalizedAreaEditor(
-                aspectRatio: orientedAspectRatio,
-                rect: rectBinding,
-                onCommit: { oldRect in
-                    settings.recordTouchAreaDrag(before: TabletSettings.AreaSnapshot(
-                        x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
-                })
-                .speaking(
-                    as: String(localized: "Touch Area"),
-                    size: .tablet(sizeMM, orientation: settings.tabletOrientation))
+            TabletBezelFrame(figure: figure.oriented(settings.tabletOrientation)) {
+                NormalizedAreaEditor(
+                    aspectRatio: orientedAspectRatio,
+                    rect: rectBinding,
+                    onCommit: { oldRect in
+                        settings.recordTouchAreaDrag(before: TabletSettings.AreaSnapshot(
+                            x: oldRect.x, y: oldRect.y, w: oldRect.w, h: oldRect.h))
+                    })
+                    .speaking(
+                        as: String(localized: "Touch Area"),
+                        size: .tablet(sizeMM, orientation: settings.tabletOrientation))
+            }
         }
     }
 

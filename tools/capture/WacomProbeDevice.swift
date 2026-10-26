@@ -21,10 +21,10 @@ private let probeLog = Logger(subsystem: "com.cyzor.mocktab", category: "probe")
 /// are also printed to stderr so they show in Xcode's debug console.
 ///
 /// Once you have the numbers, create a proper `*Device.swift` and add it to
-/// `TabletManager.deviceConnected(_:)`.
+/// `TabletManager.beginConnecting(_:joining:)`.
 ///
 /// Lives in `tools/`, not the Xcode target: copy it into
-/// `MockTab/Driver/Devices/` and wire it into `TabletManager.deviceConnected(_:)`
+/// `MockTab/Driver/Devices/` and wire it into `TabletManager.beginConnecting(_:joining:)`
 /// only for the duration of the research session, the same way you would use
 /// `tools/capture/hid_traffic_capture.d`. It depends on `TabletDevice` and `hidSetReport`
 /// from that folder, so it won't compile in place.

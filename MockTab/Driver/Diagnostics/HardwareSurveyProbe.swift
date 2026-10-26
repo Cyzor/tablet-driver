@@ -19,8 +19,8 @@ import IOKit
 /// main thread.
 enum HardwareSurveyProbe {
 
-    static func run() -> DiscoveryHardwareSurvey {
-        DiscoveryHardwareSurvey(displays: displays(), usbDevices: usbDevices())
+    static func run() -> CaptureHardwareSurvey {
+        CaptureHardwareSurvey(displays: displays(), usbDevices: usbDevices())
     }
 
     // MARK: - Displays
@@ -63,7 +63,7 @@ enum HardwareSurveyProbe {
         return codes
     }
 
-    private static func displays() -> [DiscoveryDisplay] {
+    private static func displays() -> [CaptureDisplay] {
         var count: UInt32 = 0
         guard CGGetOnlineDisplayList(0, nil, &count) == .success, count > 0 else { return [] }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
@@ -71,7 +71,7 @@ enum HardwareSurveyProbe {
 
         return ids.prefix(Int(count)).filter { CGDisplayIsBuiltin($0) == 0 }.map { id in
             let info = coreDisplayInfo(id)
-            var display = DiscoveryDisplay(
+            var display = CaptureDisplay(
                 name: (info?["DisplayProductName"] as? [String: String])?.values.first,
                 vendorID: String(format: "0x%04X", CGDisplayVendorNumber(id)),
                 productID: String(format: "0x%04X", CGDisplayModelNumber(id)),
@@ -88,7 +88,7 @@ enum HardwareSurveyProbe {
             let codes = (advertised.isEmpty ? fallbackCodes : advertised)
                 .filter { !writeOnlyCodes.contains($0) }
                 .prefix(maxCodes)
-            var values: [String: DiscoveryVCPValue] = [:]
+            var values: [String: CaptureVCPValue] = [:]
             for code in codes {
                 if let value = link.readVCP(code) {
                     values[String(format: "0x%02X", code)] = value
@@ -137,7 +137,7 @@ enum HardwareSurveyProbe {
         let drivers: [String]
     }
 
-    private static func usbDevices() -> [DiscoveryUSBDevice] {
+    private static func usbDevices() -> [CaptureUSBDevice] {
         var iterator: io_iterator_t = 0
         guard IOServiceGetMatchingServices(
             kIOMainPortDefault, IOServiceMatching("IOUSBHostDevice"), &iterator) == KERN_SUCCESS
@@ -176,7 +176,7 @@ enum HardwareSurveyProbe {
             return false
         }
 
-        return entries.compactMap { entry -> DiscoveryUSBDevice? in
+        return entries.compactMap { entry -> CaptureUSBDevice? in
             let reason: String
             if tabletVendors.contains(entry.vendorID) {
                 reason = "tablet"
@@ -189,7 +189,7 @@ enum HardwareSurveyProbe {
             } else {
                 return nil
             }
-            return DiscoveryUSBDevice(
+            return CaptureUSBDevice(
                 vendorID: String(format: "0x%04X", entry.vendorID),
                 productID: String(format: "0x%04X", entry.productID),
                 name: entry.name,

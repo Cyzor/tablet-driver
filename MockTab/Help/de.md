@@ -8,6 +8,13 @@ Ein Grafiktablett ist ein Eingabegerät mit Stift, das absolute Position, Druck,
 
 MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Grafiktabletts aus den Wacom-Familien Intuos, Cintiq, Bamboo und Intuos Pro — mit besonderem Fokus auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt — sowie Xencelabs-Stifttabletts und Pen-Displays.
 
+## MockTab entfernen
+
+Beende MockTab und lege es in den Papierkorb. Um auch die Einstellungen zu entfernen, öffne die folgenden Objekte im Finder mit **Gehe zum Ordner** (⇧⌘G) und lege sie in den Papierkorb:
+
+- `~/Library/Preferences/com.cyzor.mocktab.plist` – Einstellungen  
+- `~/Library/Application Support/com.cyzor.mocktab` – frühere Einstellungen, gesichert bei jedem Start einer anderen Version  
+
 [tabletArea]
 
 ## Aktiver Bereich
@@ -19,6 +26,14 @@ Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bilds
 **Proportionale Projektion** – Hält das Verhältnis zwischen Grafiktablett und Bildschirm proportional, sodass der Cursor horizontal und vertikal gleich weit zurücklegt. Deaktiviere diese Option, wenn du das Mapping absichtlich strecken oder stauchen willst.
 
 **Auf Vollbereich zurücksetzen** – Stellt den aktiven Bereich auf die gesamte Grafiktablett-Oberfläche zurück. Diese Aktion lässt sich mit ⌘Z rückgängig machen.
+
+## Ausrichtung
+
+Wähle die Ausrichtung, deren Bild zeigt, wie das Grafiktablett auf deinem Tisch liegt. Im Grafiktablett-Bereich wählen ⌘⌥1 bis ⌘⌥4 sie der Reihe nach. Stift, Berührung und Neigung folgen der Wahl, und der Tasten-Bereich zeigt das Grafiktablett so, wie es liegt.
+
+Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt. So behält jede Stelle ihre Aktion, in jedem Profil und jedem App-Override. Rückgängig stellt Ausrichtung und Belegungen gemeinsam wieder her.
+
+**Belegung umdrehen** – Klicke mit der rechten Maustaste auf das Grafiktablett im Tasten-Bereich, um jede Belegung auf die gegenüberliegende Taste zu verschieben, ohne die Ausrichtung zu ändern. Ein zweites Mal stellt alles wieder her.
 
 ## Kalibrierung (Pen-Displays)
 
@@ -54,7 +69,7 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 ## Pan View
 
-Legt fest, wie schnell sich Inhalte verschieben, während eine Pan-View-Taste gedrückt gehalten wird. Weise die Aktion Pan View in Button Mapping einer Stifttaste, Express-Taste oder Puck-Taste zu, um sie zu nutzen.
+Legt fest, wie schnell sich Inhalte verschieben, während eine Pan-View-Taste gedrückt gehalten wird. Weise die Aktion Pan View im Tasten-Bereich einer Stifttaste, Express-Taste oder Puck-Taste zu, um sie zu nutzen.
 
 Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitseinstellung (in Stiftgefühl) aktiv ist. Die Reaktion hängt von der App ab.
 
@@ -72,18 +87,26 @@ Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitsein
 
 Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuheben; so erkennst du, welcher physische Knopf welchem Zuordnungsslot entspricht. Wenn du auf einen Teil des Diagramms klickst — die Spitze, den Radierer oder eine Barrel-Taste — startet die Aufzeichnung einer neuen Zuordnung dafür.
 
-**Hover drag** – Halte Button 1 (die untere Barrel-Taste) gedrückt, während der Stift über der Oberfläche schwebt, um den Cursor ohne Spitzenkontakt zu bewegen und Drag-Gesten in der Luft auszuführen.
+**Hover drag** – Halte eine Taste mit Links-, Rechts- oder Mittelklick gedrückt, während der Stift schwebt, um zu ziehen, ohne die Oberfläche zu berühren.
+
+## Mäuse
+
+Eine Wacom-Maus oder ein Puck bekommt ein eigenes Diagramm und eigene Tastenzeilen. Die ersten drei Tasten starten als Links-, Rechts- und Mittelklick.
+
+## Tablett-Diagramm
+
+Das Diagramm zeigt, wo Tasten, Ringe und Dials eines Grafiktabletts sitzen. Klicke auf ein Element, um ihm eine Aktion zuzuweisen.
 
 ## Zuordnungstypen
 
-- **Maustasten** – Links-, Rechts-, Mittelklick oder Doppelklick  
+- **Maustasten** – Links-, Rechts- und Mittelklick, Doppelklick und Klick-Verriegelung, die die linke Taste bis zum nächsten Druck gedrückt hält  
 - **Tastaturkürzel** – Klicke ins Shortcut-Feld und drücke eine beliebige Tastenkombination  
 - **Gehaltene Modifikatortasten** – ⌘ ⌥ ⇧ ⌃ bleiben gedrückt, solange die Taste gehalten wird  
-- **Spezialaktionen** – Display umschalten, Auf Displays verteilen, Radierer, Auswahl des Touch-Ring-Modus  
+- **Spezialaktionen** – Ansicht schwenken, Radierer, Leertaste, Escape, Display umschalten, Auf Displays verteilen, Relativen Modus umschalten sowie Modi für Ringe, Dials und Leisten  
 
 ## Berührungsring und Dial
 
-Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen.
+Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen. Jede Leiste hat eigene Modi. Beim Cintiq 21UX2 und 22HD liegt neben jeder Leiste eine Taste **Leiste umschalten**.
 
 **Scrollen** – Macht aus Ring oder Dial ein Scrollrad. Die Geschwindigkeit ist ein Faktor: 1× entspricht einer Scrollzeile pro Schritt.
 
@@ -92,6 +115,10 @@ Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus ersc
 **Taste** – Sendet für jede Richtung ein Tastenkürzel.
 
 Bei Zoomen und Drehen reicht die Geschwindigkeit von Aus bis Maximum statt einer Zahl.
+
+## Tastendisplays
+
+Ein Intuos4 mit Tastendisplays zeigt per USB neben jeder Taste ihre Aktion an. Nach 5 Minuten ohne Eingabe werden die Displays gedimmt, nach 10 schalten sie sich ab. Jede Stift- oder Tasteneingabe weckt sie wieder.
 
 ## Beleuchtung
 
@@ -112,6 +139,10 @@ Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wi
 Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzlich zur Stifteingabe. MockTab lässt das standardmäßig ausgeschaltet; aktiviere **Fingereingabe aktivieren**, um es zu verwenden. Die Reaktion hängt von der App ab.
 
 **Tippen zum Klicken** – Eine kurze Berührung ohne nennenswerte Bewegung sendet einen Linksklick.
+
+**Rechtsklick mit zwei Fingern** – Eine kurze Berührung mit zwei Fingern, etwa eine Fingerkuppe breit auseinander, sendet einen Rechtsklick.
+
+**Mit drei Fingern ziehen** – Setzt du drei Finger gleichzeitig auf, bleibt die Maustaste gedrückt. Bewege sie zum Ziehen und heb sie zum Loslassen ab.
 
 **Zeigergeschwindigkeit** – Skaliert die Zeigerbewegung bei einer Ein-Finger-Drag-Geste. Niedrigere Werte erlauben feinere Kontrolle, höhere decken mit weniger Bewegung mehr Strecke ab.
 
@@ -169,6 +200,8 @@ Wählst du ein Gerät aus, erscheinen rechts die passenden Einstellungen und Wer
 
 Auch nicht verbundene Geräte bleiben in der Liste, damit du ihre Profile prüfen oder anpassen kannst. Sobald ein Gerät wieder verbunden wird, übernimmt MockTab automatisch die gespeicherten Einstellungen.
 
+Bei einem Intuos5 oder Intuos Pro (2013) mit dem Wacom Wireless-Kit legt die Zeile **Batterie** im Info-Bereich fest, wie lange das Grafiktablett unbenutzt bleibt, bevor es in den Ruhezustand wechselt.
+
 ## Konflikterkennung
 
 Wenn gleichzeitig ein anderer Grafiktablett-Treiber läuft, etwa der offizielle Wacom-Treiber, versucht MockTab den Konflikt zu erkennen und eine Warnung anzuzeigen.
@@ -178,8 +211,6 @@ Wenn gleichzeitig ein anderer Grafiktablett-Treiber läuft, etwa der offizielle 
 ## Profile
 
 Ein Profil ist eine Momentaufnahme der Grafiktablett-Einstellungen: aktiver Bereich, Druckkurve, Tastenbelegungen und Display-Mapping. Beim Wechseln eines Profils werden all diese Einstellungen sofort angewendet.
-
-**Automatisches Umschalten** – Wechselt automatisch zum passenden Profil, sobald dessen Grafiktablett verbunden wird.
 
 ## Erstellen und Umbenennen
 
@@ -227,4 +258,4 @@ Bugmeldungen und Fragen gehören nach [github.com/Cyzor/tablet-driver/issues](ht
 
 ## Danksagung
 
-MockTabs Gerätedaten und Protokollrecherche bauen auf der Arbeit von zwei Open-Source-Projekten auf: [OpenTabletDriver](https://opentabletdriver.net/), dessen Gerätekonfigurationen Modelle vieler Hersteller abdecken, und dem [Linux Wacom Project](https://linuxwacom.github.io/), der maßgeblichen Quelle für Wacom-Geräteabmessungen über die libwacom-Bibliothek.
+MockTabs Gerätedaten und Protokollrecherche bauen auf der Arbeit von zwei Open-Source-Projekten auf: [OpenTabletDriver](https://opentabletdriver.net/), dessen Gerätekonfigurationen Modelle vieler Hersteller abdecken, und dem [Linux Wacom Project](https://linuxwacom.github.io/), der maßgeblichen Quelle für Abmessungen und Bedienelemente von Wacom-Geräten über die libwacom-Bibliothek.

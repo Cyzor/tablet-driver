@@ -14,18 +14,33 @@ enum TabletOrientation: Int, CaseIterable {
     case landscapeFlipped = 2  // 180°     — USB port at top
     case portraitFlipped = 3  // 90° CW   — USB port at left
 
-    /// Clockwise rotation angle in radians used for Canvas transforms.
-    var rotationAngle: Double {
+    /// Whether this orientation swaps the X and Y hardware axes.
+    var swapsAxes: Bool { self == .portrait || self == .portraitFlipped }
+
+    /// Turned a half turn from Landscape or Portrait, so whatever ran up the
+    /// tablet now runs down it.
+    var isHalfTurn: Bool { self == .landscapeFlipped || self == .portraitFlipped }
+
+    /// This orientation turned a half turn.
+    var halfTurned: TabletOrientation {
         switch self {
-        case .landscape: return 0
-        case .portrait: return 3 * .pi / 2  // 270° (swapped from 90°)
-        case .landscapeFlipped: return .pi  // 180°
-        case .portraitFlipped: return .pi / 2  // 90° (swapped from 270°)
+        case .landscape: return .landscapeFlipped
+        case .portrait: return .portraitFlipped
+        case .landscapeFlipped: return .landscape
+        case .portraitFlipped: return .portrait
         }
     }
 
-    /// Whether this orientation swaps the X and Y hardware axes.
-    var swapsAxes: Bool { self == .portrait || self == .portraitFlipped }
+    /// Quarter turns counterclockwise from Landscape, as the tablet looks on
+    /// the desk. Drawings of the tablet turn by this much.
+    var counterclockwiseTurns: Int {
+        switch self {
+        case .landscape: return 0
+        case .portrait: return 1
+        case .landscapeFlipped: return 2
+        case .portraitFlipped: return 3
+        }
+    }
 
     /// Adjusts a raw-space aspect ratio (width/height) for this orientation —
     /// swapped for `portrait`/`portraitFlipped`, unchanged otherwise. Shared

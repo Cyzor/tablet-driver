@@ -104,7 +104,7 @@ final class DiagnosticSession {
         let vendor = IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? Int ?? 0
         guard vendor != 0, !appleVendorIDs.contains(vendor) else { return 0 }
         if TabletManager.knownVendorIDs.contains(vendor) { return 4 }
-        let digitizers = DeviceRouter.usagePairs(device).filter { $0.page == kHIDPage_Digitizer }
+        let digitizers = IOKitHIDInterface(device).usagePairs.filter { $0.page == kHIDPage_Digitizer }
         if digitizers.contains(where: { $0.usage == kHIDUsage_Dig_Digitizer || $0.usage == kHIDUsage_Dig_Pen }) {
             return 3
         }

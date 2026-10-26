@@ -11,7 +11,7 @@ import Foundation
 /// over, the way touch does. Slow motion moves `speed` times that far; faster
 /// motion is multiplied up by up to `accelFast` more. A fixed
 /// high gain amplified sensor noise and hand tremor about 4x, which read as
-/// jitter. Physical travel in millimetres drives speed and rest detection.
+/// jitter. Physical travel in millimeters drives speed and rest detection.
 struct RelativeBallistics {
     /// Multiplier on absolute-mode movement when slow.
     static let speed = 0.5

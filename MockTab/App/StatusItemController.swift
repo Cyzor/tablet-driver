@@ -71,40 +71,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         addItem(to: menu, title: String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"),
                 action: #selector(showTabletArea))
-        addItem(to: menu, title: String(localized: "Button Mapping", comment: "Menu item: open Button Mapping tab"),
-                action: #selector(showButtonMapping))
+        addItem(to: menu, title: String(localized: "Buttons", comment: "Menu item: open Buttons tab"),
+                action: #selector(showButtons))
         menu.addItem(.separator())
         addItem(to: menu, title: String(localized: "Detect Tablet", comment: "Menu item: detect and focus active tablet"),
                 action: #selector(detectTablet))
 
-        let knownTablets = DeviceRegistry.shared.knownTablets
-        if !knownTablets.isEmpty {
+        let tablets = TabletMenuItems.items(target: self, action: #selector(openTablet(_:)))
+        if !tablets.isEmpty {
             menu.addItem(.separator())
-            for tablet in knownTablets {
-                // A companion peripheral (Xencelabs Quick Keys puck/dongle)
-                // is folded into its owning tablet's window while connected —
-                // don't list it as its own selectable device.
-                if DeviceCompanions.isConnectedCompanion(
-                    productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs)
-                {
-                    continue
-                }
-                let connected = tm.connectedProductIDs.contains(tablet.productID)
-                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
-                // The dongle has no window of its own (`openWindow`) — grey it
-                // out rather than let the click silently no-op. A tablet it
-                // relays is listed, and checked, under its own row.
-                let isDongleDisabled = tm.isDongleRawProductID(tablet.productID)
-                let item = NSMenuItem(title: pwc.menuLabel(forKey: tablet.instanceKey) + suffix,
-                                       action: isDongleDisabled ? nil : #selector(openTablet(_:)), keyEquivalent: "")
-                item.target = self
-                item.isEnabled = !isDongleDisabled
-                // Composite instance identity doesn't fit NSMenuItem.tag
-                // (an Int) — carry it via representedObject instead.
-                item.representedObject = tablet.instanceKey.stringValue
-                item.state = connected ? .on : .off
-                menu.addItem(item)
-            }
+            tablets.forEach(menu.addItem)
         }
 
         if pwc.windowDescriptors.count > 1 {
@@ -130,8 +106,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             title: String(localized: "Launch at Login", comment: "Menu toggle: start app automatically on login"),
             action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         loginItem.target = self
-        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        // The cached state; reading the service here would hold the menu open.
+        loginItem.state = InfoView.knownLaunchAtLogin ? .on : .off
         menu.addItem(loginItem)
+        Task { _ = await InfoView.readLaunchAtLogin() }
 
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") == nil
             ? true
@@ -156,48 +134,28 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func profileMenuTitle(settings: TabletSettings) -> String {
-        switch settings.activationSource {
-        case .manual:
-            return String(
-                localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")",
-                comment: "Menu label showing current active profile")
-        case .app(_, let appName):
-            return String(
-                localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")  (\(appName))",
-                comment: "Menu label showing current active profile and triggering app")
-        }
+        String(
+            localized: "Profile: \(settings.activeProfile?.name ?? "Device Defaults")",
+            comment: "Menu label showing current active profile")
     }
 
     private func buildProfileSubmenu(settings: TabletSettings) -> NSMenu {
         let sub = NSMenu()
-
-        let defaultsItem = NSMenuItem(
-            title: String(localized: "Device Defaults", comment: "Profile option: use device's default settings"),
-            action: #selector(activateDeviceDefaults), keyEquivalent: "")
-        defaultsItem.target = self
-        defaultsItem.state = settings.activeProfile == nil ? .on : .off
-        sub.addItem(defaultsItem)
-        sub.addItem(.separator())
-
-        for profile in settings.profiles {
-            let item = NSMenuItem(title: profile.name, action: #selector(activateProfile(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = profile.id
-            item.state = settings.activeProfile?.id == profile.id ? .on : .off
-            sub.addItem(item)
-        }
-
+        ProfileMenuItems.items(
+            for: settings, target: self,
+            defaultsAction: #selector(activateDeviceDefaults), profileAction: #selector(activateProfile(_:))
+        ).forEach(sub.addItem)
         return sub
     }
 
     // MARK: - Actions
 
     @objc private func showTabletArea() {
-        SettingsWindowManager.shared.showTab(at: 0)
+        SettingsWindowManager.shared.showTab(.tabletArea)
     }
 
-    @objc private func showButtonMapping() {
-        SettingsWindowManager.shared.showTab(at: 2)
+    @objc private func showButtons() {
+        SettingsWindowManager.shared.showTab(.buttons)
     }
 
     @objc private func detectTablet() {
@@ -205,9 +163,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openTablet(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String,
-            let key = DeviceInstanceKey(stringValue: id)
-        else { return }
+        guard let key = TabletMenuItems.instanceKey(of: sender) else { return }
         SettingsWindowManager.shared.openWindow(forInstanceKey: key)
     }
 
@@ -222,22 +178,21 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func activateProfile(_ sender: NSMenuItem) {
         let settings = SettingsWindowManager.shared.settings
-        guard let uuid = sender.representedObject as? UUID,
-              let profile = settings.profiles.first(where: { $0.id == uuid })
-        else { return }
+        guard let profile = ProfileMenuItems.profile(of: sender, in: settings) else { return }
         settings.activate(profile)
     }
 
     @objc private func toggleLaunchAtLogin() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
-        } catch {
-            // Leave the toggle reflecting the actual (unchanged) status; it's
-            // re-read fresh from SMAppService on the next menu open.
+        Task {
+            await Task.detached {
+                // On failure the status stays as it was; the re-read below shows that.
+                if SMAppService.mainApp.status == .enabled {
+                    try? SMAppService.mainApp.unregister()
+                } else {
+                    try? SMAppService.mainApp.register()
+                }
+            }.value
+            _ = await InfoView.readLaunchAtLogin()
         }
     }
 

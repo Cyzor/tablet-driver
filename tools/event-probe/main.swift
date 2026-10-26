@@ -41,8 +41,13 @@ let skipTypes = Set((option("--skip") ?? "").split(separator: ",").compactMap { 
 let wantsRaw = args.contains("--raw")
 let out: FileHandle = {
     guard let path = option("--out") else { return .standardOutput }
-    FileManager.default.createFile(atPath: path, contents: nil)
-    return FileHandle(forWritingAtPath: path)!
+    guard FileManager.default.createFile(atPath: path, contents: nil),
+        let handle = FileHandle(forWritingAtPath: path)
+    else {
+        FileHandle.standardError.write(Data("[probe] can't write \(path); does its folder exist?\n".utf8))
+        exit(1)
+    }
+    return handle
 }()
 
 // Field slots are sparse and partly undocumented (gesture data, for one,

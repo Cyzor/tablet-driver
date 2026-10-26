@@ -2,7 +2,7 @@
 
 MockTab supports macOS 13 and later, but CI only runs on newer systems. Before a release, open the build in a macOS 13 virtual machine and go through this list. It takes about ten minutes. Repeat on macOS 14 when a change touches its version checks.
 
-A virtual machine can't use a tablet, so this covers everything except tablet input.
+The Tart virtual machine below has no tablet, so its list covers everything except tablet input. [Tablet input](#tablet-input) covers the rest in a UTM guest.
 
 ## Setup, once
 
@@ -36,6 +36,24 @@ A virtual machine can't use a tablet, so this covers everything except tablet in
 **Intel**
 - Quit MockTab. In Finder, choose **Get Info** on `MockTab.app`, select **Open using Rosetta**, and open it again. Repeat the Launch and Settings window checks. If Rosetta isn't installed, the system offers to install it.
 - This works until macOS 28 removes Rosetta. After that, Intel builds can only be checked on an Intel Mac.
+
+## Tablet input
+
+Swift's concurrency runtime ships with macOS, so a threading mistake that crashes only on an older system won't show on a newer Mac. UTM 5.0.8 can hand a USB device to a macOS guest, which lets MockTab in the guest drive a real tablet. A macOS 15 guest drives a PTH-850; 13 and 14 are untested.
+
+1. In UTM, create a macOS guest on the version to check.
+2. Copy a signed, exported `MockTab.app` into the guest through a shared folder, move it to Applications, and open it.
+3. Plug in a USB tablet, then connect it to the guest in UTM. Bluetooth stays with the host, so use a cable or a wireless kit receiver.
+
+Then check:
+- The tablet appears in Devices with the right name.
+- The pen hovers and draws with pressure, and both side buttons work. Keys, rings, or strips work if the tablet has them.
+- In the Buttons pane, pressing a key lights it.
+- Disconnect the tablet from the guest, then connect it again. MockTab picks it up again without a crash.
+- Quit MockTab. The cursor behaves normally.
+- **Help › Collect Device Data…** lists the tablet.
+
+If a guest on 13 takes the tablet, the whole list above can run there instead of in Tart.
 
 ## Recording results
 

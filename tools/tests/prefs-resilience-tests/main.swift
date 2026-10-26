@@ -18,7 +18,7 @@
 //      degrading) when a required field is missing, which is the signal
 //      TabletSettings uses to block a save that would clobber unparseable
 //      newer-format data. See TabletSettings+Persistence.swift,
-//      TabletSettings+Presets.swift, TabletSettings+AppOverrides.swift —
+//      TabletSettings+Profiles.swift, TabletSettings+AppOverrides.swift —
 //      each save function is guarded by a `*LoadFailed` flag set only in
 //      this branch. That guard isn't exercised here because it lives on
 //      TabletSettings, which depends on TabletKit/AppKit runtime state and
@@ -193,6 +193,20 @@ do {
     } catch {
         expect(true, "Decode throws on missing required field, as the save guards depend on")
     }
+}
+
+// MARK: - Binding lists (the express key and bezel button save guard)
+
+do {
+    // A newer build that dropped a field this build requires.
+    let futureList = #"[{"kind":"leftClick","modifierFlags":0,"keyLabel":""}]"#
+    expect(ButtonBinding.isUnreadableList(futureList), "A list missing a required field is unreadable")
+    expect(ButtonBinding.decodeList(futureList) == nil, "An unreadable list decodes to nil")
+
+    let current = try String(data: JSONEncoder().encode([ButtonBinding.leftClick, .none]), encoding: .utf8)!
+    expect(!ButtonBinding.isUnreadableList(current), "A list this build wrote is readable")
+    expect(ButtonBinding.decodeList(current)?.first?.kind == .leftClick, "A readable list decodes")
+    expect(!ButtonBinding.isUnreadableList(""), "No stored list isn't unreadable")
 }
 
 // MARK: - Summary

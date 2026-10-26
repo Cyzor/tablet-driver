@@ -339,29 +339,6 @@
     "(%@)" : {
       "shouldTranslate" : false
     },
-    "(Auto: %@)" : {
-      "comment" : "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Auto: %@)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Auto: %@)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(自動: %@)"
-          }
-        }
-      }
-    },
     "(Charging)" : {
       "comment" : "Suffix when device is charging, e.g. '85%  (Charging)'",
       "localizations" : {
@@ -478,6 +455,28 @@
         }
       }
     },
+    "%@ — Bottom" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Unten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Abajo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — 下"
+          }
+        }
+      }
+    },
     "%@ — Left" : {
       "localizations" : {
         "de" : {
@@ -522,6 +521,28 @@
         }
       }
     },
+    "%@ — Top" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Oben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Arriba"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — 上"
+          }
+        }
+      }
+    },
     "%@ · %@" : {
       "localizations" : {
         "en" : {
@@ -532,6 +553,29 @@
         }
       },
       "shouldTranslate" : false
+    },
+    "%@ (Eraser)" : {
+      "comment" : "Tool name for a pen's eraser end; the argument is the pen's name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (Radierer)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (borrador)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（消しゴム）"
+          }
+        }
+      }
     },
     "%@ %@" : {
       "comment" : "Button name qualified by its device or side, e.g. 'Pucky-Puck Key 1' or 'Left Key 1'",
@@ -915,6 +959,29 @@
         }
       }
     },
+    "%lld events recorded from %@" : {
+      "comment" : "HID discovery: event counter when the window's tablet isn't connected, naming the tablet being recorded instead",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld Ereignisse von %2$@ erfasst"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld eventos registrados de %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$@ から %1$lld 件のイベントを記録"
+          }
+        }
+      }
+    },
     "%lld known" : {
       "comment" : "Tablets status value: how many tablets the app remembers",
       "localizations" : {
@@ -967,77 +1034,6 @@
         }
       },
       "shouldTranslate" : false
-    },
-    "%lld named preset" : {
-      "comment" : "Count of named presets found in the backup for this tablet",
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld benanntes Preset"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld benannte Presets"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "%lld named preset"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "%lld named presets"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld preajuste con nombre"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld preajustes con nombre"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld 名前付きプリセット"
-                }
-              }
-            }
-          }
-        }
-      }
     },
     "%lld points" : {
       "comment" : "VoiceOver: a length on screen, in points",
@@ -1543,6 +1539,75 @@
         }
       },
       "shouldTranslate" : false
+    },
+    "5 minutes" : {
+      "comment" : "Wireless kit sleep timer choice",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 Minuten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 minutos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5分"
+          }
+        }
+      }
+    },
+    "10 minutes" : {
+      "comment" : "Wireless kit sleep timer choice",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "10 Minuten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "10 minutos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "10分"
+          }
+        }
+      }
+    },
+    "15 minutes" : {
+      "comment" : "Wireless kit sleep timer choice",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 Minuten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 minutos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15分"
+          }
+        }
+      }
     },
     "30 minutes" : {
       "comment" : "Quick Keys sleep timer choice",
@@ -2295,31 +2360,31 @@
         }
       }
     },
-    "All tablets, tools, presets, and button mappings will be erased. MockTab will restart." : {
+    "All tablets, tools, profiles, and button mappings will be erased. MockTab will restart." : {
       "comment" : "Alert body: explaining the consequences of factory reset",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle Grafiktabletts, Tools, Presets und Tastenbelegungen werden gelöscht. MockTab startet neu."
+            "value" : "Alle Grafiktabletts, Tools, Profile und Tastenbelegungen werden gelöscht. MockTab startet neu."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "All tablets, tools, presets, and button mappings will be erased. MockTab will restart."
+            "value" : "All tablets, tools, profiles, and button mappings will be erased. MockTab will restart."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Todas las tabletas, herramientas, preajustes y asignaciones de botones serán eliminados. MockTab se reiniciará."
+            "value" : "Todas las tabletas, herramientas, perfiles y asignaciones de botones serán eliminados. MockTab se reiniciará."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "すべてのタブレット、ツール、プリセット、ボタン割り当てが削除されます。MockTabが再起動します。"
+            "value" : "すべてのタブレット、ツール、プロファイル、ボタン割り当てが削除されます。MockTabが再起動します。"
           }
         }
       }
@@ -2589,6 +2654,29 @@
         }
       }
     },
+    "Asleep" : {
+      "comment" : "Driver status value — a wireless tablet is asleep",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Ruhezustand"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En reposo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スリープ中"
+          }
+        }
+      }
+    },
     "Assign a click, modifier key, display switch, or other action instead of a shortcut." : {
       "comment" : "Tooltip on the click action menu beside the shortcut recorder",
       "localizations" : {
@@ -2608,64 +2696,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ショートカットの代わりに、クリック、修飾キー、ディスプレイ切り替えなどの操作を割り当てます。"
-          }
-        }
-      }
-    },
-    "Auto-Switch" : {
-      "comment" : "Section heading in Profiles tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatisches Umschalten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Auto-Switch"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambio automático"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自動切り替え"
-          }
-        }
-      }
-    },
-    "Automatically switch to the matching profile when this tablet connects" : {
-      "comment" : "Toggle: auto-activate profile when tablet connects",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beim Verbinden dieses Grafiktabletts automatisch zum passenden Profil wechseln"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Automatically switch to the matching profile when this tablet connects"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambiar automáticamente al perfil correspondiente cuando se conecte esta tableta"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このタブレットが接続されたときに一致するプロファイルに自動的に切り替える"
           }
         }
       }
@@ -3081,8 +3111,31 @@
         }
       }
     },
+    "Both Touch Strips" : {
+      "comment" : "Section header for a setting shared by a tablet's two touch strips",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Berührungsleisten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambas franjas táctiles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "両方のタッチストリップ"
+          }
+        }
+      }
+    },
     "Bottom" : {
-      "comment" : "ExpressKey Remote key position",
+      "comment" : "Bottom touch strip row label\nExpressKey Remote key position",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3507,37 +3560,8 @@
         }
       }
     },
-    "Button Mapping" : {
-      "comment" : "Dock menu: open Button Mapping tab\nMenu item: open Button Mapping tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tasten"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Button Mapping"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Botones"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ボタン"
-          }
-        }
-      }
-    },
     "Buttons" : {
-      "comment" : "Help section title\nLive Input table row label\nMenu item: open Button Mapping tab\nTab name: button and key mapping",
+      "comment" : "Dock menu: open Buttons tab\nHelp section title\nLive Input table row label\nMenu item: open Buttons tab\nTab name: button and key mapping",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3996,6 +4020,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ディスプレイを確認中…"
+          }
+        }
+      }
+    },
+    "Checking…" : {
+      "comment" : "Battery value while a wireless tablet's level settles after it links",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geprüft …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "確認中…"
           }
         }
       }
@@ -5561,6 +5608,28 @@
         }
       }
     },
+    "Cycle (Left Strip)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln (linke Leiste)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo (franja izquierda)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り替え（左ストリップ）"
+          }
+        }
+      }
+    },
     "Cycle (Right Ring)" : {
       "localizations" : {
         "de" : {
@@ -5579,6 +5648,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "切り替え（右リング）"
+          }
+        }
+      }
+    },
+    "Cycle (Right Strip)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln (rechte Leiste)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo (franja derecha)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切り替え（右ストリップ）"
           }
         }
       }
@@ -5701,6 +5792,28 @@
         }
       }
     },
+    "Cycle through the left strip's modes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modi der linken Leiste durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos de la franja izquierda"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左ストリップのモードを切り替える"
+          }
+        }
+      }
+    },
     "Cycle through the right ring's modes" : {
       "localizations" : {
         "de" : {
@@ -5723,6 +5836,28 @@
         }
       }
     },
+    "Cycle through the right strip's modes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modi der rechten Leiste durchschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar entre modos de la franja derecha"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右ストリップのモードを切り替える"
+          }
+        }
+      }
+    },
     "Cycle through the second dial's modes" : {
       "localizations" : {
         "de" : {
@@ -5741,6 +5876,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "2つ目のダイヤルのモードを切り替える"
+          }
+        }
+      }
+    },
+    "Cycle Touch Ring Mode" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touch-Ring-Modus wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar modo del anillo táctil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチリングモード切り替え"
           }
         }
       }
@@ -5811,6 +5968,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "文字を小さく"
+          }
+        }
+      }
+    },
+    "Default" : {
+      "comment" : "Wireless kit sleep timer choice: the tablet's own timer",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Predeterminado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "標準"
           }
         }
       }
@@ -7869,6 +8049,29 @@
         }
       }
     },
+    "Experimental support" : {
+      "comment" : "Banner title shown when another maker's tablet is read from its own description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimenteller Support"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatibilidad experimental"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "試験的なサポート"
+          }
+        }
+      }
+    },
     "Experimental: switch the tablet into data mode" : {
       "comment" : "Disclosure row label for the advanced device mode init control",
       "localizations" : {
@@ -8061,64 +8264,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "エクスプレスキー"
-          }
-        }
-      }
-    },
-    "Express Keys — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left express keys",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Express-Tasten — Links"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Express Keys — Left"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teclas rápidas — Izquierda"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エクスプレスキー — 左"
-          }
-        }
-      }
-    },
-    "Express Keys — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right express keys",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Express-Tasten — Rechts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Express Keys — Right"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teclas rápidas — Derecha"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エクスプレスキー — 右"
           }
         }
       }
@@ -8455,29 +8600,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "修正…"
-          }
-        }
-      }
-    },
-    "Flip 180° for left-handed use or reversed cable routing." : {
-      "comment" : "Tablet orientation help text",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Um 180° drehen, praktisch für Linkshänder oder umgekehrte Kabelführung."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gira 180° para usarla con la izquierda o con el cable al otro lado."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "180°回転します。左利きの場合や、ケーブルを逆側に回す場合に便利です。"
           }
         }
       }
@@ -10895,6 +11017,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "左リング：モード %u"
+          }
+        }
+      }
+    },
+    "Left Strip: Cycle" : {
+      "comment" : "Button action: cycle the left touch strip's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linke Leiste: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Franja izquierda: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "左ストリップ：切り替え"
           }
         }
       }
@@ -14629,35 +14774,6 @@
         }
       }
     },
-    "Profile: %@  (%@)" : {
-      "comment" : "Menu label showing current active profile and triggering app",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profil: %1$@  (%2$@)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Profile: %1$@  (%2$@)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Perfil: %1$@  (%2$@)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "プロファイル: %1$@  (%2$@)"
-          }
-        }
-      }
-    },
     "Profiles" : {
       "comment" : "Help section title\nMenu header: profile management\nMenu item: open Profiles tab\nTab name: profile management",
       "localizations" : {
@@ -14764,6 +14880,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "プロポーショナルマッピング"
+          }
+        }
+      }
+    },
+    "Puts the tablet to sleep when it sits unused this long." : {
+      "comment" : "Tooltip on the wireless kit sleep timer in the Info pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versetzt das Grafiktablett in den Ruhezustand, wenn es so lange unbenutzt bleibt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pone la tableta en reposo si no se usa durante este tiempo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この時間使わないとタブレットをスリープさせます。"
           }
         }
       }
@@ -16177,36 +16316,6 @@
         }
       }
     },
-    "Restore the active profile automatically when this tablet is connected" : {
-      "comment" : "Help text for the \"Auto-Switch\" toggle in the Profiles view.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das aktive Profil beim Verbinden dieses Grafiktabletts automatisch wiederherstellen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Restore the active profile automatically when this tablet is connected"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurar automáticamente el perfil activo al conectar esta tableta"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このタブレットの接続時にアクティブなプロファイルを自動的に復元"
-          }
-        }
-      }
-    },
     "Reveal in Finder" : {
       "comment" : "Context menu item on app override chip",
       "localizations" : {
@@ -16525,6 +16634,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "右リング：モード %u"
+          }
+        }
+      }
+    },
+    "Right Strip: Cycle" : {
+      "comment" : "Button action: cycle the right touch strip's mode",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechte Leiste: Wechseln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Franja derecha: ciclo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右ストリップ：切り替え"
           }
         }
       }
@@ -17216,6 +17348,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アクティブ面を反時計回りに90°回転させます。"
+          }
+        }
+      }
+    },
+    "Rotate the active surface 180°, with the tablet's long edge horizontal." : {
+      "comment" : "Tablet orientation help text",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dreh die aktive Fläche um 180°; die lange Kante des Tabletts bleibt waagerecht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gira la superficie activa 180°, con el borde largo de la tableta en horizontal."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクティブ面を180°回転させます。タブレットの長辺は水平のままです。"
           }
         }
       }
@@ -18359,6 +18514,7 @@
       }
     },
     "Sleep After" : {
+      "comment" : "Label before the sleep timer menu in the Info pane's Battery row",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -18526,6 +18682,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ソフト応答。軽い筆圧ですぐに最大出力に達します。ラフで表現豊かな作業に向いています。"
+          }
+        }
+      }
+    },
+    "Some features may not work yet." : {
+      "comment" : "Banner line shown when another maker's tablet is read from its own description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manches funktioniert vielleicht noch nicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puede que algunas funciones aún no vayan."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一部の機能はまだ使えないことがあります。"
           }
         }
       }
@@ -18993,6 +19172,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "強度"
+          }
+        }
+      }
+    },
+    "Strip Toggle" : {
+      "comment" : "Row label for the button that cycles a touch strip's modes",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leiste umschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar franja"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストリップ切り替え"
           }
         }
       }
@@ -19793,6 +19995,35 @@
         }
       }
     },
+    "This pen has no eraser." : {
+      "comment" : "Tooltip on the greyed-out Eraser row in Buttons tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Stift hat keinen Radierer."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This pen has no eraser."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este lápiz no tiene borrador."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このペンには消しゴムがありません。"
+          }
+        }
+      }
+    },
     "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it." : {
       "comment" : "Capture error shown when the device's USB identifiers are missing or zero",
       "localizations" : {
@@ -20086,60 +20317,25 @@
         }
       }
     },
-    "Toggle Buttons — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left-side toggle buttons",
+    "Toggle Buttons" : {
+      "comment" : "Section header for the Cintiq 24HD's ring mode keys on one side",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Umschalttasten — Links"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Toggle Buttons — Left"
+            "value" : "Umschalttasten"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Botones de alternancia — Izquierda"
+            "value" : "Botones de alternancia"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "トグルボタン — 左"
-          }
-        }
-      }
-    },
-    "Toggle Buttons — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right-side toggle buttons",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Umschalttasten — Rechts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Toggle Buttons — Right"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Botones de alternancia — Derecha"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "トグルボタン — 右"
+            "value" : "トグルボタン"
           }
         }
       }
@@ -20388,6 +20584,35 @@
         }
       }
     },
+    "Top" : {
+      "comment" : "Top touch strip row label",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Top"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arriba"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上"
+          }
+        }
+      }
+    },
     "Top Left" : {
       "comment" : "ExpressKey Remote key position",
       "localizations" : {
@@ -20568,64 +20793,6 @@
         }
       }
     },
-    "Touch Ring — Left" : {
-      "comment" : "Section header in Buttons tab — Cintiq left touch ring",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touch Ring — Links"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Touch Ring — Left"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anillo táctil — Izquierda"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチリング — 左"
-          }
-        }
-      }
-    },
-    "Touch Ring — Right" : {
-      "comment" : "Section header in Buttons tab — Cintiq right touch ring",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touch Ring — Rechts"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Touch Ring — Right"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anillo táctil — Derecha"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タッチリング — 右"
-          }
-        }
-      }
-    },
     "Touch Ring Button" : {
       "comment" : "Undo action name: touch ring center-click binding in the Buttons pane",
       "localizations" : {
@@ -20675,6 +20842,51 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タッチリングモード"
+          }
+        }
+      }
+    },
+    "Touch Strip" : {
+      "comment" : "Section header for one of a tablet's touch strips",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Berührungsleiste"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Franja táctil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチストリップ"
+          }
+        }
+      }
+    },
+    "Touch Strip Mode" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leistenmodus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo de franja táctil"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タッチストリップモード"
           }
         }
       }
@@ -20756,6 +20968,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "接続方式 : %@"
+          }
+        }
+      }
+    },
+    "Turn Assignments Around" : {
+      "comment" : "Tablet diagram right-click command and its undo name: moves each key's assignment to the key in the opposite place, as a half turn would, without turning the tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Belegung umdrehen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invertir asignaciones"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "割り当てを反転"
           }
         }
       }
@@ -21050,7 +21285,7 @@
       }
     },
     "Unrecognized tablet" : {
-      "comment" : "Banner title shown when active device is on the generic fallback driver",
+      "comment" : "Banner title shown when the active tablet isn't in the registry",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -21525,24 +21760,24 @@
         }
       }
     },
-    "Which way up the Quick Keys reads, for holding it rotated or left-handed." : {
+    "Which way up the Quick Keys reads, so its labels face you however you hold it." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie herum die Quick Keys ablesbar sind – etwa wenn sie gedreht oder linkshändig gehalten werden."
+            "value" : "Wie herum die Quick Keys ablesbar sind, damit die Beschriftungen zu dir zeigen, egal wie du sie hältst."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hacia dónde se lee la pantalla de las Quick Keys, para sostenerlas giradas o con la mano izquierda."
+            "value" : "Hacia dónde se lee la pantalla de las Quick Keys, para que leas las etiquetas como sea que las sostengas."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Keys の表示の向き。回して持つときや左手で持つときに使います。"
+            "value" : "Quick Keys の表示の向き。どう持ってもラベルが読めるように合わせます。"
           }
         }
       }
@@ -21624,6 +21859,52 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ウインドウ"
+          }
+        }
+      }
+    },
+    "Wireless Kit" : {
+      "comment" : "Connection value for a tablet on the Wacom wireless kit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wireless-Kit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kit inalámbrico"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ワイヤレスキット"
+          }
+        }
+      }
+    },
+    "Works only through the wireless receiver." : {
+      "comment" : "Tooltip on the wireless kit sleep timer while the tablet is on USB",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funktioniert nur über den Wireless-Empfänger."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo funciona con el receptor inalámbrico."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ワイヤレスレシーバー経由でのみ使えます。"
           }
         }
       }

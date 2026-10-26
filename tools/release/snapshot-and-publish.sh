@@ -3,12 +3,8 @@
 #
 # Wraps tools/release/build-snapshot.sh with the surrounding git + GitHub work, mirroring
 # tools/release/release-and-publish.sh but for the rolling "snapshot" pre-release instead
-# of a numbered version. Lets you publish "here's roughly where main stands"
-# offline/by hand without touching the Actions tab.
-#
-# NOTE: .github/workflows/snapshot.yml does the same thing in CI when you
-# manually dispatch it. Use ONE path per snapshot. Prefer this script when
-# you want to build and review locally before anything reaches GitHub at all.
+# of a numbered version. Lets you publish "here's roughly where next stands"
+# from your own Mac.
 #
 # Flow:
 #   1. Sanity: clean working tree, gh installed and authenticated.
@@ -91,7 +87,7 @@ gh release create snapshot "$DMG_PATH" \
     --title "MockTab snapshot" \
     --prerelease \
     --draft \
-    --notes "Rolling pre-release build of main, replaced on each snapshot run — not a numbered version.
+    --notes "Rolling pre-release build of next, replaced on each snapshot run — not a numbered version.
 
 Commit: ${SHA_SHORT}
 Built: ${BUILT_AT}${NOTES_LINE}"

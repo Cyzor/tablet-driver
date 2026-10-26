@@ -48,7 +48,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         self.settings = settings
 
         insertTabletMenu()
-        insertPresetsMenu()
+        insertProfilesMenu()
         hookAboutMenuItem()
         hookAppMenu()
         hookEditMenu()
@@ -174,7 +174,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     private func insertTextSizeSubmenu() {
         guard let viewMenu else { return }
 
-        // Remove ALL stale or system-injected copies (macOS 26 injects its own
+        // Remove every stale or system-injected copy (macOS 26 injects its own
         // "Text Size" entry on each rebuild; removing only the first one leaves extras).
         // Snapshot items first so index shifts don't skip entries.
         for item in viewMenu.items.filter({ $0.title == textSizeMenuTitle }) {
@@ -504,7 +504,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             comment: "Alert title: factory reset confirmation")
         alert.informativeText = String(
             localized:
-                "All tablets, tools, presets, and button mappings will be erased. MockTab will restart.",
+                "All tablets, tools, profiles, and button mappings will be erased. MockTab will restart.",
             comment: "Alert body: explaining the consequences of factory reset")
         alert.alertStyle = .warning
         let resetButton = alert.addButton(
@@ -544,9 +544,10 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         SettingsWindowManager.shared.skipNextWindowSave()
 
         // Wipe the entire UserDefaults domain in one call.  This removes every
-        // key ever written: device settings, presets, tool settings, registry,
+        // key ever written: device settings, profiles, tool settings, registry,
         // and window state.
         if let domain = Bundle.main.bundleIdentifier {
+            SettingsBackup.backUp(label: "before-reset", domain: domain)
             UserDefaults.standard.removePersistentDomain(forName: domain)
             UserDefaults.standard.synchronize()
         }
@@ -636,43 +637,10 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         detectItem.target = self
         menu.addItem(detectItem)
 
-        // List known tablets from DeviceRegistry.
-        let registry = DeviceRegistry.shared
-        let tm = TabletManager.shared
-        if !registry.knownTablets.isEmpty {
+        let tablets = TabletMenuItems.items(target: self, action: #selector(openDeviceWindow(_:)))
+        if !tablets.isEmpty {
             menu.addItem(.separator())
-
-            for tablet in registry.knownTablets {
-                // A companion peripheral (Xencelabs Quick Keys puck/dongle)
-                // is folded into its owning tablet's window while connected —
-                // don't list it as its own selectable device.
-                if DeviceCompanions.isConnectedCompanion(
-                    productID: tablet.productID, connectedProductIDs: tm.connectedProductIDs)
-                {
-                    continue
-                }
-                let connected = tm.connectedProductIDs.contains(tablet.productID)
-                let suffix = connected ? (tm.context(for: tablet)?.batteryMenuSuffix ?? "") : ""
-                let label = SettingsWindowManager.shared.menuLabel(forKey: tablet.instanceKey) + suffix
-                // The dongle has no window of its own (`openWindow`) — grey it
-                // out rather than let the click silently no-op. A tablet it
-                // relays is listed, and checked, under its own row.
-                let isDongleDisabled = tm.isDongleRawProductID(tablet.productID)
-                let item = NSMenuItem(
-                    title: label,
-                    action: isDongleDisabled ? nil : #selector(openDeviceWindow(_:)),
-                    keyEquivalent: "")
-                item.target = self
-                item.isEnabled = !isDongleDisabled
-                // Composite instance identity doesn't fit NSMenuItem.tag
-                // (an Int) — carry it via representedObject instead.
-                item.representedObject = tablet.instanceKey.stringValue
-                // Show the native state checkmark for currently connected tablets,
-                // matching the flush-left alignment of the other checkmarked items
-                // (toggles, active profile) in the same menu.
-                item.state = connected ? .on : .off
-                menu.addItem(item)
-            }
+            tablets.forEach(menu.addItem)
         }
     }
 
@@ -681,9 +649,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     }
 
     @objc private func openDeviceWindow(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? String,
-            let key = DeviceInstanceKey(stringValue: id)
-        else { return }
+        guard let key = TabletMenuItems.instanceKey(of: sender) else { return }
         SettingsWindowManager.shared.openWindow(forInstanceKey: key)
     }
 
@@ -698,9 +664,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     /// Also quietly resends every connected device's init sequence first. A
     /// tablet can connect before its digitizer endpoint is ready to answer
     /// the mode-switch write, leaving it stuck reporting in whatever mode it
-    /// powered on in — seen 2026-07-26 as a wrong screen mapping on an
-    /// already-supported Intuos5 that only corrected once the same write the
-    /// driver already sends at connect was sent again. Cheap and idempotent
+    /// powered on in, which shows up as a wrong screen mapping. Cheap and idempotent
     /// on a device that's already fine, so there's no reason to gate it
     /// behind detecting a problem first.
     @MainActor
@@ -725,9 +689,9 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     // MARK: - **Profiles menu
 
-    private var presetsMenu: NSMenu?
+    private var profilesMenu: NSMenu?
 
-    private func insertPresetsMenu() {
+    private func insertProfilesMenu() {
         guard let mainMenu = NSApp.mainMenu else { return }
         let profilesTitle = String(
             localized: "Profiles", comment: "Menu header: profile management")
@@ -738,14 +702,14 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         }
 
         // Create the NSMenu only once; reuse on subsequent calls to preserve delegate state.
-        if presetsMenu == nil {
+        if profilesMenu == nil {
             let menu = NSMenu(title: profilesTitle)
             menu.delegate = self
-            presetsMenu = menu
+            profilesMenu = menu
         }
 
         let menuItem = NSMenuItem(title: profilesTitle, action: nil, keyEquivalent: "")
-        menuItem.submenu = presetsMenu
+        menuItem.submenu = profilesMenu
 
         // Locate Edit by its ⌘Z shortcut — reliable regardless of locale or whether
         // SwiftUI exposes an undo: selector on its Button-generated menu items.
@@ -765,32 +729,15 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     }
 
     /// Rebuild the **Profiles menu every time it is about to open.
-    private func rebuildPresetsMenu(_ menu: NSMenu) {
+    private func rebuildProfilesMenu(_ menu: NSMenu) {
         guard let settings else { return }
         menu.removeAllItems()
 
         if !settings.profiles.isEmpty {
-            let defsItem = NSMenuItem(
-                title: String(
-                    localized: "Device Defaults",
-                    comment: "Profile option: use device's default settings"),
-                action: #selector(activateDeviceDefaults),
-                keyEquivalent: "")
-            defsItem.target = self
-            defsItem.state = settings.activeProfile == nil ? .on : .off
-            menu.addItem(defsItem)
-            menu.addItem(.separator())
-
-            for profile in settings.profiles {
-                let item = NSMenuItem(
-                    title: profile.name,
-                    action: #selector(activatePreset(_:)),
-                    keyEquivalent: "")
-                item.target = self
-                item.representedObject = profile.id
-                item.state = settings.activeProfile?.id == profile.id ? .on : .off
-                menu.addItem(item)
-            }
+            ProfileMenuItems.items(
+                for: settings, target: self,
+                defaultsAction: #selector(activateDeviceDefaults), profileAction: #selector(activateProfile(_:))
+            ).forEach(menu.addItem)
             menu.addItem(.separator())
         }
 
@@ -798,7 +745,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             title: String(
                 localized: "Show Saved Configurations…", comment: "Menu item: open the Profiles tab"
             ),
-            action: #selector(showPresetsTab),
+            action: #selector(showProfilesTab),
             keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
@@ -851,12 +798,12 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     @objc private func menuExportConfiguration() {
         SettingsWindowManager.shared.showTab(.profiles)
-        let exporter = PresetExporter(
+        let exporter = ConfigurationExporter(
             registry: DeviceRegistry.shared,
             tabletManager: TabletManager.shared)
         guard let data = exporter.export() else { return }
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = PresetExporter.suggestedFileBaseName
+        panel.nameFieldStringValue = ConfigurationExporter.suggestedFileBaseName
         panel.allowedContentTypes = [.json]
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
@@ -877,8 +824,8 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     func menuNeedsUpdate(_ menu: NSMenu) {
         if menu === tabletMenu {
             rebuildTabletMenu(menu)
-        } else if menu === presetsMenu {
-            rebuildPresetsMenu(menu)
+        } else if menu === profilesMenu {
+            rebuildProfilesMenu(menu)
         }
     }
 
@@ -1001,42 +948,19 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         }
     }
 
-    // MARK: - Preset actions
+    // MARK: - Profile actions
 
     @objc private func activateDeviceDefaults() {
         settings?.activate(nil)
     }
 
-    @objc private func activatePreset(_ sender: NSMenuItem) {
-        guard let uuid = sender.representedObject as? UUID,
-            let profile = settings?.profiles.first(where: { $0.id == uuid })
-        else { return }
-        settings?.activate(profile)
+    @objc private func activateProfile(_ sender: NSMenuItem) {
+        guard let settings, let profile = ProfileMenuItems.profile(of: sender, in: settings) else { return }
+        settings.activate(profile)
     }
 
-    @objc private func showPresetsTab() {
+    @objc private func showProfilesTab() {
         SettingsWindowManager.shared.showTab(.profiles)
     }
 
-}
-
-extension Bundle {
-    /// Only release.sh marks a build as a release, so dev and snapshot builds
-    /// never pass as the release they followed.
-    var isReleaseBuild: Bool {
-        object(forInfoDictionaryKey: "MockTabRelease") as? Bool == true
-    }
-
-    /// UTC build time, e.g. "20260928T1538Z".
-    var buildStamp: String? {
-        object(forInfoDictionaryKey: "MockTabBuildStamp") as? String
-    }
-
-    /// "0.4.2" for releases, "0.4.2-snapshot-20260928T1538Z" otherwise. Used by
-    /// the update page, diagnostics, and captures.
-    var versionLabel: String {
-        let version = object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
-        guard !isReleaseBuild, let buildStamp else { return version }
-        return version + "-snapshot-" + buildStamp
-    }
 }

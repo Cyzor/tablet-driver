@@ -22,7 +22,7 @@ at `[0]`.
 | `0x21` | USB | 44 | Finger touch |
 | `0x80` | Bluetooth Classic | 99 or 361 | Packed pen frames; the 361-byte form adds touch, pad, battery |
 | `0x81` | Bluetooth | ≥ 46 | Packed pen frames, CTL-x100WL |
-| `0x01` | USB | ≤ 8 | Mouse buttons from a separate mouse interface |
+| `0x01` | USB | 4 | Boot mouse, declared but never seen, even with the KC-100 mouse in mode 0 |
 
 ## USB Pen Report `0x10`
 
@@ -66,11 +66,10 @@ common "tool code `& 0x08` means eraser" rule misfires on it. (observed)
 
 **Cordless mouse (KC-100).** Tool codes with low nibble `0x6` (`0x0806`) are
 the mouse; test `(code & 0x000F) == 0x0006`, since `0x0806` also has bit
-`0x0800` set. Its buttons never appear in report `0x10`: status stays `0x60`
-whatever is pressed. Left, right, and middle arrive on the tablet's separate
-mouse interface as report `0x01` (4 bytes, `[1]` bit 0 left, 1 right, 2
-middle). The wheel is an 8-bit counter in `[16]`; take the signed difference
-from the previous report. (observed)
+`0x0800` set. The tablet tracks its position and nothing else: status stays
+`0x60` whatever is pressed, `[12..15]` stay zero, `[16]` follows height
+rather than the wheel, and report `0x01` never arrives, in mode 2 or mode 0.
+No buttons or wheel reach the host over USB. (observed, PTH-860)
 
 ## USB Pen Report `0x1E` (Pen Displays)
 
@@ -166,9 +165,9 @@ read it unsigned, so a slight left tilt arrived as a hard right one.
 | 99–106 | Tool serial, 64-bit (kernel) |
 | 107–108 | Tool ID (kernel) |
 | 109–280 | Four 43-byte touch frames |
-| 281 | Touch-ring center button (`0x40` pressed) |
-| 282 | Keys, mechanical — set for one report per press |
-| 283 | Keys, capacitive touch |
+| 281 | Touch-ring center button: `0x40` while held |
+| 282 | Keys pressed, one bit each from the top, set while held ([evidence](Evidence/PTH-860-Bluetooth-Keys.md)) |
+| 283 | Keys touched: set while a finger rests on a key, pressed or not |
 | 284 | Battery: bit 7 charging, bits 0–6 percent |
 | 285 | Touch ring: bit 7 active, bits 0–6 position 0–71 |
 

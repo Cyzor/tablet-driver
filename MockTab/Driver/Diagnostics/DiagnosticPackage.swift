@@ -23,7 +23,7 @@ enum DiagnosticPackage {
     static func build(summaryURL: URL, rawLogURL: URL?, productID: String, date: Date = Date())
         -> URL?
     {
-        let stem = "mocktab-diagnostics-\(productID)-\(stamp(date))"
+        let stem = "mocktab-diagnostics-\(productID)-\(DateStamp.compact(date))"
         let destination = summaryURL.deletingLastPathComponent()
             .appendingPathComponent("\(stem).zip")
 
@@ -156,31 +156,9 @@ enum DiagnosticPackage {
             "before you send it.",
             "",
             "MockTab MockTap Metrics",
-            readmeDate(date),
+            DateStamp.day(date),
             "",
         ])
         return lines.joined(separator: "\n")
-    }
-
-    /// Pinned the same way `stamp` is, for the same reason.
-    private static func readmeDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
-    }
-
-    /// Matches `CaptureEngine.fileStamp`, pinned so a user's region can't
-    /// change the calendar — one capture came back stamped with a Persian
-    /// year.
-    private static func stamp(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        return formatter.string(from: date)
     }
 }

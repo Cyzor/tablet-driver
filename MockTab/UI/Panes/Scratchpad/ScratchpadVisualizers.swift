@@ -17,9 +17,10 @@ import TabletKit
 struct TouchVisualizer: View {
     @ObservedObject var liveTouch: LiveTouchPublisher
     let maxContacts: Int
+    let orientation: TabletOrientation
 
     var body: some View {
-        TouchContactsCanvas(contacts: liveTouch.contacts, maxContacts: maxContacts)
+        TouchContactsCanvas(contacts: liveTouch.contacts, maxContacts: maxContacts, orientation: orientation)
             .accessibilityElement()
             .accessibilityAddTraits(.isStaticText)
             .accessibilityLabel(Text("Touch contacts", comment: "VoiceOver label for the Scratchpad touch visualizer"))
@@ -46,6 +47,7 @@ struct TouchVisualizer: View {
 /// noise and unrelated X/Y movement are filtered out for free.
 struct TiltVisualizerCanvas: View {
     @ObservedObject var tabletManager: TabletManager
+    let orientation: TabletOrientation
     /// Incremented by the `livePointPublisher` subscription below. It must be
     /// read in `body` (see the `let _` line) to register as a dependency —
     /// a `@State` write to a value the body never reads does not invalidate
@@ -63,8 +65,11 @@ struct TiltVisualizerCanvas: View {
         // changes that wouldn't move the dot don't trigger redraws.
         let raw = tabletManager.activeContext?.livePoint
         let inProximity = raw?.inProximity == true
-        let tx: Double = inProximity ? quantize(raw!.tiltX) : 0.0
-        let ty: Double = inProximity ? quantize(raw!.tiltY) : 0.0
+        let turned = inProximity
+            ? DisplayMapper.orientTilt(x: raw!.tiltX, y: raw!.tiltY, orientation: orientation)
+            : (x: 0.0, y: 0.0)
+        let tx = quantize(turned.x)
+        let ty = quantize(turned.y)
         return TiltDisc(tiltX: tx, tiltY: ty).equatable()
             .accessibilityElement()
             .accessibilityAddTraits(.isStaticText)
@@ -143,17 +148,20 @@ private struct TiltDisc: View, Equatable {
 
 // MARK: - Touch contacts visualizer
 
-/// Top-down rectangle showing normalised finger-contact positions as numbered
-/// dots. The tablet's touch surface maps to the full canvas area.
+/// Top-down rectangle showing normalized finger-contact positions as numbered
+/// dots, turned to match the tablet on the desk. The tablet's touch surface
+/// maps to the full canvas area.
 /// Contacts fade out over ~0.3 s after they lift (lift = empty contacts array).
 private struct TouchContactsCanvas: View, Equatable {
     let contacts: [TouchContact]
     let maxContacts: Int
+    let orientation: TabletOrientation
 
     nonisolated static func == (lhs: TouchContactsCanvas, rhs: TouchContactsCanvas) -> Bool {
         // SwiftUI compares views on the main actor.
         MainActor.assumeIsolated {
             lhs.contacts == rhs.contacts && lhs.maxContacts == rhs.maxContacts
+                && lhs.orientation == rhs.orientation
         }
     }
 
@@ -176,14 +184,19 @@ private struct TouchContactsCanvas: View, Equatable {
     private func drawContacts(ctx: GraphicsContext, size: CGSize) {
         guard !contacts.isEmpty else { return }
 
-        // Determine the normalised coordinate range from the first contact.
+        // Determine the normalized coordinate range from the first contact.
         // TouchContact uses raw tablet units; we don't have access to maxX/maxY
-        // here, so normalise each contact against the bounding box of all
+        // here, so normalize each contact against the bounding box of all
         // contacts with a small guard against zero-range.
-        let xs = contacts.map { Double($0.x) }
-        let ys = contacts.map { Double($0.y) }
+        // Turned like pen and touch input. The bounding-box normalization
+        // below cancels the axis offsets, so zero maxima suffice.
+        let points = contacts.map {
+            DisplayMapper.orient(x: Double($0.x), y: Double($0.y), maxX: 0, maxY: 0, orientation: orientation)
+        }
+        let xs = points.map(\.ox)
+        let ys = points.map(\.oy)
 
-        // Normalise within [0,1] using whatever range the contacts span.
+        // Normalize within [0,1] using whatever range the contacts span.
         // Falls back to centring a single contact on the canvas.
         func norm(_ val: Double, _ vals: [Double]) -> Double {
             let lo = vals.min() ?? 0
@@ -195,9 +208,9 @@ private struct TouchContactsCanvas: View, Equatable {
         let r: CGFloat = 6
         let pad: CGFloat = r + 4
 
-        for (i, contact) in contacts.enumerated() {
-            let nx = contacts.count == 1 ? 0.5 : norm(Double(contact.x), xs)
-            let ny = contacts.count == 1 ? 0.5 : norm(Double(contact.y), ys)
+        for (i, point) in points.enumerated() {
+            let nx = contacts.count == 1 ? 0.5 : norm(point.ox, xs)
+            let ny = contacts.count == 1 ? 0.5 : norm(point.oy, ys)
 
             let cx = pad + nx * (size.width  - 2 * pad)
             let cy = pad + ny * (size.height - 2 * pad)

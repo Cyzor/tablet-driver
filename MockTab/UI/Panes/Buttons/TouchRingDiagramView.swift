@@ -12,7 +12,7 @@ import SwiftUI
 ///
 /// Mirrors PenDiagramView's perf model: static pre-parsed paths, single
 /// Canvas draw pass, Equatable on minimal state so the ~16 Hz liveButtons
-/// invalidations in ButtonMappingView short-circuit when nothing visible
+/// invalidations in ButtonsView short-circuit when nothing visible
 /// has changed.
 struct TouchRingDiagramView: View, Equatable {
     /// 0-based slot index of the currently active ring mode (0..<slotCount).
@@ -80,6 +80,7 @@ struct TouchRingDiagramView: View, Equatable {
     // swiftlint:enable line_length
 
     var body: some View {
+        let _ = BodyCounter.note("TouchRingDiagram")
         Canvas { context, size in
             // Square ring centered in available space, preserving aspect ratio.
             let scale = min(size.width, size.height) / Self.svgSize

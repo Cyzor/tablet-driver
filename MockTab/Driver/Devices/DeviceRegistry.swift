@@ -125,9 +125,8 @@ final class DeviceRegistry: ObservableObject {
                 knownTablets.contains(where: { $0.productID == row.productID && ($0.instance ?? "").isEmpty })
             else { continue }
 
-            let pidHex = String(row.productID, radix: 16, uppercase: true)
-            let oldPrefix = "device-0x\(pidHex)#\(instance)."
-            let newPrefix = "device-0x\(pidHex)."
+            let oldPrefix = DeviceInstanceClaims.prefix(productID: row.productID, instance: instance)
+            let newPrefix = DeviceInstanceClaims.prefix(productID: row.productID)
             for (key, value) in ud.dictionaryRepresentation() where key.hasPrefix(oldPrefix) {
                 let target = newPrefix + key.dropFirst(oldPrefix.count)
                 if ud.object(forKey: target) == nil { ud.set(value, forKey: target) }
@@ -197,7 +196,7 @@ final class DeviceRegistry: ObservableObject {
     /// instance under the claim-the-legacy-prefix rule: the first instance
     /// ever seen for a PID permanently claims the historical
     /// `device-0x{PID}.` prefix (so existing installs keep every setting,
-    /// preset, and calibration untouched); any other instance of the same
+    /// profile, and calibration untouched); any other instance of the same
     /// PID gets a fresh `device-0x{PID}#{instance}.` namespace. Instances
     /// with no token (no serial, no locationID) always resolve to the
     /// legacy prefix — today's PID-only behavior.
@@ -250,10 +249,19 @@ final class DeviceRegistry: ObservableObject {
 
     // MARK: - Pen model lookup
 
-    /// Full name for a Wacom tool code, including "(Eraser)" suffix when appropriate.
+    /// Full name for a Wacom tool code, with a localized eraser suffix when appropriate.
     /// Delegates to ToolCatalog for the authoritative name table.
     static func penName(forToolCode toolCode: UInt16) -> String {
-        return ToolCatalog.name(forToolCode: toolCode)
+        // The catalog names an eraser end "<pen> (Eraser)" in English.
+        let name = ToolCatalog.name(forToolCode: toolCode)
+        let suffix = " (Eraser)"
+        guard name.hasSuffix(suffix) else { return name }
+        return eraserName(String(name.dropLast(suffix.count)))
+    }
+
+    /// A pen's eraser end, in the user's language.
+    static func eraserName(_ pen: String) -> String {
+        String(localized: "\(pen) (Eraser)", comment: "Tool name for a pen's eraser end; the argument is the pen's name")
     }
 
     /// Fallback used for IntuosV1 devices that don't report a tool code.
@@ -266,7 +274,7 @@ final class DeviceRegistry: ObservableObject {
         case 0x00F4: base = "Grip Pen"
         default: base = "Stylus"
         }
-        return isEraser ? "\(base) (Eraser)" : base
+        return isEraser ? eraserName(base) : base
     }
 
     // MARK: - Recording
@@ -697,6 +705,9 @@ final class DeviceRegistry: ObservableObject {
                 freshKind = Self.penName(forProductID: deviceID, isEraser: isEraser)
             }
             if list[i].kind != freshKind {
+                // A nickname still equal to the old kind is a default, as in
+                // `recordTool`; keep anything the user typed.
+                if list[i].nickname == list[i].kind { list[i].nickname = freshKind }
                 list[i].kind = freshKind
                 changed = true
             }
@@ -747,7 +758,7 @@ final class DeviceRegistry: ObservableObject {
         return list
     }
 
-    /// Model-keyed variant (legacy namespace) for preset export, which is
+    /// Model-keyed variant (legacy namespace) for configuration export, which is
     /// deliberately model-keyed — see the archive format.
     func tools(forDevice productID: Int) -> [KnownTool] {
         tools(for: DeviceInstanceKey(productID: productID, instance: ""))
@@ -757,8 +768,7 @@ final class DeviceRegistry: ObservableObject {
     ///
     /// Bluetooth Classic reports (PTH-660/860 BT) never carry a per-pen
     /// serial — `identity.serial` is always 0 — but they do carry a real
-    /// per-model tool code (e.g. 0x0804 Art Pen vs 0x0802 Grip Pen; live BT
-    /// capture 2026-07-22). Folding toolCode into the id here lets distinct
+    /// per-model tool code (e.g. 0x0804 Art Pen vs 0x0802 Grip Pen). Folding toolCode into the id here lets distinct
     /// BT tools coexist in knownTools instead of all collapsing onto a
     /// single "stylus"/"eraser" entry. Two physically different but
     /// identical-model pens still collide — BT Classic has no signal that

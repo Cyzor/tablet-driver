@@ -7,9 +7,9 @@ import os
 import TabletKit
 
 /// Counts what each stage of the touch injection pipeline did with the
-/// contacts handed to it, for inclusion in a discovery capture.
+/// contacts handed to it, for inclusion in a capture.
 ///
-/// Why this exists: a discovery capture records the reports a device *sent*.
+/// Why this exists: a capture records the reports a device *sent*.
 /// That is the whole answer when a device sends nothing, and no answer at all
 /// when it sends well-formed contacts that produce no visible response — the
 /// case a PTH-651 (0x0315) presented in issue #12, where four captures showed
@@ -32,22 +32,22 @@ import TabletKit
 enum TouchPipelineProbe {
 
     private static let state = OSAllocatedUnfairLock(
-        initialState: DiscoveryTouchPipeline())
+        initialState: CaptureTouchPipeline())
 
     /// Zero the counters. Called when a capture session starts so the file
     /// reflects that session and not everything since launch.
     static func reset() {
-        state.withLock { $0 = DiscoveryTouchPipeline() }
+        state.withLock { $0 = CaptureTouchPipeline() }
     }
 
-    static func snapshot() -> DiscoveryTouchPipeline {
+    static func snapshot() -> CaptureTouchPipeline {
         state.withLock { $0 }
     }
 
     /// Record one pipeline event. The closure form keeps every increment at
     /// its own call site rather than growing an enum of event kinds that has
     /// to be kept in sync with the struct.
-    static func note(_ body: (inout DiscoveryTouchPipeline) -> Void) {
+    static func note(_ body: (inout CaptureTouchPipeline) -> Void) {
         // Runs synchronously under the lock, so the closure needn't be Sendable.
         state.withLockUnchecked(body)
     }

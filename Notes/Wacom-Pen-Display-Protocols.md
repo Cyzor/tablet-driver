@@ -30,6 +30,8 @@ The Pro Pen (KP-503E) reports tool code `0x1E02` on the 27QHD. See the [pen tool
 
 Report `0x0C`. The layout varies by model. On the 21UX2 and 22HD, bytes 3–4 are touch-strip positions, and bit 0 of bytes 5 and 7 are the two center toggles. (kernel)
 
+On the 24HD, byte 6 holds the left side's eight keys and byte 8 the right side's, one bit each from bit 0 at the top. Each side's first three are the mode keys beside its ring. ([evidence](Evidence/DTK-2400-Key-Order.md))
+
 ### 24HD Panel Buttons
 
 The three buttons printed on the 24HD's bezel are one touch slider under three icons. A tap sets one fixed bit:

@@ -183,7 +183,7 @@ struct ImportPreviewSheet: View {
         .opacity(isExcluded ? 0.5 : 1.0)
     }
 
-    /// Counts of presets/overrides/tool-settings found in the backup for this
+    /// Counts of profiles/overrides/tool-settings found in the backup for this
     /// tablet. Conflicting overrides/tool settings (an existing local
     /// customization for the same app/tool) are always skipped — kept local,
     /// never silently clobbered. There's no overwrite option yet; the
@@ -192,8 +192,8 @@ struct ImportPreviewSheet: View {
     @ViewBuilder
     private func extraContentSummary(for entry: ImportPlan.TabletEntry, ts: TabletSettings?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            if !entry.presets.isEmpty {
-                Text(String(localized: "\(entry.presets.count) named preset", comment: "Count of named presets found in the backup for this tablet"))
+            if !entry.profiles.isEmpty {
+                Text(String(localized: "\(entry.profiles.count) profile", comment: "Count of profiles found in the backup for this tablet"))
                     .appFont(.settingsBadge).foregroundStyle(.tertiary)
             }
             if !entry.overrides.isEmpty {
@@ -231,7 +231,7 @@ struct ImportPreviewSheet: View {
             let name = ts.uniqueProfileName(entry.resolvedProfileName)
             ts.importProfile(name: name, from: entry.profileValues)
 
-            for preset in entry.presets {
+            for preset in entry.profiles {
                 let presetName = ts.uniqueProfileName(preset.name)
                 ts.importProfile(name: presetName, from: preset.values)
             }

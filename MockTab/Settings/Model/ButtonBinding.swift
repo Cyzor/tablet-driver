@@ -134,7 +134,7 @@ struct ButtonBinding: Codable, Equatable {
         if ns.contains(.control) { f.insert(.maskControl) }
         modifierFlags = f.rawValue
         // Pass the full modifier flags so UCKeyTranslate applies any layout-switching
-        // modifier behaviour (e.g. Dvorak Qwerty-Command shows QWERTY char with ⌘).
+        // modifier behavior (e.g. Dvorak Qwerty-Command shows QWERTY char with ⌘).
         keyLabel = ButtonBinding.charLabel(keyCode: event.keyCode, modifiers: ns)
     }
 
@@ -218,6 +218,19 @@ struct ButtonBinding: Codable, Equatable {
     static func decode(_ s: String) -> ButtonBinding? {
         guard !s.isEmpty, let data = s.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(ButtonBinding.self, from: data)
+    }
+
+    /// A stored binding list, or nil when `s` is empty or this build can't
+    /// read it.
+    static func decodeList(_ s: String) -> [ButtonBinding]? {
+        guard !s.isEmpty, let data = s.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode([ButtonBinding].self, from: data)
+    }
+
+    /// True when `s` holds a list this build can't read, likely a newer
+    /// build's format. Saving over it would lose every binding in it.
+    static func isUnreadableList(_ s: String) -> Bool {
+        !s.isEmpty && decodeList(s) == nil
     }
 
     /// Reverses `displayLabel` for the profile importer. Key combos ("⌘Z") are

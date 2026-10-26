@@ -140,7 +140,7 @@ extension InputInjector {
         let systemBefore = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
         modLog.info("releaseAll: clearing 0x\(String(toRelease.rawValue, radix: 16), privacy: .public) (system=0x\(String(systemBefore, radix: 16), privacy: .public))")
 
-        // Clear ground truth and ref counts BEFORE posting.
+        // Clear ground truth and ref counts before posting.
         groundTruthSyntheticFlags = []
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
         lastSyntheticFlagChangeAt = Date()
@@ -208,15 +208,27 @@ extension InputInjector {
             self?.touchMomentumTail.stop()
             // Proximity goes to the frontmost app, so one brought forward with
             // the pen already in range never saw it arrive. Rebelle then paints
-            // the pen as a mouse, at full pressure, until it leaves and returns.
-            // Not mid-stroke: the stroke's own app keeps it.
-            if let self, self.lastProximity, !self.lastTipDown, !self.activeToolIsMouse {
-                let eraser = self.shimLastPoint?.eraser ?? self.activeToolIsEraser
-                self.postProximityEvent(entering: false, at: self.shimLastScreen, eraser: eraser)
-                self.postProximityEvent(entering: true, at: self.shimLastScreen, eraser: eraser)
+            // the pen as a mouse, or with the other end's brush, until it leaves
+            // and returns. A click that brings the app forward is mid-stroke, and
+            // the stroke's own app keeps it, so that one waits for tip-up.
+            if let self, self.lastProximity, !self.activeToolIsMouse {
+                if self.lastTipDown {
+                    self.proximityOwedToFrontApp = true
+                } else {
+                    self.reannounceProximity()
+                }
             }
         }
         CFRunLoopWakeUp(HIDThread.shared.runLoop)
+    }
+
+    /// Leaves and re-enters proximity in place, so the frontmost app learns
+    /// which pen end is in range.
+    func reannounceProximity() {
+        proximityOwedToFrontApp = false
+        let eraser = shimLastPoint?.eraser ?? activeToolIsEraser
+        postProximityEvent(entering: false, at: shimLastScreen, eraser: eraser)
+        postProximityEvent(entering: true, at: shimLastScreen, eraser: eraser)
     }
 
     /// Post a finished event. Callers set flags: `currentEventFlags` for state
@@ -236,8 +248,8 @@ extension InputInjector {
             event.timestamp = Self.currentReportTimestampNs
         }
         stampClickSequence(event)
-        // Wacom's driver marks every event non-coalesced, so the system keeps
-        // each pen sample instead of merging moves (event-probe, 2026-09-30).
+        // Non-coalesced, so the system keeps each pen sample instead of
+        // merging moves.
         event.flags.insert(.maskNonCoalesced)
         // Diagnostic: `event.post` is synchronous IPC into WindowServer and
         // the only stage no other stall probe covers.
@@ -290,6 +302,42 @@ extension InputInjector {
         e.setIntegerValueField(.mouseEventNumber, value: clickEventNumber)
     }
 
+    /// Static so it doesn't inherit the installer's main-actor isolation: the
+    /// tap runs on HIDThread, where Swift 6 would trap. A listen-only tap
+    /// ignores the returned event, so returning it retained would leak every
+    /// keystroke.
+    private static let flagsChangedTapCallback: CGEventTapCallBack = { _, type, event, userInfo -> Unmanaged<CGEvent>? in
+        guard let userInfo else { return Unmanaged.passUnretained(event) }
+        let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
+        // macOS can switch a tap off, on a timeout or for user input.
+        // If it stays off, the modifier cache and the typing hold-off
+        // go stale for the rest of the session.
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap = injector.flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: true) }
+            return Unmanaged.passUnretained(event)
+        }
+        // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
+        // use a private state and would corrupt the cache with phantom keys.
+        let stateID = Int32(truncatingIfNeeded:
+            event.getIntegerValueField(.eventSourceStateID))
+        guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
+            return Unmanaged.passUnretained(event)
+        }
+        // A real keystroke, for touch's typing hold-off.
+        if event.type == .keyDown {
+            injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
+            return Unmanaged.passUnretained(event)
+        }
+        injector.tapLastPhysicalFlags =
+            event.flags.rawValue & ModifierMath.managedMask
+        // The event's own stamp, on the same kernel clock as
+        // `currentReportTimestampNs`, so comparing them measures event order.
+        // Wall clock carried tap latency and ratcheted on duplicate deliveries
+        // (Cyzor/tablet-driver#18).
+        injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
+        return Unmanaged.passUnretained(event)
+    }
+
     @MainActor
     func installFlagsChangedTap() {
         // Listen-only tap at the session level for modifier changes and key
@@ -301,39 +349,7 @@ extension InputInjector {
             options: .listenOnly,
             eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue)
                 | CGEventMask(1 << CGEventType.keyDown.rawValue),
-            // A listen-only tap ignores the returned event, so returning it
-            // retained would leak every keystroke.
-            callback: { _, type, event, userInfo -> Unmanaged<CGEvent>? in
-                guard let userInfo else { return Unmanaged.passUnretained(event) }
-                let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
-                // macOS can switch a tap off, on a timeout or for user input.
-                // If it stays off, the modifier cache and the typing hold-off
-                // go stale for the rest of the session.
-                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    if let tap = injector.flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: true) }
-                    return Unmanaged.passUnretained(event)
-                }
-                // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
-                // use a private state and would corrupt the cache with phantom keys.
-                let stateID = Int32(truncatingIfNeeded:
-                    event.getIntegerValueField(.eventSourceStateID))
-                guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
-                    return Unmanaged.passUnretained(event)
-                }
-                // A real keystroke, for touch's typing hold-off.
-                if event.type == .keyDown {
-                    injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
-                    return Unmanaged.passUnretained(event)
-                }
-                injector.tapLastPhysicalFlags =
-                    event.flags.rawValue & ModifierMath.managedMask
-                // The event's own stamp, on the same kernel clock as
-                // `currentReportTimestampNs`, so comparing them measures event order.
-                // Wall clock carried tap latency and ratcheted on duplicate deliveries
-                // (Cyzor/tablet-driver#18).
-                injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
-                return Unmanaged.passUnretained(event)
-            },
+            callback: Self.flagsChangedTapCallback,
             userInfo: selfPtr.toOpaque()
         )
         guard let tap else {
@@ -363,11 +379,13 @@ extension InputInjector {
     ) -> (tiltX: Double, tiltY: Double, rotation: Double) {
         let tool = snapshot.activeTool
 
-        var tiltX = point.tiltX
-        // One blanket flip, matched to the vendor drivers at the app (Rebelle's flat
-        // brush, 2026-09-05). Decoders disagree on native sign, so correcting each
-        // first would mean two guesses instead of one.
-        var tiltY = -point.tiltY
+        let turned = DisplayMapper.orientTilt(
+            x: point.tiltX, y: point.tiltY, orientation: snapshot.tabletOrientation)
+        var tiltX = turned.x
+        // One blanket flip, checked at the app with Rebelle's flat brush.
+        // Decoders disagree on native sign, so correcting each first would
+        // mean two guesses instead of one.
+        var tiltY = -turned.y
         let rotation = point.rotation
 
         if tool.useRotationAsTilt && point.rotation != 0.0 {
@@ -392,7 +410,7 @@ extension InputInjector {
         return (tiltX, tiltY, rotation)
     }
 
-    /// Raw digitizer coordinates, which Wacom's driver puts on every pen event.
+    /// Raw digitizer coordinates, which drawing apps read from every pen event.
     func stampTabletPosition(_ e: CGEvent, _ p: TabletPoint) {
         e.setIntegerValueField(.tabletEventPointX, value: Int64(p.x))
         e.setIntegerValueField(.tabletEventPointY, value: Int64(p.y))
@@ -586,9 +604,9 @@ extension InputInjector {
         e.flags = currentEventFlags
         finalizeAndPost(e)
 
-        // Wacom's driver also sends each proximity change as a mouse event of
-        // subtype 2 carrying the same fields; Cocoa apps that read proximity
-        // from NSEvent subtypes only see this copy (event-probe, 2026-09-30).
+        // Each proximity change also goes out as a mouse event of subtype 2
+        // carrying the same fields; Cocoa apps that read proximity from
+        // NSEvent subtypes only see this copy.
         guard
             let m = CGEvent(
                 mouseEventSource: sessionSource, mouseType: .mouseMoved,
@@ -598,6 +616,17 @@ extension InputInjector {
         stampProximityFields(m, entering: entering, eraser: eraser)
         m.flags = moveSafeEventFlags
         finalizeAndPost(m)
+    }
+
+    /// The pen a tool code belongs to: an eraser end's own code maps to its
+    /// tip's, so both ends of one pen get the same type and unique ID
+    /// whichever end was announced last.
+    private static let tipCodeForEraser: [UInt16: UInt16] = Dictionary(
+        ToolCatalog.allTools.values.compactMap { spec in spec.eraserToolCode.map { ($0, spec.toolCode) } },
+        uniquingKeysWith: { first, _ in first })
+
+    static func penCode(_ toolCode: UInt16) -> UInt16 {
+        tipCodeForEraser[toolCode] ?? toolCode
     }
 
     private func stampProximityFields(_ e: CGEvent, entering: Bool, eraser: Bool) {
@@ -615,9 +644,9 @@ extension InputInjector {
         e.setIntegerValueField(.tabletProximityEventDeviceID, value: tabletDeviceID)
 
         // Wacom sends each pen's serial; both ends share it, and the unique
-        // ID below tells them apart. No app has yet been seen to key tool
-        // settings on it (Photoshop, Krita, and Rebelle don't, 2026-09-30).
-        let toolCode = activeToolCode
+        // ID below tells them apart. Photoshop, Krita, and Rebelle don't key
+        // tool settings on it.
+        let toolCode = Self.penCode(activeToolCode)
         if activeToolSerial != 0 {
             e.setIntegerValueField(
                 .tabletProximityEventVendorPointerSerialNumber,
@@ -641,7 +670,7 @@ extension InputInjector {
             isArtPen = false
         } else {
             switch toolCode {
-            case 0x0804, 0x1108, 0x1804:  // Art Pen variants
+            case 0x0804, 0x1108, 0x1804, 0x0204:  // Art Pen variants and Art Pen 2
                 vendorPtr = 0x0804
                 isArtPen = true
             case 0x0842, 0x0832, 0x0852:  // Pro Pen 2, Stroke Pen, Intuos2 Grip Pen
@@ -1090,8 +1119,8 @@ extension InputInjector {
             // Clockwise scrolls down. macOS doesn't apply natural scrolling to injected
             // events, so apply it here.
             let signedLines = Self.naturalScrollingEnabled ? lines : -lines
-            // AppKit clamps a large .line delta well below its value (Xencelabs dial,
-            // 2026-08-06), so split fast bursts. Single ticks stay one event. Wacom
+            // AppKit clamps a large .line delta well below its value, so split
+            // fast bursts. Single ticks stay one event. Wacom
             // rings and strips only; moving them to pixel units needs a hardware pass.
             let scrollChunk = 10
             if abs(signedLines) <= scrollChunk {
@@ -1172,8 +1201,8 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Zoom per ring tick, as a magnification fraction. Tuned on the PTH-860
-    /// (2026-09). Ring only: zoom compounds per tick, so a dial's fewer ticks
+    /// Zoom per ring tick, as a magnification fraction. Tuned on the PTH-860.
+    /// Ring only: zoom compounds per tick, so a dial's fewer ticks
     /// need their own constant (`dialGestureZoomScaleMechanical`).
     static let dialGestureZoomScale = 1.0 / 300.0
 
@@ -1290,7 +1319,7 @@ extension InputInjector {
     /// deltas (Calendar, WebKit, Chromium, Adobe palettes) ignored pans without them.
     func applyTrackpadDeltaFields(_ e: CGEvent, dx: Double, dy: Double) {
         // Lines first: writing them recomputes the point and fixed-point fields,
-        // and writing them last quantized pans to 8 pt (event-probe, 2026-09-30).
+        // and writing them last quantizes pans to 8 pt.
         // At least 1 line, so slow pans aren't lost on the line-delta path.
         let ix = Int64(dx), iy = Int64(dy)
         e.setIntegerValueField(
@@ -1306,12 +1335,17 @@ extension InputInjector {
         e.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(dx.rounded()))
     }
 
-    // MARK: - Scroll Drag momentum tail (Natural mode)
+    // MARK: - Momentum tail
 
-    /// Builds the Pan View momentum tail; the decay lives in `panMomentumTail`.
-    /// Scroll phase stays 0 while momentum phase runs: both nonzero confuses
-    /// AppKit and WebKit.
-    func postPanScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
+    /// Posts one frame of a momentum tail, for Pan View and touch scrolling
+    /// alike; the decay lives in `panMomentumTail` and `touchMomentumTail`.
+    ///
+    /// A phased began/changed/ended stream is enough for `NSScrollView` apps
+    /// to coast on their own, but apps that build their own physics from
+    /// gesture deltas (Safari, Firefox, Affinity) need a momentum stream, which `CGEventPost` gets from no
+    /// trackpad hardware. Scroll phase stays 0 while momentum phase runs: both
+    /// nonzero confuses AppKit and WebKit.
+    func postScrollMomentum(dx: Double, dy: Double, phase: MomentumPhase) {
         guard
             let e = CGEvent(
                 scrollWheelEvent2Source: sessionSource,

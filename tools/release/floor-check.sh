@@ -3,9 +3,10 @@
 # checked on the oldest systems it supports. GitHub no longer offers runners
 # that old, so this is the only place those systems get exercised.
 #
-# Uses Tart (https://tart.run), which runs macOS VMs on Apple silicon. A VM
-# can't pass a tablet through, so this checks everything except tablet input.
-# Follow tools/release/floor-check.md once the VM is up.
+# Uses Tart (https://tart.run), which runs macOS VMs on Apple silicon. The VM
+# has no tablet, so this checks everything except tablet input; floor-check.md
+# covers that in a UTM guest. Follow tools/release/floor-check.md once the VM
+# is up.
 #
 # Usage:
 #   tools/release/floor-check.sh --setup [13|14]       # one-time: download the VM (about 25 GB)

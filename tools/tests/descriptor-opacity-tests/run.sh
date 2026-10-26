@@ -6,7 +6,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/HID/LiveHIDDescriptorInspector.swift"
+SRC="$ROOT/MockTab/Driver/Diagnostics/LiveHIDDescriptorInspector.swift"
 TEST="$DIR/DescriptorOpacityTests.swift"
 T="$(mktemp -d)"
 BIN="$T/descriptor-opacity-tests"

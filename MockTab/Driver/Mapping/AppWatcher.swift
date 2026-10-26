@@ -4,8 +4,8 @@
 
 import AppKit
 
-/// Observes NSWorkspace app-activation events and tells TabletSettings to
-/// switch presets automatically when `autoSwitchEnabled` is true.
+/// Observes NSWorkspace app-activation events, applies each tablet's per-app
+/// override, and releases held input on app switch.
 ///
 /// Lives on @MainActor because TabletSettings is @MainActor; NSWorkspace
 /// notifications are always delivered on the main thread when the observer
@@ -98,7 +98,6 @@ final class AppWatcher {
     private func appDidActivate(bundleID: String, name: String) {
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         for ctx in TabletManager.shared.deviceContexts.values {
-            ctx.settings.handleAppActivation(bundleID: bundleID, appName: name)
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
             ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
             ctx.injector.releaseOnAppSwitch()

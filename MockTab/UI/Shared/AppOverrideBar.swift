@@ -105,8 +105,11 @@ struct AppOverrideBar: View {
     /// end); the gap then opens on the last chippy-chip's trailing side.
     @State private var dragHoverAtEnd = false
 
-    @State private var chipContentWidth: CGFloat = 0
-    @State private var chipViewportWidth: CGFloat = 0
+    /// The row's and viewport's widths, kept out of view state: a live resize
+    /// changes the viewport every frame, and only `chipsOverflow` should
+    /// re-run the body.
+    @State private var chipWidths = ChipRowWidths()
+    @State private var chipsOverflow = false
     /// Current chip frames in the row's coordinate space, for drop hit-testing.
     @State private var chipFrames: [String: CGRect] = [:]
     /// The drop-zone overlay's origin in the row's coordinate space.
@@ -116,7 +119,14 @@ struct AppOverrideBar: View {
     // all the way right, because the alternative (tracking exact offset via a named
     // coordinate space) causes floating-point noise that fires onPreferenceChange on
     // every layout pass, creating a display-rate render loop.
-    private var canScrollTrailing: Bool { chipContentWidth > chipViewportWidth }
+    private var canScrollTrailing: Bool { chipsOverflow }
+
+    private func noteChipWidths(content: CGFloat? = nil, viewport: CGFloat? = nil) {
+        if let content { chipWidths.content = content }
+        if let viewport { chipWidths.viewport = viewport }
+        let overflows = chipWidths.content > chipWidths.viewport
+        if overflows != chipsOverflow { chipsOverflow = overflows }
+    }
 
     @State private var alwaysShowScrollbars = (NSScroller.preferredScrollerStyle == .legacy)
 
@@ -343,11 +353,11 @@ struct AppOverrideBar: View {
         .background(
             GeometryReader { geo in
                 Color.clear
-                    .onAppear { chipViewportWidth = geo.size.width }
-                    .onChange(of: geo.size.width) { chipViewportWidth = $0 }
+                    .onAppear { noteChipWidths(viewport: geo.size.width) }
+                    .onChange(of: geo.size.width) { noteChipWidths(viewport: $0) }
             }
         )
-        .onPreferenceChange(ChipContentWidthKey.self) { chipContentWidth = $0 }
+        .onPreferenceChange(ChipContentWidthKey.self) { noteChipWidths(content: $0) }
         // The drop zone spans the full scroll-view width (not just the chip
         // HStack) so drops past the last chip land in it — that's what makes
         // append-at-end reachable. Chip frames arrive in the row's coordinate
@@ -822,7 +832,7 @@ struct AppOverrideBar: View {
     /// `NSWorkspace` icons carry every representation up to the app's largest
     /// `.icns` size (often 1024pt+ at retina). Rendered at chip size that's a
     /// lot of wasted GPU-backed surface — rasterizing once to a small bitmap
-    /// here, the same way `DisplayMappingView.loadThumbnail` caps wallpaper
+    /// here, the same way `DisplayView.loadThumbnail` caps wallpaper
     /// thumbnails, keeps the cached icon's backing store proportional to what's
     /// actually drawn on screen.
     private static func downsampledIcon(_ image: NSImage, pointSize: CGFloat, scale: CGFloat = 2) -> NSImage {
@@ -936,4 +946,10 @@ struct AppOverrideBar: View {
             optionKeyDown = false
         }
     }
+}
+
+/// Plain storage for the chip row's widths; writes don't invalidate views.
+private final class ChipRowWidths {
+    var content: CGFloat = 0
+    var viewport: CGFloat = 0
 }

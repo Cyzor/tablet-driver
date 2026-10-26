@@ -7,7 +7,7 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/HID/HIDCapture.swift"
+SRC="$ROOT/MockTab/Driver/Diagnostics/HIDCapture.swift"
 REDACT="$ROOT/MockTab/Driver/Diagnostics/CaptureSerialRedaction.swift"
 TEST="$DIR/main.swift"
 T="$(mktemp -d)"
@@ -18,5 +18,5 @@ BIN="$T/hid-capture-condense-tests"
 # from source instead of using SwiftPM's .build output.
 KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
 
-swiftc -O -I "$KIT" "$SRC" "$REDACT" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
+swiftc -O -I "$KIT" "$SRC" "$REDACT" "$ROOT/MockTab/App/DateStamp.swift" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
 "$BIN"

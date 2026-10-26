@@ -17,19 +17,13 @@ extension InfoView {
     /// and records both the statistical summary and the full raw log for the
     /// same session, packaged into one zip.
     ///
-    /// There is deliberately no running/stopped state here. The raw capture
-    /// used to be startable on its own (and Option-armable alongside the
-    /// sheet), so this section carried its own Stop button and live counter
-    /// — which left the window showing an active recording after the sheet
-    /// was cancelled. The capture's lifetime is now exactly the sheet's.
+    /// There's deliberately no running/stopped state here: the capture lasts
+    /// exactly as long as the sheet.
     var captureSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Button(String(localized: "Collect Device Data…", comment: "Button label: start device data collection")) {
-                        // Always records both the summary and the full log —
-                        // the raw capture used to be Option-only, which meant
-                        // the default path produced half the evidence and a
-                        // follow-up round to ask for the rest.
+                        // Always records both the summary and the full log.
                         beginCollection()
                     }
                     .buttonStyle(.bordered)
@@ -268,16 +262,11 @@ extension InfoView {
         }
     }
 
-    var presetLabel: String {
+    var profileLabel: String {
         guard let profile = settings.activeProfile else {
             return String(localized: "None (device defaults)", comment: "Profile row value when no profile is active")
         }
-        switch settings.activationSource {
-        case .manual:
-            return "\(profile.name)"
-        case .app(_, let appName):
-            return "\(profile.name)  \(String(localized: "(Auto: \(appName))", comment: "Auto-activation suffix in Profile row, e.g. '(Auto: TextEdit)'"))"
-        }
+        return profile.name
     }
 
     /// Builds a snapshot of diagnostic text as of the moment it's called.
@@ -287,9 +276,7 @@ extension InfoView {
     func buildDiagnosticText() -> String {
         var lines: [String] = []
 
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        lines += [String(localized: "Generated : \(fmt.string(from: Date()))", comment: "Diagnostic: timestamp when info was generated")]
+        lines += [String(localized: "Generated : \(DateStamp.full())", comment: "Diagnostic: timestamp when info was generated")]
 
         let ver = Bundle.main.versionLabel
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
@@ -330,7 +317,7 @@ extension InfoView {
         lines += [String(localized: "Input Monitor  : \(inputMonitoringGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Input Monitoring permission")]
         lines += [String(localized: "Accessibility  : \(accessibilityGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Accessibility permission")]
         lines += [String(localized: "Launch at login: \(launchAtLogin ? String(localized: "enabled", comment: "Launch at login status") : String(localized: "disabled", comment: "Launch at login status"))", comment: "Diagnostic: Launch at login setting")]
-        lines += [String(localized: "Profile        : \(presetLabel)", comment: "Diagnostic: active profile name")]
+        lines += [String(localized: "Profile        : \(profileLabel)", comment: "Diagnostic: active profile name")]
 
         lines += [""]
         if conflicts.isEmpty {
@@ -401,11 +388,11 @@ extension InfoView {
             lines += [String(localized: "Memory         : \(current) MB now, \(peak) MB peak", comment: "Diagnostic: process memory footprint, current and lifetime peak, in megabytes")]
         }
 
-        if let fallback = fallbackDevice {
+        if let parsed = unrecognizedDriver?.parsedDescriptor {
             lines += [""]
-            lines += ["─── HID Report Descriptor (fallback driver) ───"]
-            lines += [LiveHIDDescriptorInspector.summarize(fallback.parsedDescriptor)]
-            if let hex = fallback.parsedDescriptor.rawHex {
+            lines += ["─── HID Report Descriptor (unrecognized tablet) ───"]
+            lines += [LiveHIDDescriptorInspector.summarize(parsed)]
+            if let hex = parsed.rawHex {
                 lines += [""]
                 lines += ["Raw bytes:"]
                 lines += [hex]
