@@ -268,7 +268,8 @@ struct DevicesView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // The green checkmark is hidden, so the connection is spoken here.
-            .accessibilityElement(children: .combine)
+            // Not while renaming, or the field reads as a button.
+            .accessibilityElement(children: editingTabletID == tablet.id ? .contain : .combine)
             .accessibilityValue(isActive ? Text("Connected", comment: "VoiceOver value for a connected tablet in the Devices list") : Text(verbatim: ""))
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityAction { selectTablet(tablet) }
