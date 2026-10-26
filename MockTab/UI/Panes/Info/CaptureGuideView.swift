@@ -244,6 +244,13 @@ struct CaptureGuideView: View {
     }
 
     private var statusLine: String {
+        // Recording goes on without the window's tablet: the session falls
+        // back to every connected device, so say which one it got.
+        if engine.isRunning, !coordinator.deviceIsConnected, let name = coordinator.recordedTabletName {
+            return String(
+                localized: "\(engine.captureSampleCount) events recorded from \(name)",
+                comment: "HID discovery: event counter when the window's tablet isn't connected, naming the tablet being recorded instead")
+        }
         if !coordinator.deviceIsConnected {
             return String(
                 localized: "Not connected (\(String(format: "0x%04X", productID)))",

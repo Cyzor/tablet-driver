@@ -27,6 +27,9 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// The device identity actually written into the capture file, kept so the
     /// issue-submission text describes the same hardware.
     @Published private(set) var resolvedInfo: CaptureDeviceInfo? = nil
+    /// The recorded tablet's name as the status bar shows it, for when the
+    /// window's own tablet isn't connected and another one was recorded.
+    @Published private(set) var recordedTabletName: String? = nil
     /// The finished package, or the loose summary when packaging failed.
     @Published private(set) var savedURL: URL? = nil
     /// Set when the device's own descriptor names a feature report carrying a
@@ -491,6 +494,8 @@ final class CaptureSessionCoordinator: ObservableObject {
             !ownInterfaces.contains { $0 === candidate }
         }
         let source = settingsSource(recording: primary.0, ownInterfaces: ownInterfaces)
+        recordedTabletName = source.flatMap { DeviceRegistry.shared.row(forKey: $0.instanceKey)?.nickname }
+            ?? primary.1.name
         engine.startCapture(
             devices: targets, duration: HIDCapture.maxCaptureDuration, touchSettings: touchSettingsSnapshot(source),
             appSettings: appSettingsSnapshot(source),
