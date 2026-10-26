@@ -10,6 +10,7 @@ import TabletKit
 /// active area rectangle — resizable from all four edges and corners,
 /// repositionable by dragging the interior.
 struct TabletAreaView: View {
+    @Environment(\.controlActiveState) private var controlActiveState
     @ObservedObject var settings: TabletSettings
 
     @ObservedObject var tabletManager: TabletManager
@@ -36,28 +37,6 @@ struct TabletAreaView: View {
 
     static func clampParallax(_ value: Double) -> Double {
         Swift.min(Swift.max(value, -parallaxLimit), parallaxLimit)
-    }
-
-    // MARK: - Digitizer dimensions
-
-    /// Digitizer width for the currently-shown device, in hardware line-units.
-    private var activeDeviceMaxX: Int {
-        if let pid = boundProductID {
-            if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.maxX }
-            if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxX }
-            if let mx = VendorDeviceRegistry.profile(forProductID: pid)?.maxX { return mx }
-        }
-        return 44800
-    }
-
-    /// Digitizer height for the currently-shown device, in hardware line-units.
-    private var activeDeviceMaxY: Int {
-        if let pid = boundProductID {
-            if let s = tabletManager.context(forKey: boundKey)?.tabletDevice?.spec { return s.maxY }
-            if let s = WacomDeviceRegistry.spec(for: pid) { return s.maxY }
-            if let my = VendorDeviceRegistry.profile(forProductID: pid)?.maxY { return my }
-        }
-        return 29600
     }
 
     /// True if the bound device is a pen display (Cintiq / Xencelabs-class),
@@ -134,7 +113,7 @@ struct TabletAreaView: View {
 
     /// Smallest dimension (as a fraction of the surface) the user can shrink
     /// the active area to — enforced by both the `NormalizedAreaEditor` drag
-    /// gestures and the Width/Height pixel-field clamping below.
+    /// gestures and the size caption's clamping below.
     private static let minFraction: Double = 0.05
 
     /// Single rect binding over the four `activeArea*` settings, the form the
@@ -214,7 +193,7 @@ struct TabletAreaView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
 
-                    coordinateReadout
+                    sizeCaption
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
 
@@ -570,55 +549,73 @@ struct TabletAreaView: View {
         )
     }
 
-    // MARK: - Coordinate readout
+    // MARK: - Size caption
 
-    private var coordinateReadout: some View {
-        // A single-row Grid mis-sized and vertically offset the value fields
-        // relative to each other on 1x displays (DTK-2400); with one row a
-        // Grid adds nothing over an HStack, which lays the cells out sanely.
-        HStack(alignment: .center, spacing: 8) {
-            Text("Width").foregroundStyle(.secondary)
-                .scaledFrame(width: 60, alignment: .trailing)
-            pixelField(fraction: $settings.activeAreaWidth,
-                       maxValue: activeDeviceMaxX,
-                       minFraction: Self.minFraction,
-                       maxFraction: 1 - settings.activeAreaX)
-            Text("Height").foregroundStyle(.secondary)
-                .scaledFrame(width: 60, alignment: .trailing)
-            pixelField(fraction: $settings.activeAreaHeight,
-                       maxValue: activeDeviceMaxY,
-                       minFraction: Self.minFraction,
-                       maxFraction: 1 - settings.activeAreaY)
+    /// The active area's size in the Mac's measurement system, each number
+    /// editable in place, then whether its shape matches the screen area's
+    /// (Mac screens rarely have a familiar ratio), else its familiar ratio.
+    private var sizeCaption: some View {
+        let lengths = AreaLengths(surfaceMM: tabletManager.surfaceSizeMM(for: boundKey)
+            .map { settings.tabletOrientation.swapsAxes ? CGSize(width: $0.height, height: $0.width) : $0 })
+        let aspect = orientedAspectRatio * settings.activeAreaWidth / settings.activeAreaHeight
+        let matchesScreen = screenAreaAspect.map { abs(aspect / $0 - 1) < 0.01 } ?? false
+        let shape = matchesScreen ? nil : AreaLengths.shapeName(aspect: aspect)
+        return HStack(spacing: 4) {
+            Text("Active area").foregroundStyle(.secondary)
+            lengthField(horizontal: true, lengths)
+            Text(verbatim: "×").foregroundStyle(.secondary).accessibilityHidden(true)
+            lengthField(horizontal: false, lengths)
+            Text(lengths.symbol).foregroundStyle(.secondary).accessibilityHidden(true)
+            if matchesScreen {
+                Text(verbatim: "·").foregroundStyle(.secondary).accessibilityHidden(true)
+                Label {
+                    Text(String(localized: "Matches screen area", comment: "Badge on the tablet-area crop while its shape snaps to the mapped screen area"))
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.windowAccent(controlActiveState))
+                }
+                .foregroundStyle(.secondary)
+            } else if let shape {
+                Text(verbatim: "·").foregroundStyle(.secondary).accessibilityHidden(true)
+                Text(verbatim: shape).foregroundStyle(.secondary)
+                    .help("The active area's shape")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    /// An editable text field showing a pixel value derived from a fraction.
-    private func pixelField(fraction: Binding<Double>, maxValue: Int,
-                            minFraction: Double, maxFraction: Double) -> some View {
-        let pixelBinding = Binding<Int>(
-            get: {
-                guard maxValue > 0 else { return 0 }
-                let value = fraction.wrappedValue * Double(maxValue)
-                guard !value.isNaN && !value.isInfinite else { return 0 }
-                return Int(round(value))
-            },
-            set: { newPx in
-                guard maxValue > 0 else { return }
-                let f = Double(newPx) / Double(maxValue)
-                guard !f.isNaN && !f.isInfinite else { return }
-                fraction.wrappedValue = Swift.min(Swift.max(f, minFraction), maxFraction)
-            }
-        )
-        // The visible field is 20 pt narrower than the frame (SwiftUI pads the
-        // AppKit field 10 pt per side). A value whose text outgrows that inner
-        // width makes the field reject the proposal and drop ~11 pt (grouped
-        // Form only). 100 leaves room for 7-character values like "104,480".
-        return TextField("", value: pixelBinding, format: .number)
-            .textFieldStyle(.roundedBorder)
-            .lineLimit(1)
-            .scaledFrame(width: 100)
-            .multilineTextAlignment(.trailing)
+    private func lengthField(horizontal: Bool, _ lengths: AreaLengths) -> some View {
+        let fraction = horizontal ? settings.activeAreaWidth : settings.activeAreaHeight
+        return InlineNumberField(
+            shown: lengths.shown(fraction, horizontal: horizontal),
+            label: horizontal ? String(localized: "Width") : String(localized: "Height"),
+            spokenValue: lengths.spoken(fraction, horizontal: horizontal),
+            help: horizontal
+                ? String(localized: "Click to type a width", comment: "Tooltip on the Tablet Area pane's width")
+                : String(localized: "Click to type a height", comment: "Tooltip on the Tablet Area pane's height"),
+            identifier: horizontal ? "inlineEdit.areaWidth" : "inlineEdit.areaHeight"
+        ) { typed in
+            guard let typedFraction = lengths.fraction(fromTyped: typed, horizontal: horizontal) else { return }
+            setSize(typedFraction, horizontal: horizontal)
+        }
+    }
+
+    /// Sets one dimension, keeping the area's near edge unless the new size
+    /// would run off the surface, and makes it undoable like a drag.
+    private func setSize(_ fraction: Double, horizontal: Bool) {
+        let size = Swift.min(Swift.max(fraction, Self.minFraction), 1)
+        let before = TabletSettings.AreaSnapshot(
+            x: settings.activeAreaX, y: settings.activeAreaY,
+            w: settings.activeAreaWidth, h: settings.activeAreaHeight)
+        if horizontal {
+            guard abs(size - before.w) > 1e-6 else { return }
+            settings.activeAreaWidth = size
+            settings.activeAreaX = Swift.min(before.x, 1 - size)
+        } else {
+            guard abs(size - before.h) > 1e-6 else { return }
+            settings.activeAreaHeight = size
+            settings.activeAreaY = Swift.min(before.y, 1 - size)
+        }
+        settings.recordAreaDrag(before: before)
     }
 
     // MARK: - Badge
