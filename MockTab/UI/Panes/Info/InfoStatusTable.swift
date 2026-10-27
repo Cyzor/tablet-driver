@@ -117,7 +117,8 @@ extension InfoView {
                 value: isConnected
                     ? TabletManager.deviceName(forProductID: productID ?? 0)
                     : String(localized: "Not connected", comment: "Device connection status value"),
-                ok: isConnected)
+                // Unplugged isn't a fault, so no ✕.
+                ok: isConnected ? true : nil)
 
             row(
                 String(localized: "Connection", comment: "Row label in Info tab status table"),
@@ -146,7 +147,7 @@ extension InfoView {
                         : checking
                             ? String(localized: "Checking…", comment: "Battery value while a wireless tablet's level settles after it links")
                             : "—"),
-                    ok: batteryPercent.map { $0 < 20 ? false : nil } ?? nil,
+                    ok: nil,
                     leadingSymbol: BatteryIndicator.symbolName(pct: batteryPercent ?? 100, charging: charging),
                     // Affirmative green when healthy — this table is the
                     // place users come to check on the device.
@@ -163,7 +164,7 @@ extension InfoView {
                     value: (companionContext?.batteryCharging ?? false)
                         ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
                         : "\(pct)%",
-                    ok: pct < 20 ? false : nil,
+                    ok: nil,
                     leadingSymbol: BatteryIndicator.symbolName(
                         pct: pct,
                         charging: companionContext?.batteryCharging ?? false),
@@ -243,7 +244,8 @@ extension InfoView {
                 value: showsDockIcon
                     ? String(localized: "Shown", comment: "Dock Icon status value")
                     : String(localized: "Hidden", comment: "Dock Icon status value"),
-                ok: nil,
+                // Shown is the recommended state; hidden is a choice, not a fault.
+                ok: showsDockIcon ? true : nil,
                 // Hiding asks first, since it takes the menu bar away too.
                 action: showsDockIcon ? { DockIcon.confirmHide() } : { DockIcon.show() },
                 actionLabel: showsDockIcon
@@ -416,20 +418,23 @@ extension InfoView {
             : String(localized: "Works only through the wireless receiver.", comment: "Tooltip on the wireless kit sleep timer while the tablet is on USB"))
     }
 
+    /// ✓ MockTab is set up the way it works best; ✕ something stops it
+    /// working; – information, or a valid choice off the recommended path.
+    /// VoiceOver hears only ✕, since the row's value already says the rest.
     @ViewBuilder
     func statusIcon(_ ok: Bool?) -> some View {
         if ok == true {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-                .accessibilityLabel("OK")
+                .accessibilityHidden(true)
         } else if ok == false {
             Image(systemName: "xmark.circle.fill")
                 .foregroundStyle(.primary)
-                .accessibilityLabel("Failed")
+                .accessibilityLabel(Text("Needs attention", comment: "VoiceOver: an Info status row whose problem stops MockTab working"))
         } else {
             Image(systemName: "minus.circle.fill")
                 .foregroundStyle(.tertiary)
-                .accessibilityLabel("Unknown")
+                .accessibilityHidden(true)
         }
     }
 }

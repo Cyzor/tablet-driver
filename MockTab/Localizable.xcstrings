@@ -12780,6 +12780,35 @@
         }
       }
     },
+    "Needs attention" : {
+      "comment" : "VoiceOver: an Info status row whose problem stops MockTab working",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Handlungsbedarf"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Needs attention"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere atención"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要対応"
+          }
+        }
+      }
+    },
     "Never" : {
       "comment" : "Quick Keys sleep timer choice: no auto-sleep",
       "localizations" : {
