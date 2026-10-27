@@ -4,13 +4,6 @@
 <plist version="1.0">
 <dict>
     <!--
-        Allows CGEventPost to inject mouse and tablet events.
-        Required for cursor movement and pressure event injection.
-    -->
-    <key>com.apple.security.automation.apple-events</key>
-    <true/>
-
-    <!--
         For ad-hoc / development signing without notarization,
         the sandbox must be disabled. Remove this and add the
         sandbox key if you later distribute through the Mac App Store
