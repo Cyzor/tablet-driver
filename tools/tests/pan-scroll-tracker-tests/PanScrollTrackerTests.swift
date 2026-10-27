@@ -171,6 +171,25 @@ private func testBeganCarriesFirstMotion() {
            "release after motion must end the gesture")
 }
 
+/// With Require Contact the pan starts at tip-down, whose jolt must not set
+/// the `.began` axis and strand a horizontal pan in Finder's column view.
+private func testContactJoltDoesNotSetBeganAxis() {
+    var t = PanScrollTracker()
+    _ = t.engage(reverse: false, speed: 1.0)
+    var intents: [PanScrollTracker.Intent] = []
+    for point in [CGPoint(x: 0, y: 0), CGPoint(x: 0, y: 3), CGPoint(x: 0, y: 3), CGPoint(x: 0, y: 1)] {
+        intents.append(t.process(screen: point, dt: frameDt))
+    }
+    for i in 1...10 {
+        intents.append(t.process(screen: CGPoint(x: Double(i) * 3, y: 1), dt: frameDt))
+    }
+    guard case .scroll(let dx, let dy, .began)? = intents.first(where: { $0 != .none }) else {
+        expect(false, "the pan must open with .began")
+        return
+    }
+    expect(abs(dx) > abs(dy), "a touchdown jolt must not make .began vertical, got (\(dx), \(dy))")
+}
+
 /// A press and release without motion opened no gesture, so nothing closes
 /// and nothing coasts.
 private func testReleaseWithoutMotionPostsNothing() {
@@ -190,6 +209,7 @@ enum PanScrollTrackerTestRunner {
     static func main() {
         testBeganCarriesFirstMotion()
         testReleaseWithoutMotionPostsNothing()
+        testContactJoltDoesNotSetBeganAxis()
         testImmediateReleaseKeepsMomentum()
         testDeadStopLosesMomentumWithoutBackdate()
         testDeadStopRecoveredByBackdate()

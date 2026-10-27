@@ -84,6 +84,13 @@ struct PanScrollTracker {
     /// pans slowly *on purpose*.
     static let smoothingStrength = 0.3
 
+    /// Where this gesture's motion started, for `.began`.
+    private var origin: CGPoint?
+
+    /// Net travel (screen points) from `origin` before `.began` goes out, so
+    /// a tip-down jolt that settles back can't pick the scroll view.
+    static let beganTravel = 4.0
+
     /// Dominant scroll axis, once established (see `axisLockRatio`), as
     /// trackpads do. Without it, slight drift during a vertical scroll leaks
     /// a horizontal component that Firefox can take for a swipe gesture.
@@ -137,13 +144,11 @@ struct PanScrollTracker {
 
     // MARK: - Edges
 
-    /// Begin the gesture. Emits nothing: `.began` waits for the first motion
-    /// and carries it, as a trackpad's does. AppKit gives a gesture to the
-    /// nested scroll view that matches the `.began` delta's dominant axis, so
-    /// a zero-delta `.began` reads as vertical and strands horizontal pans
-    /// (Finder column view). `reverse` selects classic (wheel) rather than
-    /// natural (content-follows) direction. `speed` multiplies deltas
-    /// (0.25 slow – 3.0 fast, 1.0 = 1:1).
+    /// Begin the gesture. Emits nothing: `.began` waits for `beganTravel` and
+    /// carries it, as a trackpad's does. A zero-delta `.began` reads as
+    /// vertical and strands horizontal pans (Finder column view). `reverse`
+    /// selects classic (wheel) rather than natural direction. `speed`
+    /// multiplies deltas (0.25 slow – 3.0 fast, 1.0 = 1:1).
     mutating func engage(reverse: Bool, speed: Double = 1.0) -> Intent {
         isActive = true
         hasBegun = false
@@ -159,6 +164,7 @@ struct PanScrollTracker {
         releaseVelocity = .zero
         timeSinceMotion = 0
         lastRaw = nil
+        origin = nil
         axisLock = nil
         preLockAccumX = 0
         preLockAccumY = 0
@@ -232,6 +238,7 @@ struct PanScrollTracker {
             // First frame after engage/suspend: anchor only, no delta.
             last = point
             lastRaw = screen
+            if !hasBegun { origin = point }
             return .none
         }
         last = point
@@ -285,6 +292,11 @@ struct PanScrollTracker {
 
         accumX += dx
         accumY += dy
+        if !hasBegun, let origin,
+            hypot(point.x - origin.x, point.y - origin.y) < Self.beganTravel
+        {
+            return .none
+        }
         let ix = Int(accumX.rounded(.towardZero))
         let iy = Int(accumY.rounded(.towardZero))
         guard ix != 0 || iy != 0 else { return .none }
