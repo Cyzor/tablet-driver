@@ -239,6 +239,21 @@ extension InfoView {
                 ok: nil)
 
             row(
+                String(localized: "Dock Icon", comment: "Row label in Info tab status table"),
+                value: showsDockIcon
+                    ? String(localized: "Shown", comment: "Dock Icon status value")
+                    : String(localized: "Hidden", comment: "Dock Icon status value"),
+                ok: nil,
+                // Hiding asks first, since it takes the menu bar away too.
+                action: showsDockIcon ? { DockIcon.confirmHide() } : { DockIcon.show() },
+                actionLabel: showsDockIcon
+                    ? String(localized: "Hide…", comment: "Button that hides the Dock icon from the Info tab")
+                    : String(localized: "Show", comment: "Button that shows the Dock icon from the Info tab"),
+                actionHelp: showsDockIcon
+                    ? String(localized: "Hide MockTab from the Dock and the app switcher. Its menu bar icon stays.", comment: "Tooltip on Hide button for Dock Icon")
+                    : String(localized: "Show MockTab in the Dock and the app switcher.", comment: "Tooltip on Show button for Dock Icon"))
+
+            row(
                 String(localized: "Launch at Login", comment: "Row label in Info tab status table"),
                 value: launchAtLogin
                     ? String(localized: "Enabled", comment: "Launch at Login status value")

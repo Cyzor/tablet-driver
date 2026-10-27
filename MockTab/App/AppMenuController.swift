@@ -478,23 +478,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     }
 
     @objc private func confirmHideDockIcon() {
-        let alert = NSAlert()
-        alert.messageText = String(
-            localized: "Hide MockTab's Dock Icon?",
-            comment: "Alert title: hide Dock icon confirmation")
-        alert.informativeText = String(
-            localized: "MockTab will no longer appear in the Dock or as an active app in the menu bar. You can still access all controls from its menu bar icon. To bring the Dock icon back, click the MockTab menu bar icon and choose \u{201C}Show in Dock\u{201D}.",
-            comment: "Alert body: explaining consequences of hiding Dock icon")
-        alert.alertStyle = .informational
-        let hideButton = alert.addButton(
-            withTitle: String(localized: "Hide Dock Icon", comment: "Button label: confirm hide Dock icon"))
-        alert.addButton(
-            withTitle: String(localized: "Cancel", comment: "Button label: cancel hide Dock icon"))
-        hideButton.keyEquivalent = "\r"
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        UserDefaults.standard.set(false, forKey: "showInDock")
-        NSApp.setActivationPolicy(.accessory)
+        DockIcon.confirmHide()
     }
 
     @objc private func confirmFactoryReset() {

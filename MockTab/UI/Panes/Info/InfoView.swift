@@ -26,6 +26,8 @@ struct InfoView: View {
     /// cause and carries the fix.
     @State var inputMonitoringGranted = false
     @State var launchAtLogin = InfoView.knownLaunchAtLogin
+    /// Follows the status menu's Show in Dock toggle too.
+    @AppStorage(DockIcon.defaultsKey) var showsDockIcon = true
     @State var diagnosticsExpanded = false
     @State var diagnosticSnapshot = ""
     @State private var diagnosticSnapshotAt = Date()
