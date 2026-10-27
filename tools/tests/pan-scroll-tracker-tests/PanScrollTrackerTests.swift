@@ -171,6 +171,14 @@ private func testBeganCarriesFirstMotion() {
            "release after motion must end the gesture")
 }
 
+/// Sums the scroll intents' deltas.
+private func totals(_ intents: [PanScrollTracker.Intent]) -> (dx: Double, dy: Double) {
+    intents.reduce((0, 0)) {
+        guard case .scroll(let dx, let dy, _) = $1 else { return $0 }
+        return ($0.0 + dx, $0.1 + dy)
+    }
+}
+
 /// With Require Contact the pan starts at tip-down, whose jolt must not set
 /// the `.began` axis and strand a horizontal pan in Finder's column view.
 private func testContactJoltDoesNotSetBeganAxis() {
@@ -188,6 +196,68 @@ private func testContactJoltDoesNotSetBeganAxis() {
         return
     }
     expect(abs(dx) > abs(dy), "a touchdown jolt must not make .began vertical, got (\(dx), \(dy))")
+}
+
+/// Drives a gesture through `points` (screen positions, one per frame) and
+/// returns every intent after the anchor frame.
+private func pan(_ points: [CGPoint]) -> [PanScrollTracker.Intent] {
+    var t = PanScrollTracker()
+    _ = t.engage(reverse: false, speed: 1.0)
+    return points.enumerated().compactMap { i, p in
+        let intent = t.process(screen: p, dt: frameDt)
+        return i == 0 ? nil : intent
+    }
+}
+
+/// Points along a straight line from `start`, `step` apart at `degrees` from
+/// the positive Y axis.
+private func line(from start: CGPoint, degrees: Double, step: Double, count: Int) -> [CGPoint] {
+    let r = degrees * .pi / 180
+    return (1...count).map {
+        CGPoint(x: start.x + sin(r) * step * Double($0), y: start.y + cos(r) * step * Double($0))
+    }
+}
+
+/// A hand-drawn vertical stroke slants a little; it locks and leaks no
+/// sideways scroll for Firefox to take as a swipe.
+private func testSlantedVerticalStrokeStaysLocked() {
+    let points = [CGPoint.zero] + line(from: .zero, degrees: 10, step: 4, count: 100)
+    let leaked = totals(Array(pan(points).dropFirst(5))).dx
+    expect(leaked == 0, "a 10-degree vertical stroke must stay locked, leaked \(leaked)")
+}
+
+/// Side-to-side wobble during a vertical scroll stays locked out.
+private func testWobbleDuringVerticalScrollStaysLocked() {
+    let points = (0...100).map { CGPoint(x: $0 % 2 == 0 ? 0 : 3, y: Double($0) * 4) }
+    let leaked = totals(Array(pan(points).dropFirst(5))).dx
+    expect(leaked.magnitude <= 1, "wobble in a vertical scroll must stay locked, leaked \(leaked)")
+}
+
+/// A flick released while locked coasts along the locked axis only.
+private func testLockedFlickCoastsOnAxis() {
+    var t = PanScrollTracker()
+    _ = t.engage(reverse: false, speed: 1.0)
+    for p in [CGPoint.zero] + line(from: .zero, degrees: 15, step: 10, count: 10) {
+        _ = t.process(screen: p, dt: frameDt)
+    }
+    _ = t.disengage()
+    expect(t.releaseVelocity.dx == 0 && t.releaseVelocity.dy > 0,
+           "a locked vertical flick must coast vertically only, got \(t.releaseVelocity)")
+}
+
+/// A diagonal start stays free for the whole gesture.
+private func testDiagonalStartStaysFree() {
+    let points = [CGPoint.zero] + line(from: .zero, degrees: 40, step: 4, count: 30)
+    let t = totals(pan(points))
+    expect(t.dx >= 50 && t.dy >= 50, "a diagonal pan must move both axes, got \(t)")
+}
+
+/// A pan that starts vertical follows a deliberate turn sideways.
+private func testTurnAfterVerticalStartScrollsSideways() {
+    let down = [CGPoint.zero] + line(from: .zero, degrees: 0, step: 4, count: 20)
+    let across = line(from: down.last!, degrees: 90, step: 4, count: 30)
+    let sideways = totals(Array(pan(down + across).dropFirst(20))).dx
+    expect(sideways >= 60, "a turn after a vertical start must scroll sideways, got \(sideways)")
 }
 
 /// A press and release without motion opened no gesture, so nothing closes
@@ -210,6 +280,11 @@ enum PanScrollTrackerTestRunner {
         testBeganCarriesFirstMotion()
         testReleaseWithoutMotionPostsNothing()
         testContactJoltDoesNotSetBeganAxis()
+        testSlantedVerticalStrokeStaysLocked()
+        testWobbleDuringVerticalScrollStaysLocked()
+        testLockedFlickCoastsOnAxis()
+        testDiagonalStartStaysFree()
+        testTurnAfterVerticalStartScrollsSideways()
         testImmediateReleaseKeepsMomentum()
         testDeadStopLosesMomentumWithoutBackdate()
         testDeadStopRecoveredByBackdate()

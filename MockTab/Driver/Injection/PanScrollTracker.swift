@@ -84,36 +84,31 @@ struct PanScrollTracker {
     /// pans slowly *on purpose*.
     static let smoothingStrength = 0.3
 
-    /// Where this gesture's motion started, for `.began`.
+    /// Where this gesture's motion started, for `.began` and the axis decision.
     private var origin: CGPoint?
 
     /// Net travel (screen points) from `origin` before `.began` goes out, so
     /// a tip-down jolt that settles back can't pick the scroll view.
     static let beganTravel = 4.0
 
-    /// Dominant scroll axis, once established (see `axisLockRatio`), as
-    /// trackpads do. Without it, slight drift during a vertical scroll leaks
-    /// a horizontal component that Firefox can take for a swipe gesture.
-    ///
-    /// The lock goes by the angle of travel: a near-axis scroll locks almost
-    /// at once, while a diagonal free pan (a Hand tool in Illustrator or
-    /// Rebelle) never crosses the ratio and stays free.
+    /// Directional lock, as UIScrollView's: a straight start locks to its
+    /// axis and a diagonal one stays free, so drift can't read as a swipe in
+    /// Firefox. Unlike UIKit, a deliberate turn frees it, for canvas apps.
     private enum Axis { case vertical, horizontal }
     private var axisLock: Axis?
-    private var preLockAccumX = 0.0
-    private var preLockAccumY = 0.0
+    private var axisDecided = false
+    /// Start of the stretch of travel checked for a turn while locked.
+    private var stretchStart: CGPoint?
 
-    /// Cumulative unsigned travel (points) considered before giving up on
-    /// axis lock for this gesture. Wide enough that a tight circular pan
-    /// (small-radius freeform drag in a graphics app) reveals its curve
-    /// before a lock commits — too short a window catches only a small arc,
-    /// which looks locally straight and locks prematurely.
-    static let axisLockWindow = 26.0
-
-    /// Dominant-axis-to-other-axis ratio required to commit to a lock
-    /// (~2:1 ≈ within 25° of true vertical/horizontal — matches the informal
-    /// "direction lock" behavior of trackpad drivers).
+    /// Net travel (screen points) from `origin` that decides the lock.
+    static let axisLockTravel = 10.0
+    /// Along-to-across ratio that locks (2:1, within about 25 degrees).
     static let axisLockRatio = 2.0
+    /// Length (screen points) of each stretch checked for a turn; long enough
+    /// that a stroke's end curl isn't one.
+    static let axisTurnStretch = 24.0
+    /// Across-to-along ratio over one stretch that frees the lock (past 45 degrees).
+    static let axisTurnRatio = 1.0
 
     /// Release velocity in points/second, the momentum seed.
     private(set) var releaseVelocity: CGVector = .zero
@@ -166,8 +161,8 @@ struct PanScrollTracker {
         lastRaw = nil
         origin = nil
         axisLock = nil
-        preLockAccumX = 0
-        preLockAccumY = 0
+        axisDecided = false
+        stretchStart = nil
         return .none
     }
 
@@ -200,6 +195,12 @@ struct PanScrollTracker {
             // that's a flick, and compares correctly against the threshold.
             releaseVelocity =
                 timeSinceMotion - offset <= Self.momentumRecencyWindow ? peak : .zero
+            // Coast along the locked axis only, as the scroll did.
+            switch axisLock {
+            case .vertical: releaseVelocity.dx = 0
+            case .horizontal: releaseVelocity.dy = 0
+            case nil: break
+            }
         }
         isActive = false
         last = nil
@@ -238,7 +239,9 @@ struct PanScrollTracker {
             // First frame after engage/suspend: anchor only, no delta.
             last = point
             lastRaw = screen
-            if !hasBegun { origin = point }
+            // Resuming re-anchors, so travel while away never counts.
+            if !axisDecided { origin = point }
+            stretchStart = point
             return .none
         }
         last = point
@@ -251,27 +254,31 @@ struct PanScrollTracker {
         let rawDx = (screen.x - rawPrev.x) * sign * speed
         let rawDy = (screen.y - rawPrev.y) * sign * speed
 
-        if let axisLock {
+        if !axisDecided, let origin {
+            let nx = abs(point.x - origin.x)
+            let ny = abs(point.y - origin.y)
+            if hypot(nx, ny) >= Self.axisLockTravel {
+                axisDecided = true
+                if nx >= ny * Self.axisLockRatio {
+                    axisLock = .horizontal
+                } else if ny >= nx * Self.axisLockRatio {
+                    axisLock = .vertical
+                }
+                stretchStart = point
+            }
+        }
+        if let lock = axisLock, let start = stretchStart {
+            let sx = abs(point.x - start.x)
+            let sy = abs(point.y - start.y)
+            if hypot(sx, sy) >= Self.axisTurnStretch {
+                let (along, across) = lock == .horizontal ? (sx, sy) : (sy, sx)
+                if across > along * Self.axisTurnRatio { axisLock = nil }
+                stretchStart = point
+            }
             switch axisLock {
             case .vertical: dx = 0
             case .horizontal: dy = 0
-            }
-        } else {
-            preLockAccumX += abs(dx)
-            preLockAccumY += abs(dy)
-            let total = preLockAccumX + preLockAccumY
-            if total >= Self.axisLockWindow {
-                let ratio = Self.axisLockRatio
-                if preLockAccumX >= preLockAccumY * ratio {
-                    axisLock = .horizontal
-                    dy = 0
-                } else if preLockAccumY >= preLockAccumX * ratio {
-                    axisLock = .vertical
-                    dx = 0
-                }
-                // Neither axis dominates enough (a genuinely diagonal drag):
-                // give up on locking for the rest of this gesture and stay
-                // omnidirectional, the way a native Hand tool would.
+            case nil: break
             }
         }
 

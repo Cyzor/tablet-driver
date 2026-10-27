@@ -321,18 +321,13 @@ struct TouchStateTracker {
     /// `twoFingerDecideDistance`.
     private var twoFingerKind: TwoFingerKind = .undecided
 
-    /// Dominant-axis lock for a committed `.pan`, mirroring
-    /// `PanScrollTracker.axisLock`. Rationale is the same — a slight diagonal
-    /// drift bleeds an off-axis component into the stream — but the stakes are
-    /// higher here: touch scroll runs phase-free (`twoFingerScrollMomentum`
-    /// off), so macOS routes each event independently and a nested
-    /// vertically-scrollable view (Finder column view) swallows a horizontal
-    /// scroll that carries any vertical component at all. Locking to one axis
-    /// and zeroing the other for the rest of the gesture keeps pure-axis
-    /// events pure. `nil` = undecided; only ever set once `twoFingerKind ==
-    /// .pan`. A genuinely diagonal drag never crosses `scrollAxisLockRatio`
-    /// and stays omnidirectional (`scrollAxisResolved` true, `scrollAxisLock`
-    /// still nil).
+    /// Dominant-axis lock for a committed `.pan`. Touch scroll runs phase-free
+    /// (`twoFingerScrollMomentum` off), so macOS routes each event alone, and
+    /// a nested vertical view (Finder column view) swallows a horizontal
+    /// scroll with any vertical drift in it. `nil` = undecided; set only once
+    /// `twoFingerKind == .pan`. A diagonal drag never crosses
+    /// `scrollAxisLockRatio` and stays free (`scrollAxisResolved` true,
+    /// `scrollAxisLock` nil).
     private enum ScrollAxis { case vertical, horizontal }
     private var scrollAxisLock: ScrollAxis?
     /// True once the lock decision has been made — committed to an axis, or
@@ -615,19 +610,13 @@ struct TouchStateTracker {
     /// close it out and hold wound-down until all fingers actually lift.
     static let scrollSingleContactGrace: CFAbsoluteTime = 0.1
     /// Cumulative unsigned centroid travel (screen points) a committed `.pan`
-    /// considers before deciding a dominant axis — the touch analog of
-    /// `PanScrollTracker.axisLockWindow`. Deliberately much shorter than the
-    /// pen tracker's 26pt: a freeform diagonal *pen* pan (rotating the canvas
-    /// with the Hand tool) is a real use case that needs room to reveal its
-    /// curve; a freeform diagonal two-finger *scroll* is not, and every event
-    /// emitted before the lock commits still carries the off-axis component
-    /// that a phase-free stream lets a nested scroll view swallow (the whole
-    /// point of this lock). Keep the unlocked prefix as small as still lets a
-    /// genuine diagonal register.
+    /// considers before deciding a dominant axis. Every event emitted before
+    /// the lock commits still carries the off-axis component that a phase-free
+    /// stream lets a nested scroll view swallow, so keep the unlocked prefix
+    /// as small as still lets a genuine diagonal register.
     static let scrollAxisLockWindow: Double = 8.0
     /// Dominant-axis-to-other-axis ratio to commit the lock (~2:1 ≈ within
-    /// 25° of true horizontal/vertical). Same value as
-    /// `PanScrollTracker.axisLockRatio`. Below it on both legs the gesture is
+    /// 25° of true horizontal/vertical). Below it on both legs the gesture is
     /// genuinely diagonal — give up on locking and stay omnidirectional for
     /// the rest of the gesture.
     static let scrollAxisLockRatio: Double = 2.0
