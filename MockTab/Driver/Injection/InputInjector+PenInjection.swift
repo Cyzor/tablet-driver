@@ -251,12 +251,17 @@ extension InputInjector {
             if tipDown {
                 cancelPendingMouseUp()
                 didEmitDragSinceDown = false
+                // Each contact decides afresh; a flag left from an earlier
+                // contact would swallow this one's release.
+                tipClickSwallowed = false
                 if fireContactDeferredButtons(at: screenPoint, snap: snap, settings: settings) {
                     // Require Contact: contact performs the held button's
                     // action in place of the tip's click.
                     tipClickSwallowed = true
                 } else if panScroll.isActive {
-                    // Pan View: contact grabs the canvas, so no click.
+                    // Pan View: contact grabs the canvas, so no click. Swallowed
+                    // until lift, even if the pan ends first.
+                    tipClickSwallowed = true
                 } else if tipKind == .clickLock && clickLocked {
                     // Tip set to Click Lock: the next contact ends the lock.
                     releaseClickLock(at: screenPoint, snapshot: snap)
@@ -282,11 +287,9 @@ extension InputInjector {
                 }
             } else {
                 releaseContactFiredButtons(at: screenPoint, snap: snap, settings: settings)
-                if panScroll.isActive {
-                    // No click fired, so no release either.
-                } else {
-                    releaseTip(at: screenPoint, pressure: pressure, point: point, snap: snap)
-                }
+                // Releases only what the press posted, whether or not a pan
+                // started or ended since.
+                releaseTip(at: screenPoint, pressure: pressure, point: point, snap: snap)
             }
             lastPostedPoint = screenPoint
             lastPostedPressure = pressure
@@ -876,10 +879,6 @@ extension InputInjector {
                 pose: resolveEffectivePose(point: pt, snapshot: snap), snapshot: snap)
         }
         releaseContactFiredButtons(at: lastPostedPoint, snap: snap, settings: nil)
-        if panScroll.isActive {
-            // Panning swallowed the press, so no release.
-            return
-        }
         releaseTip(at: lastPostedPoint, pressure: lastPostedPressure, point: pt, snap: snap)
     }
 
