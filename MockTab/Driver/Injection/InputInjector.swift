@@ -157,8 +157,9 @@ final class InputInjector: @unchecked Sendable {
 
     /// Click bookkeeping for `stampClickSequence`, matching hardware: each press
     /// gets an event number its drags and release share, and the release
-    /// repeats the click state, or 0 if the pointer strayed.
-    var clickEventNumber: Int64 = 0
+    /// repeats the click state, or 0 if the pointer strayed. The number is
+    /// process-wide, so a reconnected tablet doesn't restart it.
+    nonisolated(unsafe) static var clickEventNumber: Int64 = 0  // HIDThread-confined
     var pressClickState: Int64 = 0
     var pressLocation: CGPoint = .zero
     var pressStrayed = false

@@ -275,7 +275,17 @@ extension InputInjector {
     func stampClickSequence(_ e: CGEvent) {
         switch e.type {
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
-            clickEventNumber &+= 1
+            // macOS 27 mishandles a synthetic press numbered below the system's
+            // own press count: windows fail to activate, or clicks vanish. So
+            // the first press starts from that count, as hardware's do.
+            if Self.clickEventNumber == 0 {
+                let s = CGEventSourceStateID.hidSystemState
+                Self.clickEventNumber = Int64(
+                    CGEventSource.counterForEventType(s, eventType: .leftMouseDown)
+                    &+ CGEventSource.counterForEventType(s, eventType: .rightMouseDown)
+                    &+ CGEventSource.counterForEventType(s, eventType: .otherMouseDown))
+            }
+            Self.clickEventNumber &+= 1
             var state = e.getIntegerValueField(.mouseEventClickState)
             if state == 0 {
                 state = 1
@@ -299,7 +309,7 @@ extension InputInjector {
         default:
             return
         }
-        e.setIntegerValueField(.mouseEventNumber, value: clickEventNumber)
+        e.setIntegerValueField(.mouseEventNumber, value: Self.clickEventNumber)
     }
 
     /// Static so it doesn't inherit the installer's main-actor isolation: the
