@@ -148,7 +148,8 @@ private func testOversizedBackdateIsClamped() {
 /// Finder's column view.
 private func testBeganCarriesFirstMotion() {
     var t = PanScrollTracker()
-    expect(t.engage(reverse: false, speed: 1.0) == .none, "engage must post nothing")
+    expect(t.engage(reverse: false, speed: 1.0) == .scroll(dx: 0, dy: 0, phase: .mayBegin),
+           "engage must post .mayBegin, as a trackpad touch does")
     var x = 0.0
     var intents: [PanScrollTracker.Intent] = []
     _ = t.process(screen: CGPoint(x: x, y: 0), dt: frameDt)
@@ -260,9 +261,9 @@ private func testTurnAfterVerticalStartScrollsSideways() {
     expect(sideways >= 60, "a turn after a vertical start must scroll sideways, got \(sideways)")
 }
 
-/// A press and release without motion opened no gesture, so nothing closes
-/// and nothing coasts.
-private func testReleaseWithoutMotionPostsNothing() {
+/// A press and release without motion opened no gesture, so the release
+/// cancels the `.mayBegin` and nothing coasts.
+private func testReleaseWithoutMotionCancels() {
     var t = PanScrollTracker()
     _ = t.engage(reverse: false, speed: 1.0)
     // Sub-pixel jitter: raw velocity, but no whole-pixel delta.
@@ -270,7 +271,8 @@ private func testReleaseWithoutMotionPostsNothing() {
         let intent = t.process(screen: CGPoint(x: Double(i % 2) * 0.2, y: 0), dt: frameDt)
         expect(intent == .none, "sub-pixel jitter must not open a gesture")
     }
-    expect(t.disengage() == .none, "release without a .began must post nothing")
+    expect(t.disengage() == .scroll(dx: 0, dy: 0, phase: .cancelled),
+           "release without a .began must cancel the .mayBegin")
     expect(speed(t.releaseVelocity) == 0, "release without a .began must not coast")
 }
 
@@ -278,7 +280,7 @@ private func testReleaseWithoutMotionPostsNothing() {
 enum PanScrollTrackerTestRunner {
     static func main() {
         testBeganCarriesFirstMotion()
-        testReleaseWithoutMotionPostsNothing()
+        testReleaseWithoutMotionCancels()
         testContactJoltDoesNotSetBeganAxis()
         testSlantedVerticalStrokeStaysLocked()
         testWobbleDuringVerticalScrollStaysLocked()

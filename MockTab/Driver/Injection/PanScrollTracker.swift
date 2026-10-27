@@ -26,6 +26,8 @@ struct PanScrollTracker {
         case began = 1
         case changed = 2
         case ended = 4
+        case cancelled = 8
+        case mayBegin = 128
     }
 
     enum Intent: Equatable {
@@ -139,11 +141,12 @@ struct PanScrollTracker {
 
     // MARK: - Edges
 
-    /// Begin the gesture. Emits nothing: `.began` waits for `beganTravel` and
-    /// carries it, as a trackpad's does. A zero-delta `.began` reads as
-    /// vertical and strands horizontal pans (Finder column view). `reverse`
-    /// selects classic (wheel) rather than natural direction. `speed`
-    /// multiplies deltas (0.25 slow – 3.0 fast, 1.0 = 1:1).
+    /// Begin the gesture with `.mayBegin`, as a trackpad touch does, so AppKit
+    /// drops its latch on the last view scrolled. `.began` waits for
+    /// `beganTravel` and carries it: a zero-delta `.began` reads as vertical
+    /// and strands horizontal pans (Finder column view). `reverse` selects
+    /// classic (wheel) rather than natural direction. `speed` multiplies
+    /// deltas (0.25 slow – 3.0 fast, 1.0 = 1:1).
     mutating func engage(reverse: Bool, speed: Double = 1.0) -> Intent {
         isActive = true
         hasBegun = false
@@ -163,7 +166,7 @@ struct PanScrollTracker {
         axisLock = nil
         axisDecided = false
         stretchStart = nil
-        return .none
+        return .scroll(dx: 0, dy: 0, phase: .mayBegin)
     }
 
     /// End the gesture (real button release, or a confirmed proximity exit).
@@ -205,10 +208,10 @@ struct PanScrollTracker {
         isActive = false
         last = nil
         lastRaw = nil
-        // No `.began` went out, so there is no gesture to end or coast.
+        // No `.began` went out: cancel the `.mayBegin`, with nothing to coast.
         guard hasBegun else {
             releaseVelocity = .zero
-            return .none
+            return .scroll(dx: 0, dy: 0, phase: .cancelled)
         }
         return .scroll(dx: 0, dy: 0, phase: .ended)
     }
