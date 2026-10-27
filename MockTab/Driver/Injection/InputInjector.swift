@@ -307,6 +307,8 @@ final class InputInjector: @unchecked Sendable {
             flagsChangedTapSource = nil
         }
         if let tap = flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: false) }
+        keyDownTapSource.map { CFRunLoopRemoveSource(HIDThread.shared.runLoop, $0, .commonModes) }
+        keyDownTap.map { CFMachPortInvalidate($0) }
         watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
         pendingMouseUp.map { CFRunLoopTimerInvalidate($0) }
         proximityExitDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -697,6 +699,9 @@ final class InputInjector: @unchecked Sendable {
 
     var flagsChangedTap: CFMachPort?
     var flagsChangedTapSource: CFRunLoopSource?
+    /// Present only while touch is on; see `updateKeyDownTap(wanted:)`.
+    var keyDownTap: CFMachPort?
+    var keyDownTapSource: CFRunLoopSource?
     /// Physical modifier bits (⌘⌥⇧⌃) last reported by a hardware flagsChanged event.
     /// Updated only from events with sourceStateID == hidSystemState; immune to our own
     /// synthetic flagsChanged posts.
@@ -833,7 +838,9 @@ final class InputInjector: @unchecked Sendable {
     // The hot path's only view of settings, rebuilt on every change and handed
     // to HIDThread, so inject() never hops to the main actor.
 
-    var injectionSnapshot: InjectionSnapshot?
+    var injectionSnapshot: InjectionSnapshot? {
+        didSet { updateKeyDownTap(wanted: injectionSnapshot?.touchEnabled == true) }
+    }
 
     // MARK: - Display mapping
 
@@ -989,7 +996,7 @@ final class InputInjector: @unchecked Sendable {
     /// began with the pen in hand. Until every contact lifts, it may scroll,
     /// zoom, or rotate, but its clicks and cursor moves are dropped.
     var touchSequenceTainted = false
-    /// Last physical key press, from the flagsChanged tap on HIDThread.
+    /// Last physical key press, from the keyDown tap on HIDThread.
     var lastPhysicalKeyDownTime: CFAbsoluteTime = 0
     /// Where a three-finger drag holds the left button; nil when none is
     /// held. See the `touchDragPosition` row in the latch table above.

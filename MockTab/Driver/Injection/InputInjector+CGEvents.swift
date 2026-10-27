@@ -310,8 +310,8 @@ extension InputInjector {
         guard let userInfo else { return Unmanaged.passUnretained(event) }
         let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
         // macOS can switch a tap off, on a timeout or for user input.
-        // If it stays off, the modifier cache and the typing hold-off
-        // go stale for the rest of the session.
+        // If it stays off, the modifier cache goes stale for the rest of the
+        // session.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap = injector.flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
@@ -321,11 +321,6 @@ extension InputInjector {
         let stateID = Int32(truncatingIfNeeded:
             event.getIntegerValueField(.eventSourceStateID))
         guard ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) else {
-            return Unmanaged.passUnretained(event)
-        }
-        // A real keystroke, for touch's typing hold-off.
-        if event.type == .keyDown {
-            injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
             return Unmanaged.passUnretained(event)
         }
         injector.tapLastPhysicalFlags =
@@ -340,15 +335,14 @@ extension InputInjector {
 
     @MainActor
     func installFlagsChangedTap() {
-        // Listen-only tap at the session level for modifier changes and key
-        // presses. It never modifies events, just observes them.
+        // Listen-only tap at the session level for modifier changes. It never
+        // modifies events, just observes them.
         let selfPtr = Unmanaged.passUnretained(self)
         let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .tailAppendEventTap,
             options: .listenOnly,
-            eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue)
-                | CGEventMask(1 << CGEventType.keyDown.rawValue),
+            eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue),
             callback: Self.flagsChangedTapCallback,
             userInfo: selfPtr.toOpaque()
         )
@@ -368,6 +362,54 @@ extension InputInjector {
         // physical bits. Wall clock is honest here: no event is behind it.
         tapLastPhysicalFlagsAtNs =
             UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    /// Stamps hardware key presses for touch's typing hold-off. Same shape as
+    /// `flagsChangedTapCallback`; reads only the time, never the key.
+    private static let keyDownTapCallback: CGEventTapCallBack = { _, type, event, userInfo -> Unmanaged<CGEvent>? in
+        guard let userInfo else { return Unmanaged.passUnretained(event) }
+        let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let tap = injector.keyDownTap { CGEvent.tapEnable(tap: tap, enable: true) }
+            return Unmanaged.passUnretained(event)
+        }
+        let stateID = Int32(truncatingIfNeeded:
+            event.getIntegerValueField(.eventSourceStateID))
+        if event.type == .keyDown, ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) {
+            injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
+        }
+        return Unmanaged.passUnretained(event)
+    }
+
+    /// Key presses matter only to touch, so MockTab watches them only while
+    /// touch is on. A tap of its own, so modifier tracking never pauses.
+    func updateKeyDownTap(wanted: Bool) {
+        ThreadContract.expectPenThread()
+        if wanted == (keyDownTap != nil) { return }
+        if let tap = keyDownTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            keyDownTapSource.map { CFRunLoopRemoveSource(HIDThread.shared.runLoop, $0, .commonModes) }
+            CFMachPortInvalidate(tap)
+            keyDownTap = nil
+            keyDownTapSource = nil
+            return
+        }
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .tailAppendEventTap,
+            options: .listenOnly,
+            eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue),
+            callback: Self.keyDownTapCallback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else {
+            modLog.error("keyDown tap: CGEvent.tap failed (accessibility permission missing?)")
+            return
+        }
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        CFRunLoopAddSource(HIDThread.shared.runLoop, source, .commonModes)
+        keyDownTap = tap
+        keyDownTapSource = source
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 
