@@ -64,8 +64,28 @@ private func testUnrelatedRunningAppsProduceNoFindings() {
 // MARK: - Real matches still fire
 
 private func testExactNameMatches() {
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: ["WacomTabletDriver"])
-    expectEqual(found, ["Wacom Tablet Driver"], "exact process name should match")
+    let found = ConflictProcessMatcher.matchedLabels(liveNames: ["OpenTabletDriver.UX"])
+    expectEqual(found, ["OpenTabletDriver UX"], "exact process name should match")
+}
+
+/// Wacom apps match by bundle ID, whatever they're named.
+private func testWacomAppsMatchByBundleID() {
+    let liveNames: Set<String> = [
+        "WacomTouchDriver", "com.wacom.WacomTouchDriver",
+        "UpgradeHelper", "com.wacom.UpgradeHelper",
+        "Wacom Center", "com.wacom.WacomCenter",
+    ]
+    let found = ConflictProcessMatcher.matchedLabels(liveNames: liveNames)
+    expectEqual(found, [
+        "Wacom software (UpgradeHelper)", "Wacom software (WacomCenter)",
+        "Wacom software (WacomTouchDriver)",
+    ], "every running Wacom app should be reported once")
+}
+
+private func testWacomNamesWithoutBundleIDDoNotMatch() {
+    let found = ConflictProcessMatcher.matchedLabels(
+        liveNames: ["WacomTabletDriver", "com.wacom.", "org.example.com.wacom.Tool"])
+    expect(found.isEmpty, "Wacom-like names without a Wacom bundle ID produced findings: \(found)")
 }
 
 private func testXencelabsDriverMatchesButHelpersDoNot() {
@@ -79,9 +99,9 @@ private func testXencelabsDriverMatchesButHelpersDoNot() {
 }
 
 private func testMultipleDistinctProcessesAllReported() {
-    let liveNames: Set<String> = ["WacomTabletDriver", "OpenTabletDriver.UX", ""]
+    let liveNames: Set<String> = ["com.wacom.TabletDriver", "OpenTabletDriver.UX", ""]
     let found = ConflictProcessMatcher.matchedLabels(liveNames: liveNames)
-    expectEqual(Set(found), ["Wacom Tablet Driver", "OpenTabletDriver UX"],
+    expectEqual(Set(found), ["Wacom software (TabletDriver)", "OpenTabletDriver UX"],
                 "distinct competing processes should each be reported")
 }
 
@@ -94,6 +114,8 @@ enum ConflictDetectionTestRunner {
         testHelperProcessThatPrefixesADriverNameDoesNotMatch()
         testUnrelatedRunningAppsProduceNoFindings()
         testExactNameMatches()
+        testWacomAppsMatchByBundleID()
+        testWacomNamesWithoutBundleIDDoNotMatch()
         testXencelabsDriverMatchesButHelpersDoNot()
         testMultipleDistinctProcessesAllReported()
 

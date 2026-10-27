@@ -14,21 +14,20 @@ import Foundation
 /// conflict that isn't actually running.
 enum ConflictProcessMatcher {
     static let competingProcesses: [(name: String, label: String)] = [
-        ("WacomTabletDriver", "Wacom Tablet Driver"),
-        ("TabletDriver", "Wacom TabletDriver"),
-        ("Wacom_IOManager", "Wacom I/O Manager"),
-        ("WacomTabletSpringboard", "Wacom Springboard"),
-        ("DataStoreMgr", "Wacom DataStore Manager"),
         ("OpenTabletDriver.Daemon", "OpenTabletDriver Daemon"),
         ("OpenTabletDriver.UX", "OpenTabletDriver UX"),
         ("OpenTabletDriver", "OpenTabletDriver (GUI)"),
         ("XencelabsDriver", "Xencelabs Driver"),
     ]
 
+    /// Wacom ships many apps, not all named for Wacom, and any of them
+    /// running means its install is live, so they match by bundle ID.
+    static let wacomBundlePrefix = "com.wacom."
+
     /// Labels of competing processes found among `liveNames` (process
     /// display names and bundle identifiers of currently running apps).
     ///
-    /// Exact matching only — no prefix/substring matching. Two failure
+    /// Names match exactly — no prefix/substring matching. Two failure
     /// modes ruled that out: some system processes report an empty
     /// `localizedName` (not `nil`, so it survives `compactMap`), which used
     /// to satisfy `x.hasPrefix("")` for every `x`; and a real harmless
@@ -36,6 +35,10 @@ enum ConflictProcessMatcher {
     /// name (e.g. "Xencelabs" is a prefix of "XencelabsDriver"), which used
     /// to falsely flag the helper as the driver.
     static func matchedLabels(liveNames: Set<String>) -> [String] {
-        competingProcesses.filter { liveNames.contains($0.name) }.map { $0.label }
+        let wacom = liveNames
+            .filter { $0.hasPrefix(wacomBundlePrefix) && $0.count > wacomBundlePrefix.count }
+            .map { "Wacom software (\($0.dropFirst(wacomBundlePrefix.count)))" }
+            .sorted()
+        return wacom + competingProcesses.filter { liveNames.contains($0.name) }.map { $0.label }
     }
 }
