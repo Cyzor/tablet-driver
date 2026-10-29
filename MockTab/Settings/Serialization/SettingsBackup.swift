@@ -9,7 +9,9 @@ import os
 /// or newer version, or a factory reset can be undone. They live in
 /// Application Support under the bundle ID, beside the plist of the same
 /// name. To restore one, quit MockTab and run
-/// `defaults import com.cyzor.mocktab <backup>.plist`.
+/// `defaults delete com.cyzor.mocktab`, then
+/// `defaults import com.cyzor.mocktab <backup>.plist`; import alone merges,
+/// keeping keys written since the backup.
 enum SettingsBackup {
     static let lastBuildKey = "_lastLaunchedBuild"
     static let keepCount = 3
