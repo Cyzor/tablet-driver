@@ -99,7 +99,8 @@ enum WacomWriter {
         plan.set[p + "_appOverrides"] = try data(overrides)
 
         // A key both removed and set is simply set.
-        plan.remove.removeAll { plan.set[$0] != nil }
+        let setKeys = Set(plan.set.keys)
+        plan.remove.removeAll { setKeys.contains($0) }
         plan.remove.sort()
         return plan
     }

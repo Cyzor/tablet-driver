@@ -11,7 +11,8 @@ KIT="$(sh "$DIR/../build-tabletkit.sh")"
 
 S="$ROOT/MockTab/Settings"
 
-swiftc -O -I "$KIT" -L "$KIT" -lTabletKit \
+# Unoptimized, as run.sh builds the tool, so runtime checks catch the same faults.
+swiftc -I "$KIT" -L "$KIT" -lTabletKit \
     "$ROOT/tools/wacom-import/WacomPrefs.swift" \
     "$ROOT/tools/wacom-import/Encoder.swift" \
     "$ROOT/tools/wacom-import/Writer.swift" \
