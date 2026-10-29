@@ -315,12 +315,12 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         let elapsed = Date().timeIntervalSince(start)
 
         // See `CaptureSerialRedaction`.
+        let bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
         for case .tool(let tool) in decoded ?? [] where tool.phase == .enter {
-            CaptureSerialRedaction.noteToolEnter(serial: tool.identity.serial)
+            CaptureSerialRedaction.noteToolEnter(
+                serial: tool.identity.serial, in: bytes, productID: productID ?? 0)
         }
-        let shown = CaptureSerialRedaction.redacted(
-            [UInt8](UnsafeBufferPointer(start: report, count: length)),
-            productID: productID ?? 0)
+        let shown = CaptureSerialRedaction.redacted(bytes, productID: productID ?? 0)
 
         // Built into a single allocation rather than `length` intermediate
         // Strings + join — dominant cost while capturing at ~133 Hz.

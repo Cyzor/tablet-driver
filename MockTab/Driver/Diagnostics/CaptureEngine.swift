@@ -1009,8 +1009,11 @@ final class CaptureEngine: ObservableObject {
             let idHex = String(format: "0x%02X", reportID)
             let shownSample = CaptureSerialRedaction.redacted(
                 stats.firstSample, productID: productID)
+            // The first sample alone missed a serial that arrived after it.
             let serialBytes = Set(CaptureSerialRedaction.serialByteOffsets(
                 productID: productID, reportID: reportID)
+                + CaptureSerialRedaction.penSerialByteOffsets(
+                    productID: productID, reportID: reportID)
                 + shownSample.indices.filter { shownSample[$0] != stats.firstSample[$0] })
 
             var varyingBytes: [Int] = []

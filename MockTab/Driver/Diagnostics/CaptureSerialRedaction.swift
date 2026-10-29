@@ -59,19 +59,70 @@ enum CaptureSerialRedaction {
                 out[idx] = UInt8(truncatingIfNeeded: decoy >> (i * 8))
             }
         }
-        for (serial, decoy) in seen.withLock({ $0.penSerials }) {
-            replacePenSerial(serial, with: decoy, in: &out)
+        let key = PositionKey(productID: productID, reportID: reportID)
+        let (serials, known) = seen.withLock { ($0.penSerials, $0.positions[key] ?? []) }
+        guard !serials.isEmpty else { return out }
+        // A pen already in range when the capture starts never announces
+        // itself, so look for it too, in whole bytes only: a short serial
+        // matched anywhere rewrote ordinary fields.
+        var positions = known
+        for serial in serials.keys where serial > distinctiveSerialFloor {
+            for offset in littleEndianOffsets(of: serial, in: out) {
+                positions.insert(.littleEndian(offset))
+            }
+        }
+        if positions != known {
+            seen.withLock { $0.positions[key, default: []].formUnion(positions) }
+        }
+        for position in positions {
+            switch position {
+            case .littleEndian(let offset):
+                guard offset + 4 <= out.count, let decoy = serials[littleEndian(out, at: offset)]
+                else { continue }
+                for i in 0..<4 { out[offset + i] = UInt8(truncatingIfNeeded: decoy >> (i * 8)) }
+            case .bigEndianBit(let bit):
+                guard bit + 32 <= out.count * 8, let decoy = serials[readBits(out, at: bit)]
+                else { continue }
+                writeBits(&out, decoy, at: bit)
+            }
         }
         return out
     }
 
-    /// Note a pen's serial so `redacted` can find it. Its position varies by
-    /// protocol, so it's matched by value: 4-byte LE, or big-endian at any
-    /// bit offset.
+    /// Note a pen's serial so `redacted` can swap it. A serial known before
+    /// the capture starts has no report to place it; see `redacted`.
     static func noteToolEnter(serial: UInt32) {
         guard serial != 0, seen.withLock({ $0.penSerials[serial] }) == nil else { return }
         let decoy = standIn(for: serial, bits: 32)
         seen.withLock { $0.penSerials[serial] = decoy }
+    }
+
+    /// Note a pen's serial and where `report`, which announced it, carries
+    /// it: whole bytes little-endian, or else big-endian from a bit offset.
+    /// Later reports with this ID get swapped only there.
+    static func noteToolEnter(serial: UInt32, in report: [UInt8], productID: Int) {
+        guard serial != 0, let reportID = report.first else { return }
+        noteToolEnter(serial: serial)
+        var found = Set(littleEndianOffsets(of: serial, in: report).map { SerialPosition.littleEndian($0) })
+        if found.isEmpty, serial > distinctiveSerialFloor {
+            found = Set(bigEndianBitOffsets(of: serial, in: report).map { SerialPosition.bigEndianBit($0) })
+        }
+        guard !found.isEmpty else { return }
+        let key = PositionKey(productID: productID, reportID: reportID)
+        seen.withLock { $0.positions[key, default: []].formUnion(found) }
+    }
+
+    /// Bytes where a pen serial turned up in this device's reports with this
+    /// ID, so the summary withholds their values.
+    static func penSerialByteOffsets(productID: Int, reportID: UInt8) -> [Int] {
+        let key = PositionKey(productID: productID, reportID: reportID)
+        let positions = seen.withLock { $0.positions[key] ?? [] }
+        return Set(positions.flatMap { position -> ClosedRange<Int> in
+            switch position {
+            case .littleEndian(let offset): return offset...(offset + 3)
+            case .bigEndianBit(let bit): return (bit / 8)...((bit + 31) / 8)
+            }
+        }).sorted()
     }
 
     /// The stand-in a decoded log line prints for a pen serial.
@@ -80,30 +131,36 @@ enum CaptureSerialRedaction {
         return seen.withLock { $0.penSerials[serial] } ?? standIn(for: serial, bits: 32)
     }
 
-    /// Runs on every captured report, so it reads whole bytes rather than
-    /// single bits.
-    private static func replacePenSerial(
-        _ serial: UInt32, with decoy: UInt32, in bytes: inout [UInt8]
-    ) {
-        var start = 1
-        while start + 4 <= bytes.count {
-            let value = UInt32(bytes[start]) | UInt32(bytes[start + 1]) << 8
-                | UInt32(bytes[start + 2]) << 16 | UInt32(bytes[start + 3]) << 24
-            if value == serial {
-                for i in 0..<4 { bytes[start + i] = UInt8(truncatingIfNeeded: decoy >> (i * 8)) }
-            }
-            start += 1
-        }
-        let bitCount = bytes.count * 8
-        var bit = 8
-        while bit + 32 <= bitCount {
-            if readBits(bytes, at: bit) == serial {
-                writeBits(&bytes, decoy, at: bit)
-                bit += 32
-            } else {
-                bit += 1
-            }
-        }
+    /// Serials at or below this are too short to search for: they match
+    /// ordinary fields, such as a hover distance of 63.
+    private static let distinctiveSerialFloor: UInt32 = 0xFFFF
+
+    /// Where a report carries a pen serial.
+    private enum SerialPosition: Hashable {
+        /// Four whole bytes from this offset, little-endian.
+        case littleEndian(Int)
+        /// 32 bits from this bit offset, big-endian.
+        case bigEndianBit(Int)
+    }
+
+    private struct PositionKey: Hashable {
+        let productID: Int
+        let reportID: UInt8
+    }
+
+    private static func littleEndian(_ bytes: [UInt8], at offset: Int) -> UInt32 {
+        UInt32(bytes[offset]) | UInt32(bytes[offset + 1]) << 8
+            | UInt32(bytes[offset + 2]) << 16 | UInt32(bytes[offset + 3]) << 24
+    }
+
+    private static func littleEndianOffsets(of serial: UInt32, in bytes: [UInt8]) -> [Int] {
+        guard bytes.count >= 5 else { return [] }
+        return (1...(bytes.count - 4)).filter { littleEndian(bytes, at: $0) == serial }
+    }
+
+    private static func bigEndianBitOffsets(of serial: UInt32, in bytes: [UInt8]) -> [Int] {
+        guard bytes.count >= 5 else { return [] }
+        return (8...(bytes.count * 8 - 32)).filter { readBits(bytes, at: $0) == serial }
     }
 
     /// The 32 bits starting at `bit`, big-endian.
@@ -149,6 +206,8 @@ enum CaptureSerialRedaction {
     private struct Seen {
         /// Each serial with its stand-in, hashed once.
         var penSerials: [UInt32: UInt32] = [:]
+        /// Where each device's reports carry a pen serial, by report ID.
+        var positions: [PositionKey: Set<SerialPosition>] = [:]
     }
 
     private static let seen = Locked(Seen())
