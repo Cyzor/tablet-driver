@@ -263,6 +263,7 @@ struct AppReport {
 struct TabletReport {
     let modelName: String
     let wacomType: Int?
+    let productID: Int?
     let nickname: String?
     var apps: [AppReport]
     var notes: [String] = []
@@ -305,6 +306,13 @@ enum WacomMapper {
         return apps
     }
 
+    /// SensorID packs the USB vendor and product IDs: 0x056A0357 is a
+    /// Wacom PTH-660.
+    static func productID(_ t: WacomNode) -> Int? {
+        guard let id = t.int("SensorID"), id >> 16 == 0x056A else { return nil }
+        return id & 0xFFFF
+    }
+
     /// Wacom writes `\~106:0` for a name it fills in itself.
     static func customName(_ s: String?) -> String? {
         guard let s, !s.isEmpty, !s.hasPrefix("\\~") else { return nil }
@@ -314,9 +322,11 @@ enum WacomMapper {
     static func tablet(_ t: WacomNode, apps: [Int: WacomApp], layout: LayoutLookup) -> TabletReport {
         let model = t.string("DefaultTabName") ?? t.string("TabletName") ?? "Unknown tablet"
         let name = t.string("TabletName")
+        let pid = productID(t)
         var report = TabletReport(
-            modelName: model, wacomType: t.int("TabletType"),
+            modelName: model, wacomType: t.int("TabletType"), productID: pid,
             nickname: name != model ? customName(name) : nil, apps: [])
+        if pid == nil { report.notes.append("No Wacom product ID in the backup; the writer can't pick a tablet for it.") }
 
         let containers = t.node("TabletControlContainerArray")?.elements ?? []
         let transducers = t.node("TabletTransducerArray")?.elements ?? []
@@ -327,7 +337,7 @@ enum WacomMapper {
 
         var base = AppReport(name: "All applications", bundleID: nil, sections: [])
         base.sections += baseTransducers.map { pen($0, against: nil, layout: layout) }
-        if let c = baseContainer { base.sections += controls(c, against: nil, layout: layout) }
+        if let c = baseContainer { base.sections += controls(c, against: nil, productID: pid, layout: layout) }
         if let area = mappingArea(t) { base.sections.append(area) }
         report.apps.append(base)
 
@@ -352,7 +362,7 @@ enum WacomMapper {
                     if !s.lines.isEmpty { r.sections.append(s) }
                 }
                 if let c = containers.first(where: { app($0) == i }) {
-                    r.sections += controls(c, against: baseContainer, layout: layout).filter { !$0.lines.isEmpty }
+                    r.sections += controls(c, against: baseContainer, productID: pid, layout: layout).filter { !$0.lines.isEmpty }
                 }
                 if r.sections.isEmpty { r.notes.append("Same as All applications.") }
             }
@@ -440,31 +450,47 @@ enum WacomMapper {
 
     // MARK: ExpressKeys and rings
 
-    static func controls(_ c: WacomNode, against base: WacomNode?, layout: LayoutLookup) -> [Section] {
+    static func controls(_ c: WacomNode, against base: WacomNode?, productID: Int?,
+                         layout: LayoutLookup) -> [Section] {
         var sections: [Section] = []
         let baseKeys = base?.node("TabletControlsButtonsArray")?.elements ?? []
         var keys = Section(title: "ExpressKeys", lines: [])
         for k in c.node("TabletControlsButtonsArray")?.elements ?? [] {
             let name = k.string("ButtonName") ?? "?"
             if let other = baseKeys.first(where: { $0.string("ButtonName") == name }), sameButton(k, other) { continue }
-            let (wacom, outcome) = function(k, layout: layout)
-            keys.lines.append(Line(control: name, wacom: wacom, outcome: outcome.prefixed("expressKeyBindings")))
-        }
-        if base == nil, !keys.lines.isEmpty {
-            keys.notes.append("Which MockTab ExpressKey each Wacom name lands on depends on the model; not checked yet.")
+            var (wacom, outcome) = function(k, layout: layout)
+            guard let target = KeyLayouts.key(name, productID: productID) else {
+                if !outcome.isSkipped { outcome = .skipped("where this key sits on this model isn't known") }
+                keys.lines.append(Line(control: name, wacom: wacom, outcome: outcome))
+                continue
+            }
+            // A second dial's key cycles that dial's modes.
+            if target.setting == "touchRingButtonBinding2", case .mapped("ringCycle", let conf) = outcome {
+                outcome = .mapped("ringCycle2", conf)
+            }
+            keys.lines.append(Line(control: name, wacom: wacom,
+                                   outcome: outcome.prefixed(target.setting).capped(target.confidence)))
         }
         sections.append(keys)
 
         if let ring = c.node("TouchRingSettings") {
             sections.append(ringSection("Touch ring", ring, base: base?.node("TouchRingSettings"),
-                                        key: "touchRingSlots", layout: layout))
+                                        key: "touchRingSlots", confidence: .exact, layout: layout))
         }
         for dial in c.node("TouchRings")?.children ?? [] {
-            let key = dial.name == "leftdial" ? "rotaries (first dial)" : "rotaries (second dial)"
-            var s = ringSection("Dial \(dial.name)", dial, base: base?.node("TouchRings/\(dial.name)"),
-                                key: key, layout: layout)
-            if base == nil { s.notes.append("Which side MockTab calls first isn't checked yet.") }
-            sections.append(s)
+            let title = "Dial \(dial.name)"
+            let base = base?.node("TouchRings/\(dial.name)")
+            guard let target = KeyLayouts.dial(dial.name, productID: productID) else {
+                var s = ringSection(title, dial, base: base, key: "rotaries", confidence: .exact, layout: layout)
+                s.lines = s.lines.map {
+                    Line(control: $0.control, wacom: $0.wacom,
+                         outcome: $0.outcome.isSkipped ? $0.outcome : .skipped("which dial this is on this model isn't known"))
+                }
+                sections.append(s)
+                continue
+            }
+            sections.append(ringSection(title, dial, base: base, key: target.setting,
+                                        confidence: target.confidence, layout: layout))
         }
         if let mods = c.node("TabletControlsModButtonsArray"), !mods.elements.isEmpty {
             sections.append(Section(title: "Modifier buttons", lines: [], notes: ["\(mods.elements.count) not read yet."]))
@@ -473,7 +499,7 @@ enum WacomMapper {
     }
 
     static func ringSection(_ title: String, _ ring: WacomNode, base: WacomNode?, key: String,
-                            layout: LayoutLookup) -> Section {
+                            confidence: Confidence, layout: LayoutLookup) -> Section {
         var s = Section(title: title, lines: [])
         let modes = ring.node("TouchStripModes")?.children ?? []
         for m in modes {
@@ -481,7 +507,7 @@ enum WacomMapper {
             let label = m.string("TouchStripKeystrokeName").flatMap { $0.isEmpty ? nil : $0 }
             var (wacom, outcome) = ringFunction(m, layout: layout)
             if let label { wacom = "\"\(label)\": " + wacom }
-            s.lines.append(Line(control: m.name, wacom: wacom, outcome: outcome.prefixed(key)))
+            s.lines.append(Line(control: m.name, wacom: wacom, outcome: outcome.prefixed(key).capped(confidence)))
         }
         return s
     }
@@ -615,11 +641,87 @@ enum WacomMapper {
     }
 }
 
+extension Confidence {
+    /// Exact, then approximate, then unverified.
+    var rank: Int { self == .exact ? 0 : self == .approximate ? 1 : 2 }
+}
+
 extension Outcome {
+    /// Lowers a mapping's confidence to `limit` when the target is less sure
+    /// than the value.
+    func capped(_ limit: Confidence) -> Outcome {
+        if case .mapped(let what, let c) = self, limit.rank > c.rank { return .mapped(what, limit) }
+        return self
+    }
+
     /// Names the MockTab setting in front of the value.
     func prefixed(_ key: String) -> Outcome {
         if case .mapped(let what, let c) = self { return .mapped("\(key): \(what)", c) }
         return self
+    }
+}
+
+// MARK: - Key positions
+
+/// A MockTab setting a Wacom control name lands on, and how sure that is.
+struct Target {
+    let setting: String
+    let confidence: Confidence
+}
+
+/// Where each model's Wacom key and dial names land in MockTab. Wacom
+/// numbers a side's keys from 1, LeftButton then RightButton; MockTab's
+/// ExpressKey index is the tablet's report order, which TabletLayoutTable
+/// spells out per model with libwacom's letters.
+enum KeyLayouts {
+    /// PTK-670 and PTK-870: around each dial, top, right, bottom, then left,
+    /// then the center key that switches the dial's mode. Checked against
+    /// the PTK-870's report order.
+    static let twoDials: Set<Int> = [0x03F7, 0x03F9]
+    /// PTK-470: one cluster the same shape, beside one dial.
+    static let oneDial: Set<Int> = [0x03F5]
+    /// PTH-660 and PTH-860, wired and Bluetooth: eight keys down the side,
+    /// top to bottom in libwacom's order. Wacom's numbering isn't checked.
+    static let eightDown: Set<Int> = [0x0357, 0x0358, 0x0360, 0x0361]
+
+    static func key(_ name: String, productID: Int?) -> Target? {
+        guard let pid = productID else { return nil }
+        let side: Int
+        let n: Int
+        if name.hasPrefix("LeftButton"), let i = Int(name.dropFirst(10)) {
+            (side, n) = (0, i)
+        } else if name.hasPrefix("RightButton"), let i = Int(name.dropFirst(11)) {
+            (side, n) = (1, i)
+        } else {
+            return nil
+        }
+        if twoDials.contains(pid) || oneDial.contains(pid) {
+            let conf: Confidence = twoDials.contains(pid) ? .exact : .unverified
+            if oneDial.contains(pid) && side == 1 { return nil }
+            switch n {
+            case 1...4: return Target(setting: "expressKeyBindings[\(side * 4 + n - 1)]", confidence: conf)
+            case 5: return Target(setting: side == 0 ? "touchRingButtonBinding" : "touchRingButtonBinding2", confidence: conf)
+            default: return nil
+            }
+        }
+        if eightDown.contains(pid), side == 0, (1...8).contains(n) {
+            return Target(setting: "expressKeyBindings[\(n - 1)]", confidence: .unverified)
+        }
+        return nil
+    }
+
+    /// libwacom numbers the PTK-670/870's dials from the left.
+    static func dial(_ name: String, productID: Int?) -> Target? {
+        guard let pid = productID else { return nil }
+        if twoDials.contains(pid) {
+            switch name {
+            case "leftdial": return Target(setting: "rotaries[0]", confidence: .exact)
+            case "rightdial": return Target(setting: "rotaries[1]", confidence: .exact)
+            default: return nil
+            }
+        }
+        if oneDial.contains(pid), name == "leftdial" { return Target(setting: "rotaries[0]", confidence: .unverified) }
+        return nil
     }
 }
 
@@ -633,7 +735,7 @@ enum ReportText {
         out += "\nNothing is written. This lists what an import would do.\n"
         for (i, t) in r.tablets.enumerated() {
             out += "\nTablet \(i + 1): \(t.modelName)"
-            if let type = t.wacomType { out += " (Wacom type \(type))" }
+            if let pid = t.productID { out += String(format: " (product ID 0x%04X)", pid) }
             out += "\n"
             if let n = t.nickname { out += "  Name \"\(n)\" -> tablet nickname\n" }
             for note in t.notes { out += "  \(note)\n" }

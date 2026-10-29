@@ -58,7 +58,11 @@ func show(_ l: Line?) -> String { l.map(ReportText.line) ?? "missing" }
 // Backup and tablets
 expect(backup.driverVersion == "6.4.9-2", "Driver version: \(backup.driverVersion ?? "nil")")
 expect(report.formatVersion == 6, "Format version")
-expect(report.tablets.count == 2, "Two tablets")
+expect(report.tablets.count == 3, "Three tablets")
+expect(report.tablets[0].productID == 0x0357, "Product ID from SensorID")
+expect(report.tablets[1].productID == 0x03F9, "PTK-870 product ID")
+expect(report.tablets[2].productID == nil && report.tablets[2].notes.contains { $0.contains("No Wacom product ID") },
+       "A tablet without SensorID is noted")
 expect(report.tablets[0].nickname == "Studio", "Renamed tablet keeps its name")
 expect(report.tablets[1].nickname == nil, "Unrenamed tablet has no nickname")
 expect(report.tablets[0].notes.contains { $0.contains("application 9") }, "Settings for an unlisted app are noted")
@@ -80,20 +84,34 @@ expect(serialless?.notes.first?.contains("No serial") == true, "A pen without a 
 expect(serialless?.lines.contains { $0.control == "Name" } == false, "A Wacom default name isn't imported")
 expect(mapped(serialless?.lines.first { $0.control == "Lower button" }, "penButton1Binding: scrollDrag"), "Pan/scroll")
 
-// ExpressKeys
+// ExpressKeys on a PTH-660: positions are unverified, so every mapped key is.
 func key(_ name: String) -> Line? { find(0, "All applications", "ExpressKeys", name) }
-expect(mapped(key("LeftButton1"), "expressKeyBindings: keyCombo 1, key code 18"), "Virtual key: \(show(key("LeftButton1")))")
-expect(mapped(key("LeftButton2"), "expressKeyBindings: keyCombo ⌘Z, key code 6"), "Character key: \(show(key("LeftButton2")))")
-expect(mapped(key("LeftButton3"), "expressKeyBindings: keyCombo ⌥, modifiers only"), "Modifier: \(show(key("LeftButton3")))")
-expect(mapped(key("LeftButton4"), "expressKeyBindings: spacebar"), "Held space: \(show(key("LeftButton4")))")
-expect(mapped(key("LeftButton5"), "expressKeyBindings: keyCombo ⇧⇥, key code 48"), "Named key: \(show(key("LeftButton5")))")
+func keyIs(_ name: String, _ what: String, _ c: Confidence = .unverified) -> Bool { mapped(key(name), what, c) }
+expect(keyIs("LeftButton1", "expressKeyBindings[0]: keyCombo 1, key code 18"), "Virtual key: \(show(key("LeftButton1")))")
+expect(keyIs("LeftButton2", "expressKeyBindings[1]: keyCombo ⌘Z, key code 6"), "Character key: \(show(key("LeftButton2")))")
+expect(keyIs("LeftButton3", "expressKeyBindings[2]: keyCombo ⌥, modifiers only"), "Modifier: \(show(key("LeftButton3")))")
+expect(keyIs("LeftButton4", "expressKeyBindings[3]: spacebar"), "Held space: \(show(key("LeftButton4")))")
+expect(keyIs("LeftButton5", "expressKeyBindings[4]: keyCombo ⇧⇥, key code 48"), "Named key: \(show(key("LeftButton5")))")
 expect(skipped(key("LeftButton6"), "key sequence"), "Typed sequence: \(show(key("LeftButton6")))")
 expect(skipped(key("LeftButton7"), "&volumeup;"), "Unknown key name: \(show(key("LeftButton7")))")
 expect(skipped(key("LeftButton8"), "no MockTab equivalent") && key("LeftButton8")?.wacom.contains("Radial menu") == true,
        "On-screen panel: \(show(key("LeftButton8")))")
 expect(skipped(key("RightButton1"), "unknown function"), "Unknown code: \(show(key("RightButton1")))")
-expect(mapped(key("RightButton2"), "expressKeyBindings: keyCombo ⇧#, key code 20", .approximate),
-       "A character that needs Shift: \(show(key("RightButton2")))")
+expect(skipped(key("RightButton2"), "where this key sits"), "A key the model doesn't have: \(show(key("RightButton2")))")
+
+// ExpressKeys and dials on a PTK-870: checked positions.
+func ptk(_ section: String, _ control: String) -> Line? { find(1, "All applications", section, control) }
+expect(mapped(ptk("ExpressKeys", "LeftButton1"), "expressKeyBindings[0]: keyCombo ↑, key code 126"), show(ptk("ExpressKeys", "LeftButton1")))
+expect(mapped(ptk("ExpressKeys", "LeftButton5"), "touchRingButtonBinding: ringCycle"), show(ptk("ExpressKeys", "LeftButton5")))
+expect(mapped(ptk("ExpressKeys", "RightButton4"), "expressKeyBindings[7]: rightClick"), show(ptk("ExpressKeys", "RightButton4")))
+expect(mapped(ptk("ExpressKeys", "RightButton5"), "touchRingButtonBinding2: ringCycle2"), "Second dial's key cycles the second dial")
+expect(skipped(ptk("ExpressKeys", "RightButton6"), "where this key sits"), "No sixth key")
+expect(mapped(ptk("Dial leftdial", "mode1"), "rotaries[0]: skip"), "Left dial is the first")
+expect(mapped(ptk("Dial rightdial", "mode1"), "rotaries[1]: rotate"), "Right dial is the second")
+
+// A model with no key table skips its keys and dials.
+expect(skipped(find(2, "All applications", "ExpressKeys", "LeftButton1"), "where this key sits"), "Unknown model's key")
+expect(skipped(find(2, "All applications", "Dial leftdial", "mode1"), "which dial"), "Unknown model's dial")
 
 // Ring and dial
 func ring(_ mode: String) -> Line? { find(0, "All applications", "Touch ring", mode) }
@@ -102,7 +120,6 @@ expect(ring("mode1")?.wacom.hasPrefix("\"Brush size\"") == true, "Ring mode labe
 expect(mapped(ring("mode2"), "touchRingSlots: scroll", .approximate), "Auto scroll and zoom")
 expect(mapped(ring("mode3"), "touchRingSlots: rotate"), "Rotate")
 expect(skipped(ring("mode4"), "unknown ring function"), "Unknown ring code")
-expect(mapped(find(1, "All applications", "Dial leftdial", "mode1"), "rotaries (first dial): skip"), "Dial skip")
 
 // Mapping
 let area = find(0, "All applications", "Mapping", "Tablet area")
@@ -121,8 +138,7 @@ expect(paintPen?.lines.map(\.control) == ["Lower button"], "Only the changed pen
 expect(mapped(paintPen?.lines.first, "penButton1Binding: clickLock"), "Per-app click lock")
 let paintKeys = paint?.sections.first { $0.title == "ExpressKeys" }
 expect(paintKeys?.lines.map(\.control) == ["LeftButton2"], "Only the changed key")
-expect(mapped(paintKeys?.lines.first, "expressKeyBindings: keyCombo ⌥⌘Z, key code 6"), "Per-app keystroke")
-expect(paintKeys?.notes.isEmpty == true, "Position note only on All applications")
+expect(mapped(paintKeys?.lines.first, "expressKeyBindings[1]: keyCombo ⌥⌘Z, key code 6", .unverified), "Per-app keystroke")
 expect(mapped(paint?.sections.first { $0.title == "Touch ring" }?.lines.first, "touchRingSlots: scroll"), "Per-app ring")
 expect(apps.first { $0.name == "Notes" }?.notes == ["Same as All applications."], "App with no differences")
 expect(apps.first { $0.name == "Old Tool" }?.notes.first?.contains("Removed") == true, "Removed app")
@@ -139,6 +155,11 @@ if case .key(let k, let exact) = Keystroke.parse("&enter;", layout: layout) {
     expect(k.keyCode == 36 && !exact, "Enter could be either Return or keypad Enter")
 } else {
     expect(false, "Enter parses")
+}
+if case .key(let k, let exact) = Keystroke.parse("&shift;#", layout: layout) {
+    expect(k.keyCode == 20 && k.modifiers == .shift && !exact, "A character that needs Shift is approximate")
+} else {
+    expect(false, "Shifted character parses")
 }
 if case .key(let k, _) = Keystroke.parse("q", layout: layout) {
     expect(k.keyCode == nil, "A character missing from the layout has no key code")

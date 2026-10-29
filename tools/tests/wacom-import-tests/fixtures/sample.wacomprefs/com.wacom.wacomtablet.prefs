@@ -42,6 +42,7 @@
       <DefaultTabName type="string">Intuos Pro M</DefaultTabName>
       <TabletName type="string">Studio</TabletName>
       <TabletType type="integer">30</TabletType>
+      <SensorID type="integer">90833751</SensorID>
       <TabletXDimension type="integer">1000</TabletXDimension>
       <TabletYDimension type="integer">800</TabletYDimension>
       <ContextManager type="map">
@@ -263,15 +264,70 @@
       <DefaultTabName type="string">Intuos Pro L</DefaultTabName>
       <TabletName type="string">Intuos Pro L</TabletName>
       <TabletType type="integer">33</TabletType>
+      <SensorID type="integer">90833913</SensorID>
       <TabletControlContainerArray type="array">
         <ArrayElement type="map">
           <ApplicationAssociated type="integer">0</ApplicationAssociated>
-          <TabletControlsButtonsArray type="array"/>
+          <TabletControlsButtonsArray type="array">
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton1</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&up;]]></Keystroke>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton5</ButtonName>
+              <ButtonFunction type="integer">108</ButtonFunction>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">RightButton4</ButtonName>
+              <ButtonFunction type="integer">3</ButtonFunction>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">RightButton5</ButtonName>
+              <ButtonFunction type="integer">108</ButtonFunction>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">RightButton6</ButtonName>
+              <ButtonFunction type="integer">1</ButtonFunction>
+            </ArrayElement>
+          </TabletControlsButtonsArray>
           <TouchRings type="map">
             <leftdial type="map">
               <TouchStripModes type="map">
                 <mode1 type="map">
                   <TouchStripFunction type="integer">47</TouchStripFunction>
+                </mode1>
+              </TouchStripModes>
+            </leftdial>
+            <rightdial type="map">
+              <TouchStripModes type="map">
+                <mode1 type="map">
+                  <TouchStripFunction type="integer">51</TouchStripFunction>
+                </mode1>
+              </TouchStripModes>
+            </rightdial>
+          </TouchRings>
+        </ArrayElement>
+      </TabletControlContainerArray>
+      <TabletTransducerArray type="array"/>
+    </ArrayElement>
+    <ArrayElement type="map">
+      <DefaultTabName type="string">Cintiq 16</DefaultTabName>
+      <TabletName type="string">Cintiq 16</TabletName>
+      <TabletControlContainerArray type="array">
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">0</ApplicationAssociated>
+          <TabletControlsButtonsArray type="array">
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton1</ButtonName>
+              <ButtonFunction type="integer">3</ButtonFunction>
+            </ArrayElement>
+          </TabletControlsButtonsArray>
+          <TouchRings type="map">
+            <leftdial type="map">
+              <TouchStripModes type="map">
+                <mode1 type="map">
+                  <TouchStripFunction type="integer">45</TouchStripFunction>
                 </mode1>
               </TouchStripModes>
             </leftdial>
