@@ -18,6 +18,14 @@ struct LayoutKey: Equatable {
     var adds: KeyModifiers = []
     /// No added modifiers, not a dead key, and on the layout in use.
     var exact = true
+    /// The key's label in MockTab, set by `KeyboardLayout.lookup`.
+    var label: String?
+}
+
+/// Capitals, as on key caps, unless that changes the text (ß stays ß).
+func keyCap(_ s: String) -> String {
+    let upper = s.uppercased()
+    return upper.count == s.count ? upper : s
 }
 
 /// The key that types a character, with ⌘ held when `command` is true.
@@ -52,6 +60,13 @@ struct KeyboardLayout {
         Self.typed(data, keyCode, mods)
     }
 
+    /// The label MockTab gives a key, as macOS menus show shortcuts: the
+    /// key's own character, or with ⌘ held the one ⌘ types.
+    func label(_ keyCode: UInt16, command: Bool) -> String? {
+        let c = (command ? types(keyCode, holding: .command) : nil) ?? types(keyCode, holding: [])
+        return c.map { keyCap(String($0.0)) }
+    }
+
     // MARK: Choosing a layout
 
     /// The current layout, then the one macOS types shortcuts with when the
@@ -76,9 +91,12 @@ struct KeyboardLayout {
     /// Looks a character up on each layout in turn. A key from a later layout
     /// is approximate: it types the character there, not on the first. On a
     /// layout without Latin letters, a character that needs ⌥ is incidental
-    /// (⌥B types b on Kana), so a later layout's key comes first.
+    /// (⌥B types b on Kana), so a later layout's key comes first. Labels come
+    /// from the first Latin layout, the one macOS types shortcuts with.
     static func lookup(_ layouts: [KeyboardLayout]) -> LayoutLookup {
-        { c, command in
+        let labels = layouts.first(where: \.isASCIICapable) ?? layouts.first
+        return { c, command in
+            var found: LayoutKey?
             var incidental: LayoutKey?
             for (i, layout) in layouts.enumerated() {
                 guard var k = layout.key(c, command: command) else { continue }
@@ -87,9 +105,12 @@ struct KeyboardLayout {
                     incidental = incidental ?? k
                     continue
                 }
-                return k
+                found = k
+                break
             }
-            return incidental
+            guard var k = found ?? incidental else { return nil }
+            k.label = labels?.label(k.keyCode, command: command)
+            return k
         }
     }
 

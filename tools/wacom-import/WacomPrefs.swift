@@ -114,8 +114,12 @@ struct KeyModifiers: OptionSet, Hashable {
 struct ResolvedKey: Equatable {
     var keyCode: UInt16?
     var modifiers: KeyModifiers
+    /// The key as MockTab labels it, which can differ from Wacom's character:
+    /// [ on a German layout is ⌥5.
     var label: String
     var spacebar = false
+    /// The keystroke as Wacom recorded it, for the report.
+    var recorded = ""
 }
 
 enum Keystroke {
@@ -174,7 +178,7 @@ enum Keystroke {
                     guard let k = virtualKey(token) else { return .unsupported("&\(token);") }
                     keys.append((k, true))
                 } else if let (code, label) = namedKeys[token] {
-                    keys.append((ResolvedKey(keyCode: code, modifiers: [], label: label), token != "enter"))
+                    keys.append((ResolvedKey(keyCode: code, modifiers: [], label: label, recorded: label), token != "enter"))
                 } else if let ch = namedCharacters[token] {
                     characters.append(ch)
                 } else {
@@ -188,12 +192,13 @@ enum Keystroke {
         // Find each character's key after reading every modifier: ⌘ can change it.
         keys += characters.map { character($0, command: mods.contains(.command), layout: layout) }
         if spacebarHold && keys.isEmpty && mods.isEmpty {
-            return .key(ResolvedKey(keyCode: 49, modifiers: [], label: "Space", spacebar: true), exact: true)
+            return .key(ResolvedKey(keyCode: 49, modifiers: [], label: "Space", spacebar: true, recorded: "Space"), exact: true)
         }
         if keys.count > 1 { return .unsupported("key sequence \"\(s)\"") }
         guard let (first, exact) = keys.first else { return mods.isEmpty ? .empty : .modifiersOnly(mods) }
         var key = first
         key.modifiers.formUnion(mods)
+        key.recorded = mods.symbols + key.recorded
         return .key(key, exact: exact)
     }
 
@@ -207,18 +212,18 @@ enum Keystroke {
         guard let vk = fields["vk"].flatMap({ UInt16($0, radix: 16) }) else { return nil }
         let label = fields["cc"].flatMap { UInt32($0, radix: 16) }.flatMap(Unicode.Scalar.init)
             .map { String($0).uppercased() } ?? "key \(vk)"
-        return ResolvedKey(keyCode: vk, modifiers: [], label: label)
+        return ResolvedKey(keyCode: vk, modifiers: [], label: label, recorded: label)
     }
 
     /// Finds a bare character on the keyboard layout, adding Shift or Option
     /// when the character needs them, which the Wacom recording may not have
     /// meant.
     private static func character(_ c: Character, command: Bool, layout: LayoutLookup) -> (ResolvedKey, Bool) {
-        let label = String(c).uppercased()
+        let label = keyCap(String(c))
         guard let k = layout(Character(String(c).lowercased()), command) ?? layout(c, command) else {
-            return (ResolvedKey(keyCode: nil, modifiers: [], label: label), false)
+            return (ResolvedKey(keyCode: nil, modifiers: [], label: label, recorded: label), false)
         }
-        return (ResolvedKey(keyCode: k.keyCode, modifiers: k.adds, label: label), k.exact)
+        return (ResolvedKey(keyCode: k.keyCode, modifiers: k.adds, label: k.label ?? label, recorded: label), k.exact)
     }
 }
 
@@ -678,7 +683,7 @@ enum WacomMapper {
 
     static func describe(_ r: Keystroke.Result, raw: String) -> String {
         switch r {
-        case .key(let k, _): return symbol(k)
+        case .key(let k, _): return k.recorded.isEmpty ? symbol(k) : k.recorded
         case .modifiersOnly(let m): return m.symbols
         case .empty: return "(none)"
         case .unsupported: return "\"\(raw)\""

@@ -60,9 +60,27 @@ func checkLayouts(_ expect: (Bool, String) -> Void) {
             continue
         }
         let lookup = KeyboardLayout.lookup([own, us])
-        expect(lookup("c", true) == own.key("c", command: true) && lookup("c", true)?.exact == true,
-               "\(id) ⌘C uses its own key: \(String(describing: lookup("c", true)))")
-        expect(lookup("b", false) == LayoutKey(keyCode: 11, exact: false), "\(id) b falls back to U.S., approximate")
+        let c = lookup("c", true)
+        expect(c?.keyCode == own.key("c", command: true)?.keyCode && c?.exact == true && c?.label == "C",
+               "\(id) ⌘C uses its own key: \(String(describing: c))")
+        expect(lookup("b", false) == LayoutKey(keyCode: 11, exact: false, label: "B"),
+               "\(id) b falls back to U.S., approximate, labeled B")
+    }
+
+    // Labels follow macOS menus: the key's own character, modifiers apart.
+    let labeled: [(id: String, wacom: String, code: UInt16, mods: KeyModifiers, label: String, recorded: String)] = [
+        ("German", "[", 23, .option, "5", "["),
+        ("US", "&shift;#", 20, .shift, "3", "⇧#"),
+        ("DVORAK-QWERTYCMD", "&command;c", 8, .command, "C", "⌘C"),
+    ]
+    for l in labeled {
+        guard let layout = KeyboardLayout.installed("com.apple.keylayout." + l.id),
+              case .key(let k, _) = Keystroke.parse(l.wacom, layout: KeyboardLayout.lookup([layout])) else {
+            expect(false, "\(l.wacom) parses on \(l.id)")
+            continue
+        }
+        expect(k.keyCode == l.code && k.modifiers == l.mods && k.label == l.label && k.recorded == l.recorded,
+               "\(l.id) \(l.wacom) is \(l.mods.symbols)\(l.label): \(k)")
     }
     expect(KeyboardLayout.current().last?.id == "com.apple.keylayout.US", "U.S. is the last resort")
 }
