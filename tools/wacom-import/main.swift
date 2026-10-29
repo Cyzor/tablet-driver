@@ -8,8 +8,8 @@
 //
 // Run it through run.sh with a .wacomprefs folder from Wacom Center or Tablet
 // Utility; Wacom Center keeps them in ~/Library/Application Support/Wacom/Backups.
-// Characters in recorded keystrokes are looked up on the current keyboard
-// layout, so run it on the Mac the settings came from.
+// It looks up recorded characters on the current keyboard layout, so run it
+// on the Mac the settings came from.
 //
 //   run.sh <backup>                          report only
 //   run.sh --apply [options] <backup>        report, then write
@@ -91,7 +91,7 @@ guard let backupPath else { fail(usage, 2) }
 do {
     let backup = try WacomBackup.load(URL(fileURLWithPath: backupPath))
     let report = WacomMapper.report(backup, layout: currentLayout())
-    print(ReportText.render(report), terminator: "")
+    print(ReportText.render(report, reportOnly: !apply), terminator: "")
     if apply { try Apply.run(report, options) }
 } catch {
     fail("\(error)\n", 1)

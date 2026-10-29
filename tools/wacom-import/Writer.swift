@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Plans and applies an encoded tablet against a settings domain: which keys
-// to remove and which to set. Planning reads only; applying writes through
+// Plans an encoded tablet's changes to a settings domain, the keys to remove
+// and to set, and applies them. Planning only reads; applying writes through
 // UserDefaults, never the plist file.
 //
-// The import replaces whole categories for the tablet's claimed unit
-// (`device-0x{PID}.`): ExpressKeys, ring and dial keys and modes, the tablet
+// For the tablet's claimed unit (`device-0x{PID}.`), the import replaces
+// whole categories: ExpressKeys, ring and dial keys and modes, the tablet
 // area, the imported pens' buttons and pressure, every app override, and the
 // active profile. The app and pen lists keep fields this tool doesn't know.
 
@@ -26,9 +26,9 @@ enum WriteError: Error, CustomStringConvertible, Equatable {
     var description: String {
         switch self {
         case .unknownTablet(let pid):
-            return String(format: "MockTab doesn't know tablet 0x%04X yet. Connect it once with MockTab running, then quit MockTab.", pid)
+            return String(format: "MockTab hasn't seen tablet 0x%04X yet. Connect it once with MockTab running, then quit MockTab.", pid)
         case .unreadableList(let key):
-            return "\(key) holds data this tool can't read, likely from a newer MockTab. Nothing was written."
+            return "\(key) holds data this tool can't read, likely from a newer MockTab. Nothing written."
         }
     }
 }
@@ -56,13 +56,13 @@ enum WacomWriter {
         let p = prefix(e.productID)
         func removeIfPresent(_ key: String) { if current[key] != nil { plan.remove.append(key) } }
 
-        // The tablet itself, which must already be known.
+        // MockTab must already know the tablet.
         var tablets = try list(current["_knownTablets"], key: "_knownTablets")
         let units = tablets.indices.filter { tablets[$0]["id"] as? Int == e.productID }
         guard let unit = units.first(where: { (tablets[$0]["instance"] as? String ?? "").isEmpty }) else {
             throw WriteError.unknownTablet(e.productID)
         }
-        if units.count > 1 { plan.notes.append("MockTab knows more than one of this model; only the first one is changed.") }
+        if units.count > 1 { plan.notes.append("MockTab knows more than one of this model; this changes only the first.") }
         if let nickname = e.nickname, tablets[unit]["nickname"] as? String != nickname {
             tablets[unit]["nickname"] = nickname
             plan.set["_knownTablets"] = try data(tablets)

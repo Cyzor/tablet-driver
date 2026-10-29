@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Writes the fixture's PTH-660 into a scratch settings domain seeded with
-// older values and unrelated settings, then reads the domain back: what was
-// replaced, what was kept, and that the lists still decode.
+// older values and unrelated settings, then reads the domain back: what the
+// import replaced, what it kept, and that the lists still decode.
 
 import Foundation
 

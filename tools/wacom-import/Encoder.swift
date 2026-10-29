@@ -2,13 +2,13 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Turns one tablet's import report into the values MockTab stores, keyed by
-// storage name for each scope: the tablet, each pen, and each app. Built
-// with MockTab's own setting types and passed through its import decoders,
-// so the values are what the app itself would write. Writes nothing.
+// Turns one tablet's report into the values MockTab stores for the tablet,
+// each pen, and each app, keyed by storage name. MockTab's own setting
+// types and import decoder produce them, so they match what the app writes.
+// Writes nothing.
 //
-// Within each category it covers, the import replaces what MockTab does:
-// a control the report can't carry becomes None or Off.
+// In each category it covers, the import replaces MockTab's settings: a
+// control the report can't carry becomes None or Off.
 
 import AppKit
 import Foundation
@@ -33,20 +33,20 @@ struct EncodedTablet {
     var device: [String: Any] = [:]
     var pens: [Pen] = []
     var apps: [App] = []
-    /// Mapped lines left out because they're unverified or name no setting.
+    /// Mapped lines it leaves out: unverified, or with no setting.
     var leftOut: [Line] = []
 }
 
 enum EncodeError: Error, CustomStringConvertible, Equatable {
     case noProductID
-    /// The app's per-app pen settings differ between these pens; pick one.
+    /// These pens disagree on the app's settings; --pen picks one.
     case pensDisagree(app: String, pens: [String])
 
     var description: String {
         switch self {
         case .noProductID: return "The backup names no product ID for this tablet."
         case .pensDisagree(let app, let pens):
-            return "\(app) has different pen settings for \(pens.joined(separator: ", ")). Choose one with --pen."
+            return "\(app) has different pen settings for \(pens.joined(separator: ", ")). Pick one with --pen."
         }
     }
 }
@@ -95,7 +95,7 @@ enum WacomEncoder {
         return out
     }
 
-    /// Mapped lines the writer may use: not unverified, with a target.
+    /// Mapped lines it may write: exact or approximate, with a setting.
     static func usable(_ lines: [Line], leftOut: inout [Line]) -> [Line] {
         var keep: [Line] = []
         for line in lines {
@@ -215,7 +215,7 @@ struct PenSettings {
 }
 
 /// ExpressKeys, ring and dial keys, ring modes, and the tablet area for one
-/// app, in export shape. An app builds on All applications' controls.
+/// app, in export shape. An app starts from All applications' controls.
 struct Controls {
     var keys = [ButtonBinding](repeating: .none, count: 16)
     var keysChanged = false
@@ -252,7 +252,7 @@ struct Controls {
                     keys[i] = WacomEncoder.buttonBinding(b)
                     keysChanged = true
                 case (_, .expressKey(let i)?) where i < 16:
-                    // Replaced like the rest: a key the import can't carry is None.
+                    // A key the import can't carry becomes None.
                     keys[i] = .none
                     keysChanged = true
                 case (.binding(let b)?, .binding(let key)?):
@@ -280,8 +280,8 @@ struct Controls {
         }
     }
 
-    /// `complete` writes every category the backup has, as All applications
-    /// does; an app writes only what it changes.
+    /// `complete` writes every category, as All applications needs; an app
+    /// writes only its changes.
     func storedSettings(complete: Bool) -> [String: Any] {
         var d: [String: Any] = [:]
         if complete || keysChanged {

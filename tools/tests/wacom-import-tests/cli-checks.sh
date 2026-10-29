@@ -20,7 +20,7 @@ trap cleanup EXIT
 
 fail() { echo "FAIL: $1"; FAILED=1; }
 
-# Two tablets MockTab knows, so the command has to be told which.
+# Two tablets MockTab knows, so the command needs --tablet.
 /usr/bin/python3 -I - "$T/seed.plist" <<'EOF'
 import json, plistlib, sys
 tablets = [{"id": 0x357, "nickname": "PTH-660", "modelName": "PTH-660"},
@@ -55,7 +55,7 @@ run --apply --tablet 1 </dev/null
 has device-0x357.expressKeyBindings && fail "an unconfirmed run writes nothing"
 
 run --apply --tablet 1 --yes
-[ $? -eq 0 ] && grep -q "Written" "$T/out" || fail "write: $(tail -3 "$T/out")"
+[ $? -eq 0 ] && grep -q "Done" "$T/out" || fail "write: $(tail -3 "$T/out")"
 has device-0x357.expressKeyBindings || fail "write sets ExpressKeys"
 [ "$(defaults read "$DOMAIN" device-0x357.calibrationJSON 2>/dev/null)" = "keep" ] || fail "write keeps unrelated settings"
 SAVED="$(ls "$T/saved"/mocktab-before-wacom-import-*.plist 2>/dev/null | head -1)"

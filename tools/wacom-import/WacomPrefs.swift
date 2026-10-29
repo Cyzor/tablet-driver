@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Reads a Wacom settings backup (a .wacomprefs folder, from Wacom Center or
-// Tablet Utility) and works out what each setting would become in MockTab.
-// Nothing here writes anything.
+// Reads a Wacom settings backup (a .wacomprefs folder from Wacom Center or
+// Tablet Utility) and works out what each setting becomes in MockTab.
+// Writes nothing.
 //
-// The backup's com.wacom.wacomtablet.prefs is XML where every element names
-// its type: <Name type="integer">3</Name>, with arrays as repeated
-// ArrayElement children. Keystrokes are "kestring" values: characters plus
-// named keys in &name; form, or &vk=12:cc=31:kb=2b; with a virtual key code.
+// In the backup's com.wacom.wacomtablet.prefs, every XML element names its
+// type, as in <Name type="integer">3</Name>, and arrays repeat ArrayElement.
+// Keystrokes ("kestring") mix characters with &name; keys, or give a virtual
+// key code as &vk=12:cc=31:kb=2b;.
 
 import Foundation
 import TabletKit
@@ -62,7 +62,7 @@ struct WacomBackup {
         var description: String {
             switch self {
             case .notABackup(let p): return "\(p) is not a Wacom settings backup: no com.wacom.wacomtablet.prefs inside."
-            case .unreadable(let p): return "Could not read \(p) as XML."
+            case .unreadable(let p): return "Couldn't read \(p) as XML."
             }
         }
     }
@@ -113,7 +113,7 @@ struct KeyModifiers: OptionSet, Hashable {
 /// Where a character key sits on the current keyboard layout.
 struct LayoutKey {
     let keyCode: UInt16
-    /// The character only comes out with Shift held.
+    /// The character needs Shift.
     let needsShift: Bool
 }
 
@@ -163,8 +163,8 @@ enum Keystroke {
         case unsupported(String)
     }
 
-    /// Splits a kestring into modifiers and one key. More than one key is a
-    /// typed sequence, which MockTab can't send from one button.
+    /// Splits a kestring into modifiers and one key. More than one key makes
+    /// a typed sequence, which one button can't send.
     static func parse(_ s: String, layout: LayoutLookup) -> Result {
         var mods = KeyModifiers()
         var keys: [(ResolvedKey, Bool)] = []
@@ -216,8 +216,8 @@ enum Keystroke {
         return ResolvedKey(keyCode: vk, modifiers: [], label: label)
     }
 
-    /// A bare character, found on the current layout. One that needs Shift
-    /// gains it, which may not be what the Wacom recording meant.
+    /// Finds a bare character on the current layout, adding Shift when the
+    /// character needs it, which the Wacom recording may not have meant.
     private static func character(_ c: Character, layout: LayoutLookup) -> (ResolvedKey, Bool) {
         let label = String(c).uppercased()
         guard let k = layout(Character(String(c).lowercased())) ?? layout(c) else {
@@ -232,7 +232,7 @@ enum Keystroke {
 enum Confidence: String {
     case exact
     case approximate
-    /// Mapped on thin evidence; check before writing.
+    /// Thin evidence; never written.
     case unverified
 }
 
@@ -269,7 +269,7 @@ enum Action: Equatable {
 
 /// The MockTab setting a mapped line writes.
 enum Setting: Equatable {
-    /// A single binding key: tipBinding, penButton1Binding, touchRingButtonBinding, etc.
+    /// A binding key: tipBinding, penButton1Binding, and so on.
     case binding(String)
     case expressKey(Int)
     /// A mode of the touch ring, from 0.
@@ -293,7 +293,7 @@ struct Section {
     let title: String
     var lines: [Line]
     var notes: [String] = []
-    /// The pen's serial, for a pen's section; 0 for a pen without one.
+    /// A pen section's serial; 0 when the pen has none.
     var pen: UInt32? = nil
 }
 
@@ -307,8 +307,8 @@ struct AppReport {
 struct TabletReport {
     let modelName: String
     let wacomType: Int?
-    /// The wired product ID, which names MockTab's settings for the tablet
-    /// whichever way it connects.
+    /// The wired product ID. MockTab stores the tablet's settings under it,
+    /// however the tablet connects.
     let productID: Int?
     /// The product ID Wacom saw last, when that was another connection.
     let lastConnectedAs: Int?
@@ -354,9 +354,9 @@ enum WacomMapper {
         return apps
     }
 
-    /// SensorID packs the USB vendor and product IDs: 0x056A0357 is a
-    /// Wacom PTH-660. Wacom keeps one entry per tablet and rewrites this
-    /// for whichever connection it saw last, wired or Bluetooth.
+    /// SensorID packs the USB vendor and product IDs (0x056A0357 is a
+    /// PTH-660). Wacom keeps one entry per tablet and rewrites it for the
+    /// last connection, wired or Bluetooth.
     static func productID(_ t: WacomNode) -> Int? {
         guard let id = t.int("SensorID"), id >> 16 == 0x056A else { return nil }
         return id & 0xFFFF
@@ -377,7 +377,7 @@ enum WacomMapper {
             modelName: model, wacomType: t.int("TabletType"), productID: pid,
             lastConnectedAs: seen != pid ? seen : nil,
             nickname: name != model ? customName(name) : nil, apps: [])
-        if pid == nil { report.notes.append("No Wacom product ID in the backup; the writer can't pick a tablet for it.") }
+        if pid == nil { report.notes.append("No product ID in the backup, so --apply can't import this tablet.") }
 
         let containers = t.node("TabletControlContainerArray")?.elements ?? []
         let transducers = t.node("TabletTransducerArray")?.elements ?? []
@@ -396,16 +396,16 @@ enum WacomMapper {
         let chosen = chosenEntries(indices.compactMap { apps[$0] })
         for i in indices {
             guard let a = apps[i] else {
-                report.notes.append("Settings for application \(i) have no entry in the application list; skipped.")
+                report.notes.append("App \(i) has settings but no entry in Wacom's app list; skipped.")
                 continue
             }
             var r = AppReport(name: a.name, bundleID: a.bundleID.isEmpty ? nil : a.bundleID, sections: [])
             if a.removed {
                 r.notes.append("Removed in Wacom's settings; skipped.")
             } else if a.bundleID.isEmpty {
-                r.notes.append("No bundle ID; MockTab can't match it to an app. Skipped.")
+                r.notes.append("No bundle ID, so MockTab can't match it to an app; skipped.")
             } else if chosen[a.bundleID] != i {
-                r.notes.append("Another entry for this app is used instead; MockTab keeps one set per bundle ID. Skipped.")
+                r.notes.append("MockTab keeps one set per bundle ID, and another entry for this app wins; skipped.")
             } else {
                 for tr in transducers where app(tr) == i {
                     let match = baseTransducers.first { sameTool($0, tr) }
@@ -423,7 +423,7 @@ enum WacomMapper {
     }
 
     /// Wacom keeps an entry per installed version of an app, all with one
-    /// bundle ID. Use the one still installed, else the newest entry.
+    /// bundle ID. Uses the installed one, else the newest.
     static func chosenEntries(_ apps: [WacomApp]) -> [String: Int] {
         var chosen: [String: Int] = [:]
         let installed = { (a: WacomApp) in !a.path.isEmpty && FileManager.default.fileExists(atPath: a.path) }
@@ -468,7 +468,7 @@ enum WacomMapper {
             if let code { title += String(format: " (tool code 0x%X)", code) }
         } else if let code {
             title += String(format: " with tool code 0x%X, no serial", code)
-            notes.append("No serial: MockTab keys this pen by tool code, so it shares settings with others of its kind.")
+            notes.append("No serial, so MockTab shares this pen's settings with every pen of its kind.")
         }
         var lines: [Line] = []
         if base == nil, let name = customName(tr.string("TransducerName")) {
@@ -514,7 +514,7 @@ enum WacomMapper {
             if let other = baseKeys.first(where: { $0.string("ButtonName") == name }), sameButton(k, other) { continue }
             var (wacom, outcome, binding) = function(k, layout: layout)
             guard let target = KeyLayouts.key(name, productID: productID) else {
-                if !outcome.isSkipped { outcome = .skipped("where this key sits on this model isn't known") }
+                if !outcome.isSkipped { outcome = .skipped("key position unknown on this model") }
                 keys.lines.append(Line(control: name, wacom: wacom, outcome: outcome))
                 continue
             }
@@ -542,7 +542,7 @@ enum WacomMapper {
                                     slot: { _ in nil }, layout: layout)
                 s.lines = s.lines.map {
                     Line(control: $0.control, wacom: $0.wacom,
-                         outcome: $0.outcome.isSkipped ? $0.outcome : .skipped("which dial this is on this model isn't known"),
+                         outcome: $0.outcome.isSkipped ? $0.outcome : .skipped("dial unknown on this model"),
                          action: $0.action)
                 }
                 sections.append(s)
@@ -607,8 +607,8 @@ enum WacomMapper {
 
     // MARK: Button functions
 
-    /// Each code's meaning comes from the usage history Wacom keeps for the
-    /// button; 0 never had a single-entry history, so it stays unverified.
+    /// The usage history Wacom keeps per button names each code. Code 0
+    /// never appears alone in one, so it stays unverified.
     static func function(_ b: WacomNode, layout: LayoutLookup) -> (String, Outcome, Binding?) {
         func kind(_ wacom: String, _ k: String, _ c: Confidence = .exact) -> (String, Outcome, Binding?) {
             (wacom, .mapped(k, c), .kind(k))
@@ -697,7 +697,7 @@ enum WacomMapper {
     // MARK: Mapping area
 
     /// The tablet's own mapping, not a pen's. Wacom names displays by
-    /// position, MockTab by UUID, so the display is only reported.
+    /// position and MockTab by UUID, so the report only shows the display.
     static func mappingArea(_ t: WacomNode) -> Section? {
         let sets = t.node("ContextManager/MappingGroupArray")?.elements.first?.node("MappingSetArray")?.elements ?? []
         guard let set = sets.first(where: { $0.node("TransducerID/Type") == nil }) ?? sets.first,
@@ -761,10 +761,9 @@ struct Target {
 }
 
 /// Where each model's Wacom key and dial names land in MockTab, by wired
-/// product ID. Wacom
-/// numbers a side's keys from 1, LeftButton then RightButton; MockTab's
-/// ExpressKey index is the tablet's report order, which TabletLayoutTable
-/// spells out per model with libwacom's letters.
+/// product ID. Wacom numbers each side's keys from 1, LeftButton then
+/// RightButton. MockTab's ExpressKey index follows the tablet's report
+/// order, which TabletLayoutTable lists per model in libwacom's letters.
 enum KeyLayouts {
     /// PTK-670 and PTK-870: around each dial, top, right, bottom, then left,
     /// then the center key that switches the dial's mode. Checked against
@@ -832,11 +831,12 @@ enum KeyLayouts {
 // MARK: - Text
 
 enum ReportText {
-    static func render(_ r: Report) -> String {
+    /// `reportOnly` says so up front, since --apply follows the same report.
+    static func render(_ r: Report, reportOnly: Bool = true) -> String {
         var out = "Wacom backup"
         if let v = r.driverVersion { out += " from driver \(v)" }
         if let f = r.formatVersion { out += ", format \(f)" }
-        out += "\nNothing is written. This lists what an import would do.\n"
+        out += reportOnly ? "\nReport only; nothing written. Add --apply to import a tablet.\n" : "\n"
         for (i, t) in r.tablets.enumerated() {
             out += "\nTablet \(i + 1): \(t.modelName)"
             if let pid = t.productID {

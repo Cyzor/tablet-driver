@@ -2,8 +2,8 @@
 # Build the Wacom import tool if needed and run it on a Wacom settings backup.
 # See main.swift's header for the options. Without --apply it writes nothing.
 #
-# The built tool is cached and rebuilt only when a source file changes, so
-# only the first run, or one after an edit, waits for the compiler.
+# It caches the built tool and rebuilds it only when a source changes, so
+# only the first run, and the first after an edit, waits for the compiler.
 #
 # Usage: tools/wacom-import/run.sh [--apply [options]] <backup.wacomprefs>
 set -e
@@ -14,9 +14,9 @@ CACHE="${TMPDIR:-/tmp}/mocktab-wacom-import-cache"
 BIN="$CACHE/wacom-import"
 KIT="$(sh "$DIR/../tests/build-tabletkit.sh")"
 
-# Runs "$@" with the tool's sources appended. The app's setting types and
-# import decoder are in the list, so values are stored as the app stores
-# them; the stub stands in for the two app types the decoder names.
+# Runs "$@" with the tool's sources appended, including the app's setting
+# types and import decoder, so values match what the app stores. The stub
+# stands in for two app types the decoder names.
 with_sources() {
     "$@" \
         "$DIR/WacomPrefs.swift" "$DIR/Encoder.swift" "$DIR/Writer.swift" "$DIR/Apply.swift" \

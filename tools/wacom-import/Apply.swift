@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// The --apply flow: pick the tablet, encode it, plan the change, show it,
-// save the whole settings domain, then write. Each step stops on trouble
-// before anything is written.
+// The --apply flow: pick a tablet, encode it, plan and show the change, save
+// the settings domain, then write. A step that fails stops the run before it
+// writes.
 
 import AppKit
 import Foundation
@@ -31,13 +31,13 @@ enum ApplyError: Error, CustomStringConvertible {
         switch self {
         case .running: return "Quit MockTab first; it would overwrite the import with its own settings."
         case .noKnownTablet:
-            return "MockTab doesn't know any tablet in this backup. Connect the tablet once with MockTab running, then quit MockTab."
+            return "MockTab hasn't seen any tablet in this backup. Connect one once with MockTab running, then quit MockTab."
         case .chooseTablet(let list):
-            return "More than one tablet in this backup is known to MockTab. Pick one with --tablet:\n"
+            return "MockTab knows several tablets in this backup. Pick one with --tablet:\n"
                 + list.map { "  " + $0 }.joined(separator: "\n")
         case .badTablet(let n): return "The backup has no tablet \(n) with a product ID."
         case .notConfirmed: return "Nothing written."
-        case .saveFailed(let why): return "Couldn't save a copy of the settings, so nothing was written: \(why)"
+        case .saveFailed(let why): return "Nothing written: couldn't save a copy of the settings (\(why))."
         }
     }
 }
@@ -65,9 +65,9 @@ enum Apply {
         let saved = try save(current, domain: o.domain, to: o.saveTo)
         // `defaults import` merges, so keys the import added would survive it.
         let restore = "defaults delete \(o.domain)\n  defaults import \(o.domain) '\(saved.path)'"
-        print("Saved the current settings. To undo, quit MockTab and run:\n  \(restore)")
+        print("Saved a copy: \(saved.path)")
         WacomWriter.apply(plan, domain: o.domain)
-        print("Written. To undo, quit MockTab and run:\n  \(restore)")
+        print("Done. To undo, quit MockTab and run:\n  \(restore)")
     }
 
     /// The report's tablet to import: the one named, or the only one MockTab knows.
@@ -99,10 +99,12 @@ enum Apply {
             + String(format: " (product ID 0x%04X)", encoded.productID) + "\n"
         out += "  \(encoded.pens.count) pen\(encoded.pens.count == 1 ? "" : "s"), "
             + "\(encoded.apps.count) app\(encoded.apps.count == 1 ? "" : "s")\n"
-        out += "\nRemoves \(plan.remove.count) settings:\n" + plan.remove.map { "  \($0)\n" }.joined()
-        out += "\nSets \(plan.set.count) settings:\n" + plan.set.keys.sorted().map { "  \($0)\n" }.joined()
+        if !plan.remove.isEmpty {
+            out += "\nClears \(plan.remove.count) settings:\n" + plan.remove.map { "  \($0)\n" }.joined()
+        }
+        out += "\nWrites \(plan.set.count) settings:\n" + plan.set.keys.sorted().map { "  \($0)\n" }.joined()
         if !encoded.leftOut.isEmpty {
-            out += "\nNot written (unverified, or no MockTab setting):\n"
+            out += "\nLeft out (unverified, or no MockTab setting):\n"
                 + encoded.leftOut.map { "  \($0.control): \($0.wacom)\n" }.joined()
         }
         if !plan.notes.isEmpty { out += "\n" + plan.notes.map { "\($0)\n" }.joined() }

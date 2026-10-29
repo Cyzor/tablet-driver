@@ -63,11 +63,11 @@ expect(report.tablets[0].productID == 0x0357, "Product ID from SensorID")
 expect(report.tablets[1].productID == 0x03F9 && report.tablets[1].lastConnectedAs == 0x03FA,
        "A Bluetooth product ID folds onto the wired one")
 expect(report.tablets[0].lastConnectedAs == nil, "A wired tablet has no other connection to name")
-expect(report.tablets[2].productID == nil && report.tablets[2].notes.contains { $0.contains("No Wacom product ID") },
+expect(report.tablets[2].productID == nil && report.tablets[2].notes.contains { $0.contains("No product ID") },
        "A tablet without SensorID is noted")
 expect(report.tablets[0].nickname == "Studio", "Renamed tablet keeps its name")
 expect(report.tablets[1].nickname == nil, "Unrenamed tablet has no nickname")
-expect(report.tablets[0].notes.contains { $0.contains("application 9") }, "Settings for an unlisted app are noted")
+expect(report.tablets[0].notes.contains { $0.contains("App 9") }, "Settings for an unlisted app are noted")
 
 // Pens
 let pen = "Pen 0x12345678"
@@ -99,7 +99,7 @@ expect(skipped(key("LeftButton7"), "&volumeup;"), "Unknown key name: \(show(key(
 expect(skipped(key("LeftButton8"), "no MockTab equivalent") && key("LeftButton8")?.wacom.contains("Radial menu") == true,
        "On-screen panel: \(show(key("LeftButton8")))")
 expect(skipped(key("RightButton1"), "unknown function"), "Unknown code: \(show(key("RightButton1")))")
-expect(skipped(key("RightButton2"), "where this key sits"), "A key the model doesn't have: \(show(key("RightButton2")))")
+expect(skipped(key("RightButton2"), "key position unknown"), "A key the model doesn't have: \(show(key("RightButton2")))")
 
 // ExpressKeys and dials on a PTK-870: checked positions.
 func ptk(_ section: String, _ control: String) -> Line? { find(1, "All applications", section, control) }
@@ -107,7 +107,7 @@ expect(mapped(ptk("ExpressKeys", "LeftButton1"), "expressKeyBindings[0]: keyComb
 expect(mapped(ptk("ExpressKeys", "LeftButton5"), "touchRingButtonBinding: ringCycle"), show(ptk("ExpressKeys", "LeftButton5")))
 expect(mapped(ptk("ExpressKeys", "RightButton4"), "expressKeyBindings[7]: rightClick"), show(ptk("ExpressKeys", "RightButton4")))
 expect(mapped(ptk("ExpressKeys", "RightButton5"), "touchRingButtonBinding2: ringCycle2"), "Second dial's key cycles the second dial")
-expect(skipped(ptk("ExpressKeys", "RightButton6"), "where this key sits"), "No sixth key")
+expect(skipped(ptk("ExpressKeys", "RightButton6"), "key position unknown"), "No sixth key")
 expect(mapped(ptk("Dial leftdial", "mode1"), "rotaries[0]: skip"), "Left dial is the first")
 expect(mapped(ptk("Dial rightdial", "mode1"), "rotaries[1]: rotate"), "Right dial is the second")
 
@@ -118,8 +118,8 @@ expect(skipped(intuos("Button2"), "no MockTab equivalent") && intuos("Button2")?
 expect(mapped(intuos("Button4"), "expressKeyBindings[3]: rightClick", .unverified), show(intuos("Button4")))
 
 // A model with no key table skips its keys and dials.
-expect(skipped(find(2, "All applications", "ExpressKeys", "LeftButton1"), "where this key sits"), "Unknown model's key")
-expect(skipped(find(2, "All applications", "Dial leftdial", "mode1"), "which dial"), "Unknown model's dial")
+expect(skipped(find(2, "All applications", "ExpressKeys", "LeftButton1"), "key position unknown"), "Unknown model's key")
+expect(skipped(find(2, "All applications", "Dial leftdial", "mode1"), "dial unknown"), "Unknown model's dial")
 
 // Ring and dial
 func ring(_ mode: String) -> Line? { find(0, "All applications", "Touch ring", mode) }
@@ -141,7 +141,7 @@ expect(skipped(find(0, "All applications", "Mapping", "Display"), "by position")
 let apps = report.tablets[0].apps
 let paints = apps.filter { $0.bundleID == "com.example.paint" }
 expect(paints.count == 2, "Both Paint entries listed")
-expect(paints.first?.notes.first?.contains("Another entry") == true, "Older duplicate skipped")
+expect(paints.first?.notes.first?.contains("another entry for this app wins") == true, "Older duplicate skipped")
 let paint = paints.last
 expect(paint?.notes.isEmpty == true, "Newer duplicate used")
 let paintPen = paint?.sections.first { $0.title.hasPrefix(pen) }

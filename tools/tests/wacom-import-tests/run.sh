@@ -1,7 +1,7 @@
 #!/bin/sh
-# Compile and run the Wacom import report, encoder, and writer checks against the
-# fixture backup. The writer checks use a scratch settings domain they delete.
-# Exits non-zero on failure.
+# Compile and run the Wacom import report, encoder, and writer checks against
+# the fixture backup, then the command checks. The writer and command checks
+# use scratch settings domains they delete. Exits non-zero on failure.
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
