@@ -51,7 +51,7 @@ Older capture files may contain a device serial number. `triage_discovery.py` fl
 
 ## wacom-import/
 
-`run.sh` reads a backup saved by Wacom Tablet Utility (a `.wacomprefs` folder) and lists what each setting would become in MockTab, and what has no equivalent: pen and ExpressKey assignments, keystrokes, ring modes, the tablet area, and per-app settings. It writes nothing. Keystrokes are looked up on the current keyboard layout, so run it on the Mac the settings came from.
+`run.sh` reads a settings backup saved by Wacom Center or Tablet Utility (a `.wacomprefs` folder) and lists what each setting would become in MockTab, and what has no equivalent: pen and ExpressKey assignments, keystrokes, ring modes, the tablet area, and per-app settings. It writes nothing. Keystrokes are looked up on the current keyboard layout, so run it on the Mac the settings came from.
 
 ## latency/ and event-probe/
 

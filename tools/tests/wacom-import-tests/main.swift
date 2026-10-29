@@ -84,9 +84,9 @@ expect(serialless?.notes.first?.contains("No serial") == true, "A pen without a 
 expect(serialless?.lines.contains { $0.control == "Name" } == false, "A Wacom default name isn't imported")
 expect(mapped(serialless?.lines.first { $0.control == "Lower button" }, "penButton1Binding: scrollDrag"), "Pan/scroll")
 
-// ExpressKeys on a PTH-660: positions are unverified, so every mapped key is.
+// ExpressKeys on a PTH-660, numbered top to bottom.
 func key(_ name: String) -> Line? { find(0, "All applications", "ExpressKeys", name) }
-func keyIs(_ name: String, _ what: String, _ c: Confidence = .unverified) -> Bool { mapped(key(name), what, c) }
+func keyIs(_ name: String, _ what: String, _ c: Confidence = .exact) -> Bool { mapped(key(name), what, c) }
 expect(keyIs("LeftButton1", "expressKeyBindings[0]: keyCombo 1, key code 18"), "Virtual key: \(show(key("LeftButton1")))")
 expect(keyIs("LeftButton2", "expressKeyBindings[1]: keyCombo ⌘Z, key code 6"), "Character key: \(show(key("LeftButton2")))")
 expect(keyIs("LeftButton3", "expressKeyBindings[2]: keyCombo ⌥, modifiers only"), "Modifier: \(show(key("LeftButton3")))")
@@ -115,7 +115,8 @@ expect(skipped(find(2, "All applications", "Dial leftdial", "mode1"), "which dia
 
 // Ring and dial
 func ring(_ mode: String) -> Line? { find(0, "All applications", "Touch ring", mode) }
-expect(mapped(ring("mode1"), "touchRingSlots: keyPress ] / [", .unverified), "Key ring: \(show(ring("mode1")))")
+expect(mapped(ring("mode1"), "touchRingSlots: keyPress, cwBinding [, ccwBinding ]", .unverified),
+       "Increase is counterclockwise: \(show(ring("mode1")))")
 expect(ring("mode1")?.wacom.hasPrefix("\"Brush size\"") == true, "Ring mode label")
 expect(mapped(ring("mode2"), "touchRingSlots: scroll", .approximate), "Auto scroll and zoom")
 expect(mapped(ring("mode3"), "touchRingSlots: rotate"), "Rotate")
@@ -138,7 +139,7 @@ expect(paintPen?.lines.map(\.control) == ["Lower button"], "Only the changed pen
 expect(mapped(paintPen?.lines.first, "penButton1Binding: clickLock"), "Per-app click lock")
 let paintKeys = paint?.sections.first { $0.title == "ExpressKeys" }
 expect(paintKeys?.lines.map(\.control) == ["LeftButton2"], "Only the changed key")
-expect(mapped(paintKeys?.lines.first, "expressKeyBindings[1]: keyCombo ⌥⌘Z, key code 6", .unverified), "Per-app keystroke")
+expect(mapped(paintKeys?.lines.first, "expressKeyBindings[1]: keyCombo ⌥⌘Z, key code 6"), "Per-app keystroke")
 expect(mapped(paint?.sections.first { $0.title == "Touch ring" }?.lines.first, "touchRingSlots: scroll"), "Per-app ring")
 expect(apps.first { $0.name == "Notes" }?.notes == ["Same as All applications."], "App with no differences")
 expect(apps.first { $0.name == "Old Tool" }?.notes.first?.contains("Removed") == true, "Removed app")

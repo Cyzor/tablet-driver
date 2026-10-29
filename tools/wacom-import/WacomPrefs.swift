@@ -2,8 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Reads a Wacom Tablet Utility backup (a .wacomprefs folder) and works out
-// what each setting would become in MockTab. Nothing here writes anything.
+// Reads a Wacom settings backup (a .wacomprefs folder, from Wacom Center or
+// Tablet Utility) and works out what each setting would become in MockTab.
+// Nothing here writes anything.
 //
 // The backup's com.wacom.wacomtablet.prefs is XML where every element names
 // its type: <Name type="integer">3</Name>, with arrays as repeated
@@ -49,7 +50,7 @@ struct WacomNode {
 }
 
 struct WacomBackup {
-    /// Driver version from version.plist, as Tablet Utility shows it.
+    /// Driver version from version.plist, as Wacom shows it.
     let driverVersion: String?
     let root: WacomNode
 
@@ -59,7 +60,7 @@ struct WacomBackup {
 
         var description: String {
             switch self {
-            case .notABackup(let p): return "\(p) is not a Tablet Utility backup: no com.wacom.wacomtablet.prefs inside."
+            case .notABackup(let p): return "\(p) is not a Wacom settings backup: no com.wacom.wacomtablet.prefs inside."
             case .unreadable(let p): return "Could not read \(p) as XML."
             }
         }
@@ -517,17 +518,21 @@ enum WacomMapper {
         switch code {
         case 0: return ("off", .mapped("off", .unverified))
         case 8:
-            let up = m.string("TouchStripKeystrokeIncrease") ?? ""
-            let down = m.string("TouchStripKeystrokeDecrease") ?? ""
+            // Wacom's dialog puts the counterclockwise key first; Increase
+            // appears to be that field. Unverified until a backup with known
+            // keys shows it.
+            let ccwRaw = m.string("TouchStripKeystrokeIncrease") ?? ""
+            let cwRaw = m.string("TouchStripKeystrokeDecrease") ?? ""
             let mods = m.string("TouchStripModifiers") ?? ""
-            let a = Keystroke.parse(mods + up, layout: layout)
-            let b = Keystroke.parse(mods + down, layout: layout)
-            let text = "keys \(describe(a, raw: up)) / \(describe(b, raw: down))"
-            guard case .key(let ka, let ea) = a, case .key(let kb, let eb) = b, ka.keyCode != nil, kb.keyCode != nil else {
-                return (text, .skipped(skipReason(a, b)))
+            let ccw = Keystroke.parse(mods + ccwRaw, layout: layout)
+            let cw = Keystroke.parse(mods + cwRaw, layout: layout)
+            let text = "keys \(describe(cw, raw: cwRaw)) clockwise, \(describe(ccw, raw: ccwRaw)) counterclockwise"
+            guard case .key(let kcw, let ecw) = cw, case .key(let kccw, let eccw) = ccw,
+                  kcw.keyCode != nil, kccw.keyCode != nil else {
+                return (text, .skipped(skipReason(cw, ccw)))
             }
-            let conf: Confidence = ea && eb ? .unverified : .approximate
-            return (text, .mapped("keyPress \(symbol(ka)) / \(symbol(kb))", conf))
+            let conf: Confidence = ecw && eccw ? .unverified : .approximate
+            return (text, .mapped("keyPress, cwBinding \(symbol(kcw)), ccwBinding \(symbol(kccw))", conf))
         case 44: return ("auto scroll and zoom", .mapped("scroll", .approximate))
         case 45: return ("scroll", .mapped("scroll", .exact))
         case 47: return ("skip", .mapped("skip", .exact))
@@ -681,7 +686,7 @@ enum KeyLayouts {
     /// PTK-470: one cluster the same shape, beside one dial.
     static let oneDial: Set<Int> = [0x03F5]
     /// PTH-660 and PTH-860, wired and Bluetooth: eight keys down the side,
-    /// top to bottom in libwacom's order. Wacom's numbering isn't checked.
+    /// numbered top to bottom, as libwacom lists them.
     static let eightDown: Set<Int> = [0x0357, 0x0358, 0x0360, 0x0361]
 
     static func key(_ name: String, productID: Int?) -> Target? {
@@ -705,7 +710,7 @@ enum KeyLayouts {
             }
         }
         if eightDown.contains(pid), side == 0, (1...8).contains(n) {
-            return Target(setting: "expressKeyBindings[\(n - 1)]", confidence: .unverified)
+            return Target(setting: "expressKeyBindings[\(n - 1)]", confidence: .exact)
         }
         return nil
     }

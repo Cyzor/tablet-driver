@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the Wacom import report and run it on a Tablet Utility backup. See
+# Build the Wacom import report and run it on a Wacom settings backup. See
 # main.swift's header for what it reports. Writes nothing.
 #
 # Usage: tools/wacom-import/run.sh <backup.wacomprefs>

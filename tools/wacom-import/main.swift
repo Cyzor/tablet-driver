@@ -2,10 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Lists what importing a Wacom Tablet Utility backup into MockTab would do:
+// Lists what importing a Wacom settings backup into MockTab would do:
 // each setting, what it becomes, and what gets skipped. Writes nothing.
 //
-// Run it through run.sh with the .wacomprefs folder Tablet Utility saved.
+// Run it through run.sh with a .wacomprefs folder from Wacom Center or Tablet
+// Utility; Wacom Center keeps them in ~/Library/Application Support/Wacom/Backups.
 // Characters in recorded keystrokes are looked up on the current keyboard
 // layout, so run it on the Mac the settings came from.
 
