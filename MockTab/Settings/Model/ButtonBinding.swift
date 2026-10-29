@@ -243,14 +243,22 @@ struct ButtonBinding: Codable, Equatable {
     /// The value an import stores for one action, from its machine value or,
     /// in older files, its label. An action this build can't read stays as
     /// written, and a label holding a stored value is that value. Nil when
-    /// the file has neither.
+    /// the file has neither, or its label names no action.
     static func importedValue(key: String?, label: String?) -> String? {
         if let key, !key.isEmpty { return decode(key)?.encoded ?? key }
         guard let label, !label.isEmpty else { return nil }
         // Exports before `exportedKey` wrote an unreadable action as its raw
         // JSON in the label's place.
         if label.hasPrefix("{") { return label }
-        return fromDisplayLabel(label).encoded
+        return recognizedLabel(label)?.encoded
+    }
+
+    /// The action an older file's label names, or nil when it names none, as
+    /// a label in another language doesn't. Import then leaves the setting
+    /// alone instead of writing None.
+    static func recognizedLabel(_ label: String) -> ButtonBinding? {
+        let binding = fromDisplayLabel(label)
+        return binding == .none && label != "None" ? nil : binding
     }
 
     /// A stored binding list, or nil when `s` is empty or this build can't

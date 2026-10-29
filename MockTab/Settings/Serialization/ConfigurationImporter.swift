@@ -121,8 +121,8 @@ struct ConfigurationImporter {
             if let v = area["proportionalMapping"] as? Bool { values["proportionalMapping"] = v }
             if let v = area["orientationKey"] as? Int {
                 values["tabletOrientation"] = v
-            } else if let v = area["orientation"] as? String {
-                values["tabletOrientation"] = decodeOrientation(v)
+            } else if let v = area["orientation"] as? String, let o = decodeOrientation(v) {
+                values["tabletOrientation"] = o
             }
         }
         if let v = s["display"] {
@@ -168,23 +168,23 @@ struct ConfigurationImporter {
         }
         if let v = s["touchRingKey"] as? String {
             values["touchRingMode"] = (TouchRingMode(rawValue: v) ?? .off).rawValue
-        } else if let v = s["touchRing"] as? String {
-            values["touchRingMode"] = decodeTouchRingMode(v)
+        } else if let v = s["touchRing"] as? String, let mode = decodeTouchRingMode(v) {
+            values["touchRingMode"] = mode
         }
         if let v = s["touchStrip1Key"] as? String {
             values["touchStrip1Mode"] = (TouchRingMode(rawValue: v) ?? .off).rawValue
-        } else if let v = s["touchStrip1"] as? String {
-            values["touchStrip1Mode"] = decodeTouchRingMode(v)
+        } else if let v = s["touchStrip1"] as? String, let mode = decodeTouchRingMode(v) {
+            values["touchStrip1Mode"] = mode
         }
         if let v = s["touchStrip2Key"] as? String {
             values["touchStrip2Mode"] = (TouchRingMode(rawValue: v) ?? .off).rawValue
-        } else if let v = s["touchStrip2"] as? String {
-            values["touchStrip2Mode"] = decodeTouchRingMode(v)
+        } else if let v = s["touchStrip2"] as? String, let mode = decodeTouchRingMode(v) {
+            values["touchStrip2Mode"] = mode
         }
         if let v = s["expressKeysKey"] as? [String] {
-            values["expressKeyBindings"] = decodeExpressKeysFromKeys(v)
-        } else if let v = s["expressKeys"] as? [String] {
-            values["expressKeyBindings"] = decodeExpressKeys(v)
+            if let keys = decodeExpressKeysFromKeys(v) { values["expressKeyBindings"] = keys }
+        } else if let v = s["expressKeys"] as? [String], let keys = decodeExpressKeys(v) {
+            values["expressKeyBindings"] = keys
         }
         if let v = s["pressureCurve"] as? [String: Any], let data = decodeCurveData(v) {
             values["pressureCurve"] = data
@@ -203,9 +203,7 @@ struct ConfigurationImporter {
             ("penButton1", "penButton1Binding"), ("penButton2", "penButton2Binding"),
         ]
         for (old, new) in legacyBindings where renamed[new] == nil {
-            guard let label = s[old] as? String,
-                  label == "None" || ButtonBinding.fromDisplayLabel(label) != .none else { continue }
-            renamed[new] = label
+            if let label = s[old] { renamed[new] = label }
         }
         return decodeStoredSettings(renamed)
     }
@@ -248,8 +246,8 @@ struct ConfigurationImporter {
             case "tabletOrientation":
                 if let v = s["tabletOrientationKey"] as? Int {
                     values[key] = v
-                } else if let v = rawValue as? String {
-                    values[key] = decodeOrientation(v)
+                } else if let v = rawValue as? String, let o = decodeOrientation(v) {
+                    values[key] = o
                 }
 
             case "penButton1Binding", "penButton2Binding", "penButton3Binding", "penButton4Binding",
@@ -261,16 +259,16 @@ struct ConfigurationImporter {
 
             case "expressKeyBindings":
                 if let v = s["expressKeyBindingsKey"] as? [String] {
-                    values[key] = decodeExpressKeysFromKeys(v)
-                } else if let v = rawValue as? [String] {
-                    values[key] = decodeExpressKeys(v)
+                    if let keys = decodeExpressKeysFromKeys(v) { values[key] = keys }
+                } else if let v = rawValue as? [String], let keys = decodeExpressKeys(v) {
+                    values[key] = keys
                 }
 
             case "touchRingMode", "touchStrip1Mode", "touchStrip2Mode":
                 if let v = s[key + "Key"] as? String {
                     values[key] = (TouchRingMode(rawValue: v) ?? .off).rawValue
-                } else if let v = rawValue as? String {
-                    values[key] = decodeTouchRingMode(v)
+                } else if let v = rawValue as? String, let mode = decodeTouchRingMode(v) {
+                    values[key] = mode
                 }
 
             case "pressureCurve":
@@ -301,12 +299,14 @@ struct ConfigurationImporter {
     /// English-only, label-based orientation decode — kept for files exported
     /// before `orientationKey` existed. New exports carry the locale-independent
     /// `orientationKey` (the raw `TabletOrientation` value) and prefer it.
-    static func decodeOrientation(_ label: String) -> Int {
+    /// Nil for a label in another language, so the import leaves it unset.
+    static func decodeOrientation(_ label: String) -> Int? {
         switch label {
+        case "Landscape": return 0
         case "Portrait": return 1
         case "Landscape Flipped": return 2
         case "Portrait Flipped": return 3
-        default: return 0
+        default: return nil
         }
     }
 
@@ -349,27 +349,44 @@ struct ConfigurationImporter {
 
     /// English-only, label-based decode — kept for files exported before
     /// `touchRingKey`/`touchStrip*Key` existed. New exports carry the
-    /// locale-independent `TouchRingMode.rawValue` and prefer it.
-    static func decodeTouchRingMode(_ label: String) -> String {
+    /// locale-independent `TouchRingMode.rawValue` and prefer it. Nil for a
+    /// label in another language, so the import leaves it unset.
+    static func decodeTouchRingMode(_ label: String) -> String? {
         switch label {
         case "Scroll": return TouchRingMode.scroll.rawValue
-        default: return TouchRingMode.off.rawValue
+        case "Off": return TouchRingMode.off.rawValue
+        default: return nil
         }
     }
 
     /// English-only, label-based decode — kept for files exported before
     /// `expressKeysKey` existed. New exports carry each binding's encoded
-    /// `ButtonBinding` form and prefer it (`decodeExpressKeysFromKeys`).
-    static func decodeExpressKeys(_ labels: [String]) -> String {
-        var bindings = labels.map { $0.isEmpty ? ButtonBinding.none : ButtonBinding.fromDisplayLabel($0) }
+    /// `ButtonBinding` form and prefer it (`decodeExpressKeysFromKeys`). Nil
+    /// when any label names no action, as one in another language does: the
+    /// keys share one stored list, so the import leaves the whole list unset.
+    static func decodeExpressKeys(_ labels: [String]) -> String? {
+        var bindings: [ButtonBinding] = []
+        for label in labels {
+            if label.isEmpty { bindings.append(.none); continue }
+            guard let binding = ButtonBinding.recognizedLabel(label) else { return nil }
+            bindings.append(binding)
+        }
         while bindings.count < 16 { bindings.append(.none) }
         return encodeBindingArray(bindings)
     }
 
     /// Locale-independent express-key decode: each entry is an encoded
     /// `ButtonBinding` (from `ButtonBinding.encoded`), not a display label.
-    static func decodeExpressKeysFromKeys(_ keys: [String]) -> String {
-        var bindings = keys.map { $0.isEmpty ? ButtonBinding.none : (ButtonBinding.decode($0) ?? .none) }
+    /// An action from another build decodes and survives. Nil when an entry
+    /// doesn't decode at all: kept as written it would make the whole stored
+    /// list unreadable, so the import leaves the list unset instead.
+    static func decodeExpressKeysFromKeys(_ keys: [String]) -> String? {
+        var bindings: [ButtonBinding] = []
+        for key in keys {
+            if key.isEmpty { bindings.append(.none); continue }
+            guard let binding = ButtonBinding.decode(key) else { return nil }
+            bindings.append(binding)
+        }
         while bindings.count < 16 { bindings.append(.none) }
         return encodeBindingArray(bindings)
     }
