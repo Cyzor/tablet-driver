@@ -29,6 +29,7 @@ mkdir -p "$CACHE"
 # Rebuild when the archive is missing, or when any source is newer than it.
 # `find -newer` lists the offenders; empty means the cache is current.
 if [ ! -f "$LIB" ] || [ -n "$(find "$SRC_DIR" -name '*.swift' -newer "$LIB" 2>/dev/null)" ]; then
+    echo "Building TabletKit (about half a minute, once per change)..." >&2
     KIT_SRCS=$(find "$SRC_DIR" -name '*.swift')
     # Build into a temp dir and move it into place, so an interrupted or failed
     # compile can't leave a truncated archive that later runs treat as current.
