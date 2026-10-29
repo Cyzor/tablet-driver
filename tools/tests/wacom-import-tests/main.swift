@@ -58,7 +58,7 @@ func show(_ l: Line?) -> String { l.map(ReportText.line) ?? "missing" }
 // Backup and tablets
 expect(backup.driverVersion == "6.4.9-2", "Driver version: \(backup.driverVersion ?? "nil")")
 expect(report.formatVersion == 6, "Format version")
-expect(report.tablets.count == 3, "Three tablets")
+expect(report.tablets.count == 4, "Four tablets")
 expect(report.tablets[0].productID == 0x0357, "Product ID from SensorID")
 expect(report.tablets[1].productID == 0x03F9 && report.tablets[1].lastConnectedAs == 0x03FA,
        "A Bluetooth product ID folds onto the wired one")
@@ -110,6 +110,12 @@ expect(mapped(ptk("ExpressKeys", "RightButton5"), "touchRingButtonBinding2: ring
 expect(skipped(ptk("ExpressKeys", "RightButton6"), "where this key sits"), "No sixth key")
 expect(mapped(ptk("Dial leftdial", "mode1"), "rotaries[0]: skip"), "Left dial is the first")
 expect(mapped(ptk("Dial rightdial", "mode1"), "rotaries[1]: rotate"), "Right dial is the second")
+
+// Intuos (CTL-4100 family): Button1-4, positions not checked.
+func intuos(_ control: String) -> Line? { find(3, "All applications", "ExpressKeys", control) }
+expect(skipped(intuos("Button1"), "no MockTab equivalent") && intuos("Button1")?.wacom == "radial menu", "Radial menu")
+expect(skipped(intuos("Button2"), "no MockTab equivalent") && intuos("Button2")?.wacom == "touch on/off", "Touch on/off")
+expect(mapped(intuos("Button4"), "expressKeyBindings[3]: rightClick", .unverified), show(intuos("Button4")))
 
 // A model with no key table skips its keys and dials.
 expect(skipped(find(2, "All applications", "ExpressKeys", "LeftButton1"), "where this key sits"), "Unknown model's key")
@@ -171,6 +177,8 @@ if case .key(let k, _) = Keystroke.parse("q", layout: layout) {
 } else {
     expect(false, "Missing character parses")
 }
+
+checkEncoder(report) { condition, message in expect(condition, message) }
 
 // Load errors
 let empty = FileManager.default.temporaryDirectory.appendingPathComponent("wacom-import-tests-\(UUID().uuidString)")

@@ -340,5 +340,30 @@
       </TabletControlContainerArray>
       <TabletTransducerArray type="array"/>
     </ArrayElement>
+    <ArrayElement type="map">
+      <DefaultTabName type="string">Intuos M</DefaultTabName>
+      <TabletName type="string">Intuos M</TabletName>
+      <SensorID type="integer">90833861</SensorID>
+      <TabletControlContainerArray type="array">
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">0</ApplicationAssociated>
+          <TabletControlsButtonsArray type="array">
+            <ArrayElement type="map">
+              <ButtonName type="string">Button1</ButtonName>
+              <ButtonFunction type="integer">41</ButtonFunction>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">Button2</ButtonName>
+              <ButtonFunction type="integer">43</ButtonFunction>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">Button4</ButtonName>
+              <ButtonFunction type="integer">3</ButtonFunction>
+            </ArrayElement>
+          </TabletControlsButtonsArray>
+        </ArrayElement>
+      </TabletControlContainerArray>
+      <TabletTransducerArray type="array"/>
+    </ArrayElement>
   </TabletArray>
 </root>
