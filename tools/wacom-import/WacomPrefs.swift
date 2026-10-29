@@ -245,6 +245,7 @@ enum Outcome {
     case skipped(String)
 
     var isSkipped: Bool { if case .skipped = self { return true } else { return false } }
+    var isUnverified: Bool { if case .mapped(_, .unverified) = self { return true } else { return false } }
 }
 
 /// What a mapped line asks of MockTab, in MockTab's terms but not its
@@ -553,9 +554,10 @@ enum WacomMapper {
                 continue
             }
             let dialIndex = target.setting == "rotaries[1]" ? 1 : 0
+            let checked = target.confidence != .unverified
             sections.append(ringSection(title, dial, base: base, key: target.setting,
                                         confidence: target.confidence,
-                                        slot: { .rotarySlot(dial: dialIndex, slot: $0) }, layout: layout))
+                                        slot: { checked ? .rotarySlot(dial: dialIndex, slot: $0) : nil }, layout: layout))
         }
         if let mods = c.node("TabletControlsModButtonsArray"), !mods.elements.isEmpty {
             sections.append(Section(title: "Modifier buttons", lines: [], notes: ["\(mods.elements.count) not read yet."]))
@@ -755,8 +757,10 @@ struct Target {
     let setting: String
     let confidence: Confidence
 
-    /// The setting as data: `expressKeyBindings[3]` is ExpressKey 3.
+    /// The setting as data: `expressKeyBindings[3]` is ExpressKey 3. An
+    /// unchecked position has none, so the import leaves it alone.
     var slot: Setting? {
+        guard confidence != .unverified else { return nil }
         if setting.hasPrefix("expressKeyBindings["), let i = Int(setting.dropFirst(19).dropLast()) {
             return .expressKey(i)
         }
@@ -875,7 +879,13 @@ enum ReportText {
         switch l.outcome {
         case .mapped(let what, .exact): return "\(head) -> \(what)"
         case .mapped(let what, let c): return "\(head) -> \(what) [\(c.rawValue)]"
-        case .skipped(let why): return "\(head) -- skipped: \(why)"
+        case .skipped(let why):
+            // A control with a setting still changes on import.
+            switch l.setting {
+            case .ringSlot?, .rotarySlot?: return "\(head) -- skipped: \(why) (becomes Off)"
+            case .some: return "\(head) -- skipped: \(why) (becomes None)"
+            case nil: return "\(head) -- skipped: \(why)"
+            }
         }
     }
 }

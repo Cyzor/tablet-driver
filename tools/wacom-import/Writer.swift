@@ -6,10 +6,10 @@
 // and to set, and applies them. Planning only reads; applying writes through
 // UserDefaults, never the plist file.
 //
-// For the tablet's claimed unit (`device-0x{PID}.`), the import replaces
-// whole categories: ExpressKeys, ring and dial keys and modes, the tablet
-// area, the imported pens' buttons and pressure, every app override, and the
-// active profile. The app and pen lists keep fields this tool doesn't know.
+// For the tablet's claimed unit (`device-0x{PID}.`), it writes the encoded
+// tablet and pen settings over MockTab's, replaces every app override, and
+// clears the active profile. Other settings stay. The app and pen lists keep
+// fields this tool doesn't know.
 
 import Foundation
 
@@ -38,18 +38,6 @@ enum WacomWriter {
         "device-0x\(String(productID, radix: 16, uppercase: true))."
     }
 
-    static let deviceKeys = [
-        "expressKeyBindings", "touchRingButtonBinding", "touchRingButtonBinding2",
-        "touchRingSlotsJSON", "rotariesJSON", "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2",
-        "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-        "_activeProfile",
-    ]
-
-    static let penKeys = [
-        "tipBinding", "eraserBinding", "penButton1Binding", "penButton2Binding", "penButton3Binding",
-        "penButton4Binding", "penButton5Binding", "pressureThreshold", "pressureCurve",
-    ]
-
     /// `current` is the domain as it stands: `UserDefaults.persistentDomain(forName:)`.
     static func plan(_ e: EncodedTablet, current: [String: Any]) throws -> WritePlan {
         var plan = WritePlan()
@@ -68,13 +56,13 @@ enum WacomWriter {
             plan.set["_knownTablets"] = try data(tablets)
         }
 
-        for key in deviceKeys { removeIfPresent(p + key) }
+        // A profile would hide the imported settings.
+        removeIfPresent(p + "_activeProfile")
         for (key, value) in e.device { plan.set[p + key] = value }
 
         var tools = try list(current[p + "_knownTools"], key: p + "_knownTools")
         for pen in e.pens {
             let tp = "\(p)tool-\(pen.id)."
-            for key in penKeys { removeIfPresent(tp + key) }
             for (key, value) in pen.values { plan.set[tp + key] = value }
             if let i = tools.firstIndex(where: { $0["id"] as? String == pen.id }) {
                 if let nickname = pen.nickname { tools[i]["nickname"] = nickname }

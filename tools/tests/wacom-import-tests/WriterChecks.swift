@@ -32,6 +32,7 @@ func checkWriter(_ report: Report, _ expect: (Bool, String) -> Void) {
         p + "appOverride-com.old.app.tipBinding": "old",
         tp + "tipBinding": "old",
         tp + "penButton2Binding": "old",
+        tp + "penButton4Binding": "old",
         tp + "smoothingStrength": 0.2,
         p + "_knownTools": json([["id": "0x12345678", "nickname": "Old pen", "kind": "Pro Pen 2",
                                   "serial": 0x12345678, "toolCode": 0x842, "isSupported": true]]),
@@ -66,12 +67,15 @@ func checkWriter(_ report: Report, _ expect: (Bool, String) -> Void) {
     expect(after["device-0x358.expressKeyBindings"] as? String == "other tablet", "Other tablets stay")
     expect(after["device-0x357#second.expressKeyBindings"] as? String == "second unit", "A second unit stays")
     expect(after["_lastLaunchedBuild"] as? String == "0.6.0", "Global settings stay")
+    expect(after[tp + "penButton2Binding"] as? String == "old", "An unverified pen button keeps its setting")
+    expect(after[tp + "penButton4Binding"] as? String == "old", "A pen button the backup doesn't have stays")
+    expect(after[p + "touchRingButtonBinding"] as? String == "{}", "A control the backup doesn't have stays")
 
     // Replaced
     expect(after[p + "_activeProfile"] == nil, "Active profile cleared")
     expect(after[p + "appOverride-com.old.app.tipBinding"] == nil, "Old app override values removed")
-    expect(after[tp + "penButton2Binding"] == nil, "A pen button the import can't carry is removed")
-    expect(after[p + "touchRingButtonBinding"] == nil, "A control the backup doesn't have is removed")
+    expect(ButtonBinding.decode(after[tp + "penButton3Binding"] as? String ?? "") == ButtonBinding.none,
+           "A pen button with no equivalent becomes None")
     let keys = (after[p + "expressKeyBindings"] as? String).flatMap(ButtonBinding.decodeList) ?? []
     expect(keys.count == 16 && keys[0].keyCode == 18, "ExpressKeys written")
     expect(after[p + "touchRingSlotsJSON"] is Data, "Ring modes stored as data, as the app reads them")

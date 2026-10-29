@@ -53,7 +53,7 @@ Older capture files may contain a device serial number. `triage_discovery.py` fl
 
 `run.sh` reads a settings backup from Wacom Center or Tablet Utility (a `.wacomprefs` folder) and lists what each setting becomes in MockTab and what has no equivalent: pen and ExpressKey assignments, keystrokes, ring modes, the tablet area, and per-app settings. It looks up keystrokes on the current keyboard layout, so run it on the Mac that made the backup.
 
-With `--apply`, it replaces one tablet's ExpressKeys, ring and dial modes, tablet area, pen buttons and pressure, and per-app settings with the Wacom ones. Quit MockTab first. It asks before writing, saves a copy of the settings to Application Support, and prints the commands that undo the import. `--dry-run` shows the change and writes nothing. `main.swift`'s header lists the other options.
+With `--apply`, it writes what the report maps for one tablet: ExpressKeys, ring and dial modes, the tablet area, pen buttons and pressure, and per-app settings, which it replaces as a whole. A control with no MockTab equivalent becomes None or Off, as the report says. Keys and dials on models without a checked layout, unverified values, and anything else keep their MockTab settings. Quit MockTab first. It asks before writing, saves a copy of the settings to Application Support, and prints the commands that undo the import. `--dry-run` shows the change and writes nothing. `main.swift`'s header lists the other options.
 
 ## latency/ and event-probe/
 

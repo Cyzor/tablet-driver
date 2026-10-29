@@ -79,6 +79,9 @@ expect(mapped(find(0, "All applications", pen, "Eraser"), "eraserBinding: eraser
 expect(mapped(find(0, "All applications", pen, "Lower button"), "penButton1Binding: rightClick"), "Lower button is button 1")
 expect(mapped(find(0, "All applications", pen, "Upper button"), "penButton2Binding: none", .unverified),
        "Function 0 is unverified")
+let third = find(0, "All applications", pen, "Third button")
+expect(skipped(third, "no MockTab equivalent") && third.map(ReportText.line)?.hasSuffix("(becomes None)") == true,
+       "A pen button with no equivalent becomes None: \(show(third))")
 let feel = find(0, "All applications", pen, "Tip feel")
 expect(feel?.wacom == "starts at 5.0%, midpoint (0.75, 0.25)", "Curve: \(show(feel))")
 let serialless = report.tablets[0].apps[0].sections.first { $0.title.hasPrefix("Pen with tool code 0x2") }
@@ -116,6 +119,10 @@ func intuos(_ control: String) -> Line? { find(3, "All applications", "ExpressKe
 expect(skipped(intuos("Button1"), "no MockTab equivalent") && intuos("Button1")?.wacom == "radial menu", "Radial menu")
 expect(skipped(intuos("Button2"), "no MockTab equivalent") && intuos("Button2")?.wacom == "touch on/off", "Touch on/off")
 expect(mapped(intuos("Button4"), "expressKeyBindings[3]: rightClick", .unverified), show(intuos("Button4")))
+expect(intuos("Button4")?.setting == nil && intuos("Button1")?.setting == nil,
+       "An unchecked position names no setting, so the import leaves it alone")
+expect(!show(intuos("Button1")).contains("becomes") && show(key("LeftButton8")).hasSuffix("(becomes None)"),
+       "Only a checked control says what it becomes: \(show(intuos("Button1")))")
 
 // A model with no key table skips its keys and dials.
 expect(skipped(find(2, "All applications", "ExpressKeys", "LeftButton1"), "key position unknown"), "Unknown model's key")
@@ -128,7 +135,7 @@ expect(mapped(ring("mode1"), "touchRingSlots: keyPress, cwBinding [, ccwBinding 
 expect(ring("mode1")?.wacom.hasPrefix("\"Brush size\"") == true, "Ring mode label")
 expect(mapped(ring("mode2"), "touchRingSlots: scroll", .approximate), "Auto scroll and zoom")
 expect(mapped(ring("mode3"), "touchRingSlots: rotate"), "Rotate")
-expect(skipped(ring("mode4"), "unknown ring function"), "Unknown ring code")
+expect(skipped(ring("mode4"), "unknown ring function") && show(ring("mode4")).hasSuffix("(becomes Off)"), "Unknown ring code")
 expect(mapped(ring("mode5"), "touchRingSlots: off") && ring("mode5")?.wacom == "disabled",
        "Disabled ignores a keystroke left over from an earlier choice")
 

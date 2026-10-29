@@ -54,6 +54,7 @@ func checkEncoder(_ report: Report, _ expect: (Bool, String) -> Void) {
         expect(binding(pen.values["eraserBinding"])?.kind == .eraser, "Eraser")
         expect(binding(pen.values["penButton1Binding"])?.kind == .rightClick, "Lower button")
         expect(pen.values["penButton2Binding"] == nil, "An unverified button isn't written")
+        expect(binding(pen.values["penButton3Binding"]) == ButtonBinding.none, "A button with no equivalent is None")
         expect(near(pen.values["pressureThreshold"] as? Double, 0.0501), "Threshold")
         let curve = (pen.values["pressureCurve"] as? Data).flatMap { try? JSONDecoder().decode(BezierCurve.self, from: $0) }
         expect(near(curve.map { Double($0.p1.x) }, 0.8159) && near(curve.map { Double($0.p1.y) }, 0.1667)
@@ -89,6 +90,19 @@ func checkEncoder(_ report: Report, _ expect: (Bool, String) -> Void) {
 
     // No product ID
     expect((try? WacomEncoder.encode(report.tablets[2])) == nil, "A tablet without a product ID doesn't encode")
+
+    // Unchecked positions and unverified values leave MockTab's settings alone.
+    if let intuos = try? WacomEncoder.encode(report.tablets[3]) {
+        expect(intuos.device["expressKeyBindings"] == nil, "Unchecked key positions leave ExpressKeys alone")
+    } else {
+        expect(false, "Intuos encodes")
+    }
+    var ignored: [Line] = []
+    let unsure = AppReport(name: "All applications", bundleID: nil, sections: [Section(title: "ExpressKeys", lines: [Line(
+        control: "LeftButton5", wacom: "disabled", outcome: .mapped("touchRingButtonBinding: none", .unverified),
+        action: .binding(.kind("none")), setting: .binding("touchRingButtonBinding"))])])
+    expect(Controls(unsure, leftOut: &ignored).storedSettings(complete: true)["touchRingButtonBinding"] == nil,
+           "An unverified dial key keeps its setting")
 
     // Pens that disagree on an app's settings
     var two = report.tablets[0]

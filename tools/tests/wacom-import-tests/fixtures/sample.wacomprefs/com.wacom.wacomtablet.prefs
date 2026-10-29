@@ -226,6 +226,9 @@
           <TransducerUpperButtonSettings type="map">
             <ButtonFunction type="integer">0</ButtonFunction>
           </TransducerUpperButtonSettings>
+          <TransducerThirdButtonSettings type="map">
+            <ButtonFunction type="integer">42</ButtonFunction>
+          </TransducerThirdButtonSettings>
         </ArrayElement>
         <ArrayElement type="map">
           <ApplicationAssociated type="integer">0</ApplicationAssociated>

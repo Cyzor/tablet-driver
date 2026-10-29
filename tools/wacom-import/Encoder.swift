@@ -7,8 +7,9 @@
 // types and import decoder produce them, so they match what the app writes.
 // Writes nothing.
 //
-// In each category it covers, the import replaces MockTab's settings: a
-// control the report can't carry becomes None or Off.
+// It covers only controls the backup lists at a checked position; the rest
+// keep their MockTab settings. A listed control with no MockTab equivalent
+// becomes None or Off. An unverified value is never written.
 
 import AppKit
 import Foundation
@@ -71,6 +72,7 @@ enum WacomEncoder {
             for line in usable(section.lines, leftOut: &out.leftOut) {
                 if case .nickname(let n) = line.action { nickname = n } else { settings.add(line) }
             }
+            settings.clearSkipped(section.lines)
             out.pens.append(.init(id: String(format: "0x%08X", serial), serial: serial,
                                   nickname: nickname, values: decoded(settings.stored)))
         }
@@ -84,6 +86,7 @@ enum WacomEncoder {
                 guard let serial = section.pen, serial != 0 else { continue }
                 var settings = PenSettings()
                 for line in usable(section.lines, leftOut: &out.leftOut) { settings.add(line) }
+                settings.clearSkipped(section.lines)
                 if !settings.isEmpty { byPen[serial] = settings }
             }
             if let pens = try pick(byPen, chosen: chosen, app: app.name) {
@@ -199,8 +202,7 @@ struct PenSettings {
     mutating func add(_ line: Line) {
         switch (line.action, line.setting) {
         case (.binding(let b)?, .binding(let key)?):
-            WacomEncoder.put(WacomEncoder.buttonBinding(b), key, into: &stored)
-            signature[key] = WacomEncoder.buttonBinding(b).encoded
+            put(WacomEncoder.buttonBinding(b), key)
         case (.pressure(let start, let x, let y)?, .pressure?):
             let fit = WacomEncoder.curve(start: start, midX: x, midY: y)
             stored["pressureThreshold"] = fit.threshold
@@ -209,6 +211,18 @@ struct PenSettings {
         default:
             break
         }
+    }
+
+    /// A button with no MockTab equivalent becomes None, as ExpressKeys do.
+    mutating func clearSkipped(_ lines: [Line]) {
+        for line in lines where line.outcome.isSkipped {
+            if case .binding(let key)? = line.setting { put(.none, key) }
+        }
+    }
+
+    private mutating func put(_ b: ButtonBinding, _ key: String) {
+        WacomEncoder.put(b, key, into: &stored)
+        signature[key] = b.encoded
     }
 
     func same(as other: PenSettings) -> Bool { signature == other.signature }
@@ -252,12 +266,13 @@ struct Controls {
                     keys[i] = WacomEncoder.buttonBinding(b)
                     keysChanged = true
                 case (_, .expressKey(let i)?) where i < 16:
-                    // A key the import can't carry becomes None.
+                    // A key the import can't carry becomes None, as does an
+                    // unverified one: None is MockTab's default for keys.
                     keys[i] = .none
                     keysChanged = true
                 case (.binding(let b)?, .binding(let key)?):
                     singles[key] = WacomEncoder.buttonBinding(b)
-                case (_, .binding(let key)?):
+                case (_, .binding(let key)?) where !line.outcome.isUnverified:
                     singles[key] = ButtonBinding.none
                 case (.ring(let m, let label)?, .ringSlot(let i)?):
                     ring[i] = WacomEncoder.slot(m, label: label)
@@ -280,21 +295,21 @@ struct Controls {
         }
     }
 
-    /// `complete` writes every category, as All applications needs; an app
-    /// writes only its changes.
+    /// Only the categories this app's sections filled. `complete` (All
+    /// applications) also starts the ring and dials on their first mode.
     func storedSettings(complete: Bool) -> [String: Any] {
         var d: [String: Any] = [:]
-        if complete || keysChanged {
+        if keysChanged {
             d["expressKeyBindings"] = keys.map(\.displayLabel)
             d["expressKeyBindingsKey"] = keys.map(\.encoded)
         }
         for (key, b) in singles { WacomEncoder.put(b, key, into: &d) }
-        if ringCount > 0, complete || ringChanged {
+        if ringCount > 0, ringChanged {
             let slots = (0..<ringCount).map { ring[$0] ?? WacomEncoder.offSlot }
             d["touchRingSlotsJSON"] = WacomEncoder.jsonObject(slots)
             if complete { d["touchRingActiveSlotIndex"] = 0 }
         }
-        if !dialCounts.isEmpty, complete || dialsChanged {
+        if !dialCounts.isEmpty, dialsChanged {
             let configs = (0...(dialCounts.keys.max() ?? 0)).map { d in
                 RotaryConfig(slots: (0..<(dialCounts[d] ?? 0)).map { dials[d]?[$0] ?? WacomEncoder.offSlot },
                              activeSlotIndex: 0)
