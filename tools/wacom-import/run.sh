@@ -6,8 +6,9 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
+KIT="$(sh "$DIR/../tests/build-tabletkit.sh")"
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 
-swiftc -O "$DIR/WacomPrefs.swift" "$DIR/main.swift" -o "$T/wacom-import"
+swiftc -O -I "$KIT" -L "$KIT" -lTabletKit "$DIR/WacomPrefs.swift" "$DIR/main.swift" -o "$T/wacom-import"
 "$T/wacom-import" "$@"

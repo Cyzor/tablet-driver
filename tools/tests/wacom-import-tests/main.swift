@@ -60,7 +60,9 @@ expect(backup.driverVersion == "6.4.9-2", "Driver version: \(backup.driverVersio
 expect(report.formatVersion == 6, "Format version")
 expect(report.tablets.count == 3, "Three tablets")
 expect(report.tablets[0].productID == 0x0357, "Product ID from SensorID")
-expect(report.tablets[1].productID == 0x03F9, "PTK-870 product ID")
+expect(report.tablets[1].productID == 0x03F9 && report.tablets[1].lastConnectedAs == 0x03FA,
+       "A Bluetooth product ID folds onto the wired one")
+expect(report.tablets[0].lastConnectedAs == nil, "A wired tablet has no other connection to name")
 expect(report.tablets[2].productID == nil && report.tablets[2].notes.contains { $0.contains("No Wacom product ID") },
        "A tablet without SensorID is noted")
 expect(report.tablets[0].nickname == "Studio", "Renamed tablet keeps its name")
@@ -115,12 +117,14 @@ expect(skipped(find(2, "All applications", "Dial leftdial", "mode1"), "which dia
 
 // Ring and dial
 func ring(_ mode: String) -> Line? { find(0, "All applications", "Touch ring", mode) }
-expect(mapped(ring("mode1"), "touchRingSlots: keyPress, cwBinding [, ccwBinding ]", .unverified),
+expect(mapped(ring("mode1"), "touchRingSlots: keyPress, cwBinding [, ccwBinding ]"),
        "Increase is counterclockwise: \(show(ring("mode1")))")
 expect(ring("mode1")?.wacom.hasPrefix("\"Brush size\"") == true, "Ring mode label")
 expect(mapped(ring("mode2"), "touchRingSlots: scroll", .approximate), "Auto scroll and zoom")
 expect(mapped(ring("mode3"), "touchRingSlots: rotate"), "Rotate")
 expect(skipped(ring("mode4"), "unknown ring function"), "Unknown ring code")
+expect(mapped(ring("mode5"), "touchRingSlots: off") && ring("mode5")?.wacom == "disabled",
+       "Disabled ignores a keystroke left over from an earlier choice")
 
 // Mapping
 let area = find(0, "All applications", "Mapping", "Tablet area")

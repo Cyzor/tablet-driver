@@ -12,6 +12,7 @@
 // named keys in &name; form, or &vk=12:cc=31:kb=2b; with a virtual key code.
 
 import Foundation
+import TabletKit
 
 // MARK: - File
 
@@ -264,7 +265,11 @@ struct AppReport {
 struct TabletReport {
     let modelName: String
     let wacomType: Int?
+    /// The wired product ID, which names MockTab's settings for the tablet
+    /// whichever way it connects.
     let productID: Int?
+    /// The product ID Wacom saw last, when that was another connection.
+    let lastConnectedAs: Int?
     let nickname: String?
     var apps: [AppReport]
     var notes: [String] = []
@@ -308,7 +313,8 @@ enum WacomMapper {
     }
 
     /// SensorID packs the USB vendor and product IDs: 0x056A0357 is a
-    /// Wacom PTH-660.
+    /// Wacom PTH-660. Wacom keeps one entry per tablet and rewrites this
+    /// for whichever connection it saw last, wired or Bluetooth.
     static func productID(_ t: WacomNode) -> Int? {
         guard let id = t.int("SensorID"), id >> 16 == 0x056A else { return nil }
         return id & 0xFFFF
@@ -323,9 +329,11 @@ enum WacomMapper {
     static func tablet(_ t: WacomNode, apps: [Int: WacomApp], layout: LayoutLookup) -> TabletReport {
         let model = t.string("DefaultTabName") ?? t.string("TabletName") ?? "Unknown tablet"
         let name = t.string("TabletName")
-        let pid = productID(t)
+        let seen = productID(t)
+        let pid = seen.map(WacomDeviceRegistry.canonicalProductID)
         var report = TabletReport(
             modelName: model, wacomType: t.int("TabletType"), productID: pid,
+            lastConnectedAs: seen != pid ? seen : nil,
             nickname: name != model ? customName(name) : nil, apps: [])
         if pid == nil { report.notes.append("No Wacom product ID in the backup; the writer can't pick a tablet for it.") }
 
@@ -516,11 +524,11 @@ enum WacomMapper {
     static func ringFunction(_ m: WacomNode, layout: LayoutLookup) -> (String, Outcome) {
         let code = m.int("TouchStripFunction") ?? -1
         switch code {
-        case 0: return ("off", .mapped("off", .unverified))
+        // Wacom's menu offers Disabled where it once had Skip.
+        case 0: return ("disabled", .mapped("off", .exact))
         case 8:
-            // Wacom's dialog puts the counterclockwise key first; Increase
-            // appears to be that field. Unverified until a backup with known
-            // keys shows it.
+            // Wacom's dialog puts the counterclockwise key first and saves
+            // it as Increase, on rings and dials alike.
             let ccwRaw = m.string("TouchStripKeystrokeIncrease") ?? ""
             let cwRaw = m.string("TouchStripKeystrokeDecrease") ?? ""
             let mods = m.string("TouchStripModifiers") ?? ""
@@ -531,7 +539,7 @@ enum WacomMapper {
                   kcw.keyCode != nil, kccw.keyCode != nil else {
                 return (text, .skipped(skipReason(cw, ccw)))
             }
-            let conf: Confidence = ecw && eccw ? .unverified : .approximate
+            let conf: Confidence = ecw && eccw ? .exact : .approximate
             return (text, .mapped("keyPress, cwBinding \(symbol(kcw)), ccwBinding \(symbol(kccw))", conf))
         case 44: return ("auto scroll and zoom", .mapped("scroll", .approximate))
         case 45: return ("scroll", .mapped("scroll", .exact))
@@ -674,7 +682,8 @@ struct Target {
     let confidence: Confidence
 }
 
-/// Where each model's Wacom key and dial names land in MockTab. Wacom
+/// Where each model's Wacom key and dial names land in MockTab, by wired
+/// product ID. Wacom
 /// numbers a side's keys from 1, LeftButton then RightButton; MockTab's
 /// ExpressKey index is the tablet's report order, which TabletLayoutTable
 /// spells out per model with libwacom's letters.
@@ -685,9 +694,9 @@ enum KeyLayouts {
     static let twoDials: Set<Int> = [0x03F7, 0x03F9]
     /// PTK-470: one cluster the same shape, beside one dial.
     static let oneDial: Set<Int> = [0x03F5]
-    /// PTH-660 and PTH-860, wired and Bluetooth: eight keys down the side,
-    /// numbered top to bottom, as libwacom lists them.
-    static let eightDown: Set<Int> = [0x0357, 0x0358, 0x0360, 0x0361]
+    /// PTH-660 and PTH-860: eight keys down the side, numbered top to
+    /// bottom, as libwacom lists them.
+    static let eightDown: Set<Int> = [0x0357, 0x0358]
 
     static func key(_ name: String, productID: Int?) -> Target? {
         guard let pid = productID else { return nil }
@@ -740,7 +749,11 @@ enum ReportText {
         out += "\nNothing is written. This lists what an import would do.\n"
         for (i, t) in r.tablets.enumerated() {
             out += "\nTablet \(i + 1): \(t.modelName)"
-            if let pid = t.productID { out += String(format: " (product ID 0x%04X)", pid) }
+            if let pid = t.productID {
+                out += String(format: " (product ID 0x%04X", pid)
+                if let seen = t.lastConnectedAs { out += String(format: ", last connected as 0x%04X", seen) }
+                out += ")"
+            }
             out += "\n"
             if let n = t.nickname { out += "  Name \"\(n)\" -> tablet nickname\n" }
             for note in t.notes { out += "  \(note)\n" }

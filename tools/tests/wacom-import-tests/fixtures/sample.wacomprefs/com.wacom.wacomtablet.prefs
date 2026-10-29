@@ -143,6 +143,10 @@
               <mode4 type="map">
                 <TouchStripFunction type="integer">77</TouchStripFunction>
               </mode4>
+              <mode5 type="map">
+                <TouchStripFunction type="integer">0</TouchStripFunction>
+                <TouchStripKeystrokeIncrease type="kestring"><![CDATA[a]]></TouchStripKeystrokeIncrease>
+              </mode5>
             </TouchStripModes>
           </TouchRingSettings>
         </ArrayElement>
@@ -264,7 +268,7 @@
       <DefaultTabName type="string">Intuos Pro L</DefaultTabName>
       <TabletName type="string">Intuos Pro L</TabletName>
       <TabletType type="integer">33</TabletType>
-      <SensorID type="integer">90833913</SensorID>
+      <SensorID type="integer">90833914</SensorID>
       <TabletControlContainerArray type="array">
         <ArrayElement type="map">
           <ApplicationAssociated type="integer">0</ApplicationAssociated>
