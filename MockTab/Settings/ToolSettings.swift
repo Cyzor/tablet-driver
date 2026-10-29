@@ -309,9 +309,12 @@ final class ToolSettings: ObservableObject {
     }
 
     /// `key`'s stored action when this build can't read it, so diagnostics
-    /// show what the factory default stands in for.
+    /// show what the factory default stands in for: its kind, or
+    /// "unreadable" when it doesn't decode at all. Nil when nothing's stored.
     func unreadableKind(_ key: String) -> String? {
-        freshString(key).flatMap { ButtonBinding.decode($0) }?.unrecognizedKindName
+        guard let raw = freshString(key), !raw.isEmpty else { return nil }
+        guard let binding = ButtonBinding.decode(raw) else { return "unreadable" }
+        return binding.unrecognizedKindName
     }
 
     private func freshString(_ key: String) -> String? {

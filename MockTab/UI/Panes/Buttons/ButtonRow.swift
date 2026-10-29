@@ -22,7 +22,8 @@ func buttonRow(
     placement: RotaryPlacement = .upright,
     offersRingModes: Bool = false,
     offersModeJumps: Bool = false,
-    recordRequestToken: Int = 0
+    recordRequestToken: Int = 0,
+    storedActionUnreadable: Bool = false
 ) -> some View {
     HStack(spacing: 0) {
         activeIndicator(isActive)
@@ -41,7 +42,8 @@ func buttonRow(
             placement: placement,
             offersRingModes: offersRingModes,
             offersModeJumps: offersModeJumps,
-            recordRequestToken: recordRequestToken)
+            recordRequestToken: recordRequestToken,
+            storedActionUnreadable: storedActionUnreadable)
             .equatable()
         Spacer(minLength: 0)
     }

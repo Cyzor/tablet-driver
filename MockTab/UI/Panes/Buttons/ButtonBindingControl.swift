@@ -85,6 +85,9 @@ struct ButtonBindingControl: View, Equatable {
     /// Incremented by an external control (the ring diagram's center button)
     /// to begin recording in this field, exactly as if it had been clicked.
     var recordRequestToken: Int = 0
+    /// The saved action is one this build can't read, so the field shows the
+    /// default standing in for it.
+    var storedActionUnreadable: Bool = false
     @State private var isRecording = false
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
@@ -109,6 +112,28 @@ struct ButtonBindingControl: View, Equatable {
                 && lhs.offersRingModes == rhs.offersRingModes
                 && lhs.offersModeJumps == rhs.offersModeJumps
                 && lhs.recordRequestToken == rhs.recordRequestToken
+                && lhs.storedActionUnreadable == rhs.storedActionUnreadable
+        }
+    }
+
+    fileprivate static let recordHelp: LocalizedStringKey =
+        "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the menu next to it to assign a click action."
+    fileprivate static let unreadableNote: LocalizedStringKey =
+        "MockTab can't read this saved action, so it uses the default."
+
+    private var showsUnreadableMark: Bool { storedActionUnreadable && !isRecording }
+
+    /// VoiceOver hears the mark's note ahead of the field's usual hint.
+    private struct UnreadableHint: ViewModifier {
+        let isOn: Bool
+        func body(content: Content) -> some View {
+            if isOn {
+                content.accessibilityHint(
+                    Text(ButtonBindingControl.unreadableNote) + Text(verbatim: " ")
+                        + Text(ButtonBindingControl.recordHelp))
+            } else {
+                content
+            }
         }
     }
 
@@ -126,6 +151,8 @@ struct ButtonBindingControl: View, Equatable {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
+                // Room for the unreadable mark, so long labels don't run under it.
+                .padding(.trailing, showsUnreadableMark ? 18 : 0)
                 .contentShape(Rectangle())
                 .frame(minWidth: compact ? 60 : 140, maxWidth: compact ? 120 : .infinity)
                 .padding(.horizontal, 8)
@@ -133,8 +160,19 @@ struct ButtonBindingControl: View, Equatable {
             }
             .buttonStyle(.plain)
             .background(fieldBackground)
-            .help(
-                "Click to record a keyboard shortcut. Press Escape to cancel or Delete to clear. Use the menu next to it to assign a click action.")
+            .help(Self.recordHelp)
+            .modifier(UnreadableHint(isOn: showsUnreadableMark))
+            // Outside the field's tooltip, which would otherwise cover it.
+            .overlay(alignment: .trailing) {
+                if showsUnreadableMark {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(.tertiary)
+                        .imageScale(.medium)
+                        .padding(.trailing, 8)
+                        .help(Self.unreadableNote)
+                        .accessibilityHidden(true)
+                }
+            }
 
             // Clear button
             if binding.kind != .none && !isRecording {

@@ -12209,6 +12209,35 @@
         }
       }
     },
+    "MockTab can't read this saved action, so it uses the default." : {
+      "comment" : "Tooltip and VoiceOver hint on a button assignment whose saved action MockTab can't read",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab kann diese gespeicherte Aktion nicht lesen und nutzt daher die Standardaktion."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab can't read this saved action, so it uses the default."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab no puede leer esta acción guardada, así que usa la predeterminada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存されたアクションを読み取れないため、デフォルトを使用しています。"
+          }
+        }
+      }
+    },
     "MockTab couldn't write to your Desktop. Choose where to save the collected device data." : {
       "comment" : "Explanation in the capture save panel after a Desktop write failure",
       "localizations" : {
