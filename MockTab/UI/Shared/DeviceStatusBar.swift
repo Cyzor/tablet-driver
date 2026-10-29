@@ -12,6 +12,8 @@ import TabletKit
 private struct StatusCaptionLabel: View {
     let name: String
     let isLive: Bool
+    /// A quiet note after the name, such as a pen this tablet doesn't support.
+    var note: String? = nil
 
     @Environment(\.accessibilityDifferentiateWithoutColor)
     private var differentiateWithoutColor
@@ -23,7 +25,14 @@ private struct StatusCaptionLabel: View {
                 .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+            if let note {
+                Text(note)
+                    .appFont(.settingsLabel)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
         }
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -87,11 +96,25 @@ struct ToolNameLabel: View {
 
     var body: some View {
         let _ = BodyCounter.note("ToolName")
-        StatusCaptionLabel(name: displayName, isLive: context?.activeToolID != nil)
+        StatusCaptionLabel(name: displayName, isLive: context?.activeToolID != nil, note: supportNote)
     }
 
     private var context: DeviceContext? {
         tabletManager.context(forKey: instanceKey)
+    }
+
+    private var supportNote: String? {
+        guard let context, context.activeToolID != nil,
+              DeviceRegistry.catalogExcludes(toolCode: context.activeToolCode, productID: context.productID)
+        else { return nil }
+        return Self.unsupportedNote
+    }
+
+    /// Shared with the Devices pane's tool rows.
+    static var unsupportedNote: String {
+        String(
+            localized: "Not supported on this tablet",
+            comment: "Note after a pen's name when it doesn't work with the tablet")
     }
 
     private var displayName: String {
@@ -317,8 +340,12 @@ struct DeviceStatusBar: View {
             return String(localized: "\(name) in use", comment: "Status bar tool slot when another tablet, not this window's, is connected and in use")
         }
         if let context = context, let toolID = context.activeToolID {
-            if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
-            return toolID
+            let name = registry.knownTools.first(where: { $0.id == toolID })?.nickname ?? toolID
+            guard DeviceRegistry.catalogExcludes(toolCode: context.activeToolCode, productID: context.productID)
+            else { return name }
+            return String(
+                localized: "\(name), not supported on this tablet",
+                comment: "Status bar tool slot for a pen that doesn't work with the tablet; the argument is the pen's name")
         }
         return String(localized: "No tool", comment: "Tool name in status bar when no pen is active")
     }

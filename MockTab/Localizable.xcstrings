@@ -728,6 +728,35 @@
         }
       }
     },
+    "%@, not supported on this tablet" : {
+      "comment" : "Status bar tool slot for a pen that doesn't work with the tablet; the argument is the pen's name",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, von diesem Tablet nicht unterstützt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%@, not supported on this tablet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, no compatible con esta tableta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@、このタブレットには非対応"
+          }
+        }
+      }
+    },
     "%@, speed %@" : {
       "comment" : "VoiceOver ring mode summary: action, then speed",
       "localizations" : {
@@ -13573,6 +13602,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "レジストリにありません — このタブレットが接続されるとプロファイルが利用可能になります。"
+          }
+        }
+      }
+    },
+    "Not supported on this tablet" : {
+      "comment" : "Note after a pen's name when it doesn't work with the tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von diesem Tablet nicht unterstützt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not supported on this tablet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No compatible con esta tableta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このタブレットには非対応"
           }
         }
       }

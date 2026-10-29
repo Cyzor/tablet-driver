@@ -529,6 +529,13 @@ struct DevicesView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
+                if let key = deviceID.flatMap(DeviceInstanceKey.init(stringValue:)),
+                   DeviceRegistry.catalogExcludes(toolCode: tool.toolCode, productID: key.productID) {
+                    Text(ToolNameLabel.unsupportedNote)
+                        .appFont(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .help("\(tool.kind) · \(shownID(tool.displayID))")

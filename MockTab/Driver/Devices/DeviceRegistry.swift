@@ -755,6 +755,18 @@ final class DeviceRegistry: ObservableObject {
         allKnownTools = merged
     }
 
+    // MARK: - Unsupported pens
+
+    /// Whether the catalog knows both the pen and the tablet's family and
+    /// excludes that family. An unknown pen or tablet is never flagged.
+    static func catalogExcludes(toolCode: UInt16?, productID: Int) -> Bool {
+        guard let toolCode, toolCode != 0,
+              let family = WacomDeviceRegistry.spec(for: productID)?.family,
+              let spec = ToolCatalog.spec(forToolCodeRaw: toolCode)
+        else { return false }
+        return !spec.isSupported(onFamily: family)
+    }
+
     /// Returns the saved tool list for `productID` without mutating `knownTools`.
     /// Safe to call for any known or unknown device — returns empty array if not found.
     func tools(for key: DeviceInstanceKey) -> [KnownTool] {
