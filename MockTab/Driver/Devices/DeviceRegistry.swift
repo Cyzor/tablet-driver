@@ -86,6 +86,8 @@ final class DeviceRegistry: ObservableObject {
 
     @Published var knownTablets: [KnownTablet] = []
     @Published var knownTools: [KnownTool] = []
+    /// The tablet whose tools `knownTools` holds, set by `loadTools`.
+    private var knownToolsKey: DeviceInstanceKey?
     /// All tools seen across every known tablet, deduplicated by tool ID.
     /// A pen used on multiple tablets appears once (first tablet wins for
     /// nickname if the user has renamed it differently per device).
@@ -366,6 +368,12 @@ final class DeviceRegistry: ObservableObject {
             kind = Self.penName(forProductID: deviceID, isEraser: identity.isEraser)
         }
 
+        // This tablet's own list; `knownTools` holds whichever tablet the UI
+        // loaded last.
+        var list = tools(for: key)
+        let family = WacomDeviceRegistry.spec(for: deviceID)?.family
+        let isSupported = ToolCatalog.capabilities(forToolCode: identity.toolCode, family: family).isSupported
+
         // Migration: when the real serial arrives, remove the old generic entry,
         // and the tool-code entry Bluetooth recorded before it read serials.
         // Runs before the existing-entry check: the serial entry often exists
@@ -375,29 +383,24 @@ final class DeviceRegistry: ObservableObject {
             let codeID = Self.toolID(for: ToolIdentity(
                 serial: 0, toolCode: identity.toolCode,
                 isEraser: identity.isEraser, isMouse: identity.isMouse))
-            let before = knownTools.count
-            knownTools.removeAll { $0.id == genericID || $0.id == codeID }
-            if knownTools.count != before {
-                saveTools(for: key)
-                rebuildAllTools()
-            }
+            list.removeAll { $0.id == genericID || $0.id == codeID }
         }
 
-        // Refresh kind on existing entry (model name table may have improved).
-        if let idx = knownTools.firstIndex(where: { $0.id == toolID }) {
-            if knownTools[idx].kind != kind {
+        // Refresh an existing entry, since the name table or the catalog may
+        // have improved.
+        if let idx = list.firstIndex(where: { $0.id == toolID }) {
+            if list[idx].kind != kind {
                 // A nickname still equal to the old kind is a default; keep
                 // anything the user typed.
-                if knownTools[idx].nickname == knownTools[idx].kind {
-                    knownTools[idx].nickname = kind
+                if list[idx].nickname == list[idx].kind { list[idx].nickname = kind }
+                list[idx].kind = kind
+                if list[idx].toolCode == nil {
+                    list[idx].toolCode = identity.toolCode
+                    list[idx].serial = identity.serial
                 }
-                knownTools[idx].kind = kind
-                if knownTools[idx].toolCode == nil {
-                    knownTools[idx].toolCode = identity.toolCode
-                    knownTools[idx].serial = identity.serial
-                }
-                saveTools(for: key)
             }
+            list[idx].isSupported = isSupported
+            commitTools(list, for: key)
             return toolID
         }
 
@@ -406,28 +409,33 @@ final class DeviceRegistry: ObservableObject {
         if identity.serial == 0 {
             let baseID = toolID
             var counter = 1
-            while knownTools.contains(where: { $0.id == toolID }) {
+            while list.contains(where: { $0.id == toolID }) {
                 toolID = "\(baseID)-\(counter)"
                 counter += 1
             }
         }
 
-        // Check tool support for this device family
-        let deviceSpec = WacomDeviceRegistry.spec(for: deviceID)
-        let family = deviceSpec?.family
-        let caps = ToolCatalog.capabilities(forToolCode: identity.toolCode, family: family)
-
-        knownTools.append(
+        list.append(
             KnownTool(
                 id: toolID,
                 nickname: kind,
                 kind: kind,
                 serial: identity.serial,
                 toolCode: identity.toolCode,
-                isSupported: caps.isSupported))
-        saveTools(for: key)
-        rebuildAllTools()
+                isSupported: isSupported))
+        commitTools(list, for: key)
         return toolID
+    }
+
+    /// Saves `list` as `key`'s tools, writing only when it changed, and
+    /// mirrors it into `knownTools` when that tablet is the one loaded.
+    private func commitTools(_ list: [KnownTool], for key: DeviceInstanceKey) {
+        guard list != tools(for: key) else { return }
+        if let data = try? JSONEncoder().encode(list) { ud.set(data, forKey: toolsKey(key)) }
+        // A live key carries the unit's serial and its row's key doesn't;
+        // both name the same stored list.
+        if let loaded = knownToolsKey, toolsKey(loaded) == toolsKey(key) { knownTools = list }
+        rebuildAllTools()
     }
 
     /// Record the hardware serial number returned from a WACOM_REPORT_USB (Report ID 0x03)
@@ -501,18 +509,16 @@ final class DeviceRegistry: ObservableObject {
     }
 
     func renameTool(id: String, to name: String, forDevice deviceID: String) {
-        guard let idx = knownTools.firstIndex(where: { $0.id == id }),
-            let key = DeviceInstanceKey(stringValue: deviceID)
-        else { return }
-        knownTools[idx].nickname = name
-        saveTools(for: key)
-        rebuildAllTools()
+        guard let key = DeviceInstanceKey(stringValue: deviceID) else { return }
+        var list = tools(for: key)
+        guard let idx = list.firstIndex(where: { $0.id == id }) else { return }
+        list[idx].nickname = name
+        commitTools(list, for: key)
     }
 
     /// Renames a tool in every tablet's persisted list. Used by the
-    /// all-tablets section of the Devices pane, where the edited tool may
-    /// not belong to the currently selected tablet (so `renameTool(_:to:forDevice:)`,
-    /// which operates on `knownTools`, could not find it).
+    /// all-tablets section of the Devices pane, where one pen can appear
+    /// under several tablets.
     func renameToolEverywhere(id: String, to name: String) {
         for tablet in knownTablets {
             guard let data = ud.data(forKey: toolsKey(tablet.instanceKey)),
@@ -541,13 +547,12 @@ final class DeviceRegistry: ObservableObject {
     /// that callers can pass to `restoreTool(_:)` to undo.
     @discardableResult
     func forgetTool(id: String, forDevice deviceID: String) -> ToolRemovalSnapshot? {
-        guard let tool = knownTools.first(where: { $0.id == id }),
-            let key = DeviceInstanceKey(stringValue: deviceID)
-        else { return nil }
+        guard let key = DeviceInstanceKey(stringValue: deviceID) else { return nil }
+        var list = tools(for: key)
+        guard let tool = list.first(where: { $0.id == id }) else { return nil }
         let originalBlob = ud.data(forKey: toolsKey(key))
-        knownTools.removeAll { $0.id == id }
-        saveTools(for: key)
-        rebuildAllTools()
+        list.removeAll { $0.id == id }
+        commitTools(list, for: key)
         return ToolRemovalSnapshot(
             tool: tool,
             originDeviceID: deviceID,
@@ -686,6 +691,7 @@ final class DeviceRegistry: ObservableObject {
     /// user selects a different tablet in DevicesView.
     func loadTools(for key: DeviceInstanceKey) {
         let deviceID = key.productID  // model identity: pen names, family
+        knownToolsKey = key
         guard let data = ud.data(forKey: toolsKey(key)),
             var list = try? JSONDecoder().decode([KnownTool].self, from: data)
         else {
