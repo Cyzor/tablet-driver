@@ -453,7 +453,7 @@ struct ButtonBinding: Codable, Equatable {
                 UInt16(kUCKeyActionDown),
                 carbonMods,
                 UInt32(LMGetKbdType()),
-                OptionBits(kUCKeyTranslateNoDeadKeysBit),
+                OptionBits(kUCKeyTranslateNoDeadKeysMask),  // the mask; the bit number is 0
                 &deadState,
                 4,
                 &charCount,
