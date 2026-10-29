@@ -537,6 +537,12 @@ final class TabletSettings: ObservableObject {
     @Published var dragThreshold: Double = 0.0 {
         didSet { persist("dragThreshold", dragThreshold) }
     }
+    /// Millimeters of pen travel a tap may wobble before it drags — see
+    /// `TouchdownGuard`. No UI: an experimental `defaults`-only knob; 0 turns
+    /// it off. Clamped 0…5 in `reloadAll()`.
+    @Published var touchdownClickGuardMM: Double = TouchdownGuard.defaultRadiusMM {
+        didSet { persist("touchdownClickGuardMM", touchdownClickGuardMM) }
+    }
     /// Side-button actions that wait for tip contact. Empty: all act while
     /// hovering.
     @Published var requireContact: RequireContactActions = [] {

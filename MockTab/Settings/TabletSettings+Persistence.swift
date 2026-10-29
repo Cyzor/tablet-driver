@@ -71,6 +71,8 @@ extension TabletSettings {
         tipUpAssistDelay = loadDouble(
             "tipUpAssistDelay", default: legacyTipUpAssistOn ? 80.0 : 0.0)
         dragThreshold = loadDouble("dragThreshold", default: 0.0)
+        touchdownClickGuardMM = Swift.max(
+            0.0, Swift.min(loadDouble("touchdownClickGuardMM", default: TouchdownGuard.defaultRadiusMM), 5.0))
         requireContact = RequireContactActions(rawValue: loadInt("requireContact", default: 0))
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)
         touchEnabled = loadBool("touchEnabled", default: false)

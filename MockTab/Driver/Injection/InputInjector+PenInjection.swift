@@ -254,6 +254,7 @@ extension InputInjector {
                 // Each contact decides afresh; a flag left from an earlier
                 // contact would swallow this one's release.
                 tipClickSwallowed = false
+                touchdownHeld = false
                 if fireContactDeferredButtons(at: screenPoint, snap: snap, settings: settings) {
                     // Require Contact: contact performs the held button's
                     // action in place of the tip's click.
@@ -285,6 +286,7 @@ extension InputInjector {
                     let (clickPt, count) = resolveClick(screenPoint, snapshot: snap)
                     activeClickCount = count
                     tipDownOrigin = clickPt
+                    armTouchdownGuard(point: point, snap: snap)
                     postMouseDown(
                         button: activeButton, at: clickPt,
                         pressure: pressure, clickCount: count,
@@ -295,8 +297,11 @@ extension InputInjector {
                 noteTipForCapture(down: false, kind: tipKind)
                 releaseContactFiredButtons(at: screenPoint, snap: snap, settings: settings)
                 // Releases only what the press posted, whether or not a pan
-                // started or ended since.
-                releaseTip(at: screenPoint, pressure: pressure, point: point, snap: snap)
+                // started or ended since. A held tap releases where it
+                // touched down, so it stays a clean click.
+                releaseTip(
+                    at: touchdownHeld ? tipDownOrigin : screenPoint, pressure: pressure,
+                    point: point, snap: snap)
             }
             lastPostedPoint = screenPoint
             lastPostedPressure = pressure
@@ -365,6 +370,7 @@ extension InputInjector {
                     at: screenPoint, pressure: pressure, point: point, pose: pose,
                     snapshot: snap)
             }
+            if dragging { updateTouchdownGuard(point: point, snap: snap) }
             // Drag threshold: no drag until the pen travels dragThreshold
             // from touchdown, so a shaky tap stays a click.
             let withinDragThreshold =
@@ -373,8 +379,18 @@ extension InputInjector {
                 && hypot(screenPoint.x - tipDownOrigin.x, screenPoint.y - tipDownOrigin.y)
                     < snap.dragThreshold
 
+            var heldPressurePosted = false
             if dragging {
-                if !withinDragThreshold {
+                if touchdownHeld {
+                    // The pointer stays put, but pressure still reaches
+                    // drawing apps: a still pen can build up or grow a dot.
+                    if (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon {
+                        postMouseDrag(
+                            button: activeButton, at: tipDownOrigin, pressure: pressure, point: point,
+                            pose: pose, snapshot: snap)
+                        heldPressurePosted = true
+                    }
+                } else if !withinDragThreshold {
                     postMouseDrag(
                         button: activeButton, at: screenPoint, pressure: pressure, point: point,
                         pose: pose, snapshot: snap)
@@ -411,11 +427,54 @@ extension InputInjector {
                     at: screenPoint, point: point, pose: pose,
                     snapshot: snap)
             }
-            lastPostedPoint = screenPoint
-            lastPostedPressure = pressure
+            if dragging && touchdownHeld {
+                // Deferred and debounced releases post here, so they land on
+                // the touchdown point too.
+                lastPostedPoint = tipDownOrigin
+                if heldPressurePosted { lastPostedPressure = pressure }
+            } else {
+                lastPostedPoint = screenPoint
+                lastPostedPressure = pressure
+            }
             lastPostedRotation = pose.rotation
             hasPostedPoint = true
         }
+    }
+
+    // MARK: - Touchdown guard
+
+    /// Starts holding a tap's drags, when the tablet's size is known and the
+    /// guard is on. Mice click with a button, so they're left alone.
+    private func armTouchdownGuard(point: TabletPoint, snap: InjectionSnapshot) {
+        guard !activeToolIsMouse, digitizerSizeMM != nil, snap.touchdownClickGuardMM > 0 else { return }
+        touchdownHeld = true
+        touchdownTablet = Self.digitizerFraction(point)
+        touchdownTime = CFAbsoluteTimeGetCurrent()
+        touchdownMaxTravelMM = 0
+    }
+
+    /// Lets the drags go once the pen travels past the guard's radius.
+    private func updateTouchdownGuard(point: TabletPoint, snap: InjectionSnapshot) {
+        guard touchdownHeld, let size = digitizerSizeMM else { return }
+        let travel = TouchdownGuard.travelMM(
+            from: touchdownTablet, to: Self.digitizerFraction(point), areaMM: size)
+        touchdownMaxTravelMM = Swift.max(touchdownMaxTravelMM, travel)
+        let elapsed = CFAbsoluteTimeGetCurrent() - touchdownTime
+        guard !TouchdownGuard(radiusMM: snap.touchdownClickGuardMM).holds(elapsed: elapsed, travelMM: travel)
+        else { return }
+        touchdownHeld = false
+        noteTouchdownGuardForCapture("lets go after \(Int(elapsed * 1000)) ms, \(Self.mmText(travel)) mm")
+    }
+
+    private static func digitizerFraction(_ point: TabletPoint) -> (x: Double, y: Double) {
+        (Double(point.x) / Double(Swift.max(point.maxX, 1)), Double(point.y) / Double(Swift.max(point.maxY, 1)))
+    }
+
+    private static func mmText(_ mm: Double) -> String { String(format: "%.2f", mm) }
+
+    private func noteTouchdownGuardForCapture(_ what: String) {
+        guard HIDCapture.shared.isCapturing else { return }
+        HIDCapture.shared.recordNote(tag: "MockTab", "touchdown guard \(what)")
     }
 
     /// Barrel-button changes, through the Xencelabs debounce or directly.
@@ -843,6 +902,10 @@ extension InputInjector {
     private func releaseTip(
         at screenPoint: CGPoint, pressure: Double, point: TabletPoint, snap: InjectionSnapshot
     ) {
+        if touchdownHeld {
+            touchdownHeld = false
+            noteTouchdownGuardForCapture("held the tap, \(Self.mmText(touchdownMaxTravelMM)) mm at most")
+        }
         if tipClickSwallowed {
             tipClickSwallowed = false
             return

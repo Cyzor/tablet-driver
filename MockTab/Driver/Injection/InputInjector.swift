@@ -353,6 +353,22 @@ final class InputInjector: @unchecked Sendable {
     /// Screen position at the moment the tip went down. Anchor for the drag
     /// threshold gate — see `TabletSettings.dragThreshold`.
     var tipDownOrigin: CGPoint = .zero
+    /// `TouchdownGuard` holds this contact's drags; the pointer stays at
+    /// `tipDownOrigin` until the pen travels away.
+    var touchdownHeld = false
+    /// Where the tip touched down, as a fraction of the digitizer, and when.
+    var touchdownTablet: (x: Double, y: Double) = (0, 0)
+    var touchdownTime: CFAbsoluteTime = 0
+    /// Farthest the pen traveled while held, in millimeters, for the capture log.
+    var touchdownMaxTravelMM: Double = 0
+    /// The digitizer's size in millimeters, or nil when the spec doesn't say,
+    /// which leaves the guard off.
+    lazy var digitizerSizeMM: (width: Double, height: Double)? = {
+        guard let spec = WacomDeviceRegistry.spec(for: deviceProductID),
+              let w = spec.activeWidthMM, w > 0, let h = spec.activeHeightMM, h > 0
+        else { return nil }
+        return (w, h)
+    }()
     var lastEraserMode = false  // Track eraser/tip flip while in proximity
     // Named fields, not a collection: cheaper at 133 Hz and readable in a debugger.
     var lastButton1Down = false

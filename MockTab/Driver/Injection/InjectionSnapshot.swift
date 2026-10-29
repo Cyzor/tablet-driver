@@ -46,6 +46,8 @@ struct InjectionSnapshot: Sendable, Equatable {
     var relativeCursorMovement: Bool
     var tipUpAssistDelay: Double
     var dragThreshold: Double
+    /// `TabletSettings.touchdownClickGuardMM`; 0 turns the guard off.
+    var touchdownClickGuardMM: Double
     var requireContact: RequireContactActions
     var doubleClickDistance: Double
     /// System double-click time window (NSEvent.doubleClickInterval), captured
@@ -188,6 +190,7 @@ extension TabletSettings {
             relativeCursorMovement: relativeCursorMovement,
             tipUpAssistDelay: tipUpAssistDelay,
             dragThreshold: dragThreshold,
+            touchdownClickGuardMM: touchdownClickGuardMM,
             requireContact: requireContact,
             doubleClickDistance: doubleClickDistance,
             doubleClickInterval: NSEvent.doubleClickInterval,
