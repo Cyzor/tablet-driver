@@ -143,6 +143,30 @@ do {
         "Picking a new kind replaces the unknown one")
 }
 
+// MARK: - Unrecognized pen actions
+
+do {
+    // A tip action this build can't read acted as None, so the pen moved the
+    // pointer but never clicked. It now acts as the action's default, and
+    // the stored string, which nothing rewrites on load, keeps the kind.
+    let futureTip = #"{"kind":"futureAction","keyCode":0,"modifierFlags":0,"keyLabel":""}"#
+    let tip = ButtonBinding.decode(futureTip, orDefault: .leftClick)
+    expect(tip == .leftClick, "An unknown tip action acts as Left Click")
+    expect(
+        ButtonBinding.decode(futureTip)?.unrecognizedKindName == "futureAction",
+        "The stored tip action keeps its unknown kind")
+    expect(
+        ButtonBinding.decode(futureTip, orDefault: .rightClick) == .rightClick,
+        "An unknown side-button action acts as that button's default")
+
+    let savedNone = try String(data: JSONEncoder().encode(ButtonBinding.none), encoding: .utf8)!
+    expect(ButtonBinding.decode(savedNone, orDefault: .leftClick) == .none, "A saved None stays None")
+    expect(ButtonBinding.decode("", orDefault: .leftClick) == .leftClick, "No stored action gives the default")
+    expect(
+        ButtonBinding.decode(#"{"kind":"leftClick"}"#, orDefault: .rightClick) == .rightClick,
+        "An action missing required fields gives the default")
+}
+
 do {
     let bindingJSON = try String(data: JSONEncoder().encode(ButtonBinding.none), encoding: .utf8)!
     let futureJSON = """

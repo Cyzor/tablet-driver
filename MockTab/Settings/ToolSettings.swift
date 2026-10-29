@@ -126,14 +126,14 @@ final class ToolSettings: ObservableObject {
     @Published private var tipRaw: String = "" {
         didSet {
             persist("tipBinding", tipRaw)
-            _tipBinding = ButtonBinding.decode(tipRaw) ?? .leftClick
+            _tipBinding = ButtonBinding.decode(tipRaw, orDefault: .leftClick)
         }
     }
 
     @Published private var eraserRaw: String = "" {
         didSet {
             persist("eraserBinding", eraserRaw)
-            _eraserBinding = ButtonBinding.decode(eraserRaw) ?? .eraser
+            _eraserBinding = ButtonBinding.decode(eraserRaw, orDefault: .eraser)
         }
     }
 
@@ -154,14 +154,14 @@ final class ToolSettings: ObservableObject {
         didSet {
             persist("penButton1Binding", pen1Raw)
             // A mouse's buttons default to left, right, and middle; a pen's lower side button to right.
-            _pen1Binding = ButtonBinding.decode(pen1Raw) ?? (isMouse ? .leftClick : .rightClick)
+            _pen1Binding = ButtonBinding.decode(pen1Raw, orDefault: isMouse ? .leftClick : .rightClick)
         }
     }
 
     @Published private var pen2Raw: String = "" {
         didSet {
             persist("penButton2Binding", pen2Raw)
-            _pen2Binding = ButtonBinding.decode(pen2Raw) ?? (isMouse ? .rightClick : .middleClick)
+            _pen2Binding = ButtonBinding.decode(pen2Raw, orDefault: isMouse ? .rightClick : .middleClick)
         }
     }
 
@@ -181,28 +181,28 @@ final class ToolSettings: ObservableObject {
     @Published private var pen3Raw: String = "" {
         didSet {
             persist("penButton3Binding", pen3Raw)
-            _pen3Binding = ButtonBinding.decode(pen3Raw) ?? (isMouse ? .middleClick : .none)
+            _pen3Binding = ButtonBinding.decode(pen3Raw, orDefault: isMouse ? .middleClick : .none)
         }
     }
 
     @Published private var pen4Raw: String = "" {
         didSet {
             persist("penButton4Binding", pen4Raw)
-            _pen4Binding = ButtonBinding.decode(pen4Raw) ?? .none
+            _pen4Binding = ButtonBinding.decode(pen4Raw, orDefault: .none)
         }
     }
 
     @Published private var pen5Raw: String = "" {
         didSet {
             persist("penButton5Binding", pen5Raw)
-            _pen5Binding = ButtonBinding.decode(pen5Raw) ?? .none
+            _pen5Binding = ButtonBinding.decode(pen5Raw, orDefault: .none)
         }
     }
 
     @Published private var wheelRaw: String = "" {
         didSet {
             persist("wheelBinding", wheelRaw)
-            _wheelBinding = ButtonBinding.decode(wheelRaw) ?? .none
+            _wheelBinding = ButtonBinding.decode(wheelRaw, orDefault: .none)
         }
     }
 
@@ -306,6 +306,12 @@ final class ToolSettings: ObservableObject {
         if ud.string(forKey: prefix + key) != nil { return fallbackPrefix == nil ? .tablet : .pen }
         if let fb = fallbackPrefix, ud.string(forKey: fb + key) != nil { return .tablet }
         return .builtIn
+    }
+
+    /// `key`'s stored action when this build can't read it, so diagnostics
+    /// show what the factory default stands in for.
+    func unreadableKind(_ key: String) -> String? {
+        freshString(key).flatMap { ButtonBinding.decode($0) }?.unrecognizedKindName
     }
 
     private func freshString(_ key: String) -> String? {

@@ -314,7 +314,10 @@ final class CaptureSessionCoordinator: ObservableObject {
         let toolID = tool.fallbackPrefix == nil
             ? nil : context.settings.toolCache.first { $0.value === tool }?.key
         return CapturePenBindings(
-            bindings: Dictionary(uniqueKeysWithValues: entries.map { ($0.name, $0.binding.storedKindName) }),
+            bindings: Dictionary(uniqueKeysWithValues: entries.map { entry in
+                let stored = tool.unreadableKind(entry.key).map { " (stored \($0))" } ?? ""
+                return (entry.name, entry.binding.kind.rawValue + stored)
+            }),
             sources: Dictionary(uniqueKeysWithValues: entries.map { ($0.name, tool.valueSource($0.key).rawValue) }),
             tool: toolID.flatMap { id in
                 DeviceRegistry.shared.allKnownTools.first { $0.id == id }.map(Self.captureName)

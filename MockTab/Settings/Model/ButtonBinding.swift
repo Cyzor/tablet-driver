@@ -33,14 +33,14 @@ struct ButtonBinding: Codable, Equatable {
     /// Preserved verbatim on re-encode — see TabletSettings.Profile.unknownFields.
     private var unknownFields: [String: JSONValue] = [:]
 
-    /// A kind from a newer build. It acts as `.none` here but is written back
+    /// A kind from a newer build. It acts as `.none` here, or as the pen
+    /// action's default through `decode(_:orDefault:)`, but is written back
     /// unchanged, so one new action can't fail a whole saved array of
     /// bindings. Cleared when the user picks another kind.
     private var unrecognizedKind: String?
 
-    /// The kind as stored, so diagnostics tell an action this build can't
-    /// read from a saved None.
-    var storedKindName: String { unrecognizedKind ?? kind.rawValue }
+    /// The stored kind when this build can't read it, for diagnostics.
+    var unrecognizedKindName: String? { unrecognizedKind }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
         case kind, keyCode, modifierFlags, keyLabel
@@ -222,6 +222,14 @@ struct ButtonBinding: Codable, Equatable {
     static func decode(_ s: String) -> ButtonBinding? {
         guard !s.isEmpty, let data = s.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(ButtonBinding.self, from: data)
+    }
+
+    /// A stored pen action, or `fallback` when none is stored or it's a kind
+    /// from another build. Acting as None there left a pen that never clicked.
+    /// The stored value stays as it is until the user picks another action.
+    static func decode(_ s: String, orDefault fallback: ButtonBinding) -> ButtonBinding {
+        guard let binding = decode(s), binding.unrecognizedKind == nil else { return fallback }
+        return binding
     }
 
     /// A stored binding list, or nil when `s` is empty or this build can't

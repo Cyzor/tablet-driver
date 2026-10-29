@@ -822,12 +822,12 @@ final class TabletSettings: ObservableObject {
     }
 
     var penButton1Binding: ButtonBinding {
-        get { ButtonBinding.decode(pen1Raw) ?? .rightClick }
+        get { ButtonBinding.decode(pen1Raw, orDefault: .rightClick) }
         set { pen1Raw = newValue.encoded }
     }
 
     var penButton2Binding: ButtonBinding {
-        get { ButtonBinding.decode(pen2Raw) ?? .middleClick }
+        get { ButtonBinding.decode(pen2Raw, orDefault: .middleClick) }
         set { pen2Raw = newValue.encoded }
     }
 
