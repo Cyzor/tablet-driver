@@ -117,7 +117,8 @@ struct LayoutKey {
     let needsShift: Bool
 }
 
-typealias LayoutLookup = (Character) -> LayoutKey?
+/// The key that types a character, with ⌘ held when `command` is true.
+typealias LayoutLookup = (_ character: Character, _ command: Bool) -> LayoutKey?
 
 /// A keystroke resolved to a macOS virtual key code, as MockTab stores it.
 struct ResolvedKey: Equatable {
@@ -168,6 +169,7 @@ enum Keystroke {
     static func parse(_ s: String, layout: LayoutLookup) -> Result {
         var mods = KeyModifiers()
         var keys: [(ResolvedKey, Bool)] = []
+        var characters: [Character] = []
         var spacebarHold = false
         var rest = Substring(s)
         while let c = rest.first {
@@ -184,15 +186,17 @@ enum Keystroke {
                 } else if let (code, label) = namedKeys[token] {
                     keys.append((ResolvedKey(keyCode: code, modifiers: [], label: label), token != "enter"))
                 } else if let ch = namedCharacters[token] {
-                    keys.append(character(ch, layout: layout))
+                    characters.append(ch)
                 } else {
                     return .unsupported("&\(token);")
                 }
             } else {
                 rest = rest.dropFirst()
-                keys.append(character(c, layout: layout))
+                characters.append(c)
             }
         }
+        // Find each character's key after reading every modifier: ⌘ can change it.
+        keys += characters.map { character($0, command: mods.contains(.command), layout: layout) }
         if spacebarHold && keys.isEmpty && mods.isEmpty {
             return .key(ResolvedKey(keyCode: 49, modifiers: [], label: "Space", spacebar: true), exact: true)
         }
@@ -218,9 +222,9 @@ enum Keystroke {
 
     /// Finds a bare character on the current layout, adding Shift when the
     /// character needs it, which the Wacom recording may not have meant.
-    private static func character(_ c: Character, layout: LayoutLookup) -> (ResolvedKey, Bool) {
+    private static func character(_ c: Character, command: Bool, layout: LayoutLookup) -> (ResolvedKey, Bool) {
         let label = String(c).uppercased()
-        guard let k = layout(Character(String(c).lowercased())) ?? layout(c) else {
+        guard let k = layout(Character(String(c).lowercased()), command) ?? layout(c, command) else {
             return (ResolvedKey(keyCode: nil, modifiers: [], label: label), false)
         }
         return (ResolvedKey(keyCode: k.keyCode, modifiers: k.needsShift ? .shift : [], label: label), !k.needsShift)

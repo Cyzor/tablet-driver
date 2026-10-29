@@ -51,7 +51,7 @@ Older capture files may contain a device serial number. `triage_discovery.py` fl
 
 ## wacom-import/
 
-`run.sh` reads a settings backup from Wacom Center or Tablet Utility (a `.wacomprefs` folder) and lists what each setting becomes in MockTab and what has no equivalent: pen and ExpressKey assignments, keystrokes, ring modes, the tablet area, and per-app settings. It looks up keystrokes on the current keyboard layout, so run it on the Mac the settings came from.
+`run.sh` reads a settings backup from Wacom Center or Tablet Utility (a `.wacomprefs` folder) and lists what each setting becomes in MockTab and what has no equivalent: pen and ExpressKey assignments, keystrokes, ring modes, the tablet area, and per-app settings. It looks up keystrokes on the current keyboard layout, so run it on the Mac that made the backup.
 
 With `--apply`, it replaces one tablet's ExpressKeys, ring and dial modes, tablet area, pen buttons and pressure, and per-app settings with the Wacom ones. Quit MockTab first. It asks before writing, saves a copy of the settings to Application Support, and prints the commands that undo the import. `--dry-run` shows the change and writes nothing. `main.swift`'s header lists the other options.
 

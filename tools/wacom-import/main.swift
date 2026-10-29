@@ -9,7 +9,7 @@
 // Run it through run.sh with a .wacomprefs folder from Wacom Center or Tablet
 // Utility; Wacom Center keeps them in ~/Library/Application Support/Wacom/Backups.
 // It looks up recorded characters on the current keyboard layout, so run it
-// on the Mac the settings came from.
+// on the Mac that made the backup.
 //
 //   run.sh <backup>                          report only
 //   run.sh --apply [options] <backup>        report, then write
@@ -24,33 +24,39 @@ import Carbon
 import Foundation
 
 /// Finds each character's key on the current layout, preferring the one
-/// that types it without Shift.
+/// that types it without Shift. ⌘ shortcuts get their own table: some
+/// layouts, such as Dvorak – QWERTY ⌘, switch keys while ⌘ is down.
 func currentLayout() -> LayoutLookup {
     guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
           let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
-    else { return { _ in nil } }
+    else { return { _, _ in nil } }
     let data = Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data
-    var table: [Character: LayoutKey] = [:]
-    data.withUnsafeBytes { raw in
-        guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return }
-        for shift in [false, true] {
-            for code in UInt16(0)..<128 {
-                var dead: UInt32 = 0
-                var chars = [UniChar](repeating: 0, count: 4)
-                var length = 0
-                let mods: UInt32 = shift ? UInt32(shiftKey >> 8) & 0xFF : 0
-                let status = UCKeyTranslate(
-                    layout, code, UInt16(kUCKeyActionDown), mods, UInt32(LMGetKbdType()),
-                    OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, chars.count, &length, &chars)
-                guard status == noErr, length == 1,
-                      let c = String(utf16CodeUnits: chars, count: length).first,
-                      !c.isWhitespace, c.asciiValue.map({ $0 >= 0x20 }) ?? true
-                else { continue }
-                if table[c] == nil { table[c] = LayoutKey(keyCode: code, needsShift: shift) }
+    func table(holding held: Int) -> [Character: LayoutKey] {
+        var table: [Character: LayoutKey] = [:]
+        data.withUnsafeBytes { raw in
+            guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return }
+            for shift in [false, true] {
+                for code in UInt16(0)..<128 {
+                    var dead: UInt32 = 0
+                    var chars = [UniChar](repeating: 0, count: 4)
+                    var length = 0
+                    let mods = UInt32(((shift ? held | shiftKey : held) >> 8) & 0xFF)
+                    let status = UCKeyTranslate(
+                        layout, code, UInt16(kUCKeyActionDown), mods, UInt32(LMGetKbdType()),
+                        OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, chars.count, &length, &chars)
+                    guard status == noErr, length == 1,
+                          let c = String(utf16CodeUnits: chars, count: length).first,
+                          !c.isWhitespace, c.asciiValue.map({ $0 >= 0x20 }) ?? true
+                    else { continue }
+                    if table[c] == nil { table[c] = LayoutKey(keyCode: code, needsShift: shift) }
+                }
             }
         }
+        return table
     }
-    return { table[$0] }
+    let plain = table(holding: 0)
+    let command = table(holding: cmdKey)
+    return { c, withCommand in (withCommand ? command : plain)[c] }
 }
 
 let usage = "Usage: tools/wacom-import/run.sh [--apply [--tablet N] [--pen 0xSERIAL] [--dry-run] [--yes]] <backup.wacomprefs>\n"

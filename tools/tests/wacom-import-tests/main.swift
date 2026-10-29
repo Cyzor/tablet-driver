@@ -30,7 +30,7 @@ let usLayout: [Character: LayoutKey] = [
     "1": LayoutKey(keyCode: 18, needsShift: false), "[": LayoutKey(keyCode: 33, needsShift: false),
     "]": LayoutKey(keyCode: 30, needsShift: false), "#": LayoutKey(keyCode: 20, needsShift: true),
 ]
-let layout: LayoutLookup = { usLayout[$0] }
+let layout: LayoutLookup = { c, _ in usLayout[c] }
 
 let dir = URL(fileURLWithPath: CommandLine.arguments[1])
 let backup = try! WacomBackup.load(dir.appendingPathComponent("sample.wacomprefs"))
@@ -176,6 +176,14 @@ if case .key(let k, _) = Keystroke.parse("q", layout: layout) {
     expect(k.keyCode == nil, "A character missing from the layout has no key code")
 } else {
     expect(false, "Missing character parses")
+}
+// Dvorak – QWERTY ⌘ types z on key 44, but on key 6 while ⌘ is down.
+let dvorak: LayoutLookup = { c, command in c == "z" ? LayoutKey(keyCode: command ? 6 : 44, needsShift: false) : nil }
+if case .key(let k, _) = Keystroke.parse("&command;z", layout: dvorak),
+   case .key(let plain, _) = Keystroke.parse("z", layout: dvorak) {
+    expect(k.keyCode == 6 && plain.keyCode == 44, "⌘ shortcuts use the keys ⌘ types: \(k), \(plain)")
+} else {
+    expect(false, "Dvorak keystrokes parse")
 }
 
 checkEncoder(report) { condition, message in expect(condition, message) }
