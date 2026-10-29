@@ -179,6 +179,7 @@ if case .key(let k, _) = Keystroke.parse("q", layout: layout) {
 }
 
 checkEncoder(report) { condition, message in expect(condition, message) }
+checkWriter(report) { condition, message in expect(condition, message) }
 
 // Load errors
 let empty = FileManager.default.temporaryDirectory.appendingPathComponent("wacom-import-tests-\(UUID().uuidString)")

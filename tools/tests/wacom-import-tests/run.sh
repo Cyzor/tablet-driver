@@ -1,5 +1,6 @@
 #!/bin/sh
-# Compile and run the Wacom import report and encoder checks against the fixture backup.
+# Compile and run the Wacom import report, encoder, and writer checks against the
+# fixture backup. The writer checks use a scratch settings domain they delete.
 # Exits non-zero on failure.
 set -e
 
@@ -13,6 +14,7 @@ S="$ROOT/MockTab/Settings"
 swiftc -O -I "$KIT" -L "$KIT" -lTabletKit \
     "$ROOT/tools/wacom-import/WacomPrefs.swift" \
     "$ROOT/tools/wacom-import/Encoder.swift" \
+    "$ROOT/tools/wacom-import/Writer.swift" \
     "$S/Serialization/ConfigurationImporter.swift" \
     "$S/Serialization/ImportPlan.swift" \
     "$S/Serialization/UnknownFieldsCodec.swift" \
@@ -22,6 +24,7 @@ swiftc -O -I "$KIT" -L "$KIT" -lTabletKit \
     "$S/Model/BezierCurve.swift" \
     "$DIR/../configuration-display-region-tests/StubTypes.swift" \
     "$DIR/EncoderChecks.swift" \
+    "$DIR/WriterChecks.swift" \
     "$DIR/main.swift" \
     -o "$BIN"
 "$BIN" "$DIR/fixtures"
