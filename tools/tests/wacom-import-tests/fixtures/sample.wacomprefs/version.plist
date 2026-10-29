@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>VersionKeyBuild</key>
+	<integer>2</integer>
+	<key>VersionKeyMajor</key>
+	<integer>6</integer>
+	<key>VersionKeyMinor</key>
+	<integer>4</integer>
+	<key>VersionKeyRelease</key>
+	<integer>1</integer>
+	<key>VersionKeyVariation</key>
+	<integer>9</integer>
+</dict>
+</plist>

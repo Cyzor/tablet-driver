@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root type="map">
+  <ImportFileVersion type="integer">6</ImportFileVersion>
+  <OSInterface type="map">
+    <ApplicationMap type="map">
+      <AppID0 type="map">
+        <ApplicationName type="string">All applications</ApplicationName>
+        <ApplicationSecondaryId type="string"/>
+        <ApplicationRemoved type="bool">false</ApplicationRemoved>
+      </AppID0>
+      <AppID1 type="map">
+        <ApplicationName type="string">Paint</ApplicationName>
+        <ApplicationLongName type="string">/nonexistent/Paint 1.app</ApplicationLongName>
+        <ApplicationSecondaryId type="string">com.example.paint</ApplicationSecondaryId>
+        <ApplicationRemoved type="bool">false</ApplicationRemoved>
+      </AppID1>
+      <AppID2 type="map">
+        <ApplicationName type="string">Paint</ApplicationName>
+        <ApplicationLongName type="string">/nonexistent/Paint 2.app</ApplicationLongName>
+        <ApplicationSecondaryId type="string">com.example.paint</ApplicationSecondaryId>
+        <ApplicationRemoved type="bool">false</ApplicationRemoved>
+      </AppID2>
+      <AppID3 type="map">
+        <ApplicationName type="string">Notes</ApplicationName>
+        <ApplicationSecondaryId type="string">com.example.notes</ApplicationSecondaryId>
+        <ApplicationRemoved type="bool">false</ApplicationRemoved>
+      </AppID3>
+      <AppID4 type="map">
+        <ApplicationName type="string">Old Tool</ApplicationName>
+        <ApplicationSecondaryId type="string">com.example.old</ApplicationSecondaryId>
+        <ApplicationRemoved type="bool">true</ApplicationRemoved>
+      </AppID4>
+      <AppID5 type="map">
+        <ApplicationName type="string">Script</ApplicationName>
+        <ApplicationSecondaryId type="string"/>
+        <ApplicationRemoved type="bool">false</ApplicationRemoved>
+      </AppID5>
+    </ApplicationMap>
+  </OSInterface>
+  <TabletArray type="array">
+    <ArrayElement type="map">
+      <DefaultTabName type="string">Intuos Pro M</DefaultTabName>
+      <TabletName type="string">Studio</TabletName>
+      <TabletType type="integer">30</TabletType>
+      <TabletXDimension type="integer">1000</TabletXDimension>
+      <TabletYDimension type="integer">800</TabletYDimension>
+      <ContextManager type="map">
+        <MappingGroupArray type="array">
+          <ArrayElement type="map">
+            <ApplicationID type="integer">0</ApplicationID>
+            <MappingSetArray type="array">
+              <ArrayElement type="map">
+                <TransducerID type="map">
+                  <TypeIndicator type="integer">0</TypeIndicator>
+                </TransducerID>
+                <OutputArea type="map">
+                  <TabletOutputArea type="map">
+                    <Origin type="map"><X type="integer">100</X><Y type="integer">200</Y><Z type="integer">0</Z></Origin>
+                    <Extent type="map"><X type="integer">500</X><Y type="integer">400</Y><Z type="integer">0</Z></Extent>
+                  </TabletOutputArea>
+                </OutputArea>
+                <InputScreenAreaArray type="array">
+                  <ArrayElement type="map">
+                    <ScreenArea type="map"><WhichMonitor type="string">Desktop_0_</WhichMonitor></ScreenArea>
+                  </ArrayElement>
+                </InputScreenAreaArray>
+              </ArrayElement>
+            </MappingSetArray>
+          </ArrayElement>
+        </MappingGroupArray>
+      </ContextManager>
+      <TabletControlContainerArray type="array">
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">0</ApplicationAssociated>
+          <TabletControlsButtonsArray type="array">
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton1</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&vk=12:cc=31:kb=2b;]]></Keystroke>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton2</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&command;z]]></Keystroke>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton3</ButtonName>
+              <ButtonFunction type="integer">9</ButtonFunction>
+              <Modifier type="kestring"><![CDATA[&option;]]></Modifier>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton4</ButtonName>
+              <ButtonFunction type="integer">9</ButtonFunction>
+              <Modifier type="kestring"><![CDATA[&spacem;]]></Modifier>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton5</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&shift;&tab;]]></Keystroke>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton6</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[abc]]></Keystroke>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton7</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&volumeup;]]></Keystroke>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton8</ButtonName>
+              <ButtonFunction type="integer">61</ButtonFunction>
+              <Panel type="string">Radial menu</Panel>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">RightButton1</ButtonName>
+              <ButtonFunction type="integer">999</ButtonFunction>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">RightButton2</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&shift;#]]></Keystroke>
+            </ArrayElement>
+          </TabletControlsButtonsArray>
+          <TabletControlsModButtonsArray type="array"/>
+          <TouchRingSettings type="map">
+            <TouchStripModes type="map">
+              <mode1 type="map">
+                <TouchStripFunction type="integer">8</TouchStripFunction>
+                <TouchStripKeystrokeIncrease type="kestring"><![CDATA[]]]></TouchStripKeystrokeIncrease>
+                <TouchStripKeystrokeDecrease type="kestring"><![CDATA[[]]></TouchStripKeystrokeDecrease>
+                <TouchStripKeystrokeName type="string">Brush size</TouchStripKeystrokeName>
+                <TouchStripModifiers type="kestring"/>
+              </mode1>
+              <mode2 type="map">
+                <TouchStripFunction type="integer">44</TouchStripFunction>
+              </mode2>
+              <mode3 type="map">
+                <TouchStripFunction type="integer">51</TouchStripFunction>
+              </mode3>
+              <mode4 type="map">
+                <TouchStripFunction type="integer">77</TouchStripFunction>
+              </mode4>
+            </TouchStripModes>
+          </TouchRingSettings>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">2</ApplicationAssociated>
+          <TabletControlsButtonsArray type="array">
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton1</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&vk=12:cc=31:kb=2b;]]></Keystroke>
+            </ArrayElement>
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton2</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&command;&option;z]]></Keystroke>
+            </ArrayElement>
+          </TabletControlsButtonsArray>
+          <TouchRingSettings type="map">
+            <TouchStripModes type="map">
+              <mode1 type="map">
+                <TouchStripFunction type="integer">45</TouchStripFunction>
+              </mode1>
+            </TouchStripModes>
+          </TouchRingSettings>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">1</ApplicationAssociated>
+          <TabletControlsButtonsArray type="array">
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton1</ButtonName>
+              <ButtonFunction type="integer">3</ButtonFunction>
+            </ArrayElement>
+          </TabletControlsButtonsArray>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">3</ApplicationAssociated>
+          <TabletControlsButtonsArray type="array">
+            <ArrayElement type="map">
+              <ButtonName type="string">LeftButton1</ButtonName>
+              <ButtonFunction type="integer">8</ButtonFunction>
+              <Keystroke type="kestring"><![CDATA[&vk=12:cc=31:kb=2b;]]></Keystroke>
+            </ArrayElement>
+          </TabletControlsButtonsArray>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">4</ApplicationAssociated>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">5</ApplicationAssociated>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">9</ApplicationAssociated>
+        </ArrayElement>
+      </TabletControlContainerArray>
+      <TabletTransducerArray type="array">
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">0</ApplicationAssociated>
+          <TransducerID type="map">
+            <Sequence type="integer">4512679493654136</Sequence>
+            <Type type="integer">2114</Type>
+          </TransducerID>
+          <TransducerName type="string">Inking pen</TransducerName>
+          <TransducerTipButtonSettings type="map">
+            <ButtonFunction type="integer">1</ButtonFunction>
+            <ButtonName type="string">tip</ButtonName>
+            <PressureCurveControlPoint type="string">410 0 6144 2048 8191 8191</PressureCurveControlPoint>
+            <Usage type="map">
+              <ELeftClick type="map"><Count type="integer">5</Count></ELeftClick>
+            </Usage>
+          </TransducerTipButtonSettings>
+          <TransducerEraserSettings type="map">
+            <ButtonFunction type="integer">14</ButtonFunction>
+          </TransducerEraserSettings>
+          <TransducerLowerButtonSettings type="map">
+            <ButtonFunction type="integer">3</ButtonFunction>
+          </TransducerLowerButtonSettings>
+          <TransducerUpperButtonSettings type="map">
+            <ButtonFunction type="integer">0</ButtonFunction>
+          </TransducerUpperButtonSettings>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">0</ApplicationAssociated>
+          <TransducerID type="map">
+            <Sequence type="integer">0</Sequence>
+            <Type type="integer">2</Type>
+          </TransducerID>
+          <TransducerName type="string">\~118:0</TransducerName>
+          <TransducerTipButtonSettings type="map">
+            <ButtonFunction type="integer">1</ButtonFunction>
+          </TransducerTipButtonSettings>
+          <TransducerLowerButtonSettings type="map">
+            <ButtonFunction type="integer">33</ButtonFunction>
+          </TransducerLowerButtonSettings>
+        </ArrayElement>
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">2</ApplicationAssociated>
+          <TransducerID type="map">
+            <Sequence type="integer">4512679493654136</Sequence>
+            <Type type="integer">2114</Type>
+          </TransducerID>
+          <TransducerName type="string">Inking pen</TransducerName>
+          <TransducerTipButtonSettings type="map">
+            <ButtonFunction type="integer">1</ButtonFunction>
+            <PressureCurveControlPoint type="string">410 0 6144 2048 8191 8191</PressureCurveControlPoint>
+          </TransducerTipButtonSettings>
+          <TransducerEraserSettings type="map">
+            <ButtonFunction type="integer">14</ButtonFunction>
+          </TransducerEraserSettings>
+          <TransducerLowerButtonSettings type="map">
+            <ButtonFunction type="integer">7</ButtonFunction>
+          </TransducerLowerButtonSettings>
+          <TransducerUpperButtonSettings type="map">
+            <ButtonFunction type="integer">0</ButtonFunction>
+          </TransducerUpperButtonSettings>
+        </ArrayElement>
+      </TabletTransducerArray>
+    </ArrayElement>
+    <ArrayElement type="map">
+      <DefaultTabName type="string">Intuos Pro L</DefaultTabName>
+      <TabletName type="string">Intuos Pro L</TabletName>
+      <TabletType type="integer">33</TabletType>
+      <TabletControlContainerArray type="array">
+        <ArrayElement type="map">
+          <ApplicationAssociated type="integer">0</ApplicationAssociated>
+          <TabletControlsButtonsArray type="array"/>
+          <TouchRings type="map">
+            <leftdial type="map">
+              <TouchStripModes type="map">
+                <mode1 type="map">
+                  <TouchStripFunction type="integer">47</TouchStripFunction>
+                </mode1>
+              </TouchStripModes>
+            </leftdial>
+          </TouchRings>
+        </ArrayElement>
+      </TabletControlContainerArray>
+      <TabletTransducerArray type="array"/>
+    </ArrayElement>
+  </TabletArray>
+</root>
