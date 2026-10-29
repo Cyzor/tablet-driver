@@ -145,23 +145,17 @@ struct ConfigurationImporter {
         if let v = s["invertRotation"] as? Bool { values["invertRotation"] = v }
         if let v = s["relativeCursorMovement"] as? Bool { values["relativeCursorMovement"] = v }
         if let v = s["requireContact"] as? Int { values["requireContact"] = v }
-        if let v = s["penButton1Key"] as? String, !v.isEmpty {
-            values["penButton1Binding"] = (ButtonBinding.decode(v) ?? .none).encoded
-        } else if let v = s["penButton1"] as? String, !v.isEmpty {
-            values["penButton1Binding"] = ButtonBinding.fromDisplayLabel(v).encoded
+        if let v = ButtonBinding.importedValue(key: s["penButton1Key"] as? String, label: s["penButton1"] as? String) {
+            values["penButton1Binding"] = v
         }
-        if let v = s["penButton2Key"] as? String, !v.isEmpty {
-            values["penButton2Binding"] = (ButtonBinding.decode(v) ?? .none).encoded
-        } else if let v = s["penButton2"] as? String, !v.isEmpty {
-            values["penButton2Binding"] = ButtonBinding.fromDisplayLabel(v).encoded
+        if let v = ButtonBinding.importedValue(key: s["penButton2Key"] as? String, label: s["penButton2"] as? String) {
+            values["penButton2Binding"] = v
         }
-        if let v = s["touchRingButtonKey"] as? String, !v.isEmpty {
-            values["touchRingButtonBinding"] = (ButtonBinding.decode(v) ?? .none).encoded
-        } else if let v = s["touchRingButton"] as? String, !v.isEmpty {
-            values["touchRingButtonBinding"] = ButtonBinding.fromDisplayLabel(v).encoded
+        if let v = ButtonBinding.importedValue(key: s["touchRingButtonKey"] as? String, label: s["touchRingButton"] as? String) {
+            values["touchRingButtonBinding"] = v
         }
-        if let v = s["touchRingButton2Key"] as? String, !v.isEmpty {
-            values["touchRingButtonBinding2"] = (ButtonBinding.decode(v) ?? .none).encoded
+        if let v = ButtonBinding.importedValue(key: s["touchRingButton2Key"] as? String, label: nil) {
+            values["touchRingButtonBinding2"] = v
         }
         if let v = s["reverseRingDirection"] as? Bool { values["reverseRingDirection"] = v }
         if let v = s["touchRingActiveSlotIndex"] as? Int { values["touchRingActiveSlotIndex"] = v }
@@ -239,10 +233,8 @@ struct ConfigurationImporter {
 
             case "penButton1Binding", "penButton2Binding",
                  "touchRingButtonBinding", "touchRingButtonBinding2", "tipBinding", "eraserBinding":
-                if let v = s[key + "Key"] as? String, !v.isEmpty {
-                    values[key] = (ButtonBinding.decode(v) ?? .none).encoded
-                } else if let v = rawValue as? String, !v.isEmpty {
-                    values[key] = ButtonBinding.fromDisplayLabel(v).encoded
+                if let v = ButtonBinding.importedValue(key: s[key + "Key"] as? String, label: rawValue as? String) {
+                    values[key] = v
                 }
 
             case "expressKeyBindings":

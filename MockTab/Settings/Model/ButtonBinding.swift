@@ -232,6 +232,27 @@ struct ButtonBinding: Codable, Equatable {
         return binding
     }
 
+    /// The machine value an export writes for a stored action: `raw` as this
+    /// build re-encodes it, or verbatim when it can't read it, so an import
+    /// restores it rather than None. `effective` covers nothing stored.
+    static func exportedKey(stored raw: String, effective: ButtonBinding) -> String {
+        guard !raw.isEmpty else { return effective.encoded }
+        return decode(raw)?.encoded ?? raw
+    }
+
+    /// The value an import stores for one action, from its machine value or,
+    /// in older files, its label. An action this build can't read stays as
+    /// written, and a label holding a stored value is that value. Nil when
+    /// the file has neither.
+    static func importedValue(key: String?, label: String?) -> String? {
+        if let key, !key.isEmpty { return decode(key)?.encoded ?? key }
+        guard let label, !label.isEmpty else { return nil }
+        // Exports before `exportedKey` wrote an unreadable action as its raw
+        // JSON in the label's place.
+        if label.hasPrefix("{") { return label }
+        return fromDisplayLabel(label).encoded
+    }
+
     /// A stored binding list, or nil when `s` is empty or this build can't
     /// read it.
     static func decodeList(_ s: String) -> [ButtonBinding]? {

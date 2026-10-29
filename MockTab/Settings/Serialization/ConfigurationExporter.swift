@@ -104,9 +104,9 @@ final class ConfigurationExporter {
         d["relativeCursorMovement"] = s.relativeCursorMovement
         d["requireContact"] = s.requireContact.rawValue
         d["penButton1"] = s.penButton1Binding.displayLabel
-        d["penButton1Key"] = s.penButton1Binding.encoded
+        d["penButton1Key"] = ButtonBinding.exportedKey(stored: s.pen1Raw, effective: s.penButton1Binding)
         d["penButton2"] = s.penButton2Binding.displayLabel
-        d["penButton2Key"] = s.penButton2Binding.encoded
+        d["penButton2Key"] = ButtonBinding.exportedKey(stored: s.pen2Raw, effective: s.penButton2Binding)
         let ringMode: TouchRingMode =
             s.touchRingSlots.indices.contains(s.touchRingActiveSlotIndex)
             ? (s.touchRingSlots[s.touchRingActiveSlotIndex].action == .off
@@ -253,7 +253,9 @@ final class ConfigurationExporter {
              "touchRingButtonBinding", "touchRingButtonBinding2", "tipBinding", "eraserBinding":
             guard let raw = ud.string(forKey: prefix + key) else { return nil }
             let binding = ButtonBinding.decode(raw)
-            return (binding?.displayLabel ?? raw, binding?.encoded)
+            // Nothing stored exports no machine value, so import leaves it unset.
+            return (binding?.displayLabel ?? raw,
+                    raw.isEmpty ? nil : ButtonBinding.exportedKey(stored: raw, effective: .none))
 
         case "expressKeyBindings":
             guard let raw = ud.string(forKey: prefix + key),
