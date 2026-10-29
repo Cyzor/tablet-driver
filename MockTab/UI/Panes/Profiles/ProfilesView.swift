@@ -580,7 +580,6 @@ private struct ProfileListView: View {
         Button(role: .destructive) { onDelete(preset) } label: {
             Label("Delete", systemImage: "trash")
         }
-        .disabled(preset.name == "Default")
         // `onDelete` is `deleteProfileRecordingUndo`, which snapshots the
         // profile's stored values and its list position, so deleting really
         // is undoable.

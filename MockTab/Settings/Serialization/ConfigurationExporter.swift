@@ -138,9 +138,10 @@ final class ConfigurationExporter {
         if let obj = Self.jsonObject(UserDefaults.standard.data(forKey: devicePrefix + "rotariesJSON")) {
             d["rotaries"] = obj
         }
-        let expressKeys = s.expressKeyBindings.map(\.displayLabel)
-        if expressKeys.contains(where: { $0 != "None" }) {
-            d["expressKeys"] = expressKeys
+        // Compared as bindings, not labels: a translated "None" read as an
+        // assignment. An action from another build isn't a saved None.
+        if s.expressKeyBindings.contains(where: { $0 != .none }) {
+            d["expressKeys"] = s.expressKeyBindings.map(\.displayLabel)
             d["expressKeysKey"] = s.expressKeyBindings.map(\.encoded)
         }
         return d
