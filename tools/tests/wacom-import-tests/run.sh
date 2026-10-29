@@ -28,3 +28,5 @@ swiftc -O -I "$KIT" -L "$KIT" -lTabletKit \
     "$DIR/main.swift" \
     -o "$BIN"
 "$BIN" "$DIR/fixtures"
+
+sh "$DIR/cli-checks.sh"

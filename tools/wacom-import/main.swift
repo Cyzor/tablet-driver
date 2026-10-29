@@ -2,13 +2,23 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// Lists what importing a Wacom settings backup into MockTab would do:
-// each setting, what it becomes, and what gets skipped. Writes nothing.
+// Lists what importing a Wacom settings backup into MockTab would do: each
+// setting, what it becomes, and what gets skipped. With --apply it then
+// writes one tablet's settings, after saving the whole settings domain.
 //
 // Run it through run.sh with a .wacomprefs folder from Wacom Center or Tablet
 // Utility; Wacom Center keeps them in ~/Library/Application Support/Wacom/Backups.
 // Characters in recorded keystrokes are looked up on the current keyboard
 // layout, so run it on the Mac the settings came from.
+//
+//   run.sh <backup>                          report only
+//   run.sh --apply [options] <backup>        report, then write
+//     --tablet N       the report's tablet number, when MockTab knows several
+//     --pen 0xSERIAL   whose per-app pen settings to use when pens disagree
+//     --dry-run        show what would change, save and write nothing
+//     --yes            don't ask before writing
+//
+// --domain and --save-to point it at a scratch domain and folder for tests.
 
 import Carbon
 import Foundation
@@ -43,16 +53,46 @@ func currentLayout() -> LayoutLookup {
     return { table[$0] }
 }
 
-let args = Array(CommandLine.arguments.dropFirst())
-guard args.count == 1, !args[0].hasPrefix("-") else {
-    FileHandle.standardError.write(Data("Usage: tools/wacom-import/run.sh <backup.wacomprefs>\n".utf8))
-    exit(2)
+let usage = "Usage: tools/wacom-import/run.sh [--apply [--tablet N] [--pen 0xSERIAL] [--dry-run] [--yes]] <backup.wacomprefs>\n"
+
+func fail(_ message: String, _ code: Int32) -> Never {
+    FileHandle.standardError.write(Data(message.utf8))
+    exit(code)
 }
 
+var apply = false
+var options = ApplyOptions()
+var backupPath: String?
+var args = Array(CommandLine.arguments.dropFirst())[...]
+while let arg = args.popFirst() {
+    switch arg {
+    case "--apply": apply = true
+    case "--dry-run": options.dryRun = true
+    case "--yes": options.yes = true
+    case "--tablet":
+        guard let n = args.popFirst().flatMap({ Int($0) }) else { fail(usage, 2) }
+        options.tablet = n
+    case "--pen":
+        guard let s = args.popFirst(), s.hasPrefix("0x"), let n = UInt32(s.dropFirst(2), radix: 16) else { fail(usage, 2) }
+        options.pen = n
+    case "--domain":
+        guard let d = args.popFirst() else { fail(usage, 2) }
+        options.domain = d
+    case "--save-to":
+        guard let d = args.popFirst() else { fail(usage, 2) }
+        options.saveTo = URL(fileURLWithPath: d, isDirectory: true)
+    default:
+        guard !arg.hasPrefix("-"), backupPath == nil else { fail(usage, 2) }
+        backupPath = arg
+    }
+}
+guard let backupPath else { fail(usage, 2) }
+
 do {
-    let backup = try WacomBackup.load(URL(fileURLWithPath: args[0]))
-    print(ReportText.render(WacomMapper.report(backup, layout: currentLayout())), terminator: "")
+    let backup = try WacomBackup.load(URL(fileURLWithPath: backupPath))
+    let report = WacomMapper.report(backup, layout: currentLayout())
+    print(ReportText.render(report), terminator: "")
+    if apply { try Apply.run(report, options) }
 } catch {
-    FileHandle.standardError.write(Data("\(error)\n".utf8))
-    exit(1)
+    fail("\(error)\n", 1)
 }
