@@ -105,7 +105,9 @@ struct CaptureResult: Codable {
     /// - 26: `coverage`; `bluetoothLink` no longer carries an address.
     /// - 27: `initReads`.
     /// - 28: `appEnvironment.otherMockTabCopies` and `competingDrivers`.
-    var captureVersion: Int = 28
+    /// - 29: `appSettings.penBindings` from the pen in use at the end, with
+    ///   `penBindingSources` and `penBindingsTool`.
+    var captureVersion: Int = 29
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -703,7 +705,21 @@ struct CaptureAppSettings: Codable {
     // Buttons — explains "a pen button does nothing".
     /// The active pen's actions as the injector reads them, by kind only, so
     /// no key combo is recorded. Keys: tip, eraser, button1 through button3.
+    /// Read when the capture ends, from the pen used last.
     var penBindings: [String: String]?
+    /// Where each of `penBindings` is stored: appOverride, pen, tablet, or
+    /// builtIn for the factory default.
+    var penBindingSources: [String: String]?
+    /// The pen `penBindings` belong to, named as in `everSeenTools`. Nil
+    /// when no pen entered since launch, so they're the tablet's defaults.
+    var penBindingsTool: String?
+}
+
+/// `CaptureAppSettings`' pen fields, read when the capture ends.
+struct CapturePenBindings {
+    var bindings: [String: String]
+    var sources: [String: String]
+    var tool: String?
 }
 
 /// The user's touch configuration at capture time.

@@ -246,14 +246,7 @@ final class CaptureSessionCoordinator: ObservableObject {
             requireContact: s.requireContact.kindNames,
             doubleClickDistance: s.doubleClickDistance,
             relativeCursorMovement: s.relativeCursorMovement,
-            invertRotation: s.invertRotation,
-            penBindings: [
-                "tip": s.activeTool.tipBinding.kind.rawValue,
-                "eraser": s.activeTool.eraserBinding.kind.rawValue,
-                "button1": s.activeTool.penButton1Binding.kind.rawValue,
-                "button2": s.activeTool.penButton2Binding.kind.rawValue,
-                "button3": s.activeTool.penButton3Binding.kind.rawValue,
-            ])
+            invertRotation: s.invertRotation)
     }
 
     /// Every tool the registry has ever recorded for this tablet, newest
@@ -292,15 +285,40 @@ final class CaptureSessionCoordinator: ObservableObject {
         guard let source,
             registry.knownTablets.contains(where: { $0.productID == source.productID })
         else { return nil }
-        return registry.allKnownTools.map { tool in
-            let kind = tool.kind.isEmpty ? tool.nickname : tool.kind
-            // Stand-in, matching the raw log; captures go to public issues.
-            if let serial = tool.serial, serial != 0 {
-                let shown = CaptureSerialRedaction.standIn(forPenSerial: serial)
-                return "\(kind) (0x\(String(format: "%08X", shown)))"
-            }
-            return "\(kind) (\(tool.displayID))"
+        return registry.allKnownTools.map(Self.captureName)
+    }
+
+    private static func captureName(_ tool: DeviceRegistry.KnownTool) -> String {
+        let kind = tool.kind.isEmpty ? tool.nickname : tool.kind
+        // Stand-in, matching the raw log; captures go to public issues.
+        if let serial = tool.serial, serial != 0 {
+            let shown = CaptureSerialRedaction.standIn(forPenSerial: serial)
+            return "\(kind) (0x\(String(format: "%08X", shown)))"
         }
+        return "\(kind) (\(tool.displayID))"
+    }
+
+    /// The bindings of the pen the injector uses, where each is stored, and
+    /// which pen that is.
+    private func penBindingsSnapshot(_ source: DeviceContext?) -> CapturePenBindings? {
+        guard let context = source else { return nil }
+        let tool = context.activeTool
+        let entries: [(name: String, key: String, binding: ButtonBinding)] = [
+            ("tip", "tipBinding", tool.tipBinding),
+            ("eraser", "eraserBinding", tool.eraserBinding),
+            ("button1", "penButton1Binding", tool.penButton1Binding),
+            ("button2", "penButton2Binding", tool.penButton2Binding),
+            ("button3", "penButton3Binding", tool.penButton3Binding),
+        ]
+        // Nil for the tablet-default tool, which no pen has replaced yet.
+        let toolID = tool.fallbackPrefix == nil
+            ? nil : context.settings.toolCache.first { $0.value === tool }?.key
+        return CapturePenBindings(
+            bindings: Dictionary(uniqueKeysWithValues: entries.map { ($0.name, $0.binding.storedKindName) }),
+            sources: Dictionary(uniqueKeysWithValues: entries.map { ($0.name, tool.valueSource($0.key).rawValue) }),
+            tool: toolID.flatMap { id in
+                DeviceRegistry.shared.allKnownTools.first { $0.id == id }.map(Self.captureName)
+            })
     }
 
     private func settingsIdentitySnapshot(_ source: DeviceContext?) -> CaptureSettingsIdentity? {
@@ -499,6 +517,7 @@ final class CaptureSessionCoordinator: ObservableObject {
         engine.startCapture(
             devices: targets, duration: HIDCapture.maxCaptureDuration, touchSettings: touchSettingsSnapshot(source),
             appSettings: appSettingsSnapshot(source),
+            penBindingsAtFinish: { [weak self, weak source] in self?.penBindingsSnapshot(source) },
             everSeenTools: everSeenToolsSnapshot(source),
             settingsIdentity: settingsIdentitySnapshot(source),
             knownTablets: knownTabletsSnapshot(),

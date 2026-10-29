@@ -258,19 +258,25 @@ extension InputInjector {
                     // Require Contact: contact performs the held button's
                     // action in place of the tip's click.
                     tipClickSwallowed = true
+                    noteTipForCapture(down: true, kind: tipKind, skipped: "side button acts instead")
                 } else if panScroll.isActive {
                     // Pan View: contact grabs the canvas, so no click. Swallowed
                     // until lift, even if the pan ends first.
                     tipClickSwallowed = true
+                    noteTipForCapture(down: true, kind: tipKind, skipped: "Pan View")
                 } else if tipKind == .clickLock && clickLocked {
                     // Tip set to Click Lock: the next contact ends the lock.
                     releaseClickLock(at: screenPoint, snapshot: snap)
                     tipClickSwallowed = true
+                    noteTipForCapture(down: true, kind: tipKind, skipped: "ends Click Lock")
                 } else if clickLocked || tipKind == .none {
                     // Tip set to None, or Click Lock already holds the left
                     // button: contact moves the cursor without clicking.
                     tipClickSwallowed = true
+                    noteTipForCapture(
+                        down: true, kind: tipKind, skipped: clickLocked ? "Click Lock holds" : "no click")
                 } else {
+                    noteTipForCapture(down: true, kind: tipKind)
                     // Tip set to Click Lock starts the lock with a normal
                     // press; `releaseTip` keeps the button held on lift.
                     if tipKind == .clickLock { clickLocked = true }
@@ -286,6 +292,7 @@ extension InputInjector {
                         snapshot: snap)
                 }
             } else {
+                noteTipForCapture(down: false, kind: tipKind)
                 releaseContactFiredButtons(at: screenPoint, snap: snap, settings: settings)
                 // Releases only what the press posted, whether or not a pan
                 // started or ended since.
@@ -493,6 +500,16 @@ extension InputInjector {
         HIDCapture.shared.recordNote(
             tag: "MockTab",
             "pen button \(n) \(down ? "down" : "up") → \(binding.kind.rawValue), tool 0x\(String(format: "%04X", activeToolCode))")
+    }
+
+    /// Names the tip's action in the capture log, and why a contact posted
+    /// no click when it didn't.
+    private func noteTipForCapture(down: Bool, kind: ButtonBinding.Kind, skipped: String? = nil) {
+        guard HIDCapture.shared.isCapturing else { return }
+        let end = activeToolIsEraser ? "eraser" : "pen tip"
+        HIDCapture.shared.recordNote(
+            tag: "MockTab",
+            "\(end) \(down ? "down" : "up") → \(kind.rawValue)\(skipped.map { " (\($0))" } ?? ""), tool 0x\(String(format: "%04X", activeToolCode))")
     }
 
     private func isStaleHoverMove() -> Bool {

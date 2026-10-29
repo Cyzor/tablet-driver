@@ -38,6 +38,10 @@ struct ButtonBinding: Codable, Equatable {
     /// bindings. Cleared when the user picks another kind.
     private var unrecognizedKind: String?
 
+    /// The kind as stored, so diagnostics tell an action this build can't
+    /// read from a saved None.
+    var storedKindName: String { unrecognizedKind ?? kind.rawValue }
+
     private enum CodingKeys: String, CodingKey, CaseIterable {
         case kind, keyCode, modifierFlags, keyLabel
     }

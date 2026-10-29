@@ -66,6 +66,9 @@ final class CaptureEngine: ObservableObject {
     /// Mapping and pen-feel settings as of `startCapture`. Unlike touch,
     /// recorded for every device — see `CaptureAppSettings`.
     private var capturedAppSettings: CaptureAppSettings?
+    /// Reads the pen bindings again at the end, when the pen used during the
+    /// capture has entered; at start it may not have since launch.
+    private var penBindingsAtFinish: (() -> CapturePenBindings?)?
     /// Tools the device registry has ever recorded for this tablet, injected
     /// at start like the settings above — `CaptureEngine` stays free of the
     /// main-actor registry so the standalone harnesses can build a result.
@@ -310,6 +313,7 @@ final class CaptureEngine: ObservableObject {
         duration: TimeInterval = 60,
         touchSettings: CaptureTouchSettings? = nil,
         appSettings: CaptureAppSettings? = nil,
+        penBindingsAtFinish: (() -> CapturePenBindings?)? = nil,
         everSeenTools: [String]? = nil,
         settingsIdentity: CaptureSettingsIdentity? = nil,
         knownTablets: [CaptureKnownTablet]? = nil,
@@ -330,6 +334,7 @@ final class CaptureEngine: ObservableObject {
         CaptureActivityProbe.reset()
         capturedTouchSettings = touchSettings
         capturedAppSettings = appSettings
+        self.penBindingsAtFinish = penBindingsAtFinish
         capturedEverSeenTools = everSeenTools
         capturedSettingsIdentity = settingsIdentity
         capturedKnownTablets = knownTablets
@@ -573,6 +578,7 @@ final class CaptureEngine: ObservableObject {
     /// Cancel collection and discard everything gathered.
     func cancelCapture() {
         guard isRunning else { return }
+        penBindingsAtFinish = nil
         // A cancelled capture shouldn't leave the crash-safety copy behind
         // with no corresponding final export.
         if let flushURL = lastFlushFileURL {
@@ -625,6 +631,12 @@ final class CaptureEngine: ObservableObject {
         for session in sessions { session.accumulator.stop() }
         isRunning = false
         captureSampleCount = totalSampleCount
+        if let pen = penBindingsAtFinish?() {
+            capturedAppSettings?.penBindings = pen.bindings
+            capturedAppSettings?.penBindingSources = pen.sources
+            capturedAppSettings?.penBindingsTool = pen.tool
+        }
+        penBindingsAtFinish = nil
 
         guard !sessions.isEmpty else {
             lastError = String(

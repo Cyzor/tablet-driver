@@ -295,6 +295,19 @@ final class ToolSettings: ObservableObject {
     /// active app override → tool-specific prefix → device-level fallback.
     /// Used by button-binding getters so values are always consistent with where
     /// `persist()` writes — both routes check `overridePrefix` first.
+    /// Where a stored value comes from, in `freshString`'s order.
+    enum ValueSource: String {
+        case appOverride, pen, tablet, builtIn
+    }
+
+    /// Which store `key` reads from, for diagnostics.
+    func valueSource(_ key: String) -> ValueSource {
+        if let op = overridePrefix, ud.string(forKey: op + key) != nil { return .appOverride }
+        if ud.string(forKey: prefix + key) != nil { return fallbackPrefix == nil ? .tablet : .pen }
+        if let fb = fallbackPrefix, ud.string(forKey: fb + key) != nil { return .tablet }
+        return .builtIn
+    }
+
     private func freshString(_ key: String) -> String? {
         if let op = overridePrefix, let v = ud.string(forKey: op + key) { return v }
         if let v = ud.string(forKey: prefix + key) { return v }
