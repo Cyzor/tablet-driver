@@ -89,7 +89,7 @@ struct ConfigurationImporter {
                     let settingsDict = t["settings"] as? [String: Any] ?? [:]
                     toolEntries.append(ImportPlan.ToolEntry(
                         toolID: toolID, kind: kind,
-                        values: decodeStoredSettings(settingsDict)))
+                        values: decodeToolSettings(settingsDict)))
                 }
             }
 
@@ -191,6 +191,25 @@ struct ConfigurationImporter {
         }
     }
 
+    /// Decodes a tool's "settings" dict. Files before storage-key names wrote
+    /// `smoothing`, `tip`, `eraser`, `penButton1`, and `penButton2`, as labels
+    /// only; those are renamed, and a label naming no action is skipped
+    /// rather than imported as None.
+    static func decodeToolSettings(_ s: [String: Any]) -> [String: Any] {
+        var renamed = s
+        if renamed["smoothingStrength"] == nil, let v = s["smoothing"] { renamed["smoothingStrength"] = v }
+        let legacyBindings = [
+            ("tip", "tipBinding"), ("eraser", "eraserBinding"),
+            ("penButton1", "penButton1Binding"), ("penButton2", "penButton2Binding"),
+        ]
+        for (old, new) in legacyBindings where renamed[new] == nil {
+            guard let label = s[old] as? String,
+                  label == "None" || ButtonBinding.fromDisplayLabel(label) != .none else { continue }
+            renamed[new] = label
+        }
+        return decodeStoredSettings(renamed)
+    }
+
     /// Decodes a profile/app-override/tool "settings" dict — as produced by
     /// `ConfigurationExporter.readUDValue` — into UserDefaults-ready key/value pairs.
     ///
@@ -209,10 +228,12 @@ struct ConfigurationImporter {
             switch key {
             case "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
                  "displayRegionX", "displayRegionY", "displayRegionWidth", "displayRegionHeight",
-                 "smoothingStrength", "doubleClickDistance":
+                 "smoothingStrength", "doubleClickDistance",
+                 "pressureSmoothingStrength", "pressureThreshold", "panScrollSpeed":
                 if let v = rawValue as? Double, v.isFinite { values[key] = v }
 
-            case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection":
+            case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection",
+                 "panScrollMomentum":
                 if let v = rawValue as? Bool { values[key] = v }
 
             case "targetDisplayIndex":
@@ -231,7 +252,8 @@ struct ConfigurationImporter {
                     values[key] = decodeOrientation(v)
                 }
 
-            case "penButton1Binding", "penButton2Binding",
+            case "penButton1Binding", "penButton2Binding", "penButton3Binding", "penButton4Binding",
+                 "penButton5Binding", "wheelBinding",
                  "touchRingButtonBinding", "touchRingButtonBinding2", "tipBinding", "eraserBinding":
                 if let v = ButtonBinding.importedValue(key: s[key + "Key"] as? String, label: rawValue as? String) {
                     values[key] = v

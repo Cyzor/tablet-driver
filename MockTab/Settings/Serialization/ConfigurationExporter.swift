@@ -60,7 +60,11 @@ final class ConfigurationExporter {
         let presets = ts.profiles.map { exportProfile($0, activeID: ts.activeProfile?.id, devicePrefix: devicePrefix) }
         if !presets.isEmpty { d["profiles"] = presets }
 
-        let tools = registry.tools(forDevice: pid).map { exportTool($0, ts: ts, devicePrefix: devicePrefix) }
+        // An eraser end uses its pen's settings, and the default tool is the
+        // tablet's own, exported above; neither has a namespace of its own.
+        let tools = registry.tools(forDevice: pid)
+            .filter { !["stylus", "eraser", "mouse"].contains($0.id) && DeviceRegistry.tipSiblingID(of: $0.id) == nil }
+            .map { exportTool($0, ts: ts, devicePrefix: devicePrefix) }
         if !tools.isEmpty { d["tools"] = tools }
 
         return d
@@ -142,21 +146,23 @@ final class ConfigurationExporter {
         return d
     }
 
-    /// Exports a single tool's settings.
+    /// Exports what a tool saved for itself, keyed and encoded as profiles
+    /// are, so the importer reads it back. Values it inherits from the tablet
+    /// stay out, so an import doesn't copy them into the tool.
     func exportTool(_ tool: DeviceRegistry.KnownTool, ts: TabletSettings, devicePrefix: String) -> [String: Any] {
-        let t = ts.toolSettings(forID: tool.id)
+        let prefix = "\(devicePrefix)tool-\(tool.id)."
+        var settings: [String: Any] = [:]
+        for key in TabletSettings.toolSettingsKeys {
+            if let (display, machineKey) = readUDValue(key: key, prefix: prefix) {
+                settings[key] = display
+                if let machineKey { settings[key + "Key"] = machineKey }
+            }
+        }
         var d: [String: Any] = [
-            "id": tool.displayID,
+            "id": tool.id,
             "kind": tool.kind,
             "nickname": tool.nickname,
-            "settings": [
-                "pressureCurve": exportCurve(t.pressureCurve),
-                "smoothing": t.smoothingStrength,
-                "tip": t.tipBinding.displayLabel,
-                "eraser": t.eraserBinding.displayLabel,
-                "penButton1": t.penButton1Binding.displayLabel,
-                "penButton2": t.penButton2Binding.displayLabel
-            ] as [String: Any]
+            "settings": settings,
         ]
 
         // Tool-level app overrides: filter to tool-specific keys.
@@ -222,11 +228,13 @@ final class ConfigurationExporter {
         let ud = UserDefaults.standard
         switch key {
         case "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-             "smoothingStrength", "doubleClickDistance":
+             "smoothingStrength", "doubleClickDistance",
+             "pressureSmoothingStrength", "pressureThreshold", "panScrollSpeed":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (roundFrac(ud.double(forKey: prefix + key)), nil)
 
-        case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection":
+        case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection",
+             "panScrollMomentum":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.bool(forKey: prefix + key), nil)
 
@@ -249,7 +257,8 @@ final class ConfigurationExporter {
             let raw = ud.integer(forKey: prefix + key)
             return (TabletOrientation(rawValue: raw)?.label ?? "", raw)
 
-        case "penButton1Binding", "penButton2Binding",
+        case "penButton1Binding", "penButton2Binding", "penButton3Binding", "penButton4Binding",
+             "penButton5Binding", "wheelBinding",
              "touchRingButtonBinding", "touchRingButtonBinding2", "tipBinding", "eraserBinding":
             guard let raw = ud.string(forKey: prefix + key) else { return nil }
             let binding = ButtonBinding.decode(raw)
