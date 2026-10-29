@@ -14,6 +14,7 @@ S="$ROOT/MockTab/Settings"
 # Unoptimized, as run.sh builds the tool, so runtime checks catch the same faults.
 swiftc -I "$KIT" -L "$KIT" -lTabletKit \
     "$ROOT/tools/wacom-import/WacomPrefs.swift" \
+    "$ROOT/tools/wacom-import/KeyboardLayout.swift" \
     "$ROOT/tools/wacom-import/Encoder.swift" \
     "$ROOT/tools/wacom-import/Writer.swift" \
     "$S/Serialization/ConfigurationImporter.swift" \
@@ -26,6 +27,7 @@ swiftc -I "$KIT" -L "$KIT" -lTabletKit \
     "$DIR/../configuration-display-region-tests/StubTypes.swift" \
     "$DIR/EncoderChecks.swift" \
     "$DIR/WriterChecks.swift" \
+    "$DIR/LayoutChecks.swift" \
     "$DIR/main.swift" \
     -o "$BIN"
 "$BIN" "$DIR/fixtures"

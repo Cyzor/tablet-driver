@@ -19,7 +19,7 @@ KIT="$(sh "$DIR/../tests/build-tabletkit.sh")"
 # stands in for two app types the decoder names.
 with_sources() {
     "$@" \
-        "$DIR/WacomPrefs.swift" "$DIR/Encoder.swift" "$DIR/Writer.swift" "$DIR/Apply.swift" \
+        "$DIR/WacomPrefs.swift" "$DIR/KeyboardLayout.swift" "$DIR/Encoder.swift" "$DIR/Writer.swift" "$DIR/Apply.swift" \
         "$S/Serialization/ConfigurationImporter.swift" "$S/Serialization/ImportPlan.swift" \
         "$S/Serialization/UnknownFieldsCodec.swift" "$S/Model/ButtonBinding.swift" \
         "$S/Model/ControlSlot.swift" "$S/Model/RotaryConfig.swift" "$S/Model/BezierCurve.swift" \

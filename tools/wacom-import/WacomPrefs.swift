@@ -110,16 +110,6 @@ struct KeyModifiers: OptionSet, Hashable {
     }
 }
 
-/// Where a character key sits on the current keyboard layout.
-struct LayoutKey {
-    let keyCode: UInt16
-    /// The character needs Shift.
-    let needsShift: Bool
-}
-
-/// The key that types a character, with ⌘ held when `command` is true.
-typealias LayoutLookup = (_ character: Character, _ command: Bool) -> LayoutKey?
-
 /// A keystroke resolved to a macOS virtual key code, as MockTab stores it.
 struct ResolvedKey: Equatable {
     var keyCode: UInt16?
@@ -220,14 +210,15 @@ enum Keystroke {
         return ResolvedKey(keyCode: vk, modifiers: [], label: label)
     }
 
-    /// Finds a bare character on the current layout, adding Shift when the
-    /// character needs it, which the Wacom recording may not have meant.
+    /// Finds a bare character on the keyboard layout, adding Shift or Option
+    /// when the character needs them, which the Wacom recording may not have
+    /// meant.
     private static func character(_ c: Character, command: Bool, layout: LayoutLookup) -> (ResolvedKey, Bool) {
         let label = String(c).uppercased()
         guard let k = layout(Character(String(c).lowercased()), command) ?? layout(c, command) else {
             return (ResolvedKey(keyCode: nil, modifiers: [], label: label), false)
         }
-        return (ResolvedKey(keyCode: k.keyCode, modifiers: k.needsShift ? .shift : [], label: label), !k.needsShift)
+        return (ResolvedKey(keyCode: k.keyCode, modifiers: k.adds, label: label), k.exact)
     }
 }
 
@@ -600,6 +591,11 @@ enum WacomMapper {
                   kcw.keyCode != nil, kccw.keyCode != nil else {
                 return (text, .skipped(skipReason(cw, ccw)), nil)
             }
+            // Keys recorded on another layout can land on one key here, as #
+            // and ⇧# from a German layout both need ⇧3 on a U.S. one.
+            if binding(kcw) == binding(kccw) && cwRaw != ccwRaw {
+                return (text, .skipped("both directions would send \(symbol(kcw)) on this keyboard layout"), nil)
+            }
             let conf: Confidence = ecw && eccw ? .exact : .approximate
             return (text, .mapped("keyPress, cwBinding \(symbol(kcw)), ccwBinding \(symbol(kccw))", conf),
                     .keys(cw: binding(kcw), ccw: binding(kccw)))
@@ -840,10 +836,12 @@ enum KeyLayouts {
 
 enum ReportText {
     /// `reportOnly` says so up front, since --apply follows the same report.
-    static func render(_ r: Report, reportOnly: Bool = true) -> String {
+    /// `layout` names the keyboard layout keystrokes were found on.
+    static func render(_ r: Report, reportOnly: Bool = true, layout: String? = nil) -> String {
         var out = "Wacom backup"
         if let v = r.driverVersion { out += " from driver \(v)" }
         if let f = r.formatVersion { out += ", format \(f)" }
+        if let layout { out += "\nKeyboard layout: \(layout)" }
         out += reportOnly ? "\nReport only; nothing written. Add --apply to import a tablet.\n" : "\n"
         for (i, t) in r.tablets.enumerated() {
             out += "\nTablet \(i + 1): \(t.modelName)"

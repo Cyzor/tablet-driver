@@ -20,44 +20,7 @@
 //
 // --domain and --save-to point it at a scratch domain and folder for tests.
 
-import Carbon
 import Foundation
-
-/// Finds each character's key on the current layout, preferring the one
-/// that types it without Shift. ⌘ shortcuts get their own table: some
-/// layouts, such as Dvorak – QWERTY ⌘, switch keys while ⌘ is down.
-func currentLayout() -> LayoutLookup {
-    guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
-          let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
-    else { return { _, _ in nil } }
-    let data = Unmanaged<CFData>.fromOpaque(ptr).takeUnretainedValue() as Data
-    func table(holding held: Int) -> [Character: LayoutKey] {
-        var table: [Character: LayoutKey] = [:]
-        data.withUnsafeBytes { raw in
-            guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return }
-            for shift in [false, true] {
-                for code in UInt16(0)..<128 {
-                    var dead: UInt32 = 0
-                    var chars = [UniChar](repeating: 0, count: 4)
-                    var length = 0
-                    let mods = UInt32(((shift ? held | shiftKey : held) >> 8) & 0xFF)
-                    let status = UCKeyTranslate(
-                        layout, code, UInt16(kUCKeyActionDown), mods, UInt32(LMGetKbdType()),
-                        OptionBits(kUCKeyTranslateNoDeadKeysBit), &dead, chars.count, &length, &chars)
-                    guard status == noErr, length == 1,
-                          let c = String(utf16CodeUnits: chars, count: length).first,
-                          !c.isWhitespace, c.asciiValue.map({ $0 >= 0x20 }) ?? true
-                    else { continue }
-                    if table[c] == nil { table[c] = LayoutKey(keyCode: code, needsShift: shift) }
-                }
-            }
-        }
-        return table
-    }
-    let plain = table(holding: 0)
-    let command = table(holding: cmdKey)
-    return { c, withCommand in (withCommand ? command : plain)[c] }
-}
 
 let usage = "Usage: tools/wacom-import/run.sh [--apply [--tablet N] [--pen 0xSERIAL] [--dry-run] [--yes]] <backup.wacomprefs>\n"
 
@@ -96,8 +59,9 @@ guard let backupPath else { fail(usage, 2) }
 
 do {
     let backup = try WacomBackup.load(URL(fileURLWithPath: backupPath))
-    let report = WacomMapper.report(backup, layout: currentLayout())
-    print(ReportText.render(report, reportOnly: !apply), terminator: "")
+    let layouts = KeyboardLayout.current()
+    let report = WacomMapper.report(backup, layout: KeyboardLayout.lookup(layouts))
+    print(ReportText.render(report, reportOnly: !apply, layout: layouts.first?.name), terminator: "")
     if apply { try Apply.run(report, options) }
 } catch {
     fail("\(error)\n", 1)

@@ -5,7 +5,8 @@
 // Checks the Wacom import report against a made-up backup in fixtures/:
 // names, pen serials, button functions, keystrokes in each encoding, ring
 // modes, the mapping area, per-app differences, and the app entries it
-// skips. A fixed layout table stands in for the keyboard layout.
+// skips. A fixed layout table stands in for the keyboard layout here;
+// LayoutChecks.swift tries every layout installed.
 
 import Foundation
 
@@ -25,10 +26,10 @@ private func expect(
 
 /// US layout, only the keys the fixture uses.
 let usLayout: [Character: LayoutKey] = [
-    "a": LayoutKey(keyCode: 0, needsShift: false), "b": LayoutKey(keyCode: 11, needsShift: false),
-    "c": LayoutKey(keyCode: 8, needsShift: false), "z": LayoutKey(keyCode: 6, needsShift: false),
-    "1": LayoutKey(keyCode: 18, needsShift: false), "[": LayoutKey(keyCode: 33, needsShift: false),
-    "]": LayoutKey(keyCode: 30, needsShift: false), "#": LayoutKey(keyCode: 20, needsShift: true),
+    "a": LayoutKey(keyCode: 0), "b": LayoutKey(keyCode: 11),
+    "c": LayoutKey(keyCode: 8), "z": LayoutKey(keyCode: 6),
+    "1": LayoutKey(keyCode: 18), "[": LayoutKey(keyCode: 33),
+    "]": LayoutKey(keyCode: 30), "#": LayoutKey(keyCode: 20, adds: .shift, exact: false),
 ]
 let layout: LayoutLookup = { c, _ in usLayout[c] }
 
@@ -184,8 +185,17 @@ if case .key(let k, _) = Keystroke.parse("q", layout: layout) {
 } else {
     expect(false, "Missing character parses")
 }
+// # and ⇧# from a German layout both need ⇧3 on a U.S. one, so a ring mode
+// using them would turn the same way in both directions.
+let german = WacomNode(name: "mode1", children: [
+    WacomNode(name: "TouchStripFunction", text: "8"),
+    WacomNode(name: "TouchStripKeystrokeIncrease", text: "&shift;#"),
+    WacomNode(name: "TouchStripKeystrokeDecrease", text: "#"),
+])
+let collapsed = WacomMapper.ringFunction(german, layout: layout)
+expect(collapsed.1.isSkipped && collapsed.2 == nil, "Directions that land on one key are skipped: \(collapsed.1)")
 // Dvorak – QWERTY ⌘ types z on key 44, but on key 6 while ⌘ is down.
-let dvorak: LayoutLookup = { c, command in c == "z" ? LayoutKey(keyCode: command ? 6 : 44, needsShift: false) : nil }
+let dvorak: LayoutLookup = { c, command in c == "z" ? LayoutKey(keyCode: command ? 6 : 44) : nil }
 if case .key(let k, _) = Keystroke.parse("&command;z", layout: dvorak),
    case .key(let plain, _) = Keystroke.parse("z", layout: dvorak) {
     expect(k.keyCode == 6 && plain.keyCode == 44, "⌘ shortcuts use the keys ⌘ types: \(k), \(plain)")
@@ -195,6 +205,7 @@ if case .key(let k, _) = Keystroke.parse("&command;z", layout: dvorak),
 
 checkEncoder(report) { condition, message in expect(condition, message) }
 checkWriter(report) { condition, message in expect(condition, message) }
+checkLayouts { condition, message in expect(condition, message) }
 
 // Load errors
 let empty = FileManager.default.temporaryDirectory.appendingPathComponent("wacom-import-tests-\(UUID().uuidString)")
