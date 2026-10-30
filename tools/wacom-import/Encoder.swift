@@ -42,12 +42,17 @@ enum EncodeError: Error, CustomStringConvertible, Equatable {
     case noProductID
     /// These pens disagree on the app's settings; --pen picks one.
     case pensDisagree(app: String, pens: [String])
+    /// --pen names a pen this tablet doesn't list.
+    case unknownPen(String, known: [String])
 
     var description: String {
         switch self {
         case .noProductID: return "The backup names no product ID for this tablet."
         case .pensDisagree(let app, let pens):
             return "\(app) has different pen settings for \(pens.joined(separator: ", ")). Pick one with --pen."
+        case .unknownPen(let pen, let known):
+            let list = known.isEmpty ? "none with a serial" : known.joined(separator: ", ")
+            return "This tablet has no pen \(pen). Its pens: \(list)."
         }
     }
 }
@@ -57,6 +62,13 @@ enum WacomEncoder {
         guard let pid = t.productID else { throw EncodeError.noProductID }
         var out = EncodedTablet(productID: pid, nickname: t.nickname)
         guard let base = t.apps.first else { return out }
+
+        let serials = { (a: AppReport) in a.sections.compactMap(\.pen).filter { $0 != 0 } }
+        if let chosen, !t.apps.contains(where: { serials($0).contains(chosen) }) {
+            let known = Set(t.apps.flatMap(serials)).sorted().map(penID)
+            throw EncodeError.unknownPen(penID(chosen), known: known)
+        }
+        let basePens = serials(base)
 
         let baseControls = Controls(base, leftOut: &out.leftOut)
         out.device = decoded(baseControls.storedSettings(complete: true))
@@ -73,7 +85,7 @@ enum WacomEncoder {
                 if case .nickname(let n) = line.action { nickname = n } else { settings.add(line) }
             }
             settings.clearSkipped(section.lines)
-            out.pens.append(.init(id: String(format: "0x%08X", serial), serial: serial,
+            out.pens.append(.init(id: penID(serial), serial: serial,
                                   nickname: nickname, values: decoded(settings.stored)))
         }
 
@@ -89,7 +101,7 @@ enum WacomEncoder {
                 settings.clearSkipped(section.lines)
                 if !settings.isEmpty { byPen[serial] = settings }
             }
-            if let pens = try pick(byPen, chosen: chosen, app: app.name) {
+            if let pens = try pick(byPen, among: basePens, chosen: chosen, app: app.name) {
                 stored.merge(pens.stored) { a, _ in a }
             }
             let values = decoded(stored)
@@ -112,12 +124,18 @@ enum WacomEncoder {
         return keep
     }
 
-    static func pick(_ byPen: [UInt32: PenSettings], chosen: UInt32?, app: String) throws -> PenSettings? {
+    /// A pen with no settings for the app uses All applications there, so it
+    /// disagrees with any pen that has some.
+    static func pick(_ byPen: [UInt32: PenSettings], among pens: [UInt32], chosen: UInt32?,
+                     app: String) throws -> PenSettings? {
         guard let first = byPen.values.first else { return nil }
         if let chosen { return byPen[chosen] }
-        if byPen.values.allSatisfy({ $0.same(as: first) }) { return first }
-        throw EncodeError.pensDisagree(app: app, pens: byPen.keys.sorted().map { String(format: "0x%08X", $0) })
+        let all = Set(pens).union(byPen.keys)
+        if all.allSatisfy({ byPen[$0]?.same(as: first) == true }) { return first }
+        throw EncodeError.pensDisagree(app: app, pens: all.sorted().map(penID))
     }
+
+    static func penID(_ serial: UInt32) -> String { String(format: "0x%08X", serial) }
 
     /// MockTab's import decoder, so stored values are the app's own.
     static func decoded(_ stored: [String: Any]) -> [String: Any] {

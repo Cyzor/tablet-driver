@@ -122,5 +122,38 @@ func checkEncoder(_ report: Report, _ expect: (Bool, String) -> Void) {
         }
         let picked = try? WacomEncoder.encode(two, pen: 0xBEEF)
         expect(binding(picked?.apps.first?.values["penButton1Binding"])?.kind == .rightClick, "--pen picks one pen")
+    } else {
+        expect(false, "Fixture has Paint")
     }
+
+    // A second pen with no Paint settings uses All applications in Paint, so
+    // it disagrees with the pen that has some.
+    var plain = report.tablets[0]
+    plain.apps[0].sections.append(Section(title: "Pen 0x0000CAFE", lines: [], pen: 0xCAFE))
+    do {
+        _ = try WacomEncoder.encode(plain)
+        expect(false, "A pen without app settings stops the encode")
+    } catch let e as EncodeError {
+        expect(e == .pensDisagree(app: "Paint", pens: ["0x0000CAFE", "0x12345678"]), "Error names the plain pen: \(e)")
+    } catch {
+        expect(false, "Wrong error: \(error)")
+    }
+    let penKeys = ["tipBinding", "eraserBinding", "penButton1Binding", "penButton2Binding", "penButton3Binding",
+                   "pressureThreshold", "pressureCurve"]
+    let paint = (try? WacomEncoder.encode(plain, pen: 0xCAFE))?.apps.first { $0.bundleID == "com.example.paint" }
+    expect(paint != nil && penKeys.allSatisfy { paint?.values[$0] == nil },
+           "--pen with the plain pen writes no Paint pen settings")
+    let other = (try? WacomEncoder.encode(plain, pen: 0x12345678))?.apps.first { $0.bundleID == "com.example.paint" }
+    expect(penKeys.contains { other?.values[$0] != nil }, "--pen with the other pen writes its Paint settings")
+
+    // --pen naming a pen the tablet lacks
+    do {
+        _ = try WacomEncoder.encode(report.tablets[0], pen: 0x1234)
+        expect(false, "An unknown --pen stops the encode")
+    } catch let e as EncodeError {
+        expect(e == .unknownPen("0x00001234", known: ["0x12345678"]), "Error lists the tablet's pens: \(e)")
+    } catch {
+        expect(false, "Wrong error: \(error)")
+    }
+    expect((try? WacomEncoder.encode(report.tablets[0], pen: 0x12345678)) != nil, "A known --pen encodes")
 }
