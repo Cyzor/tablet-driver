@@ -4,6 +4,7 @@
 
 import CryptoKit
 import Foundation
+import os
 
 /// Swaps hardware serials in captured reports for stand-ins.
 ///
@@ -72,7 +73,7 @@ enum CaptureSerialRedaction {
             }
         }
         if positions != known {
-            seen.withLock { $0.positions[key, default: []].formUnion(positions) }
+            seen.withLock { [positions] in $0.positions[key, default: []].formUnion(positions) }
         }
         for position in positions {
             switch position {
@@ -109,7 +110,7 @@ enum CaptureSerialRedaction {
         }
         guard !found.isEmpty else { return }
         let key = PositionKey(productID: productID, reportID: reportID)
-        seen.withLock { $0.positions[key, default: []].formUnion(found) }
+        seen.withLock { [found] in $0.positions[key, default: []].formUnion(found) }
     }
 
     /// Bytes where a pen serial turned up in this device's reports with this
@@ -210,18 +211,7 @@ enum CaptureSerialRedaction {
         var positions: [PositionKey: Set<SerialPosition>] = [:]
     }
 
-    private static let seen = Locked(Seen())
-
-    private final class Locked<Value>: @unchecked Sendable {
-        private var value: Value
-        private let lock = NSLock()
-        init(_ value: Value) { self.value = value }
-        func withLock<R>(_ body: (inout Value) -> R) -> R {
-            lock.lock()
-            defer { lock.unlock() }
-            return body(&value)
-        }
-    }
+    private static let seen = OSAllocatedUnfairLock(initialState: Seen())
 
     private static let expressKeyRemoteProductID = 0x0331
     private static let pairingSlotCount = 5
