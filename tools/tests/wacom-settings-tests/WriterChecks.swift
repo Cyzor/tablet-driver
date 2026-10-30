@@ -9,7 +9,7 @@
 import Foundation
 
 func checkWriter(_ report: Report, _ expect: (Bool, String) -> Void) {
-    let domain = "com.cyzor.mocktab.wacom-import-tests"
+    let domain = "com.cyzor.mocktab.wacom-settings-tests"
     let p = "device-0x357."
     let tp = p + "tool-0x12345678."
     func json(_ v: Any) -> Data { try! JSONSerialization.data(withJSONObject: v) }

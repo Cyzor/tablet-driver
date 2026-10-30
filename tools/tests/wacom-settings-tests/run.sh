@@ -6,17 +6,17 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/wacom-import-tests"
+BIN="$(mktemp -d)/wacom-settings-tests"
 KIT="$(sh "$DIR/../build-tabletkit.sh")"
 
 S="$ROOT/MockTab/Settings"
 
 # Unoptimized, as run.sh builds the tool, so runtime checks catch the same faults.
 swiftc -I "$KIT" -L "$KIT" -lTabletKit \
-    "$ROOT/tools/wacom-import/WacomPrefs.swift" \
-    "$ROOT/tools/wacom-import/KeyboardLayout.swift" \
-    "$ROOT/tools/wacom-import/Encoder.swift" \
-    "$ROOT/tools/wacom-import/Writer.swift" \
+    "$ROOT/tools/wacom-settings/WacomPrefs.swift" \
+    "$ROOT/tools/wacom-settings/KeyboardLayout.swift" \
+    "$ROOT/tools/wacom-settings/Encoder.swift" \
+    "$ROOT/tools/wacom-settings/Writer.swift" \
     "$S/Serialization/ConfigurationImporter.swift" \
     "$S/Serialization/ImportPlan.swift" \
     "$S/Serialization/UnknownFieldsCodec.swift" \

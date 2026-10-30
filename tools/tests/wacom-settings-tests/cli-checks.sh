@@ -7,7 +7,7 @@ set -u
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$DIR/../../.." && pwd)"
-DOMAIN="com.cyzor.mocktab.wacom-import-cli-tests"
+DOMAIN="com.cyzor.mocktab.wacom-settings-cli-tests"
 BACKUP="$DIR/fixtures/sample.wacomprefs"
 T="$(mktemp -d)"
 FAILED=0
@@ -31,7 +31,7 @@ EOF
 defaults delete "$DOMAIN" >/dev/null 2>&1
 defaults import "$DOMAIN" "$T/seed.plist"
 
-run() { sh "$ROOT/tools/wacom-import/run.sh" --domain "$DOMAIN" --save-to "$T/saved" "$@" "$BACKUP" >"$T/out" 2>&1; }
+run() { sh "$ROOT/tools/wacom-settings/run.sh" --domain "$DOMAIN" --save-to "$T/saved" "$@" "$BACKUP" >"$T/out" 2>&1; }
 has() { defaults read "$DOMAIN" "$1" >/dev/null 2>&1; }
 
 run --apply --dry-run

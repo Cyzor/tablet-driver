@@ -49,7 +49,7 @@ Older capture files may contain a device serial number. `triage_discovery.py` fl
 
 `run.sh` replays hid-recorder files of Wacom tablets through TabletKit's decoders. It compares each report with the tablet's own bits, read the way the Linux kernel reads them, and counts where they disagree: contact, proximity, eraser, barrel buttons, tool identity, pad keys, rings, strips, and touch. It also counts presses that merge, split, or appear from nothing, with the raw bytes of the worst. Run it before asking for a new capture, to see which report format needs the work. Pass the recordings as arguments; none ship with the repo.
 
-## wacom-import/
+## wacom-settings/
 
 `run.sh` reads a settings backup from Wacom Center or Tablet Utility (a `.wacomprefs` folder) and lists what each setting becomes in MockTab and what has no equivalent: pen and ExpressKey assignments, keystrokes, ring modes, the tablet area, and per-app settings. It looks up keystrokes on the current keyboard layout, so run it on the Mac that made the backup. A character that layout can't type, such as a Latin letter on a Russian one, comes from the layout macOS uses for shortcuts, and the report marks it approximate.
 

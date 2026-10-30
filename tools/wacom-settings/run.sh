@@ -5,13 +5,13 @@
 # It caches the built tool and rebuilds it only when a source changes, so
 # only the first run, and the first after an edit, waits for the compiler.
 #
-# Usage: tools/wacom-import/run.sh [--apply [options]] <backup.wacomprefs>
+# Usage: tools/wacom-settings/run.sh [--apply [options]] <backup.wacomprefs>
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 S="$DIR/../../MockTab/Settings"
-CACHE="${TMPDIR:-/tmp}/mocktab-wacom-import-cache"
-BIN="$CACHE/wacom-import"
+CACHE="${TMPDIR:-/tmp}/mocktab-wacom-settings-cache"
+BIN="$CACHE/wacom-settings"
 KIT="$(sh "$DIR/../tests/build-tabletkit.sh")"
 
 # Runs "$@" with the tool's sources appended, including the app's setting

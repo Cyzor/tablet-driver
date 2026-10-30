@@ -22,7 +22,7 @@
 
 import Foundation
 
-let usage = "Usage: tools/wacom-import/run.sh [--apply [--tablet N] [--pen 0xSERIAL] [--dry-run] [--yes]] <backup.wacomprefs>\n"
+let usage = "Usage: tools/wacom-settings/run.sh [--apply [--tablet N] [--pen 0xSERIAL] [--dry-run] [--yes]] <backup.wacomprefs>\n"
 
 func fail(_ message: String, _ code: Int32) -> Never {
     FileHandle.standardError.write(Data(message.utf8))

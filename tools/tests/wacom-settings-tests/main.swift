@@ -208,7 +208,7 @@ checkWriter(report) { condition, message in expect(condition, message) }
 checkLayouts { condition, message in expect(condition, message) }
 
 // Load errors
-let empty = FileManager.default.temporaryDirectory.appendingPathComponent("wacom-import-tests-\(UUID().uuidString)")
+let empty = FileManager.default.temporaryDirectory.appendingPathComponent("wacom-settings-tests-\(UUID().uuidString)")
 try! FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
 do {
     _ = try WacomBackup.load(empty)
