@@ -6,10 +6,10 @@ import Foundation
 
 /// Loads and caches help content from a bundled Markdown file.
 ///
-/// Files live at `<Bundle>/en.md`, `<Bundle>/de.md`, etc. Each file uses
+/// Each language has a `Help.md` in its `.lproj` folder under `MockTab/Help/`,
+/// and `Bundle` picks the one matching the rest of the UI. Each file uses
 /// `[section-id]` lines as section delimiters, where the id matches a
-/// `HelpSection.rawValue`. To add a language, put its `.md` file in
-/// `MockTab/Help/`.
+/// `HelpSection.rawValue`.
 ///
 /// `HelpContent` is loaded once at first access. Call `reload()` to re-read
 /// the file from disk — useful during development with a running app.
@@ -35,17 +35,10 @@ final class HelpContent {
     // MARK: - Private
 
     private func load() {
-        // Prefer languages in the order the user has configured them in System Settings.
-        let codes = Locale.preferredLanguages.compactMap {
-            Locale(identifier: $0).language.languageCode?.identifier
-        }
-        for code in codes + ["en"] {
-            if let url = Bundle.main.url(forResource: code, withExtension: "md"),
-               let text = try? String(contentsOf: url, encoding: .utf8) {
-                parse(text)
-                return
-            }
-        }
+        guard let url = Bundle.main.url(forResource: "Help", withExtension: "md"),
+              let text = try? String(contentsOf: url, encoding: .utf8)
+        else { return }
+        parse(text)
     }
 
     /// Splits the file at `[section-id]` marker lines and trims surrounding blank lines.

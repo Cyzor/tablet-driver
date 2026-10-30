@@ -6,10 +6,10 @@ import Foundation
 
 /// One entry in the help panel sidebar, matching the app's tab order.
 ///
-/// Help content is sourced from `en.md` (or the best-match language file) in
-/// the app bundle via `HelpContent`. To revise help text, edit the `.md` file
-/// directly — no recompile needed. To add a language, put a matching `.md`
-/// file in `MockTab/Help/`.
+/// Help content is sourced from the UI language's `Help.md` in the app bundle
+/// via `HelpContent`. To revise help text, edit the `.md` file directly — no
+/// recompile needed. To add a language, add a `Help.md` in a new `.lproj`
+/// folder under `MockTab/Help/`.
 enum HelpSection: String, CaseIterable, Identifiable {
     case about
     case tabletArea
