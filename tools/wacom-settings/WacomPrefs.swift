@@ -34,6 +34,7 @@ struct WacomNode {
     func string(_ path: String) -> String? { node(path)?.text }
     func int(_ path: String) -> Int? { string(path).flatMap { Int($0) } }
     var elements: [WacomNode] { children.filter { $0.name == "ArrayElement" } }
+    func count(_ name: String) -> Int { children.filter { $0.name == name }.count }
 
     init(name: String, type: String = "", text: String = "", children: [WacomNode] = []) {
         self.name = name
@@ -380,11 +381,44 @@ enum WacomMapper {
             nickname: name != model ? customName(name) : nil, apps: [])
         if pid == nil { report.notes.append("No product ID in the backup, so --apply can't import this tablet.") }
 
-        let containers = t.node("TabletControlContainerArray")?.elements ?? []
-        let transducers = t.node("TabletTransducerArray")?.elements ?? []
         func app(_ n: WacomNode) -> Int { n.int("ApplicationAssociated") ?? 0 }
+        func tool(_ n: WacomNode) -> String {
+            "\(n.string("TransducerID/Sequence") ?? "") \(n.string("TransducerID/Type") ?? "")"
+        }
+        // Workflow sets belong to a Wacom feature MockTab doesn't have.
+        let inWorkflow = { (n: WacomNode) in (n.int("WorkflowAssociated") ?? 0) != 0 }
+        let allSets = t.node("TabletControlContainerArray")?.elements ?? []
+        let allPens = t.node("TabletTransducerArray")?.elements ?? []
+        let workflowSets = (allSets + allPens).filter(inWorkflow).count
+        if workflowSets > 0 {
+            report.notes.append("\(workflowSets) workflow \(workflowSets == 1 ? "set" : "sets") skipped; MockTab has no workflows.")
+        }
+        let sets = allSets.filter { !inWorkflow($0) }
+        let pens = allPens.filter { !inWorkflow($0) }
 
-        let baseContainer = containers.first { app($0) == 0 }
+        // With two control sets for one app, or two entries for one pen in
+        // one app, the backup doesn't say which counts, so neither is read.
+        // A pen doubled in All applications has nothing to compare its app
+        // entries against, so those go too.
+        let doubled = Set(Dictionary(grouping: sets, by: app).filter { $0.value.count > 1 }.keys)
+        let doubledPens = Dictionary(grouping: pens) { "\(app($0)) \(tool($0))" }
+            .filter { $0.value.count > 1 }.values.map { $0[0] }
+            .sorted { (app($0), tool($0)) < (app($1), tool($1)) }
+        let unreadTools = Set(doubledPens.filter { app($0) == 0 }.map(tool))
+        let containers = sets.filter { !doubled.contains(app($0)) }
+        let transducers = pens.filter { tr in
+            !unreadTools.contains(tool(tr)) && !doubledPens.contains { app($0) == app(tr) && tool($0) == tool(tr) }
+        }
+        if doubled.contains(0) {
+            report.notes.append("Two All applications sets for this tablet's controls; no controls read.")
+        }
+        for p in doubledPens {
+            let s = serial(p).flatMap { $0 == 0 ? nil : String(format: " 0x%08X", $0) } ?? ""
+            let scope = app(p) == 0 ? "All applications" : apps[app(p)]?.name ?? "app \(app(p))"
+            report.notes.append("Pen\(s) has two entries for \(scope); neither read.")
+        }
+
+        let baseContainer = doubled.contains(0) ? nil : containers.first { app($0) == 0 }
         let baseTransducers = transducers.filter { app($0) == 0 }
 
         var base = AppReport(name: "All applications", bundleID: nil, sections: [])
@@ -393,7 +427,7 @@ enum WacomMapper {
         if let area = mappingArea(t) { base.sections.append(area) }
         report.apps.append(base)
 
-        let indices = Set(containers.map(app) + transducers.map(app)).subtracting([0]).sorted()
+        let indices = Set(sets.map(app) + pens.map(app)).subtracting([0]).sorted()
         let chosen = chosenEntries(indices.compactMap { apps[$0] })
         for i in indices {
             guard let a = apps[i] else {
@@ -407,6 +441,8 @@ enum WacomMapper {
                 r.notes.append("No bundle ID, so MockTab can't match it to an app; skipped.")
             } else if chosen[a.bundleID] != i {
                 r.notes.append("MockTab keeps one set per bundle ID, and another entry for this app wins; skipped.")
+            } else if doubled.contains(i) || doubled.contains(0) {
+                r.notes.append("Two control sets for this app or for All applications; skipped.")
             } else {
                 for tr in transducers where app(tr) == i {
                     let match = baseTransducers.first { sameTool($0, tr) }
@@ -478,6 +514,10 @@ enum WacomMapper {
         }
         for (element, label, key) in penButtons {
             guard let b = tr.node(element), b.node("ButtonFunction") != nil else { continue }
+            if tr.count(element) > 1 || b.count("ButtonFunction") > 1 {
+                lines.append(Line(control: label, wacom: "listed twice", outcome: .skipped("the backup doesn't say which counts")))
+                continue
+            }
             if let base, let other = base.node(element), sameButton(b, other) { continue }
             let (wacom, outcome, binding) = function(b, layout: layout)
             lines.append(Line(control: label, wacom: wacom, outcome: outcome.prefixed(key),
@@ -510,8 +550,21 @@ enum WacomMapper {
         var sections: [Section] = []
         let baseKeys = base?.node("TabletControlsButtonsArray")?.elements ?? []
         var keys = Section(title: "ExpressKeys", lines: [])
-        for k in c.node("TabletControlsButtonsArray")?.elements ?? [] {
+        let all = c.node("TabletControlsButtonsArray")?.elements ?? []
+        // A name listed twice, here or in All applications, or a key with two
+        // functions: the backup doesn't say which counts.
+        func repeats(_ list: [WacomNode]) -> Set<String> {
+            Set(Dictionary(grouping: list) { $0.string("ButtonName") ?? "?" }.filter { $0.value.count > 1 }.keys)
+        }
+        let repeated = repeats(all).union(repeats(baseKeys))
+        for k in all {
             let name = k.string("ButtonName") ?? "?"
+            let twoFunctions = ([k] + baseKeys.filter { $0.string("ButtonName") == name }).contains { $0.count("ButtonFunction") > 1 }
+            if repeated.contains(name) || twoFunctions {
+                keys.lines.append(Line(control: name, wacom: "listed twice",
+                                       outcome: .skipped("the backup doesn't say which counts")))
+                continue
+            }
             if let other = baseKeys.first(where: { $0.string("ButtonName") == name }), sameButton(k, other) { continue }
             var (wacom, outcome, binding) = function(k, layout: layout)
             guard let target = KeyLayouts.key(name, productID: productID) else {
@@ -565,7 +618,15 @@ enum WacomMapper {
                             confidence: Confidence, slot: (Int) -> Setting?, layout: LayoutLookup) -> Section {
         var s = Section(title: title, lines: [])
         let modes = ring.node("TouchStripModes")?.children ?? []
+        let bothModes = (base?.node("TouchStripModes")?.children ?? []) + modes
         for m in modes {
+            if (ring.node("TouchStripModes")?.count(m.name) ?? 0) > 1
+                || (base?.node("TouchStripModes")?.count(m.name) ?? 0) > 1
+                || bothModes.contains(where: { $0.name == m.name && $0.count("TouchStripFunction") > 1 }) {
+                s.lines.append(Line(control: m.name, wacom: "listed twice",
+                                    outcome: .skipped("the backup doesn't say which counts")))
+                continue
+            }
             if let b = base?.node("TouchStripModes/\(m.name)"), sameRingMode(m, b) { continue }
             let label = m.string("TouchStripKeystrokeName").flatMap { $0.isEmpty ? nil : $0 }
             var (wacom, outcome, mode) = ringFunction(m, layout: layout)

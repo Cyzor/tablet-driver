@@ -206,6 +206,7 @@ if case .key(let k, _) = Keystroke.parse("&command;z", layout: dvorak),
 checkEncoder(report) { condition, message in expect(condition, message) }
 checkWriter(report) { condition, message in expect(condition, message) }
 checkLayouts { condition, message in expect(condition, message) }
+checkAmbiguity(layout: layout) { condition, message in expect(condition, message) }
 
 // Load errors
 let empty = FileManager.default.temporaryDirectory.appendingPathComponent("wacom-settings-tests-\(UUID().uuidString)")

@@ -28,6 +28,7 @@ swiftc -I "$KIT" -L "$KIT" -lTabletKit \
     "$DIR/EncoderChecks.swift" \
     "$DIR/WriterChecks.swift" \
     "$DIR/LayoutChecks.swift" \
+    "$DIR/AmbiguityChecks.swift" \
     "$DIR/main.swift" \
     -o "$BIN"
 "$BIN" "$DIR/fixtures"
