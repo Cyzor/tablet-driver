@@ -57,10 +57,9 @@ final class HelpWindowController: NSWindowController, ObservableObject {
     private func ensureWindow() {
         guard window == nil else { return }
 
-        // Full-size content (with a transparent titlebar before macOS 26), the
-        // way Apple's own Help Viewer is built: the sidebar runs the full
-        // height of the window rather than starting below a band that spans
-        // both panes.
+        // Full-size content, the way Apple's own Help Viewer is built: the
+        // sidebar runs the full height of the window rather than starting
+        // below a band that spans both panes.
         //
         // This is also what makes the split view's panes agree. Without it the
         // detail pane is handed a top safe-area inset of zero while the sidebar
@@ -74,9 +73,8 @@ final class HelpWindowController: NSWindowController, ObservableObject {
             backing: .buffered,
             defer: false
         )
-        // From macOS 26 the toolbar blurs text scrolling under it, and a
-        // transparent titlebar turns that off, leaving the title over the text.
-        if #unavailable(macOS 26) { window.titlebarAppearsTransparent = true }
+        // The titlebar stays opaque: a transparent one drops the backdrop that
+        // text scrolls under, leaving the title on top of the text.
         window.title = String(localized: "MockTab Help", comment: "Help window title")
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 520, height: 380)
