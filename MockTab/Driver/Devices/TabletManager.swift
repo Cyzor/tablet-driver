@@ -32,7 +32,7 @@ final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // spli
     /// Lives here (rather than on `TabletManager`, which is `@MainActor`)
     /// so the cross-thread read/write is no longer a concurrency violation.
     /// 8-byte loads/stores are atomic on aarch64; a torn read is impossible.
-    nonisolated(unsafe) var lastPublishTime: CFAbsoluteTime = 0
+    nonisolated(unsafe) var lastPublishTime: TimeInterval = 0
 
     /// Throttle target: ~30 Hz.  HID delivers touch at ~100 Hz under load,
     /// and even after `isPublishingEnabled` gates inactive consumers, the
@@ -1264,7 +1264,7 @@ final class TabletManager: ObservableObject {
             guard publisher.isPublishingEnabled else { return }
             // Throttle the live-contacts publish to ~30 Hz.  Always let the
             // "empty" frame through so a finger lift updates the UI promptly.
-            let now = CFAbsoluteTimeGetCurrent()
+            let now = ProcessInfo.processInfo.systemUptime
             let elapsed = now - publisher.lastPublishTime
             if !contacts.isEmpty && elapsed < LiveTouchPublisher.publishInterval { return }
             publisher.lastPublishTime = now

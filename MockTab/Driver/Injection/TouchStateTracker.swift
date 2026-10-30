@@ -786,7 +786,7 @@ struct TouchStateTracker {
         absoluteTouch: Bool = false,
         onsetDelay: CFAbsoluteTime = TouchStateTracker.onsetDelay,
         tapStabilizationPt: Double = TouchStateTracker.tapStabilizationPt,
-        now: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
+        now: CFAbsoluteTime
     ) -> Intent {
 
         // Per-frame diagnostic flag — set only by the wind-down return below.

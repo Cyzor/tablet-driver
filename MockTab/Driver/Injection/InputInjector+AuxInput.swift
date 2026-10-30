@@ -134,7 +134,7 @@ extension InputInjector {
         }
 
         let ringPos = ring1?.position.map { UInt8($0) } ?? 0x7F
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         // A slow finger can read as lifted mid-turn and land a few steps on.
         // Treat a quick, nearby re-touch as the same touch so that distance
         // isn't dropped.

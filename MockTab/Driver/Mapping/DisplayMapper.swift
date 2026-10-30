@@ -83,7 +83,7 @@ struct DisplayMapper {
     /// Every active display, for relative touch, which roams the whole
     /// desktop. Cleared with the display cache.
     private var cachedDesktopRects: [CGRect]?
-    private var dockEdgeCheckedAt: CFAbsoluteTime = -.infinity
+    private var dockEdgeCheckedAt: TimeInterval = -.infinity
     private var cachedCalibration: CalibrationEntry?
     private var cachedCalibrationOrientation: Int = -1
     private var currentToggleIndex: Int = 0
@@ -136,7 +136,7 @@ struct DisplayMapper {
 
     /// Speed-dependent scaling for relative mode; see `RelativeBallistics`.
     private var relativeBallistics = RelativeBallistics()
-    private var lastRelativeTime: CFAbsoluteTime = 0
+    private var lastRelativeTime: TimeInterval = 0
 
     /// Fallback physical width/height (mm) used when the device's active
     /// area isn't in the registry (no vendor mm data). Matches a typical
@@ -301,7 +301,7 @@ struct DisplayMapper {
         // First report after proximity entry: anchor without moving, seeding
         // the owned position from the real cursor so it can't drift from
         // reality across a proximity exit/re-entry.
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         guard let prev = lastRelativeNorm else {
             lastRelativeNorm = pen
             lastRelativeTime = now
@@ -621,7 +621,7 @@ struct DisplayMapper {
     }
 
     private mutating func refreshDockEdge() -> DockEdge? {
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         if now - dockEdgeCheckedAt >= Self.dockEdgeRefreshInterval {
             cachedDockEdge = Self.hiddenDockEdge()
             dockEdgeCheckedAt = now

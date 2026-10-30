@@ -37,10 +37,10 @@ final class BatchFramePacer {
     private let deliver: (_ frame: BatchedFrame, _ timestampNs: UInt64) -> Void
 
     private var timer: CFRunLoopTimer?
-    /// Queued frames with absolute due times (`CFAbsoluteTime`), oldest first.
+    /// Queued frames with absolute due times (system uptime), oldest first.
     /// Absolute rather than chained, so a late tick doesn't push every later
     /// frame back with it.
-    private var pending: [(frame: BatchedFrame, timestampNs: UInt64, dueAt: CFAbsoluteTime)] = []
+    private var pending: [(frame: BatchedFrame, timestampNs: UInt64, dueAt: TimeInterval)] = []
 
     init(deliver: @escaping (_ frame: BatchedFrame, _ timestampNs: UInt64) -> Void) {
         self.deliver = deliver
@@ -59,7 +59,7 @@ final class BatchFramePacer {
     func schedule(_ frames: [(frame: BatchedFrame, timestampNs: UInt64)], interval: TimeInterval) {
         flush()
         guard !frames.isEmpty else { return }
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         pending = frames.enumerated().map { i, item in
             (item.frame, item.timestampNs, now + Double(i + 1) * interval)
         }
@@ -72,7 +72,7 @@ final class BatchFramePacer {
     /// batch isn't known up front. A due time earlier than the queue's tail
     /// is raised to it, so order always holds.
     func append(_ frame: BatchedFrame, timestampNs: UInt64, delay: TimeInterval) {
-        var dueAt = CFAbsoluteTimeGetCurrent() + max(0, delay)
+        var dueAt = ProcessInfo.processInfo.systemUptime + max(0, delay)
         if let last = pending.last { dueAt = max(dueAt, last.dueAt) }
         pending.append((frame, timestampNs, dueAt))
         if timer == nil { scheduleTick() }
@@ -95,7 +95,7 @@ final class BatchFramePacer {
     private func scheduleTick() {
         guard let next = pending.first else { return }
         let t = CFRunLoopTimerCreateWithHandler(
-            kCFAllocatorDefault, next.dueAt, 0, 0, 0
+            kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + max(0, next.dueAt - ProcessInfo.processInfo.systemUptime), 0, 0, 0
         ) { [weak self] _ in self?.tick() }
         CFRunLoopAddTimer(HIDThread.shared.runLoop, t, .commonModes)
         timer = t
@@ -105,7 +105,7 @@ final class BatchFramePacer {
         timer = nil
         // Everything already due goes now, so a late tick catches up instead
         // of carrying its lateness forward.
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         while let item = pending.first, item.dueAt <= now + 0.0002 {
             pending.removeFirst()
             deliver(item.frame, item.timestampNs)

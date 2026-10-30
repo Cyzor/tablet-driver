@@ -266,6 +266,8 @@ final class CaptureEngine: ObservableObject {
     // MARK: - Session State
 
     private var captureStartTime: Date = .distantPast
+    /// For the duration; counts sleep but doesn't jump when macOS corrects the clock.
+    private var captureStartInstant: ContinuousClock.Instant = .now
     /// Fires once at the end of the session duration to auto-finish a session
     /// the user walked away from.
     private var captureTimer: Timer?
@@ -328,6 +330,7 @@ final class CaptureEngine: ObservableObject {
         initReportsSent = []
         captureSampleCount = 0
         captureStartTime = Date()
+        captureStartInstant = .now
         // Zeroed per session so the counters describe this recording rather
         // than everything since launch.
         TouchPipelineProbe.reset()
@@ -928,7 +931,7 @@ final class CaptureEngine: ObservableObject {
             appBuildDate: Bundle.main.object(forInfoDictionaryKey: "MockTabBuildDate") as? String,
             capturedAt: Date(),
             mode: "discovery",
-            duration: Date().timeIntervalSince(captureStartTime),
+            duration: (ContinuousClock.now - captureStartInstant) / .seconds(1),
             deviceInfo: CaptureDeviceRecord(
                 vendorID: deviceInfo.vendorIDHex,
                 productID: deviceInfo.productIDHex,

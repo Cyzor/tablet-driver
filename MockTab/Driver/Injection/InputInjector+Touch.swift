@@ -85,7 +85,7 @@ extension InputInjector {
         // so a half-formed gesture doesn't resume after the pen lifts.
         // Touch during pen use isn't offered: the firmware streams it, but
         // palm rejection wasn't reliable enough to ship.
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         // `staleBusy` is much narrower than that prototype: it only lets
         // touch through once a busy pen has sat with no tip contact at all
         // for `staleBusyTimeout`, which is specifically the "ambiguous
@@ -274,7 +274,7 @@ extension InputInjector {
         // is the "stuck scroll" signature — see
         // `CaptureTouchPipeline.scrollSingleContactFrames`. Sampled here, from
         // the injector, so `TouchStateTracker` keeps taking no dependency on the
-        // probe. `now` is the same wall clock the tracker sees, so a
+        // probe. `now` is the same clock the tracker sees, so a
         // sub-millisecond gap between touch frames — the batched-Bluetooth
         // burst that corrupts the release-velocity estimate — is visible too.
         if touchTracker.mode == .scroll, touchTracker.committedToPan,
@@ -434,7 +434,7 @@ extension InputInjector {
     /// on every `injectTouch` frame that advanced the tracker, the pen-busy
     /// wind-down included, so a teardown there isn't mistaken for a re-arm on
     /// the next real touch.
-    func noteOnsetLifecycle(now: CFAbsoluteTime) {
+    func noteOnsetLifecycle(now: TimeInterval) {
         let mode = touchTracker.mode
         defer { prevTouchMode = mode }
 

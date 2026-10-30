@@ -19,7 +19,7 @@ final class SharedAuxModifierState {
     private init() {}
     var groundTruthFlags = CGEventFlags()
     var refCounts: [UInt64: Int] = [:]
-    var lastChangeAt: Date = .distantPast
+    var lastChangeAt: TimeInterval = 0
 }
 
 /// Routes a Pan View gesture to the injector moving the pointer, since its
@@ -358,7 +358,7 @@ final class InputInjector: @unchecked Sendable {
     var touchdownHeld = false
     /// Where the tip touched down, as a fraction of the digitizer, and when.
     var touchdownTablet: (x: Double, y: Double) = (0, 0)
-    var touchdownTime: CFAbsoluteTime = 0
+    var touchdownTime: TimeInterval = 0
     /// Farthest the pen traveled while held, in millimeters, for the capture log.
     var touchdownMaxTravelMM: Double = 0
     /// The digitizer's size in millimeters, or nil when the spec doesn't say,
@@ -455,7 +455,7 @@ final class InputInjector: @unchecked Sendable {
     /// Timestamp of the previous pen frame, for the smoothers' real-dt math.
     /// Separate from `lastPanScrollFrameTime`, which only advances during an
     /// active scroll-drag. 0 = unknown; that frame's dt is a fresh start.
-    var lastSmoothingFrameTime: CFAbsoluteTime = 0
+    var lastSmoothingFrameTime: TimeInterval = 0
 
     // MARK: - Delta gate
     //
@@ -533,7 +533,7 @@ final class InputInjector: @unchecked Sendable {
 
     /// Timestamp of the previous pen frame, for the tracker's velocity EMA.
     /// 0 = unknown (first frame after launch); dt is skipped that frame.
-    var lastPanScrollFrameTime: CFAbsoluteTime = 0
+    var lastPanScrollFrameTime: TimeInterval = 0
 
     /// Force-closes a pan whose button release was lost. Armed at proximity
     /// exit with a pan open; cancelled by the release.
@@ -597,12 +597,12 @@ final class InputInjector: @unchecked Sendable {
     /// Consecutive hover moves dropped as stale backlog; logged at most once
     /// a second.
     var staleHoverSuppressCount = 0
-    var lastStaleHoverLogAt: Date = .distantPast
+    var lastStaleHoverLogAt: TimeInterval = 0
 
     // MARK: - Click state
 
     private var lastClickPosition: CGPoint = .zero
-    private var lastClickTime: CFAbsoluteTime = 0
+    private var lastClickTime: TimeInterval = 0
     private var clickCount: Int = 0
     var activeClickCount: Int = 1
 
@@ -620,7 +620,7 @@ final class InputInjector: @unchecked Sendable {
     /// Last ring position before contact was lost, and when. Slow fingers
     /// drop out for a frame mid-turn (PTH-660); see `ringDropoutBridge`.
     var ringLiftPos: UInt8 = 0x7F
-    var ringLiftTime: CFAbsoluteTime = 0
+    var ringLiftTime: TimeInterval = 0
     /// Last observed right touch ring position (DTK-2400). 0x7F = no contact.
     var lastRing2Pos: UInt8 = 0x7F
     /// Last observed Intuos3 WS touch strip positions. 0xFF = no contact.
@@ -700,13 +700,13 @@ final class InputInjector: @unchecked Sendable {
 
     private var leakWatchdogTimer: CFRunLoopTimer?
     /// Timestamp of the last groundTruthSyntheticFlags mutation.
-    var lastSyntheticFlagChangeAt: Date = .distantPast
+    var lastSyntheticFlagChangeAt: TimeInterval = 0
     /// Timestamp of the last tablet HID report (inject / injectAux / injectMouseButtons).
     /// Stamped inside rearmWatchdog(), which every entry point calls.
-    private var lastInjectCallAt: Date = .distantPast
+    private var lastInjectCallAt: TimeInterval = 0
     /// Time of the last pen report. Touch traffic doesn't refresh it, so a
     /// streaming two-finger gesture can't hide a silent, stuck pen.
-    var lastPenInjectCallAt: Date = .distantPast
+    var lastPenInjectCallAt: TimeInterval = 0
 
     // MARK: - Physical modifier state tap
     //
@@ -748,7 +748,7 @@ final class InputInjector: @unchecked Sendable {
     /// Must run on HIDThread (where `watchdogTimer`, `lastInjectCallAt`, and
     /// `groundTruthSyntheticFlags` are owned).
     func rearmWatchdog() {
-        lastInjectCallAt = Date()
+        lastInjectCallAt = ProcessInfo.processInfo.systemUptime
         if let t = watchdogTimer { CFRunLoopTimerInvalidate(t) }
         watchdogTimer = nil
         guard !groundTruthSyntheticFlags.isEmpty || !heldKeyComboRefCounts.isEmpty else { return }
@@ -786,8 +786,8 @@ final class InputInjector: @unchecked Sendable {
     /// 1 Hz leak check, which works even if `lastAuxButtons` is corrupt. Fires
     /// after 3 s with flags unchanged, the tablet idle, and nothing held.
     private func checkLeakWatchdog() {
-        let idleInterval = Date().timeIntervalSince(self.lastInjectCallAt)
-        let penIdleInterval = Date().timeIntervalSince(self.lastPenInjectCallAt)
+        let idleInterval = ProcessInfo.processInfo.systemUptime - self.lastInjectCallAt
+        let penIdleInterval = ProcessInfo.processInfo.systemUptime - self.lastPenInjectCallAt
 
         // Stuck-proximity backstop. If `lastProximity` latches true (a lost exit
         // report), this much pen silence is proof, so force the exit. Gated on pen
@@ -805,14 +805,14 @@ final class InputInjector: @unchecked Sendable {
         // Touch streams while a finger is down, so a held drag with no
         // frames for a second lost its lift.
         if self.touchDragPosition != nil,
-           CFAbsoluteTimeGetCurrent() - self.lastTouchFrameTime > 1.0,
+           ProcessInfo.processInfo.systemUptime - self.lastTouchFrameTime > 1.0,
            let snap = self.injectionSnapshot {
             injectLog.notice("leak-watchdog: releasing stranded touch drag")
             self.releaseTouchDrag(snapshot: snap)
         }
 
         if !self.groundTruthSyntheticFlags.isEmpty {
-            let heldInterval = Date().timeIntervalSince(self.lastSyntheticFlagChangeAt)
+            let heldInterval = ProcessInfo.processInfo.systemUptime - self.lastSyntheticFlagChangeAt
             // As with the idle watchdog above, a device that only reports on state
             // change (Xencelabs QuickKeys) can sit idle for a long legitimate hold —
             // trust the last known button state, not just elapsed time.
@@ -824,7 +824,7 @@ final class InputInjector: @unchecked Sendable {
 
         // Same check for a plain key held by a `.keyCombo` binding.
         if !self.heldKeyComboRefCounts.isEmpty {
-            let heldInterval = Date().timeIntervalSince(self.lastKeyComboChangeAt)
+            let heldInterval = ProcessInfo.processInfo.systemUptime - self.lastKeyComboChangeAt
             if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
                 modLog.notice("leak-watchdog: releasing stuck keyCombo keys \(Array(self.heldKeyComboRefCounts.keys), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
                 self.releaseAllHeldKeyComboKeys()
@@ -834,7 +834,7 @@ final class InputInjector: @unchecked Sendable {
         // Same check for the shared store, looking across every device.
         let shared = SharedAuxModifierState.shared
         if !shared.groundTruthFlags.isEmpty {
-            let sharedHeldInterval = Date().timeIntervalSince(shared.lastChangeAt)
+            let sharedHeldInterval = ProcessInfo.processInfo.systemUptime - shared.lastChangeAt
             if sharedHeldInterval > 3.0 && idleInterval > 3.0 && !Self.anyAuxControlHeld {
                 modLog.notice("leak-watchdog: releasing stuck shared aux flags 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public) (held \(Int(sharedHeldInterval))s)")
                 self.releaseSharedAuxModifiers()
@@ -976,7 +976,7 @@ final class InputInjector: @unchecked Sendable {
     var touchOwnedPointerPosition: CGPoint?
     /// When `injectTouch` last ran with contacts, for the sub-millisecond-gap
     /// diagnostic that flags batched Bluetooth bursts.
-    var lastTouchFrameTime: CFAbsoluteTime = 0
+    var lastTouchFrameTime: TimeInterval = 0
     /// Whether the previous touch frame was already in the "palm rejection
     /// dropped a ≥2-contact frame below two" condition, so
     /// `palmRejectionBrokeTwoFingerFrames` counts entries, not every held frame.
@@ -991,14 +991,14 @@ final class InputInjector: @unchecked Sendable {
     var prevTouchMode: TouchStateTracker.Mode = .idle
     /// When the last touch sequence ended. A new touch within
     /// `CaptureTouchPipeline.reArmWindow` is one interrupted drag, not a new touch.
-    var lastTouchTeardownTime: CFAbsoluteTime = 0
-    /// Wall-clock time the current single-contact pointer drag began, for
+    var lastTouchTeardownTime: TimeInterval = 0
+    /// When the current single-contact pointer drag began, for
     /// `CaptureTouchPipeline.longestSingleContactDragMs`. 0 when not in a
     /// single-contact drag.
-    var singleContactDragStart: CFAbsoluteTime = 0
+    var singleContactDragStart: TimeInterval = 0
     /// When the pen last left range. Touch waits a brief grace window after,
     /// so a finger landing as the pen lifts isn't taken as input.
-    var penProximityExitTime: CFAbsoluteTime = 0
+    var penProximityExitTime: TimeInterval = 0
     /// Per-Wacom-driver convention; tunable if reports show false positives.
     static let touchArbitrationGrace: CFAbsoluteTime = 0.08
     /// After the pen leaves proximity, the hand most likely still holds it:
@@ -1014,7 +1014,7 @@ final class InputInjector: @unchecked Sendable {
     /// zoom, or rotate, but its clicks and cursor moves are dropped.
     var touchSequenceTainted = false
     /// Last physical key press, from the keyDown tap on HIDThread.
-    var lastPhysicalKeyDownTime: CFAbsoluteTime = 0
+    var lastPhysicalKeyDownTime: TimeInterval = 0
     /// Where a three-finger drag holds the left button; nil when none is
     /// held. See the `touchDragPosition` row in the latch table above.
     var touchDragPosition: CGPoint?
@@ -1027,16 +1027,16 @@ final class InputInjector: @unchecked Sendable {
     /// flaps in 5–45 ms bursts while the pen is just held near the tablet,
     /// which would block touch almost constantly.
     var touchPenConfirmedBusy: Bool = false
-    /// Wall-clock time the current proximity session began, for measuring
+    /// When the current proximity session began, for measuring
     /// `touchBusyHoldOff` against.
-    var proximityConfirmStartTime: CFAbsoluteTime = 0
+    var proximityConfirmStartTime: TimeInterval = 0
     /// How long proximity must last before touch treats the pen as in use:
     /// longer than the measured flap bursts, too short to notice. Tip contact
     /// skips it.
     static let touchBusyHoldOff: CFAbsoluteTime = 0.15
 
-    /// Wall-clock time `touchPenConfirmedBusy` most recently flipped true.
-    var touchPenBusyConfirmedAt: CFAbsoluteTime = 0
+    /// When `touchPenConfirmedBusy` most recently flipped true.
+    var touchPenBusyConfirmedAt: TimeInterval = 0
     /// The pen has touched down since this busy episode began; see
     /// `staleBusyTimeout`.
     var touchPenBusyHadTipSinceConfirmed: Bool = false
@@ -1060,7 +1060,7 @@ final class InputInjector: @unchecked Sendable {
         _ candidate: CGPoint,
         snapshot: InjectionSnapshot
     ) -> (CGPoint, Int) {
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         let dist = hypot(
             candidate.x - lastClickPosition.x,
             candidate.y - lastClickPosition.y)
@@ -1098,7 +1098,7 @@ final class InputInjector: @unchecked Sendable {
     /// key-up.
     var heldKeyComboRefCounts: [CGKeyCode: Int] = [:]
     /// Timestamp of the last `heldKeyComboRefCounts` mutation, for the leak watchdog.
-    var lastKeyComboChangeAt: Date = .distantPast
+    var lastKeyComboChangeAt: TimeInterval = 0
 
     /// Left-hand keycodes for each modifier: AppKit and Electron ignore
     /// flagsChanged with keycode 0.

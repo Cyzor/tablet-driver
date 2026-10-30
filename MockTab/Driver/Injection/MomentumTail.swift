@@ -48,7 +48,7 @@ final class MomentumTail {
     /// self-rescheduling timer never lands exactly `tickInterval` apart under
     /// runloop load, so the decay math measures actual elapsed time each tick
     /// instead of silently assuming a fixed cadence.
-    private var lastTickTime: CFAbsoluteTime = 0
+    private var lastTickTime: TimeInterval = 0
 
     // MARK: - Tunables
 
@@ -87,7 +87,7 @@ final class MomentumTail {
         self.velocity = velocity
         accumX = 0
         accumY = 0
-        lastTickTime = CFAbsoluteTimeGetCurrent()
+        lastTickTime = ProcessInfo.processInfo.systemUptime
         post(0, 0, .begin)
         scheduleTick()
     }
@@ -130,7 +130,7 @@ final class MomentumTail {
 
     private func tick() {
         timer = nil
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         let dt = now - lastTickTime
         lastTickTime = now
 
@@ -180,7 +180,7 @@ final class RingScrollGlide {
     private var timer: CFRunLoopTimer?
     /// Signed points not yet posted.
     private var pending = 0.0
-    private var lastTickTime: CFAbsoluteTime = 0
+    private var lastTickTime: TimeInterval = 0
 
     static let tickInterval: TimeInterval = 1.0 / 120.0
 
@@ -207,7 +207,7 @@ final class RingScrollGlide {
     /// silence applies it, so a deliberate single nudge back still lands.
     private let confirmReversals: Bool
     private var lastDirection = 0.0
-    private var lastClickTime: CFAbsoluteTime = 0
+    private var lastClickTime: TimeInterval = 0
     private var held: [Double] = []
     /// Consecutive same-direction clicks, each within `reversalWindow`.
     private var runLength = 0
@@ -227,7 +227,7 @@ final class RingScrollGlide {
         let points = lines * Self.pointsPerLine
         guard points != 0 else { return }
         let direction: Double = points < 0 ? -1 : 1
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         if confirmReversals, lastDirection != 0, direction != lastDirection,
            now - lastClickTime < Self.reversalWindow {
             held.append(points)
@@ -256,7 +256,7 @@ final class RingScrollGlide {
     }
 
     private func apply(_ points: Double) {
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         let direction: Double = points < 0 ? -1 : 1
         let interval = now - lastClickTime
         if direction == lastDirection, interval < Self.reversalWindow {
@@ -314,7 +314,7 @@ final class RingScrollGlide {
 
     private func tick() {
         timer = nil
-        let now = CFAbsoluteTimeGetCurrent()
+        let now = ProcessInfo.processInfo.systemUptime
         // First tick of a burst posts one interval's worth rather than zero.
         let dt = max(now - lastTickTime, Self.tickInterval)
         lastTickTime = now

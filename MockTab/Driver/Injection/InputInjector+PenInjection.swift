@@ -18,7 +18,7 @@ extension InputInjector {
         let signpost = PipelineSignposts.begin("Inject")
         defer { PipelineSignposts.end("Inject", signpost) }
         rearmWatchdog()
-        lastPenInjectCallAt = Date()
+        lastPenInjectCallAt = ProcessInfo.processInfo.systemUptime
         TouchPipelineProbe.note { $0.framesPenDelivered += 1 }
         // Seeded before any report arrives; the guard is a backstop.
         guard let snap = injectionSnapshot else { return }
@@ -45,7 +45,7 @@ extension InputInjector {
             : rawPressure > InputInjector.tipPressureThreshold
 
         // ── Smoothing dt (real elapsed time since the previous pen frame) ──────
-        let smoothingNow = CFAbsoluteTimeGetCurrent()
+        let smoothingNow = ProcessInfo.processInfo.systemUptime
         let smoothingDt = lastSmoothingFrameTime > 0 ? smoothingNow - lastSmoothingFrameTime : 0
         lastSmoothingFrameTime = smoothingNow
 
@@ -75,7 +75,7 @@ extension InputInjector {
         // ── Scroll Drag: convert this frame's motion to a scroll delta ──────
         // Runs before the movement code, which skips cursor motion while
         // panning. dt must be real seconds: the damping is tuned in them.
-        let panNow = CFAbsoluteTimeGetCurrent()
+        let panNow = ProcessInfo.processInfo.systemUptime
         let panDt = lastPanScrollFrameTime > 0 ? panNow - lastPanScrollFrameTime : 0
         lastPanScrollFrameTime = panNow
         if panScroll.isActive {
@@ -200,7 +200,7 @@ extension InputInjector {
                 smoother.smoothingStrength = tool.smoothingStrength
                 pressureSmoother.smoothingStrength = tool.pressureSmoothingStrength
                 lastProximity = true
-                proximityConfirmStartTime = CFAbsoluteTimeGetCurrent()
+                proximityConfirmStartTime = ProcessInfo.processInfo.systemUptime
             } else {
                 commitProximityExit(snap: snap)
             }
@@ -210,10 +210,10 @@ extension InputInjector {
         // See `touchPenConfirmedBusy`. Checked every report, so a hover that
         // outlasts the hold-off is confirmed then.
         if point.inProximity, !touchPenConfirmedBusy,
-            rawTipDown || CFAbsoluteTimeGetCurrent() - proximityConfirmStartTime >= Self.touchBusyHoldOff
+            rawTipDown || ProcessInfo.processInfo.systemUptime - proximityConfirmStartTime >= Self.touchBusyHoldOff
         {
             touchPenConfirmedBusy = true
-            touchPenBusyConfirmedAt = CFAbsoluteTimeGetCurrent()
+            touchPenBusyConfirmedAt = ProcessInfo.processInfo.systemUptime
             touchPenBusyHadTipSinceConfirmed = rawTipDown
         }
         // Any tip contact marks the episode as real pen use; see `staleBusyTimeout`.
@@ -409,8 +409,8 @@ extension InputInjector {
                 // data resumes instead of replaying history. Logged because it
                 // freezes the cursor with nothing else to show for it.
                 staleHoverSuppressCount += 1
-                let now = Date()
-                if now.timeIntervalSince(lastStaleHoverLogAt) > 1.0 {
+                let now = ProcessInfo.processInfo.systemUptime
+                if now - lastStaleHoverLogAt > 1.0 {
                     injectLog.info(
                         "hover move suppressed as stale backlog (\(self.staleHoverSuppressCount) in a row)"
                     )
@@ -449,7 +449,7 @@ extension InputInjector {
         guard !activeToolIsMouse, digitizerSizeMM != nil, snap.touchdownClickGuardMM > 0 else { return }
         touchdownHeld = true
         touchdownTablet = Self.digitizerFraction(point)
-        touchdownTime = CFAbsoluteTimeGetCurrent()
+        touchdownTime = ProcessInfo.processInfo.systemUptime
         touchdownMaxTravelMM = 0
     }
 
@@ -459,7 +459,7 @@ extension InputInjector {
         let travel = TouchdownGuard.travelMM(
             from: touchdownTablet, to: Self.digitizerFraction(point), areaMM: size)
         touchdownMaxTravelMM = Swift.max(touchdownMaxTravelMM, travel)
-        let elapsed = CFAbsoluteTimeGetCurrent() - touchdownTime
+        let elapsed = ProcessInfo.processInfo.systemUptime - touchdownTime
         guard !TouchdownGuard(radiusMM: snap.touchdownClickGuardMM).holds(elapsed: elapsed, travelMM: travel)
         else { return }
         touchdownHeld = false
@@ -783,7 +783,7 @@ extension InputInjector {
         // Starts touch's grace window (touchArbitrationGrace), so a stray
         // finger as the pen lifts isn't taken as touch input.
         if touchPenConfirmedBusy {
-            penProximityExitTime = CFAbsoluteTimeGetCurrent()
+            penProximityExitTime = ProcessInfo.processInfo.systemUptime
         }
         touchPenConfirmedBusy = false
         touchPenBusyConfirmedAt = 0
@@ -1018,10 +1018,10 @@ extension InputInjector {
         case .rightClick, .eraser: window = buttonUpDebounceMenuInterval
         default: window = buttonUpDebounceInterval
         }
-        let physicalReleaseTime = CFAbsoluteTimeGetCurrent()
+        let physicalReleaseTime = ProcessInfo.processInfo.systemUptime
         let timer = CFRunLoopTimerCreateWithHandler(
             kCFAllocatorDefault,
-            physicalReleaseTime + window,
+            CFAbsoluteTimeGetCurrent() + window,
             0, 0, 0
         ) { [weak self] _ in
             guard let self else { return }
@@ -1035,7 +1035,7 @@ extension InputInjector {
             guard stillDown else { return }
             self.setBarrelButtonDown(slot, false)
             // Tell Pan View's momentum how late this release is.
-            self.pendingButtonUpBackdate = CFAbsoluteTimeGetCurrent() - physicalReleaseTime
+            self.pendingButtonUpBackdate = ProcessInfo.processInfo.systemUptime - physicalReleaseTime
             self.dispatchBarrelButton(slot, binding, down: false, at: location, snap: snap, settings: settings)
             self.pendingButtonUpBackdate = 0
         }

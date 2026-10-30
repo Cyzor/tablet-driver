@@ -90,7 +90,7 @@ extension InputInjector {
             modifierRefCounts[bit.rawValue] = 0
             groundTruthSyntheticFlags.remove(bit)
         }
-        lastSyntheticFlagChangeAt = Date()
+        lastSyntheticFlagChangeAt = ProcessInfo.processInfo.systemUptime
 
         // Managed bits come from what's still held, not hidSystemState, which
         // our own posts pollute.
@@ -116,7 +116,7 @@ extension InputInjector {
 
         shared.groundTruthFlags = []
         for key in shared.refCounts.keys { shared.refCounts[key] = 0 }
-        shared.lastChangeAt = Date()
+        shared.lastChangeAt = ProcessInfo.processInfo.systemUptime
 
         let releaseFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
@@ -143,7 +143,7 @@ extension InputInjector {
         // Clear ground truth and ref counts before posting.
         groundTruthSyntheticFlags = []
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
-        lastSyntheticFlagChangeAt = Date()
+        lastSyntheticFlagChangeAt = ProcessInfo.processInfo.systemUptime
 
         // Managed bits all clear: hidSystemState and tapLastPhysicalFlags both
         // reflect our own earlier posts and would re-assert the bit. A key the user
@@ -184,7 +184,7 @@ extension InputInjector {
         let toRelease = heldKeyComboRefCounts.keys
         modLog.info("releaseAllHeldKeyComboKeys: clearing keycodes \(Array(toRelease), privacy: .public)")
         heldKeyComboRefCounts.removeAll()
-        lastKeyComboChangeAt = Date()
+        lastKeyComboChangeAt = ProcessInfo.processInfo.systemUptime
 
         for key in toRelease {
             guard let e = CGEvent(keyboardEventSource: sessionSource, virtualKey: key, keyDown: false)
@@ -387,7 +387,7 @@ extension InputInjector {
         let stateID = Int32(truncatingIfNeeded:
             event.getIntegerValueField(.eventSourceStateID))
         if event.type == .keyDown, ModifierMath.shouldUpdatePhysicalCache(sourceStateID: stateID) {
-            injector.lastPhysicalKeyDownTime = CFAbsoluteTimeGetCurrent()
+            injector.lastPhysicalKeyDownTime = ProcessInfo.processInfo.systemUptime
         }
         return Unmanaged.passUnretained(event)
     }
@@ -984,7 +984,7 @@ extension InputInjector {
                 }
             }
             if shared.groundTruthFlags != flagsBefore {
-                shared.lastChangeAt = Date()
+                shared.lastChangeAt = ProcessInfo.processInfo.systemUptime
                 modLog.debug("keyCombo(aux) \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) shared: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(shared.groundTruthFlags.rawValue, radix: 16), privacy: .public)")
             }
         } else {
@@ -1004,7 +1004,7 @@ extension InputInjector {
                 }
             }
             if groundTruthSyntheticFlags != flagsBefore {
-                lastSyntheticFlagChangeAt = Date()
+                lastSyntheticFlagChangeAt = ProcessInfo.processInfo.systemUptime
                 modLog.debug("keyCombo \(down ? "DOWN" : "UP", privacy: .public) bindFlags=0x\(String(binding.modifierFlags, radix: 16), privacy: .public) keyCode=\(binding.keyCode) groundTruth: 0x\(String(flagsBefore.rawValue, radix: 16), privacy: .public) → 0x\(String(self.groundTruthSyntheticFlags.rawValue, radix: 16), privacy: .public)")
             }
         }
@@ -1021,7 +1021,7 @@ extension InputInjector {
                 heldKeyComboRefCounts[key] = Swift.max(0, count - 1)
                 if heldKeyComboRefCounts[key] == 0 { heldKeyComboRefCounts.removeValue(forKey: key) }
             }
-            lastKeyComboChangeAt = Date()
+            lastKeyComboChangeAt = ProcessInfo.processInfo.systemUptime
         }
         // Post the flagsChanged brackets with the committed flags, one per bit,
         // each with its left-hand keycode (apps ignore keycode 0).

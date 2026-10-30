@@ -384,9 +384,9 @@ struct RowActionsMenu<Content: View>: View {
 /// setting turns it off. A name field has nothing to fill, so hide it.
 @MainActor
 func hideAutoFillPanelDuringRename() {
-    let deadline = Date().addingTimeInterval(1.0)
+    let deadline = ProcessInfo.processInfo.systemUptime + 1.0
     Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { timer in
-        let expired = Date() > deadline
+        let expired = ProcessInfo.processInfo.systemUptime > deadline
         if expired { timer.invalidate() }
         MainActor.assumeIsolated {  // scheduled on the main run loop
             let panels = NSApp.windows.filter { String(describing: type(of: $0)) == "SPRoundedWindow" }

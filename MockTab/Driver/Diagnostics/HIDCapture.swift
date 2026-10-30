@@ -134,9 +134,12 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         var samples: [Sample] = []
         var summaries: [UInt8: ReportIDSummary] = [:]
         var startTime: Date = .init()
+        /// Elapsed times count from here. It counts sleep like `startTime`
+        /// but doesn't jump when macOS corrects the clock.
+        var startInstant: ContinuousClock.Instant = .now
         /// Destination file, fixed at `start()`.
         var fileURL: URL?
-        var lastFlushAt: Date = .init()
+        var lastFlushAt: ContinuousClock.Instant = .now
         var headerWritten = false
         var lastSample: LiveSample?
     }
@@ -171,8 +174,9 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             $0.summaries.removeAll()
             $0.reportCount = 0
             $0.startTime = Date()
+            $0.startInstant = .now
             $0.fileURL = url
-            $0.lastFlushAt = Date()
+            $0.lastFlushAt = .now
             $0.headerWritten = false
             $0.lastSample = nil
             $0.isCapturing = true
@@ -224,16 +228,16 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// `force`), and auto-stops once `maxCaptureDuration` is reached.
     @discardableResult
     func flushIfDue(force: Bool = false) -> URL? {
-        let now = Date()
+        let now = ContinuousClock.now
         let shouldAutoStop: Bool = state.withLock {
-            $0.isCapturing && now.timeIntervalSince($0.startTime) >= Self.maxCaptureDuration
+            $0.isCapturing && now - $0.startInstant >= .seconds(Self.maxCaptureDuration)
         }
         if shouldAutoStop {
             logger.info("HIDCapture: auto-stopping after \(Self.maxCaptureDuration, privacy: .public)s ceiling")
             stop()
         }
         let due: Bool = state.withLock {
-            force || now.timeIntervalSince($0.lastFlushAt) >= Self.flushInterval
+            force || now - $0.lastFlushAt >= .seconds(Self.flushInterval)
         }
         guard due else { return nil }
         return flush()
@@ -261,7 +265,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             let split = Self.splitByGraceWindow($0.samples, graceWindow: Self.graceWindow)
             guard !split.old.isEmpty else { return nil }
             $0.samples.removeAll { $0.elapsed <= split.cutoff }
-            $0.lastFlushAt = Date()
+            $0.lastFlushAt = .now
             return (split.old, url)
         }
         guard let taken else { return nil }
@@ -306,13 +310,13 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     ) {
         guard length > 0 else { return }
 
-        let captureStart: Date? = state.withLock {
-            $0.isCapturing ? $0.startTime : nil
+        let captureStart: ContinuousClock.Instant? = state.withLock {
+            $0.isCapturing ? $0.startInstant : nil
         }
         guard let start = captureStart else { return }
         let tagText = tag()
 
-        let elapsed = Date().timeIntervalSince(start)
+        let elapsed = (ContinuousClock.now - start) / .seconds(1)
 
         // See `CaptureSerialRedaction`.
         let bytes = [UInt8](UnsafeBufferPointer(start: report, count: length))
@@ -373,9 +377,9 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     /// Appends one line of app-side context, such as the action a pen
     /// button fired, between the reports around it. Never folds into a run.
     func recordNote(tag: String, _ text: String) {
-        let captureStart: Date? = state.withLock { $0.isCapturing ? $0.startTime : nil }
+        let captureStart: ContinuousClock.Instant? = state.withLock { $0.isCapturing ? $0.startInstant : nil }
         guard let start = captureStart else { return }
-        let elapsed = Date().timeIntervalSince(start)
+        let elapsed = (ContinuousClock.now - start) / .seconds(1)
         state.withLock {
             guard $0.isCapturing else { return }
             $0.samples.append(
