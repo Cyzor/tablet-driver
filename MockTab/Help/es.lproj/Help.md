@@ -154,7 +154,7 @@ Las tabletas con superficie táctil capacitiva informan de los contactos de los 
 
 **Invertir dirección** – On: el contenido se desplaza en sentido contrario al movimiento de los dedos, como una rueda de ratón clásica.
 
-**Desplazamiento con inercia** – El desplazamiento con dos dedos continúa brevemente después de levantar los dedos, igual que la inercia de un trackpad. Desactívalo para mejorar la compatibilidad del desplazamiento en algunas apps, como las vistas de Mes y Año de Calendario, a costa de perder la inercia.
+**Desplazamiento con inercia** – El desplazamiento con dos dedos continúa brevemente después de levantar los dedos, igual que la inercia de un trackpad.
 
 ## Área táctil
 

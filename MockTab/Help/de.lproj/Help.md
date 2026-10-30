@@ -156,7 +156,7 @@ Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzli
 
 **Richtung umkehren** – Der Inhalt bewegt sich entgegengesetzt zur Fingerbewegung, wie bei einem klassischen Mausrad.
 
-**Scrollen mit Nachlauf** – Nach dem Abheben der Finger läuft der Scrollvorgang kurz nach, ähnlich wie beim Trackpad. Ausschalten verbessert die Scroll-Kompatibilität in manchen Apps, etwa in der Monats- und Jahresansicht von Kalender, dafür entfällt der Nachlauf.
+**Scrollen mit Nachlauf** – Nach dem Abheben der Finger läuft der Scrollvorgang kurz nach, ähnlich wie beim Trackpad.
 
 ## Berührungsbereich
 

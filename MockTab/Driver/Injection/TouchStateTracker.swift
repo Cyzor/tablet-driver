@@ -321,10 +321,9 @@ struct TouchStateTracker {
     /// `twoFingerDecideDistance`.
     private var twoFingerKind: TwoFingerKind = .undecided
 
-    /// Dominant-axis lock for a committed `.pan`. Touch scroll runs phase-free
-    /// (`twoFingerScrollMomentum` off), so macOS routes each event alone, and
-    /// a nested vertical view (Finder column view) swallows a horizontal
-    /// scroll with any vertical drift in it. `nil` = undecided; set only once
+    /// Dominant-axis lock for a committed `.pan`, so drift along the other
+    /// axis doesn't scroll an app that moves both ways, or read as a swipe in
+    /// Firefox. `nil` = undecided; set only once
     /// `twoFingerKind == .pan`. A diagonal drag never crosses
     /// `scrollAxisLockRatio` and stays free (`scrollAxisResolved` true,
     /// `scrollAxisLock` nil).
@@ -340,11 +339,10 @@ struct TouchStateTracker {
     private var scrollPreLockAccumX = 0.0
     private var scrollPreLockAccumY = 0.0
 
-    /// As in `PanScrollTracker`: AppKit keeps a phased gesture on the view
-    /// its `.began` picked, and the axis lock keeps a phase-free one on its
-    /// axis, so a scroll that settles along the other axis (a vertical start
-    /// turning sideways in Finder's column view) ends and begins again, with
-    /// a fresh lock. The axis the `.began` carried, and the raw travel since
+    /// As in `PanScrollTracker`: AppKit keeps a gesture on the view its
+    /// `.began` picked, so a scroll that settles along the other axis (a
+    /// vertical start turning sideways in Finder's column view) ends and
+    /// begins again, with a fresh lock. The axis the `.began` carried, and the raw travel since
     /// the last check.
     private var scrollLatchedAxis: ScrollAxis?
     private var scrollStretchX = 0.0
@@ -624,9 +622,8 @@ struct TouchStateTracker {
     static let scrollSingleContactGrace: TimeInterval = 0.1
     /// Cumulative unsigned centroid travel (screen points) a committed `.pan`
     /// considers before deciding a dominant axis. Every event emitted before
-    /// the lock commits still carries the off-axis component that a phase-free
-    /// stream lets a nested scroll view swallow, so keep the unlocked prefix
-    /// as small as still lets a genuine diagonal register.
+    /// the lock commits still carries the off-axis component, so keep the
+    /// unlocked prefix as small as still lets a genuine diagonal register.
     static let scrollAxisLockWindow: Double = 8.0
     /// Dominant-axis-to-other-axis ratio to commit the lock (~2:1 ≈ within
     /// 25° of true horizontal/vertical). Below it on both legs the gesture is
@@ -1465,14 +1462,8 @@ struct TouchStateTracker {
         reverseScrollDirection: Bool,
         now: TimeInterval
     ) -> Intent {
-        // Dominant-axis lock (see `scrollAxisLock`). Only a committed
-        // `.pan` reaches here with `twoFingerKind == .pan` — pinch/rotate/
-        // undecided all returned above. `lockedDx`/`lockedDy` carry the
-        // axis-suppressed delta forward; `dx`/`dy` stay raw for velocity
-        // seeding and brake detection, which must track the real finger
-        // (not the locked axis) so momentum coasts the way the hand
-        // flicked if `twoFingerScrollMomentum` is ever back on — matching
-        // `PanScrollTracker`, which likewise seeds from unlocked travel.
+        // Settled along the other axis (see `scrollLatchedAxis`): end, and
+        // begin again on a later frame.
         if twoFingerKind == .pan, lastScrollPhase != .ended, let latched = scrollLatchedAxis,
            tracked.count >= 2 {
             scrollStretchX += dx
@@ -1495,6 +1486,14 @@ struct TouchStateTracker {
             }
         }
 
+        // Dominant-axis lock (see `scrollAxisLock`). Only a committed
+        // `.pan` reaches here with `twoFingerKind == .pan` — pinch/rotate/
+        // undecided all returned above. `lockedDx`/`lockedDy` carry the
+        // axis-suppressed delta forward; `dx`/`dy` stay raw for velocity
+        // seeding and brake detection, which must track the real finger
+        // (not the locked axis) so momentum coasts the way the hand
+        // flicked if `twoFingerScrollMomentum` is ever back on — matching
+        // `PanScrollTracker`, which likewise seeds from unlocked travel.
         var lockedDx = dx
         var lockedDy = dy
         if twoFingerKind == .pan {
@@ -1559,9 +1558,8 @@ struct TouchStateTracker {
         }
         // Skip dead frames: a stationary palm with two contacts down would
         // otherwise post 100 no-op scroll events per second. After an axis
-        // lock this also swallows a frame of pure off-axis wobble (its
-        // on-axis component zeroed) — correct: a phase-free stream must
-        // not emit that at all, not even as a zero.
+        // lock this also skips a frame of pure off-axis wobble (its on-axis
+        // component zeroed), which has nothing to post.
         if outDx == 0 && outDy == 0 { return .none }
         if lastScrollPhase == .ended {
             // Nothing posted yet: open with `.began` carrying the motion.

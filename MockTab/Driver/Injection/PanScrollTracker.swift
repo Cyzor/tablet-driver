@@ -13,11 +13,9 @@ import TabletKit
 /// Like `TouchStateTracker`, it has no I/O, clocks, or globals, so tests can
 /// drive it; `InputInjector.postPanScroll` builds the events.
 ///
-/// The stream follows the tool's Momentum setting (`panScrollUsePhases`). On:
-/// a began/changed/ended phase envelope and, on release, a coast
-/// (`panMomentumTail`) seeded from the velocity tracked here. Off: phase-free
-/// events and no coast, because some apps (Calendar's Month and Year views,
-/// WebKit, Adobe palettes) reject the phased stream.
+/// The stream is a began/changed/ended phase envelope. With the tool's
+/// Momentum setting on, a release also coasts (`panMomentumTail`), seeded
+/// from the velocity tracked here.
 ///
 /// Owned by `InputInjector`; HIDThread-confined like its sibling trackers.
 struct PanScrollTracker {

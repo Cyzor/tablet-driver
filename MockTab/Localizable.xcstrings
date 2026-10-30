@@ -22132,48 +22132,48 @@
         }
       }
     },
-    "When on, Pan View keeps coasting after you let go in apps with scroll views. When off, which is the default, it pans in far more apps, but without inertia. Turn it on per app with the override bar above to get momentum only where it works." : {
+    "When on, Pan View keeps coasting after you let go in apps with scroll views. It's off by default; turn it on per app with the override bar above to get momentum only where it works." : {
       "comment" : "Tooltip on the Pan View Momentum Scrolling switch",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ist es an, läuft „Ansicht schwenken“ in Apps mit Scroll-Ansicht nach dem Loslassen weiter. Ist es aus, wie standardmäßig, schwenkt es in deutlich mehr Apps, aber ohne Trägheit. Schalte es pro App über die Leiste oben ein, um Trägheit nur dort zu nutzen, wo sie funktioniert."
+            "value" : "Ist es an, läuft „Ansicht schwenken“ in Apps mit Scroll-Ansicht nach dem Loslassen weiter. Standardmäßig ist es aus; schalte es pro App über die Leiste oben ein, um Trägheit nur dort zu nutzen, wo sie funktioniert."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si está activado, Desplazar vista sigue deslizándose al soltar en las apps con vistas de desplazamiento. Si está desactivado, como viene por defecto, desplaza en muchas más apps, pero sin inercia. Actívalo por app con la barra de excepciones de arriba para tener inercia solo donde funcione."
+            "value" : "Si está activado, Desplazar vista sigue deslizándose al soltar en las apps con vistas de desplazamiento. Viene desactivado por defecto; actívalo por app con la barra de excepciones de arriba para tener inercia solo donde funcione."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オンにすると、スクロールビューを持つアプリでは、離した後も「ビューをパン」の動きが続きます。既定のオフでは慣性はありませんが、はるかに多くのアプリでパンできます。慣性が効くアプリだけで使うには、上のアプリ別設定バーでアプリごとにオンにしてください。"
+            "value" : "オンにすると、スクロールビューを持つアプリでは、離した後も「ビューをパン」の動きが続きます。既定ではオフです。慣性が効くアプリだけで使うには、上のアプリ別設定バーでアプリごとにオンにしてください。"
           }
         }
       }
     },
-    "When on, two-finger scrolling keeps coasting after you lift in apps with scroll views. When off, which is the default, it scrolls in far more apps, including Calendar's month and year views, but without inertia." : {
+    "When on, two-finger scrolling keeps coasting after you lift in apps with scroll views. It's off by default." : {
       "comment" : "Tooltip on the touch Momentum Scrolling switch",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ist es an, scrollt das Zwei-Finger-Scrollen in Apps mit Scroll-Ansicht nach dem Abheben weiter. Ist es aus, wie standardmäßig, funktioniert es in deutlich mehr Apps, auch in der Monats- und Jahresansicht von Kalender, aber ohne Nachlauf."
+            "value" : "Ist es an, scrollt das Zwei-Finger-Scrollen in Apps mit Scroll-Ansicht nach dem Abheben weiter. Standardmäßig ist es aus."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si está activado, el desplazamiento con dos dedos sigue deslizándose al levantar los dedos en las apps con vistas de desplazamiento. Si está desactivado, como viene por defecto, funciona en muchas más apps, incluidas las vistas Mes y Año de Calendario, pero sin inercia."
+            "value" : "Si está activado, el desplazamiento con dos dedos sigue deslizándose al levantar los dedos en las apps con vistas de desplazamiento. Viene desactivado por defecto."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オンにすると、スクロールビューを持つアプリでは、指を離した後も2本指スクロールが続きます。既定のオフでは慣性はありませんが、カレンダーの月表示や年表示を含め、はるかに多くのアプリでスクロールできます。"
+            "value" : "オンにすると、スクロールビューを持つアプリでは、指を離した後も2本指スクロールが続きます。既定ではオフです。"
           }
         }
       }

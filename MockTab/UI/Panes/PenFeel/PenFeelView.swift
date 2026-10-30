@@ -99,7 +99,7 @@ struct PenFeelView: View {
                     "Momentum Scrolling",
                     isOn: panScrollMomentumBinding,
                     description: "Inertia scrolling. Compatibility varies by app.",
-                    help: "When on, Pan View keeps coasting after you let go in apps with scroll views. When off, which is the default, it pans in far more apps, but without inertia. Turn it on per app with the override bar above to get momentum only where it works.")
+                    help: "When on, Pan View keeps coasting after you let go in apps with scroll views. It's off by default; turn it on per app with the override bar above to get momentum only where it works.")
             }
 
             Section("Click Behavior") {

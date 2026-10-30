@@ -516,9 +516,7 @@ extension InputInjector {
                 // previous gesture, same as touching a real trackpad mid-momentum.
                 touchMomentumTail.cancel()
             }
-            postTouchScroll(
-                dx: dx, dy: dy, phase: phase,
-                usePhases: snap.twoFingerScrollMomentum)
+            postTouchScroll(dx: dx, dy: dy, phase: phase)
             if phase == .ended, snap.twoFingerScrollMomentum {
                 let raw = touchTracker.releaseVelocity
                 let rawMag = hypot(raw.dx, raw.dy)
@@ -647,18 +645,11 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Mirrors Pan View's `panScrollUsePhases`/`postPanScroll` split — same
-    /// on/off meaning, same tradeoff. `usePhases == false` drops the phase
-    /// field entirely (phase-free stream), on the theory that some gesture
-    /// recognizers reject a phased envelope without genuine trackpad gesture
-    /// backing — same failure class as Pan View's Calendar/WebKit cases.
-    /// Zero-delta Began/Ended brackets exist only to open/close the phase
-    /// envelope, so they're dropped as no-ops in that mode too.
-    private func postTouchScroll(
-        dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase,
-        usePhases: Bool
-    ) {
-        if !usePhases, dx == 0, dy == 0 { return }
+    /// Always phased, as Pan View's `postPanScroll` is, whatever the Momentum
+    /// setting, which only adds the coast: phase-free events stay with the
+    /// last view that scrolled until a pause, so a scroll couldn't turn from
+    /// a column to Finder's browser.
+    private func postTouchScroll(dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase) {
         // Read once and reuse below — the wheel event and its companion
         // gesture event describe the same instant, so a second WindowServer
         // round-trip a few microseconds later gains nothing.
@@ -668,13 +659,8 @@ extension InputInjector {
         // physics (rather than relying on NSScrollView's free coast) key off
         // this stream instead of — or in addition to — the wheel event. Posted
         // first to avoid a stutter seen the other way round, though a real
-        // trackpad posts the wheel event first. Matching the trackpad's order
-        // and marker fields (137, 135, MayBegin) doesn't fix sites that reject
-        // this phased stream; only the phase-free
-        // mode reaches them. Only meaningful with a real phase.
-        if usePhases {
-            postTouchScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
-        }
+        // trackpad posts the wheel event first.
+        postTouchScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
         // .pixel units + the scroll-phase field is what makes apps treat the
         // stream as a trackpad scroll (smooth, with rubber-banding) rather
         // than a discrete wheel-tick scroll.
@@ -688,9 +674,7 @@ extension InputInjector {
         else { return }
         e.location = loc
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        if usePhases {
-            e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
-        }
+        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
         applyTrackpadDeltaFields(e, dx: dx, dy: dy)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)

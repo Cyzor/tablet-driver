@@ -1189,8 +1189,7 @@ private func sweep(dx: Double, dy: Double) -> [(id: Int, screen: CGPoint)] {
 
 /// A near-vertical two-finger scroll (tiny horizontal drift) must lock to the
 /// vertical axis and zero the horizontal component for the rest of the
-/// gesture — the failure mode is that drift bleeding into a phase-free stream
-/// and being swallowed by a nested column view.
+/// gesture, so drift doesn't scroll an app that moves both ways.
 private func testNearVerticalScrollLocksOutHorizontalDrift() {
     // Commit the pan, then keep sweeping down with a small +x drift each frame.
     let frames: [(t: CFAbsoluteTime, c: [(id: Int, screen: CGPoint)])] = [

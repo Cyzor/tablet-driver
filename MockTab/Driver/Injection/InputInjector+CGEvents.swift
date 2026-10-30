@@ -1078,7 +1078,7 @@ extension InputInjector {
         let driver = Self.resolvePanScrollDriver(preferring: self)
         if down {
             SharedPanScrollState.shared.driver = driver
-            driver.panScrollUsePhases = snapshot.activeTool.panScrollMomentum
+            driver.panScrollCoasts = snapshot.activeTool.panScrollMomentum
             // A fresh grab halts any coasting tail from the previous
             // gesture, same as touching a real trackpad mid-momentum.
             // `stop`, not `cancel`: no `.began` follows until the pen moves.
@@ -1093,7 +1093,7 @@ extension InputInjector {
             // from `active`.
             active.postPanScroll(
                 active.panScroll.disengage(backdate: pendingButtonUpBackdate))
-            if active.panScrollUsePhases {
+            if active.panScrollCoasts {
                 active.panMomentumTail.start(velocity: active.panScroll.releaseVelocity)
             }
             SharedPanScrollState.shared.driver = nil
@@ -1311,27 +1311,22 @@ extension InputInjector {
         return fallback
     }
 
-    /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
-    /// See `postPanScroll`.
-
     /// Builds Pan View events: pixel units plus the continuous flag read as a
     /// trackpad pan. Kept small as the seam for a future virtual-trackpad backend.
+    ///
+    /// Always phased, so macOS gives each pan to one view and a restart can
+    /// hand it to another. Phase-free events stay with the last view that
+    /// scrolled until a pause, so a pan couldn't turn from a column to
+    /// Finder's browser.
     func postPanScroll(_ intent: PanScrollTracker.Intent) {
         guard case .scroll(let dx, let dy, let phase) = intent else { return }
-        if !panScrollUsePhases {
-            // Compatible mode: zero-delta began/ended brackets carry no delta;
-            // with no phase envelope to deliver them, skip them as no-ops.
-            guard dx != 0 || dy != 0 else { return }
-        }
         // Read once and reuse below — the wheel event and its companion
         // gesture event describe the same instant, so a second WindowServer
         // round-trip a few microseconds later gains nothing.
         let loc = currentCursorPosition()
         // See postTouchScrollGesture (InputInjector+Touch.swift) for why this
         // companion event exists and why it's posted before the wheel event.
-        if panScrollUsePhases {
-            postPanScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
-        }
+        postPanScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
         guard
             let e = CGEvent(
                 scrollWheelEvent2Source: sessionSource,
@@ -1343,9 +1338,7 @@ extension InputInjector {
         else { return }
         e.location = loc
         e.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        if panScrollUsePhases {
-            e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
-        }
+        e.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase.rawValue))
         applyTrackpadDeltaFields(e, dx: dx, dy: dy)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)

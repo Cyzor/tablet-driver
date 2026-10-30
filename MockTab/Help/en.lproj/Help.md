@@ -156,7 +156,7 @@ Tablets with a capacitive touch surface report finger contacts alongside pen inp
 
 **Reverse direction** – On: content moves opposite to finger motion, like a conventional mouse wheel.
 
-**Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia. Disable to improve scrolling compatibility in some apps, including Calendar's Month and Year views, at the cost of the coasting effect.
+**Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia.
 
 ## Touch Area
 

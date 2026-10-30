@@ -209,7 +209,7 @@ struct TouchView: View {
                     get: { settings.twoFingerScrollMomentum },
                     set: { settings.twoFingerScrollMomentum = $0 }),
                 description: "Inertia scrolling. Compatibility varies by app.",
-                help: "When on, two-finger scrolling keeps coasting after you lift in apps with scroll views. When off, which is the default, it scrolls in far more apps, including Calendar's month and year views, but without inertia.")
+                help: "When on, two-finger scrolling keeps coasting after you lift in apps with scroll views. It's off by default.")
             .disabled(!settings.touchEnabled || !settings.twoFingerScroll)
             .opacity(gestureRowOpacity)
         }

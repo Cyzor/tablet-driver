@@ -97,17 +97,12 @@ final class ToolSettings: ObservableObject {
         didSet { persist("panScrollSpeed", panScrollSpeed) }
     }
 
-    /// When true (default), Pan View emits a phased trackpad-style stream
-    /// (began/changed/ended + a momentum tail) so NSScrollView-based apps
-    /// rubber-band and coast like a real trackpad. That envelope is rejected
-    /// by recognizers that expect real trackpad gesture backing (Calendar
-    /// Month/Year, WebKit gesture-scroll, Adobe palettes) — turn off for
-    /// those: the phase-free stream pans everywhere but without inertia.
-    /// Per-tool so the tradeoff can be made only for the apps that need it.
-    /// Same on/off meaning as `TabletSettings.twoFingerScrollMomentum` for
-    /// touch. Defaults to false — macOS 27's momentum handling for injected
-    /// phase envelopes is broken widely enough that reach should win by
-    /// default; existing users' persisted `true` is unaffected.
+    /// When true, a Pan View release coasts with a momentum tail, as a
+    /// trackpad flick does. The pan itself carries scroll phases either way.
+    /// Per-tool, and per app through overrides, since the coast doesn't suit
+    /// every app. Same meaning as `TabletSettings.twoFingerScrollMomentum` for
+    /// touch. Defaults to false; existing users' persisted `true` is
+    /// unaffected.
     @Published var panScrollMomentum: Bool = false {
         didSet { persist("panScrollMomentum", panScrollMomentum) }
     }

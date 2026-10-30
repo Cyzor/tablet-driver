@@ -582,12 +582,9 @@ final class InputInjector: @unchecked Sendable {
     /// gap in a slow, deliberate turn, or one turn splits into several gestures.
     static let mechanicalDialGestureIdleTimeout: TimeInterval = 0.4
 
-    /// Panning method, captured at engage from `ToolSettings.panScrollMomentum`.
-    /// `true` (Momentum): phased events plus a momentum tail, which scroll views
-    /// (Finder, Xcode) read as a trackpad flick. `false` (Compatible): no phases
-    /// and no tail, the shape tools like Smooze use, for apps that ignore
-    /// momentum.
-    var panScrollUsePhases = true
+    /// Whether a Pan View release coasts, captured at engage from the tool's
+    /// Momentum setting. The pan itself always carries scroll phases.
+    var panScrollCoasts = false
 
     var lastPostedPoint: CGPoint = .zero
     var lastPostedPressure: Double = -1.0

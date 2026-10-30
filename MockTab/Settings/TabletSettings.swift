@@ -651,16 +651,10 @@ final class TabletSettings: ObservableObject {
     @Published var reverseScrollDirection: Bool = false {
         didSet { persist("naturalScrolling", reverseScrollDirection) }
     }
-    /// When true, two-finger scroll emits the full Began/Changed/Ended phase
-    /// envelope, which is what gives it iPad-style inertia in most apps. That
-    /// envelope is rejected by the same class of gesture recognizer Pan
-    /// View's momentum stream is (Calendar Month/Year, WebKit
-    /// gesture-scroll) — turn off for those: dropping the phase field trades
-    /// the inertia away for a stream that lands everywhere. Same on/off
+    /// When true, a two-finger scroll coasts with a momentum tail after the
+    /// fingers lift. The scroll itself carries scroll phases either way. Same
     /// meaning as `ToolSettings.panScrollMomentum` for Pan View. Defaults to
-    /// false — macOS 27's momentum handling for injected phase envelopes is
-    /// broken widely enough that reach should win by default; existing users'
-    /// persisted `true` is unaffected.
+    /// false; existing users' persisted `true` is unaffected.
     @Published var twoFingerScrollMomentum: Bool = false {
         didSet { persist("twoFingerScrollMomentum", twoFingerScrollMomentum) }
     }
