@@ -63,4 +63,27 @@ func checkCodes(_ expect: (Bool, String) -> Void) {
         }
     }
     expect(KeyLayouts.table(0x0001).isEmpty, "A model without a table has no positions")
+
+    // Comparison by what MockTab gets
+    func field(_ name: String, _ text: String, _ type: String = "integer") -> WacomNode {
+        WacomNode(name: name, type: type, text: text)
+    }
+    func control(_ fields: WacomNode...) -> WacomNode { WacomNode(name: "ArrayElement", children: fields) }
+    let none: LayoutLookup = { _, _ in nil }
+    let click = control(field("ButtonFunction", "1"))
+    let clickWithOldKeys = control(field("ButtonFunction", "1"), field("Keystroke", "&command;z", "kestring"))
+    expect(WacomMapper.sameButton(click, clickWithOldKeys, layout: none), "Old keystrokes on a click don't count")
+    expect(!WacomMapper.sameButton(click, control(field("ButtonFunction", "3")), layout: none), "Different functions differ")
+    expect(WacomMapper.sameButton(control(field("ButtonFunction", "41")), control(field("ButtonFunction", "40")), layout: none),
+           "Two functions MockTab doesn't have both leave it None")
+    expect(!WacomMapper.sameButton(control(field("ButtonFunction", "0")), control(field("ButtonFunction", "41")), layout: none),
+           "Unverified and left out differ")
+
+    let scroll = control(field("TouchStripFunction", "45"))
+    let scrollWithOldKeys = control(field("TouchStripFunction", "45"), field("TouchStripKeystrokeIncrease", "]", "kestring"),
+                                    field("TouchStripKeystrokeName", "Brush size", "string"))
+    expect(WacomMapper.sameRingMode(scroll, scrollWithOldKeys, layout: none), "Old keystrokes and name on a scroll mode don't count")
+    expect(WacomMapper.ringLabel(scrollWithOldKeys) == nil, "A scroll mode doesn't take an old keystroke name")
+    let keys = control(field("TouchStripFunction", "8"), field("TouchStripKeystrokeName", "Brush size", "string"))
+    expect(WacomMapper.ringLabel(keys) == "Brush size", "A keystroke mode keeps its name")
 }

@@ -529,7 +529,7 @@ enum WacomMapper {
                 lines.append(Line(control: label, wacom: "listed twice", outcome: .skipped("the backup doesn't say which counts")))
                 continue
             }
-            if let base, let other = base.node(element), sameButton(b, other) { continue }
+            if let base, let other = base.node(element), sameButton(b, other, layout: layout) { continue }
             let (wacom, outcome, binding) = function(b, layout: layout)
             lines.append(Line(control: label, wacom: wacom, outcome: outcome.prefixed(key),
                               action: binding.map(Action.binding), setting: .binding(key)))
@@ -576,7 +576,7 @@ enum WacomMapper {
                                        outcome: .skipped("the backup doesn't say which counts")))
                 continue
             }
-            if let other = baseKeys.first(where: { $0.string("ButtonName") == name }), sameButton(k, other) { continue }
+            if let other = baseKeys.first(where: { $0.string("ButtonName") == name }), sameButton(k, other, layout: layout) { continue }
             var (wacom, outcome, binding) = function(k, layout: layout)
             guard let target = KeyLayouts.target(name, productID: productID), !target.spot.isDial else {
                 if !outcome.isSkipped { outcome = .skipped("key position unknown on this model") }
@@ -637,8 +637,8 @@ enum WacomMapper {
                                     outcome: .skipped("the backup doesn't say which counts")))
                 continue
             }
-            if let b = base?.node("TouchStripModes/\(m.name)"), sameRingMode(m, b) { continue }
-            let label = m.string("TouchStripKeystrokeName").flatMap { $0.isEmpty ? nil : $0 }
+            if let b = base?.node("TouchStripModes/\(m.name)"), sameRingMode(m, b, layout: layout) { continue }
+            let label = ringLabel(m)
             var (wacom, outcome, mode) = ringFunction(m, layout: layout)
             if let label { wacom = "\"\(label)\": " + wacom }
             let index = m.name.hasPrefix("mode") ? Int(m.name.dropFirst(4)).map { $0 - 1 } : nil
@@ -744,13 +744,27 @@ enum WacomMapper {
 
     // MARK: Comparison
 
-    static func sameButton(_ a: WacomNode, _ b: WacomNode) -> Bool {
-        ["ButtonFunction", "Keystroke", "Modifier", "Panel"].allSatisfy { a.string($0) == b.string($0) }
+    // Two controls are the same when MockTab would get the same from them.
+    // Wacom keeps old keystrokes and names after a function changes, so
+    // comparing stored fields would count those.
+
+    static func sameButton(_ a: WacomNode, _ b: WacomNode, layout: LayoutLookup) -> Bool {
+        let (_, oa, va) = function(a, layout: layout)
+        let (_, ob, vb) = function(b, layout: layout)
+        return va == vb && oa.sameEffect(ob)
     }
 
-    static func sameRingMode(_ a: WacomNode, _ b: WacomNode) -> Bool {
-        ["TouchStripFunction", "TouchStripKeystrokeIncrease", "TouchStripKeystrokeDecrease", "TouchStripModifiers"]
-            .allSatisfy { a.string($0) == b.string($0) }
+    static func sameRingMode(_ a: WacomNode, _ b: WacomNode, layout: LayoutLookup) -> Bool {
+        let (_, oa, va) = ringFunction(a, layout: layout)
+        let (_, ob, vb) = ringFunction(b, layout: layout)
+        return va == vb && oa.sameEffect(ob) && ringLabel(a) == ringLabel(b)
+    }
+
+    /// A ring mode's name belongs to its keystrokes; other modes keep the
+    /// name of keystrokes they once had.
+    static func ringLabel(_ m: WacomNode) -> String? {
+        guard m.int("TouchStripFunction") == RingCodes.keystrokes else { return nil }
+        return m.string("TouchStripKeystrokeName").flatMap { $0.isEmpty ? nil : $0 }
     }
 
     // MARK: Mapping area
@@ -791,6 +805,15 @@ extension Confidence {
 extension Outcome {
     /// Lowers a mapping's confidence to `limit` when the target is less sure
     /// than the value.
+    /// The same result in MockTab: both left out, or both written as sure.
+    func sameEffect(_ other: Outcome) -> Bool {
+        switch (self, other) {
+        case (.skipped, .skipped): return true
+        case (.mapped(_, let a), .mapped(_, let b)): return a == b
+        default: return false
+        }
+    }
+
     func capped(_ limit: Confidence) -> Outcome {
         if case .mapped(let what, let c) = self, limit.rank > c.rank { return .mapped(what, limit) }
         return self
