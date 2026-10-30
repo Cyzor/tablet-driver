@@ -1000,11 +1000,11 @@ final class InputInjector: @unchecked Sendable {
     /// so a finger landing as the pen lifts isn't taken as input.
     var penProximityExitTime: TimeInterval = 0
     /// Per-Wacom-driver convention; tunable if reports show false positives.
-    static let touchArbitrationGrace: CFAbsoluteTime = 0.08
+    static let touchArbitrationGrace: TimeInterval = 0.08
     /// After the pen leaves proximity, the hand most likely still holds it:
     /// a touch starting this soon can scroll, zoom, or rotate, but not click
     /// or move the cursor. Reasoned, not measured.
-    static let penInHandWindow: CFAbsoluteTime = 3.0
+    static let penInHandWindow: TimeInterval = 3.0
     /// Contacts already down while the pen was busy: the hand that held the
     /// pen. Ignored until they lift, so a resting hand never turns into
     /// fingers when the pen leaves.
@@ -1021,7 +1021,7 @@ final class InputInjector: @unchecked Sendable {
     /// For this long after a keypress, touch can scroll, zoom, or rotate, but not
     /// click or move the cursor: a resting hand, like a trackpad's typing guard.
     /// Reasoned, not measured.
-    static let typingHoldOff: CFAbsoluteTime = 0.5
+    static let typingHoldOff: TimeInterval = 0.5
     /// The pen touched down or stayed in range past `touchBusyHoldOff`. Touch
     /// arbitration gates on this, not raw `lastProximity`: Bluetooth proximity
     /// flaps in 5–45 ms bursts while the pen is just held near the tablet,
@@ -1033,7 +1033,7 @@ final class InputInjector: @unchecked Sendable {
     /// How long proximity must last before touch treats the pen as in use:
     /// longer than the measured flap bursts, too short to notice. Tip contact
     /// skips it.
-    static let touchBusyHoldOff: CFAbsoluteTime = 0.15
+    static let touchBusyHoldOff: TimeInterval = 0.15
 
     /// When `touchPenConfirmedBusy` most recently flipped true.
     var touchPenBusyConfirmedAt: TimeInterval = 0
@@ -1046,7 +1046,7 @@ final class InputInjector: @unchecked Sendable {
     /// in range then: exiting early once killed proximity for good. So a hand
     /// moving during a touch gesture could block touch indefinitely. Well above
     /// any pause before a stroke; one tip contact resets it.
-    static let staleBusyTimeout: CFAbsoluteTime = 3.0
+    static let staleBusyTimeout: TimeInterval = 3.0
 
     func currentCursorPosition() -> CGPoint {
         // Cursor in CG global coordinates, safe off main. NSEvent.mouseLocation

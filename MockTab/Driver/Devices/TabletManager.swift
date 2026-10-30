@@ -37,7 +37,7 @@ final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // spli
     /// Throttle target: ~30 Hz.  HID delivers touch at ~100 Hz under load,
     /// and even after `isPublishingEnabled` gates inactive consumers, the
     /// active scratchpad doesn't benefit from canvas redraws faster than this.
-    static let publishInterval: CFAbsoluteTime = 1.0 / 30.0
+    static let publishInterval: TimeInterval = 1.0 / 30.0
 }
 
 /// Manages IOHIDManager lifecycle, per-device contexts, and proximity-based

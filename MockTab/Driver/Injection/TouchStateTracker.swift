@@ -257,14 +257,14 @@ struct TouchStateTracker {
     /// with zero motion, so `.tapClick`'s "click at current cursor
     /// position" lands correctly.
     private var absoluteLastWarpedTo: CGPoint?
-    /// Wall-clock time of the last `.pointer` sample, for staleness detection
+    /// When the last `.pointer` sample arrived, for staleness detection
     /// and computing `dt` for the `pointerSpeed` EMA.
-    private var lastPointerSampleTime: CFAbsoluteTime = 0
+    private var lastPointerSampleTime: TimeInterval = 0
 
     /// First-frame screen position for tap-to-click detection.  Only the
     /// primary contact (id of the first finger down) is tracked.
     private var tapAnchor: CGPoint?
-    private var tapStart: CFAbsoluteTime = 0
+    private var tapStart: TimeInterval = 0
     /// Largest distance the primary contact has moved from `tapAnchor` during
     /// this sequence; if it exceeds `tapMaxDistance` a tap is no longer
     /// possible (sequence has become a drag).
@@ -285,7 +285,7 @@ struct TouchStateTracker {
 
     /// When a committed `.pan` scroll first dropped below two contacts, or 0
     /// while two are present. Drives `scrollSingleContactGrace`.
-    private var scrollDroppedToOneContactAt: CFAbsoluteTime = 0
+    private var scrollDroppedToOneContactAt: TimeInterval = 0
     /// The flick velocity captured at the instant a `.pan` first dropped to one
     /// contact — i.e. from the last frame both fingers were down and their
     /// samples were still fresh. The wind-down that fires `scrollSingleContactGrace`
@@ -300,22 +300,22 @@ struct TouchStateTracker {
     /// feeds `releaseSuppressedByRecency`; the two gaps feed `releaseFrameGap`/
     /// `releaseMotionGap`.
     private var suppressedByRecencyAtDrop = false
-    private var frameGapAtDrop: CFAbsoluteTime = -1
-    private var motionGapAtDrop: CFAbsoluteTime = -1
+    private var frameGapAtDrop: TimeInterval = -1
+    private var motionGapAtDrop: TimeInterval = -1
     /// Set once a `.scroll` sequence has been wound down early (see
     /// `scrollSingleContactGrace`) but not every finger has lifted yet.
     /// While true, `process` emits nothing for any non-empty frame whose
     /// contacts overlap the wound-down gesture's — the gesture is finished;
     /// its remaining finger(s) must not resurrect it. Cleared by the real
     /// `reset()` on all-fingers-lifted, by an entirely new contact set
-    /// (`scrollWoundDownExpiresAt`'s frame), or by a wall-clock backstop, so a
+    /// (`scrollWoundDownExpiresAt`'s frame), or by a timed backstop, so a
     /// never-arriving empty frame can't latch touch off.
     private var scrollWoundDown = false
-    /// Wall-clock backstop for `scrollWoundDown`: if no clean exit has cleared
+    /// Timed backstop for `scrollWoundDown`: if no clean exit has cleared
     /// it by this time, clear it anyway. Guards against an all-fingers-lifted
     /// frame that never arrives (the exact failure this whole change targets)
     /// latching touch permanently.
-    private var scrollWoundDownExpiresAt: CFAbsoluteTime = 0
+    private var scrollWoundDownExpiresAt: TimeInterval = 0
 
     /// Sticky pan vs gesture (pinch and/or rotate) once motion crosses
     /// `twoFingerDecideDistance`.
@@ -386,7 +386,7 @@ struct TouchStateTracker {
     /// When the current two-finger sequence entered `.undecided` — the dwell
     /// clock for rotate-eligible sequences (see `rotateMinDwell`'s doc
     /// comment). Unused, and not meaningfully read, when rotate is off.
-    private var undecidedStartTime: CFAbsoluteTime = 0
+    private var undecidedStartTime: TimeInterval = 0
     /// Last frame's angle (radians, `atan2`) of the id-sorted two-contact
     /// pair. Doubles as the undecided sequence's origin angle (set once at
     /// escalation) and the per-frame delta baseline once committed.
@@ -402,7 +402,7 @@ struct TouchStateTracker {
     /// total so the bar a joining component has to clear stays constant
     /// instead of climbing with the gesture's own duration.
     private var recentGestureDeltas:
-        [(time: CFAbsoluteTime, scale: Double, tangential: Double, translation: Double)] = []
+        [(time: TimeInterval, scale: Double, tangential: Double, translation: Double)] = []
 
     /// Recent per-frame instantaneous velocities (points/second), each frame's
     /// raw `delta/dt` with a timestamp — the momentum-tail seed. An EMA was
@@ -414,14 +414,14 @@ struct TouchStateTracker {
     /// peak even from a very brief flick, matching `PanScrollTracker`'s
     /// equivalent. Pruned to `peakVelocityWindow` each frame; tiny array,
     /// never holds more than a handful of samples at touch report rates.
-    private var recentVelocities: [(time: CFAbsoluteTime, v: CGVector)] = []
-    private var lastFrameTime: CFAbsoluteTime = 0
+    private var recentVelocities: [(time: TimeInterval, v: CGVector)] = []
+    private var lastFrameTime: TimeInterval = 0
     /// Time of the last frame with nonzero motion. A real trackpad detects a
     /// deliberate brake — holding fingers still before lifting — and starts
     /// no momentum even if a fast sample is still sitting in `recentVelocities`
     /// from just before the brake. Gating release on *recent* motion instead
     /// of trusting the peak-velocity window alone catches that directly.
-    private var lastMotionTime: CFAbsoluteTime = 0
+    private var lastMotionTime: TimeInterval = 0
     /// Captured at scroll-gesture end; read by the posting layer to start a
     /// momentum decay tail. Unused while the gesture is still active.
     private(set) var releaseVelocity: CGVector = .zero
@@ -437,8 +437,8 @@ struct TouchStateTracker {
     /// arriving (a delivery gap — bug B). Only the motion gap large ⇒ frames
     /// kept coming but stationary (a genuine brake). Set on every scroll
     /// release; -1 before the first.
-    private(set) var releaseFrameGap: CFAbsoluteTime = -1
-    private(set) var releaseMotionGap: CFAbsoluteTime = -1
+    private(set) var releaseFrameGap: TimeInterval = -1
+    private(set) var releaseMotionGap: TimeInterval = -1
 
     /// Both fingers of the current two-finger sequence landed inside the
     /// onset window, and far enough apart to be fingertips, not a palm's
@@ -465,7 +465,7 @@ struct TouchStateTracker {
     /// Maximum drift (in screen points) that still counts as a tap.
     static let tapMaxDistance: Double = 8.0
     /// Maximum tap duration (seconds); longer touches become drags or scrolls.
-    static let tapMaxDuration: CFAbsoluteTime = 0.30
+    static let tapMaxDuration: TimeInterval = 0.30
     /// Onset delay: a touch sequence emits nothing until it has been down this
     /// long.  Two jobs: (1) a palm landing just before the pen tips down does so
     /// within this window, so the injector resets the tracker before the palm
@@ -491,7 +491,7 @@ struct TouchStateTracker {
     /// the third frame (~20 ms at container rate) and the first ~2 frames of
     /// travel are discarded, not replayed.  0 shrinks the dead span to that
     /// floor; it does not remove it.
-    static let onsetDelay: CFAbsoluteTime = 0.04
+    static let onsetDelay: TimeInterval = 0.04
 
     /// Screen points a single-finger touch may drift before it starts moving
     /// the cursor: absorbs lift-off skitter on a tap and the first point or
@@ -536,11 +536,11 @@ struct TouchStateTracker {
     static let companionSuppressionRatio: Double = 0.5
     /// How far back to look for the fastest recent sample when seeding
     /// momentum release velocity — matches `PanScrollTracker.peakVelocityWindow`.
-    static let peakVelocityWindow: CFAbsoluteTime = 0.06
+    static let peakVelocityWindow: TimeInterval = 0.06
     /// Minimum frame spacing for a `delta/dt` sample to be trusted as a real
     /// velocity — see the `.scroll` case. Below the device's true touch cadence,
     /// above a Bluetooth burst's inter-frame gap.
-    static let minVelocityDt: CFAbsoluteTime = 0.002
+    static let minVelocityDt: TimeInterval = 0.002
     /// EMA time-constant for `pointerSpeed`: smaller = smoother/slower to
     /// react, larger = snappier/noisier. 0.5 means each new sample pulls the
     /// smoothed speed roughly a third of the way to the instantaneous value
@@ -551,7 +551,7 @@ struct TouchStateTracker {
     /// A gap this long since the last `.pointer` sample means the finger was
     /// effectively still or freshly landed; the smoothed speed is stale and
     /// must not carry forward into a new motion.
-    static let pointerVelocityStaleGap: CFAbsoluteTime = 0.1
+    static let pointerVelocityStaleGap: TimeInterval = 0.1
     /// Screen points/sec below which `pointerGain` treats motion as
     /// fine-placement speed (gain floor) — and above which it treats motion
     /// as a fast reposition (gain ceiling). Chosen so an ordinary, unhurried
@@ -597,7 +597,7 @@ struct TouchStateTracker {
     /// this many seconds of it — otherwise the fingers were held still
     /// (braking) and release velocity is suppressed regardless of any fast
     /// sample still sitting in the peak-velocity window.
-    static let momentumRecencyWindow: CFAbsoluteTime = 0.05
+    static let momentumRecencyWindow: TimeInterval = 0.05
     /// Grace period after a committed `.pan` scroll drops from two contacts to
     /// one before the gesture is wound down. A brief 1-contact frame is normal
     /// mid-scroll — palm filtering churns the set, or one finger momentarily
@@ -608,7 +608,7 @@ struct TouchStateTracker {
     /// move — even an unrelated single-finger touch later — still scrolls the
     /// view. Once one finger has been gone this long the gesture is over;
     /// close it out and hold wound-down until all fingers actually lift.
-    static let scrollSingleContactGrace: CFAbsoluteTime = 0.1
+    static let scrollSingleContactGrace: TimeInterval = 0.1
     /// Cumulative unsigned centroid travel (screen points) a committed `.pan`
     /// considers before deciding a dominant axis. Every event emitted before
     /// the lock commits still carries the off-axis component that a phase-free
@@ -620,15 +620,15 @@ struct TouchStateTracker {
     /// genuinely diagonal — give up on locking and stay omnidirectional for
     /// the rest of the gesture.
     static let scrollAxisLockRatio: Double = 2.0
-    /// Wall-clock backstop clearing `scrollWoundDown` even if an
+    /// Timed backstop clearing `scrollWoundDown` even if an
     /// all-fingers-lifted frame never arrives. Generous — a real gesture is
     /// long over well before this — but bounded, so a dropped lift frame can
     /// never latch touch permanently off.
-    static let scrollWoundDownBackstop: CFAbsoluteTime = 2.0
+    static let scrollWoundDownBackstop: TimeInterval = 2.0
     /// Above this, a release "gap" is the idle between two separate gestures
     /// (the ending frame arriving with the next touch), not a within-gesture
     /// stall — the release-gap diagnostics record -1 instead.
-    static let releaseGapPlausibleMax: CFAbsoluteTime = 1.0
+    static let releaseGapPlausibleMax: TimeInterval = 1.0
     /// How close `frameGap` and `motionGap` must be, at a scroll release, to
     /// call it a delivery gap (frames stopped arriving) rather than a
     /// deliberate brake (frames kept coming, finger held still). On a healthy
@@ -636,7 +636,7 @@ struct TouchStateTracker {
     /// 0.0101 vs 0.0200); a Bluetooth delivery stall makes them identical to
     /// the digit. 30 ms clears the jitter and still separates every observed
     /// stall. See `releaseKinematics`.
-    static let deliveryGapBrakeSlack: CFAbsoluteTime = 0.030
+    static let deliveryGapBrakeSlack: TimeInterval = 0.030
     /// Maximum hold duration for a two-finger contact to still count as a
     /// tap rather than a rest. Deliberately does *not* need a
     /// separate max-deviation check: a still-`.undecided` teardown already
@@ -644,11 +644,11 @@ struct TouchStateTracker {
     /// distance change stayed under `twoFingerDecideDistance` — that's the
     /// same guard that keeps `.undecided` from ever committing to pan or
     /// pinch in the first place. See the `.undecided` branch in `process`.
-    static let twoFingerTapMaxDuration: CFAbsoluteTime = 0.30
+    static let twoFingerTapMaxDuration: TimeInterval = 0.30
     /// How far apart two fingers may land and still right-click. Separate
     /// from the onset delay, which users shorten: Bluetooth delivers touch
     /// every 20–50 ms, so fingers landing together still arrive a frame apart.
-    static let twoFingerLandWindow: CFAbsoluteTime = 0.06
+    static let twoFingerLandWindow: TimeInterval = 0.06
     /// Minimum center-to-center spacing (millimeters) for a two-finger tap
     /// to right-click. Two fingertips side by side sit about 15 mm apart;
     /// a palm's stray contacts can land a fraction of a millimeter apart.
@@ -657,7 +657,7 @@ struct TouchStateTracker {
     /// Three fingers landing within this long of the first count as landing
     /// together. Longer than the onset window, since three fingers spread
     /// out more than two. Reasoned, not measured.
-    static let threeFingerLandingWindow: CFAbsoluteTime = 0.10
+    static let threeFingerLandingWindow: TimeInterval = 0.10
     /// Three fingertips bunch closer than two: a PTH-660 capture put most
     /// three-finger frames' closest pair 5–10 mm apart.
     static let threeFingerMinSpacingMM: Double = 5.0
@@ -689,7 +689,7 @@ struct TouchStateTracker {
     /// clock it has no use for. Not independently hardware-tuned — chosen at
     /// the low end of a plausible "hold for a moment" range; revisit once
     /// this can be measured directly.
-    static let rotateMinDwell: CFAbsoluteTime = 0.07
+    static let rotateMinDwell: TimeInterval = 0.07
     /// Translation or scale change (screen points, same unit as `decide`)
     /// large enough to bypass `rotateMinDwell` entirely — an obviously fast
     /// pan or pinch shouldn't wait on a timer meant to disambiguate a
@@ -701,7 +701,7 @@ struct TouchStateTracker {
     /// commit sees), short enough that the bar doesn't drift upward as the
     /// gesture runs.  Not hardware-tuned — reasoned from the commit path's own
     /// timescale; revisit against a v12 capture's `twoFingerLateJoins`.
-    static let lateJoinWindow: CFAbsoluteTime = 0.25
+    static let lateJoinWindow: TimeInterval = 0.25
 
     // MARK: - Process
 
@@ -784,9 +784,9 @@ struct TouchStateTracker {
         rawPositions: [Int: CGPoint] = [:],
         touchDiagonal: Double = 0,
         absoluteTouch: Bool = false,
-        onsetDelay: CFAbsoluteTime = TouchStateTracker.onsetDelay,
+        onsetDelay: TimeInterval = TouchStateTracker.onsetDelay,
         tapStabilizationPt: Double = TouchStateTracker.tapStabilizationPt,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
 
         // Per-frame diagnostic flag — set only by the wind-down return below.
@@ -798,7 +798,7 @@ struct TouchStateTracker {
         // while the wound-down gesture's own finger(s) linger, but clear the
         // hold — never latch it — on any of: all fingers lifted (the real
         // teardown), a contact set that no longer overlaps the wound-down
-        // gesture (these are new fingers, a fresh sequence), or the wall-clock
+        // gesture (these are new fingers, a fresh sequence), or the timed
         // backstop. The overlap and backstop escapes exist precisely because
         // "the all-lifted frame never arrives" is the failure this change
         // targets — it must not become a way to wedge touch off entirely.
@@ -900,7 +900,7 @@ struct TouchStateTracker {
         contacts: [(id: Int, screen: CGPoint)],
         sensitivity: Double,
         absoluteTouch: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         if !absoluteTouch {
             let ids = Set(contacts.map(\.id))
@@ -937,9 +937,9 @@ struct TouchStateTracker {
     private mutating func processPending(
         contacts: [(id: Int, screen: CGPoint)],
         absoluteTouch: Bool,
-        onsetDelay: CFAbsoluteTime,
+        onsetDelay: TimeInterval,
         tapStabilizationPt: Double,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         // Track motion for tap detection. Relative mode emits nothing
         // here and anchors at commit instead, so motion accumulated
@@ -1022,7 +1022,7 @@ struct TouchStateTracker {
     private mutating func processPointer(
         contacts: [(id: Int, screen: CGPoint)],
         sensitivity: Double,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         guard let first = contacts.first else { return .none }
         let prev = lastPositions[first.id] ?? first.screen
@@ -1049,7 +1049,7 @@ struct TouchStateTracker {
         reverseScrollDirection: Bool,
         pinchZoom: Bool,
         rotate: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         let dt = now - lastFrameTime
         lastFrameTime = now
@@ -1182,7 +1182,7 @@ struct TouchStateTracker {
         twoFingerScroll: Bool,
         pinchZoom: Bool,
         rotate: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         // A 1-contact frame collapses the centroid onto that single
         // finger, roughly half the finger separation away from the
@@ -1319,7 +1319,7 @@ struct TouchStateTracker {
         dy: Double,
         pinchZoom: Bool,
         rotate: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         // Angle tracking runs for the whole sequence, not just while
         // rotate is an active component: the late-join window below
@@ -1444,10 +1444,10 @@ struct TouchStateTracker {
     private mutating func processPanFrame(
         dx: Double,
         dy: Double,
-        dt: CFAbsoluteTime,
+        dt: TimeInterval,
         tracked: [(id: Int, screen: CGPoint)],
         reverseScrollDirection: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         // Dominant-axis lock (see `scrollAxisLock`). Only a committed
         // `.pan` reaches here with `twoFingerKind == .pan` — pinch/rotate/
@@ -1543,7 +1543,7 @@ struct TouchStateTracker {
         tapToClick: Bool,
         twoFingerRightClick: Bool,
         threeFingerDrag: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         let priorMode = mode
         let priorPhase = lastScrollPhase
@@ -1612,7 +1612,7 @@ struct TouchStateTracker {
     private mutating func beginSequence(
         first: (id: Int, screen: CGPoint),
         absoluteTouch: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent {
         mode = .pending
         lastPositions = [first.id: first.screen]
@@ -1634,7 +1634,7 @@ struct TouchStateTracker {
     /// A wound-down scroll's lingering fingers: hold, release, or nil when new fingers start a fresh sequence.
     private mutating func processWoundDownHold(
         contacts: [(id: Int, screen: CGPoint)],
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent? {
         let overlapsOldContacts = contacts.contains { lastPositions[$0.id] != nil }
         if contacts.isEmpty {
@@ -1695,7 +1695,7 @@ struct TouchStateTracker {
         threeFingerDrag: Bool,
         rawPositions: [Int: CGPoint],
         absoluteTouch: Bool,
-        now: CFAbsoluteTime
+        now: TimeInterval
     ) -> Intent? {
         if threeFingerDrag, contacts.count == 3, mode == .pending || mode == .scroll,
            threeFingerMissReason == nil {
@@ -1741,8 +1741,8 @@ struct TouchStateTracker {
         threeFingerDrag: Bool,
         rawPositions: [Int: CGPoint],
         touchDiagonal: Double,
-        onsetDelay: CFAbsoluteTime,
-        now: CFAbsoluteTime
+        onsetDelay: TimeInterval,
+        now: TimeInterval
     ) -> Intent? {
         let anyTwoFingerGesture = twoFingerScroll || pinchZoom || rotate
             || twoFingerRightClick || threeFingerDrag
@@ -1834,7 +1834,7 @@ struct TouchStateTracker {
     /// Sensitivity times the speed-scaled gain, from a smoothed speed over
     /// successive samples. Shared by pointer motion and relative drags.
     private mutating func adaptivePointerGain(
-        rawDx: Double, rawDy: Double, now: CFAbsoluteTime, sensitivity: Double
+        rawDx: Double, rawDy: Double, now: TimeInterval, sensitivity: Double
     ) -> Double {
         let dt = lastPointerSampleTime == 0 ? 0 : now - lastPointerSampleTime
         var gain = sensitivity
@@ -1944,9 +1944,9 @@ struct TouchStateTracker {
     ///   to `now` before reaching here (so `now - lastFrameTime` would read
     ///   ~0). Every other caller omits it.
     private func releaseKinematics(
-        now: CFAbsoluteTime, frameGapOverride: CFAbsoluteTime? = nil
+        now: TimeInterval, frameGapOverride: TimeInterval? = nil
     ) -> (velocity: CGVector, suppressedByRecency: Bool,
-          frameGap: CFAbsoluteTime, motionGap: CFAbsoluteTime) {
+          frameGap: TimeInterval, motionGap: TimeInterval) {
         let rawFrameGap = frameGapOverride ?? (lastFrameTime == 0 ? -1 : now - lastFrameTime)
         let rawMotionGap = lastMotionTime == 0 ? -1 : now - lastMotionTime
         let frameGap = rawFrameGap > Self.releaseGapPlausibleMax ? -1 : rawFrameGap

@@ -579,7 +579,7 @@ struct DisplayMapper {
     /// along it don't depend on riding the tablet's last fraction of a
     /// millimeter. Applies only while the Dock hides; reasoned, not measured.
     static let dockEdgePinThreshold: CGFloat = 10.0
-    static let dockEdgeRefreshInterval: CFAbsoluteTime = 2.0
+    static let dockEdgeRefreshInterval: TimeInterval = 2.0
 
     enum DockEdge { case bottom, left, right }
 
