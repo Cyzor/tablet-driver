@@ -257,6 +257,17 @@ enum Binding: Equatable {
 enum RingMode: Equatable {
     case scroll, rotate, off, skip
     case keys(cw: Binding, ccw: Binding)
+
+    /// MockTab's name for the mode.
+    var name: String {
+        switch self {
+        case .scroll: return "scroll"
+        case .rotate: return "rotate"
+        case .off: return "off"
+        case .skip: return "skip"
+        case .keys: return "keyPress"
+        }
+    }
 }
 
 enum Action: Equatable {
@@ -567,13 +578,13 @@ enum WacomMapper {
             }
             if let other = baseKeys.first(where: { $0.string("ButtonName") == name }), sameButton(k, other) { continue }
             var (wacom, outcome, binding) = function(k, layout: layout)
-            guard let target = KeyLayouts.key(name, productID: productID) else {
+            guard let target = KeyLayouts.target(name, productID: productID), !target.spot.isDial else {
                 if !outcome.isSkipped { outcome = .skipped("key position unknown on this model") }
                 keys.lines.append(Line(control: name, wacom: wacom, outcome: outcome))
                 continue
             }
             // A second dial's key cycles that dial's modes.
-            if target.setting == "touchRingButtonBinding2", case .mapped("ringCycle", let conf) = outcome {
+            if target.spot == .binding("touchRingButtonBinding2"), case .mapped("ringCycle", let conf) = outcome {
                 outcome = .mapped("ringCycle2", conf)
                 binding = .kind("ringCycle2")
             }
@@ -591,7 +602,7 @@ enum WacomMapper {
         for dial in c.node("TouchRings")?.children ?? [] {
             let title = "Dial \(dial.name)"
             let base = base?.node("TouchRings/\(dial.name)")
-            guard let target = KeyLayouts.dial(dial.name, productID: productID) else {
+            guard let target = KeyLayouts.target(dial.name, productID: productID), case .dial(let dialIndex) = target.spot else {
                 var s = ringSection(title, dial, base: base, key: "rotaries", confidence: .exact,
                                     slot: { _ in nil }, layout: layout)
                 s.lines = s.lines.map {
@@ -602,7 +613,6 @@ enum WacomMapper {
                 sections.append(s)
                 continue
             }
-            let dialIndex = target.setting == "rotaries[1]" ? 1 : 0
             let checked = target.confidence != .unverified
             sections.append(ringSection(title, dial, base: base, key: target.setting,
                                         confidence: target.confidence,
@@ -641,71 +651,52 @@ enum WacomMapper {
 
     static func ringFunction(_ m: WacomNode, layout: LayoutLookup) -> (String, Outcome, RingMode?) {
         let code = m.int("TouchStripFunction") ?? -1
-        switch code {
-        // Wacom's menu offers Disabled where it once had Skip.
-        case 0: return ("disabled", .mapped("off", .exact), .off)
-        case 8:
-            // Wacom's dialog puts the counterclockwise key first and saves
-            // it as Increase, on rings and dials alike.
-            let ccwRaw = m.string("TouchStripKeystrokeIncrease") ?? ""
-            let cwRaw = m.string("TouchStripKeystrokeDecrease") ?? ""
-            let mods = m.string("TouchStripModifiers") ?? ""
-            let ccw = Keystroke.parse(mods + ccwRaw, layout: layout)
-            let cw = Keystroke.parse(mods + cwRaw, layout: layout)
-            let text = "keys \(describe(cw, raw: cwRaw)) clockwise, \(describe(ccw, raw: ccwRaw)) counterclockwise"
-            guard case .key(let kcw, let ecw) = cw, case .key(let kccw, let eccw) = ccw,
-                  kcw.keyCode != nil, kccw.keyCode != nil else {
-                return (text, .skipped(skipReason(cw, ccw)), nil)
-            }
-            // Keys recorded on another layout can land on one key here, as #
-            // and ⇧# from a German layout both need ⇧3 on a U.S. one.
-            if binding(kcw) == binding(kccw) && cwRaw != ccwRaw {
-                return (text, .skipped("both directions would send \(symbol(kcw)) on this keyboard layout"), nil)
-            }
-            let conf: Confidence = ecw && eccw ? .exact : .approximate
-            return (text, .mapped("keyPress, cwBinding \(symbol(kcw)), ccwBinding \(symbol(kccw))", conf),
-                    .keys(cw: binding(kcw), ccw: binding(kccw)))
-        case 44: return ("auto scroll and zoom", .mapped("scroll", .approximate), .scroll)
-        case 45: return ("scroll", .mapped("scroll", .exact), .scroll)
-        case 47: return ("skip", .mapped("skip", .exact), .skip)
-        case 51: return ("rotate", .mapped("rotate", .exact), .rotate)
-        default: return ("Wacom function \(code)", .skipped("unknown ring function"), nil)
+        if code == RingCodes.keystrokes { return ringKeys(m, layout: layout) }
+        guard let row = RingCodes.row(code) else {
+            return ("Wacom function \(code)", .skipped("unknown ring function"), nil)
         }
+        return (row.wacom, .mapped(row.mode.name, row.confidence), row.mode)
+    }
+
+    static func ringKeys(_ m: WacomNode, layout: LayoutLookup) -> (String, Outcome, RingMode?) {
+        // Wacom's dialog puts the counterclockwise key first and saves it as
+        // Increase, on rings and dials alike.
+        let ccwRaw = m.string("TouchStripKeystrokeIncrease") ?? ""
+        let cwRaw = m.string("TouchStripKeystrokeDecrease") ?? ""
+        let mods = m.string("TouchStripModifiers") ?? ""
+        let ccw = Keystroke.parse(mods + ccwRaw, layout: layout)
+        let cw = Keystroke.parse(mods + cwRaw, layout: layout)
+        let text = "keys \(describe(cw, raw: cwRaw)) clockwise, \(describe(ccw, raw: ccwRaw)) counterclockwise"
+        guard case .key(let kcw, let ecw) = cw, case .key(let kccw, let eccw) = ccw,
+              kcw.keyCode != nil, kccw.keyCode != nil else {
+            return (text, .skipped(skipReason(cw, ccw)), nil)
+        }
+        // Keys recorded on another layout can land on one key here, as # and
+        // ⇧# from a German layout both need ⇧3 on a U.S. one.
+        if binding(kcw) == binding(kccw) && cwRaw != ccwRaw {
+            return (text, .skipped("both directions would send \(symbol(kcw)) on this keyboard layout"), nil)
+        }
+        let conf: Confidence = ecw && eccw ? .exact : .approximate
+        return (text, .mapped("keyPress, cwBinding \(symbol(kcw)), ccwBinding \(symbol(kccw))", conf),
+                .keys(cw: binding(kcw), ccw: binding(kccw)))
     }
 
     // MARK: Button functions
 
-    /// The usage history Wacom keeps per button names each code. Code 0
-    /// never appears alone in one, so it stays unverified.
     static func function(_ b: WacomNode, layout: LayoutLookup) -> (String, Outcome, Binding?) {
-        func kind(_ wacom: String, _ k: String, _ c: Confidence = .exact) -> (String, Outcome, Binding?) {
-            (wacom, .mapped(k, c), .kind(k))
-        }
         let code = b.int("ButtonFunction") ?? -1
         switch code {
-        case 0: return kind("disabled", "none", .unverified)
-        case 1: return kind("click", "leftClick")
-        case 2: return kind("middle click", "middleClick")
-        case 3: return kind("right click", "rightClick")
-        case 4: return kind("double click", "doubleClick")
-        case 7: return kind("click lock", "clickLock")
-        case 8: return keystroke(b.string("Keystroke") ?? "", layout: layout)
-        case 9: return keystroke(b.string("Modifier") ?? "", layout: layout, modifier: true)
-        case 14: return kind("erase", "eraser")
-        case 15: return ("Wacom function 15", .skipped("no MockTab equivalent"), nil)
-        case 31: return kind("display toggle", "displayToggle")
-        case 33: return kind("pan/scroll", "scrollDrag")
-        case 40: return ("help", .skipped("no MockTab equivalent"), nil)
-        case 41: return ("radial menu", .skipped("no MockTab equivalent"), nil)
-        case 42: return ("precision mode", .skipped("no MockTab equivalent"), nil)
-        case 43: return ("touch on/off", .skipped("no MockTab equivalent"), nil)
-        case 61:
-            let panel = b.string("Panel").flatMap { $0.isEmpty ? nil : " \"\($0)\"" } ?? ""
-            return ("on-screen panel\(panel)", .skipped("no MockTab equivalent"), nil)
-        case 104: return ("Wacom settings", .skipped("no MockTab equivalent"), nil)
-        case 108: return kind("ring mode toggle", "ringCycle")
-        default: return ("Wacom function \(code)", .skipped("unknown function"), nil)
+        case ButtonCodes.keystroke: return keystroke(b.string("Keystroke") ?? "", layout: layout)
+        case ButtonCodes.modifier: return keystroke(b.string("Modifier") ?? "", layout: layout, modifier: true)
+        default: break
         }
+        guard let row = ButtonCodes.row(code) else {
+            return ("Wacom function \(code)", .skipped("unknown function"), nil)
+        }
+        var wacom = row.wacom
+        if code == ButtonCodes.panel, let name = b.string("Panel"), !name.isEmpty { wacom += " \"\(name)\"" }
+        guard let kind = row.kinds.first else { return (wacom, .skipped("no MockTab equivalent"), nil) }
+        return (wacom, .mapped(kind, row.confidence), .kind(kind))
     }
 
     static func keystroke(_ s: String, layout: LayoutLookup, modifier: Bool = false) -> (String, Outcome, Binding?) {
@@ -814,26 +805,50 @@ extension Outcome {
 
 // MARK: - Key positions
 
-/// A MockTab setting a Wacom control name lands on, and how sure that is.
-struct Target {
-    let setting: String
+/// Where a Wacom control lands in MockTab.
+enum Spot: Hashable {
+    /// `expressKeyBindings[i]`.
+    case key(Int)
+    /// A single binding: a dial or ring center key.
+    case binding(String)
+    /// A dial's modes: `rotaries[i]`.
+    case dial(Int)
+
+    var setting: String {
+        switch self {
+        case .key(let i): return "expressKeyBindings[\(i)]"
+        case .binding(let key): return key
+        case .dial(let i): return "rotaries[\(i)]"
+        }
+    }
+
+    var isDial: Bool { if case .dial = self { return true } else { return false } }
+}
+
+/// A Spot and how sure the table is of it.
+struct Target: Equatable {
+    let spot: Spot
     let confidence: Confidence
 
-    /// The setting as data: `expressKeyBindings[3]` is ExpressKey 3. An
-    /// unchecked position has none, so the import leaves it alone.
+    var setting: String { spot.setting }
+
+    /// The setting as data. An unchecked position has none, so the import
+    /// leaves it alone; dial modes get theirs per mode.
     var slot: Setting? {
         guard confidence != .unverified else { return nil }
-        if setting.hasPrefix("expressKeyBindings["), let i = Int(setting.dropFirst(19).dropLast()) {
-            return .expressKey(i)
+        switch spot {
+        case .key(let i): return .expressKey(i)
+        case .binding(let key): return .binding(key)
+        case .dial: return nil
         }
-        return setting.hasPrefix("rotaries") ? nil : .binding(setting)
     }
 }
 
 /// Where each model's Wacom key and dial names land in MockTab, by wired
-/// product ID. Wacom numbers each side's keys from 1, LeftButton then
-/// RightButton. MockTab's ExpressKey index follows the tablet's report
-/// order, which TabletLayoutTable lists per model in libwacom's letters.
+/// product ID, as one table per model that reads both ways. Wacom numbers
+/// each side's keys from 1, LeftButton then RightButton. MockTab's ExpressKey
+/// index follows the tablet's report order, which TabletLayoutTable lists per
+/// model in libwacom's letters.
 enum KeyLayouts {
     /// PTK-670 and PTK-870: around each dial, top, right, bottom, then left,
     /// then the center key that switches the dial's mode. Checked against
@@ -851,50 +866,38 @@ enum KeyLayouts {
     /// assumed left to right in libwacom's order. Not checked.
     static let fourAcross: Set<Int> = [0x0374, 0x0375, 0x0376, 0x0377, 0x0378, 0x0379, 0x03C5, 0x03C6, 0x03C7, 0x03C8]
 
-    static func key(_ name: String, productID: Int?) -> Target? {
-        guard let pid = productID else { return nil }
-        if fourAcross.contains(pid), name.hasPrefix("Button"), let n = Int(name.dropFirst(6)), (1...4).contains(n) {
-            return Target(setting: "expressKeyBindings[\(n - 1)]", confidence: .unverified)
+    /// Every key and dial name the model has, with its target.
+    static func table(_ productID: Int) -> [(name: String, target: Target)] {
+        func run(_ prefix: String, _ count: Int, from first: Int, _ c: Confidence) -> [(name: String, target: Target)] {
+            (1...count).map { ("\(prefix)\($0)", Target(spot: .key(first + $0 - 1), confidence: c)) }
         }
-        let side: Int
-        let n: Int
-        if name.hasPrefix("LeftButton"), let i = Int(name.dropFirst(10)) {
-            (side, n) = (0, i)
-        } else if name.hasPrefix("RightButton"), let i = Int(name.dropFirst(11)) {
-            (side, n) = (1, i)
-        } else {
-            return nil
+        func cluster(_ side: Int, _ c: Confidence) -> [(name: String, target: Target)] {
+            let prefix = side == 0 ? "LeftButton" : "RightButton"
+            return run(prefix, 4, from: side * 4, c)
+                + [("\(prefix)5", Target(spot: .binding(side == 0 ? "touchRingButtonBinding" : "touchRingButtonBinding2"),
+                                          confidence: c))]
         }
-        if twoDials.contains(pid) || oneDial.contains(pid) {
-            let conf: Confidence = twoDials.contains(pid) ? .exact : .unverified
-            if oneDial.contains(pid) && side == 1 { return nil }
-            switch n {
-            case 1...4: return Target(setting: "expressKeyBindings[\(side * 4 + n - 1)]", confidence: conf)
-            case 5: return Target(setting: side == 0 ? "touchRingButtonBinding" : "touchRingButtonBinding2", confidence: conf)
-            default: return nil
-            }
+        if twoDials.contains(productID) {
+            return cluster(0, .exact) + cluster(1, .exact)
+                + [("leftdial", Target(spot: .dial(0), confidence: .exact)),
+                   ("rightdial", Target(spot: .dial(1), confidence: .exact))]
         }
-        if eightDown.contains(pid), side == 0, (1...8).contains(n) {
-            return Target(setting: "expressKeyBindings[\(n - 1)]", confidence: .exact)
+        if oneDial.contains(productID) {
+            return cluster(0, .unverified) + [("leftdial", Target(spot: .dial(0), confidence: .unverified))]
         }
-        if sixDown.contains(pid), side == 0, (1...6).contains(n) {
-            return Target(setting: "expressKeyBindings[\(n - 1)]", confidence: .unverified)
-        }
-        return nil
+        if eightDown.contains(productID) { return run("LeftButton", 8, from: 0, .exact) }
+        if sixDown.contains(productID) { return run("LeftButton", 6, from: 0, .unverified) }
+        if fourAcross.contains(productID) { return run("Button", 4, from: 0, .unverified) }
+        return []
     }
 
-    /// libwacom numbers the PTK-670/870's dials from the left.
-    static func dial(_ name: String, productID: Int?) -> Target? {
-        guard let pid = productID else { return nil }
-        if twoDials.contains(pid) {
-            switch name {
-            case "leftdial": return Target(setting: "rotaries[0]", confidence: .exact)
-            case "rightdial": return Target(setting: "rotaries[1]", confidence: .exact)
-            default: return nil
-            }
-        }
-        if oneDial.contains(pid), name == "leftdial" { return Target(setting: "rotaries[0]", confidence: .unverified) }
-        return nil
+    static func target(_ name: String, productID: Int?) -> Target? {
+        productID.flatMap { pid in table(pid).first { $0.name == name }?.target }
+    }
+
+    /// The Wacom name for a MockTab spot, for writing.
+    static func name(for spot: Spot, productID: Int) -> String? {
+        table(productID).first { $0.target.spot == spot && $0.target.confidence != .unverified }?.name
     }
 }
 
