@@ -261,6 +261,106 @@ private func testTurnAfterVerticalStartScrollsSideways() {
     expect(sideways >= 60, "a turn after a vertical start must scroll sideways, got \(sideways)")
 }
 
+/// The phases a pan posted, with each `.began`'s delta.
+private func phases(_ intents: [PanScrollTracker.Intent]) -> [(phase: PanScrollTracker.ScrollPhase, dx: Double, dy: Double)] {
+    intents.compactMap {
+        guard case .scroll(let dx, let dy, let phase) = $0 else { return nil }
+        return (phase, dx, dy)
+    }
+}
+
+/// AppKit keeps a gesture on the view its `.began` picked, so a vertical start
+/// that turns sideways ends and begins again, now horizontal (Finder's column
+/// view scrolled nothing sideways otherwise).
+private func testTurnSidewaysRestartsGesture() {
+    let down = [CGPoint.zero] + line(from: .zero, degrees: 0, step: 4, count: 20)
+    let across = line(from: down.last!, degrees: 90, step: 4, count: 30)
+    let seen = phases(pan(down + across))
+    let began = seen.filter { $0.phase == .began }
+    expect(seen.filter { $0.phase == .ended }.count == 1, "one restart, got \(seen.map(\.phase))")
+    expect(began.count == 2, "a second .began after the turn, got \(began.count)")
+    if began.count == 2 {
+        expect(abs(began[0].dy) > abs(began[0].dx), "the first .began is vertical: \(began[0])")
+        expect(abs(began[1].dx) > abs(began[1].dy), "the second .began is horizontal: \(began[1])")
+    }
+    if let i = seen.firstIndex(where: { $0.phase == .ended }) {
+        expect(seen[(i + 1)...].first(where: { $0.dx != 0 || $0.dy != 0 })?.phase == .began,
+               "motion after the restart opens with .began")
+    }
+}
+
+/// The same for a sideways start that turns vertical.
+private func testTurnVerticalRestartsGesture() {
+    let across = [CGPoint.zero] + line(from: .zero, degrees: 90, step: 4, count: 20)
+    let down = line(from: across.last!, degrees: 0, step: 4, count: 30)
+    let began = phases(pan(across + down)).filter { $0.phase == .began }
+    expect(began.count == 2 && abs(began[1].dy) > abs(began[1].dx),
+           "a sideways start turning vertical begins again vertically, got \(began)")
+}
+
+/// A diagonal start that AppKit took as vertical restarts when it settles sideways.
+private func testDiagonalStartThenSidewaysRestarts() {
+    let slant = [CGPoint.zero] + line(from: .zero, degrees: 40, step: 4, count: 6)
+    let across = line(from: slant.last!, degrees: 90, step: 4, count: 30)
+    let began = phases(pan(slant + across)).filter { $0.phase == .began }
+    expect(began.count == 2 && abs(began[1].dx) > abs(began[1].dy),
+           "a near-diagonal start settling sideways begins again horizontally, got \(began)")
+}
+
+/// Panning diagonally, or wobbling along one axis, never restarts: canvas
+/// apps see one gesture.
+private func testDiagonalAndWobblyPansDontRestart() {
+    let diagonal = [CGPoint.zero] + line(from: .zero, degrees: 40, step: 4, count: 80)
+    expect(!phases(pan(diagonal)).contains { $0.phase == .ended }, "a diagonal pan stays one gesture")
+    let wobble = (0...100).map { CGPoint(x: $0 % 2 == 0 ? 0 : 3, y: Double($0) * 4) }
+    expect(!phases(pan(wobble)).contains { $0.phase == .ended }, "a wobbly vertical pan stays one gesture")
+    let curve = [CGPoint.zero] + line(from: .zero, degrees: 25, step: 4, count: 40)
+        + line(from: line(from: .zero, degrees: 25, step: 4, count: 40).last!, degrees: -20, step: 4, count: 40)
+    expect(!phases(pan(curve)).contains { $0.phase == .ended }, "a gentle curve stays one gesture")
+    let drift = [CGPoint.zero] + line(from: .zero, degrees: 40, step: 4, count: 20)
+        + line(from: line(from: .zero, degrees: 40, step: 4, count: 20).last!, degrees: 50, step: 4, count: 40)
+    expect(!phases(pan(drift)).contains { $0.phase == .ended }, "drifting across 45 degrees stays one gesture")
+}
+
+/// The new `.began` waits for real travel along the new axis, so fine,
+/// jittery frames after the turn can't hand AppKit a vertical-looking one.
+private func testRestartWaitsForTravel() {
+    let down = [CGPoint.zero] + line(from: .zero, degrees: 0, step: 4, count: 20)
+    let across = (1...80).map { CGPoint(x: down.last!.x + Double($0), y: down.last!.y + ($0 % 2 == 0 ? 0 : 1.5)) }
+    let began = phases(pan(down + across)).filter { $0.phase == .began }
+    expect(began.count == 2 && abs(began[1].dx) > abs(began[1].dy) && abs(began[1].dx) >= 3,
+           "after the turn, .began carries sideways travel, got \(began)")
+}
+
+/// A first move exactly diagonal reads as vertical to AppKit, so a sideways
+/// turn after it still restarts.
+private func testExactDiagonalStartCountsAsVertical() {
+    let start = [CGPoint.zero] + (1...3).map { CGPoint(x: Double($0) * 2, y: Double($0) * 2) }
+    let across = line(from: start.last!, degrees: 90, step: 4, count: 30)
+    let began = phases(pan(start + across)).filter { $0.phase == .began }
+    expect(began.first.map { abs($0.dx) == abs($0.dy) } == true, "the first .began is an exact diagonal: \(began)")
+    expect(began.count == 2 && abs(began[1].dx) > abs(began[1].dy),
+           "a tie reads as vertical, so the sideways turn begins again, got \(began)")
+}
+
+/// Released between the restart and the next `.began`: the old gesture
+/// already ended, so nothing more goes out and nothing coasts.
+private func testReleaseRightAfterRestartPostsNothing() {
+    var t = PanScrollTracker()
+    _ = t.engage(reverse: false, speed: 1.0)
+    let down = [CGPoint.zero] + line(from: .zero, degrees: 0, step: 4, count: 20)
+    var restarted = false
+    var p = down.last!
+    for q in down { _ = t.process(screen: q, dt: frameDt) }
+    for _ in 0..<40 where !restarted {
+        p.x += 4
+        if t.process(screen: p, dt: frameDt) == .scroll(dx: 0, dy: 0, phase: .ended) { restarted = true }
+    }
+    expect(restarted, "the turn restarts the gesture")
+    expect(t.disengage() == .none, "a release before the next .began posts nothing")
+    expect(speed(t.releaseVelocity) == 0, "and seeds no coast")
+}
+
 /// A press and release without motion opened no gesture, so the release
 /// cancels the `.mayBegin` and nothing coasts.
 private func testReleaseWithoutMotionCancels() {
@@ -287,6 +387,13 @@ enum PanScrollTrackerTestRunner {
         testLockedFlickCoastsOnAxis()
         testDiagonalStartStaysFree()
         testTurnAfterVerticalStartScrollsSideways()
+        testTurnSidewaysRestartsGesture()
+        testTurnVerticalRestartsGesture()
+        testDiagonalStartThenSidewaysRestarts()
+        testDiagonalAndWobblyPansDontRestart()
+        testReleaseRightAfterRestartPostsNothing()
+        testExactDiagonalStartCountsAsVertical()
+        testRestartWaitsForTravel()
         testImmediateReleaseKeepsMomentum()
         testDeadStopLosesMomentumWithoutBackdate()
         testDeadStopRecoveredByBackdate()

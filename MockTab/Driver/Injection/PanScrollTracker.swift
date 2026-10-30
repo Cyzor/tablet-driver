@@ -102,6 +102,18 @@ struct PanScrollTracker {
     /// Start of the stretch of travel checked for a turn while locked.
     private var stretchStart: CGPoint?
 
+    /// AppKit gives the whole gesture to the nested scroll view matching the
+    /// `.began` delta's dominant axis, horizontal only when |dx| > |dy|. A pan
+    /// that then settles along the other axis, as a vertical start turning
+    /// sideways in Finder's column view, would scroll nothing, so the gesture
+    /// ends and begins again, as a trackpad user lifts and touches down.
+    private var latchedAxis: Axis?
+    /// Start of the stretch checked for settling along the other axis.
+    private var latchStretchStart: CGPoint?
+    /// The `.mayBegin` from `engage` awaits its `.began`; a restarted gesture
+    /// has none.
+    private var mayBeginOpen = false
+
     /// Net travel (screen points) from `origin` that decides the lock.
     static let axisLockTravel = 10.0
     /// Along-to-across ratio that locks (2:1, within about 25 degrees).
@@ -166,6 +178,9 @@ struct PanScrollTracker {
         axisLock = nil
         axisDecided = false
         stretchStart = nil
+        latchedAxis = nil
+        latchStretchStart = nil
+        mayBeginOpen = true
         return .scroll(dx: 0, dy: 0, phase: .mayBegin)
     }
 
@@ -208,10 +223,11 @@ struct PanScrollTracker {
         isActive = false
         last = nil
         lastRaw = nil
-        // No `.began` went out: cancel the `.mayBegin`, with nothing to coast.
+        // No `.began` went out: cancel the `.mayBegin`, if one is open, with
+        // nothing to coast.
         guard hasBegun else {
             releaseVelocity = .zero
-            return .scroll(dx: 0, dy: 0, phase: .cancelled)
+            return mayBeginOpen ? .scroll(dx: 0, dy: 0, phase: .cancelled) : .none
         }
         return .scroll(dx: 0, dy: 0, phase: .ended)
     }
@@ -249,6 +265,27 @@ struct PanScrollTracker {
         }
         last = point
         lastRaw = screen
+
+        if hasBegun, let latched = latchedAxis, let start = latchStretchStart {
+            let sx = abs(point.x - start.x)
+            let sy = abs(point.y - start.y)
+            if hypot(sx, sy) >= Self.axisTurnStretch {
+                latchStretchStart = point
+                let settled: Axis? = sx >= sy * Self.axisLockRatio ? .horizontal
+                    : sy >= sx * Self.axisLockRatio ? .vertical : nil
+                if let settled, settled != latched {
+                    // Start over from here: a new `.began` once there's
+                    // travel to carry, and a fresh axis decision.
+                    hasBegun = false
+                    latchedAxis = nil
+                    origin = point
+                    axisLock = nil
+                    axisDecided = false
+                    stretchStart = point
+                    return .scroll(dx: 0, dy: 0, phase: .ended)
+                }
+            }
+        }
 
         var dx = (point.x - prev.x) * sign * speed
         var dy = (point.y - prev.y) * sign * speed
@@ -313,6 +350,11 @@ struct PanScrollTracker {
         accumX -= Double(ix)
         accumY -= Double(iy)
         let phase: ScrollPhase = hasBegun ? .changed : .began
+        if !hasBegun {
+            latchedAxis = abs(ix) > abs(iy) ? .horizontal : .vertical
+            latchStretchStart = point
+            mayBeginOpen = false
+        }
         hasBegun = true
         return .scroll(dx: Double(ix), dy: Double(iy), phase: phase)
     }
