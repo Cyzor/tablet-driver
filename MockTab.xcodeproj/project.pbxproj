@@ -391,6 +391,7 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_OPTIMIZATION = space;
 				CODE_SIGN_ENTITLEMENTS = MockTab/MockTab.entitlements;
 				CODE_SIGN_IDENTITY = "MockTab Dev";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
