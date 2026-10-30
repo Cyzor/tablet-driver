@@ -4,6 +4,8 @@
 // for import decoding — correct only when the app ran in English at both
 // export and import time. See ConfigurationExporter.swift / ConfigurationImporter.swift.
 
+import AppKit
+import Carbon
 import CoreGraphics
 import Foundation
 
@@ -119,6 +121,36 @@ for mode in TouchRingMode.allCases {
     check(decoded == mode, "TouchRingMode rawValue round-trip failed for \(mode)")
 }
 check(TouchRingMode(rawValue: "Scrollen") == nil, "sanity check: a German label should not parse as a TouchRingMode rawValue")
+
+// MARK: - Key labels: macOS's convention on any keyboard layout
+
+func layout(_ id: String) -> Data? {
+    let list = TISCreateInputSourceList([kTISPropertyInputSourceID: "com.apple.keylayout." + id] as CFDictionary, true)?
+        .takeRetainedValue() as? [TISInputSource]
+    guard let source = list?.first, let raw = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+    return Unmanaged<CFData>.fromOpaque(raw).takeUnretainedValue() as Data
+}
+
+if let us = layout("US"), let german = layout("German"), let dvorak = layout("DVORAK-QWERTYCMD") {
+    func label(_ code: UInt16, _ mods: NSEvent.ModifierFlags, _ data: Data) -> String {
+        ButtonBinding.charLabel(keyCode: code, modifiers: mods, layout: data)
+    }
+    check(label(6, .option, us) == "Z" && label(20, .shift, us) == "3" && label(8, .command, us) == "C",
+          "U.S. labels name the key, as macOS menus do: ⌥Z, ⇧3, ⌘C")
+    check(label(8, .command, dvorak) == "C" && label(8, [], dvorak) == "J",
+          "Dvorak – QWERTY ⌘ labels the character ⌘ types")
+    check(label(23, .option, german) == "5" && label(16, .command, german) == "Z",
+          "German labels: ⌥5 for [, and z where U.S. has y")
+    check(label(10, [], german) == "^" && label(27, [], german) == "ß", "A dead key and ß keep their characters")
+    let imported = ButtonBinding(kind: .keyCombo, keyCode: 6, modifierFlags: CGEventFlags.maskAlternate.rawValue, keyLabel: "Z")
+    check(ButtonBinding.fromDisplayLabel("⌥Z", layout: us) == imported, "⌥Z imports")
+    check(ButtonBinding.fromDisplayLabel("⌥Ω", layout: us) == imported, "An older file's ⌥Ω imports as ⌥Z")
+    check(ButtonBinding.fromDisplayLabel("⇧#", layout: us).keyCode == 20
+          && ButtonBinding.fromDisplayLabel("⇧3", layout: us).keyCode == 20, "⇧3 imports from either label")
+    check(ButtonBinding.fromDisplayLabel("⌘Z", layout: dvorak).keyCode == 6, "⌘Z on Dvorak – QWERTY ⌘ is QWERTY's Z key")
+} else {
+    check(false, "U.S., German, and Dvorak – QWERTY ⌘ layouts installed")
+}
 
 if failures == 0 {
     print("All configuration-locale checks passed.")
