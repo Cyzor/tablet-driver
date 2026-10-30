@@ -46,9 +46,6 @@ final class CalibrationSession: ObservableObject {
     let orientation: TabletOrientation
     private let settings: TabletSettings
     private let tabletManager: TabletManager
-    /// Advanced (9-point) sessions permit higher-order affine/homography fits for
-    /// non-coincident setups; the default simple session stays scale + translation.
-    private let advancedMode: Bool
 
     /// Accumulated samples for the current target point.
     private var currentSamples: [(Double, Double)] = []
@@ -63,15 +60,13 @@ final class CalibrationSession: ObservableObject {
          tabletManager: TabletManager,
          displayUUID: String,
          displayBounds: CGRect,
-         orientation: TabletOrientation,
-         advancedMode: Bool = false) {
+         orientation: TabletOrientation) {
         self.settings = settings
         self.tabletManager = tabletManager
         self.displayUUID = displayUUID
         self.displayBounds = displayBounds
         self.orientation = orientation
-        self.advancedMode = advancedMode
-        self.targets = advancedMode ? CalibrationEntry.ninePointTargets : CalibrationEntry.fourPointTargets
+        self.targets = CalibrationEntry.fourPointTargets
     }
 
     // MARK: - Lifecycle
@@ -201,7 +196,7 @@ final class CalibrationSession: ObservableObject {
         tabletManager.setCalibrationPointHandler(nil)
         state = .computing
 
-        let transform = CalibrationEntry.fitBest(samples: completedSamples, allowHigherOrder: advancedMode)
+        let transform = CalibrationEntry.fitBest(samples: completedSamples)
         let maxRes = CalibrationEntry.maxResidual(transform: transform, samples: completedSamples)
 
         let entry = CalibrationEntry(

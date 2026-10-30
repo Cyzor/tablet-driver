@@ -114,21 +114,27 @@ private func testTooFewSamples() {
     if case .none = t {} else { expect(false, "single sample should yield .none, got \(t)") }
 }
 
-/// The advanced path may still choose a full affine when asked; a sheared mapping
-/// that the constrained model cannot represent should be recovered there.
-private func testAdvancedAllowsAffineShear() {
+/// The constrained model can't represent shear, so a sheared mapping keeps a residual.
+private func testShearLeavesResidual() {
     // observed = a genuine shear of target: obsX = tx + 0.2*ty, obsY = ty.
     let pts: [(Double, Double)] = [(0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9), (0.5, 0.5)]
     let samples = pts.map { sample($0.0, $0.1, $0.0 + 0.2 * $0.1, $0.1) }
+    let res = CalibrationEntry.maxResidual(transform: CalibrationEntry.fitBest(samples: samples), samples: samples)
+    expect(res > 1e-6, "constrained model cannot cancel shear, residual should remain: \(res)")
+}
 
-    let simple = CalibrationEntry.fitBest(samples: samples, allowHigherOrder: false)
-    let advanced = CalibrationEntry.fitBest(samples: samples, allowHigherOrder: true)
-
-    let simpleRes = CalibrationEntry.maxResidual(transform: simple, samples: samples)
-    let advancedRes = CalibrationEntry.maxResidual(transform: advanced, samples: samples)
-
-    expect(simpleRes > 1e-6, "constrained model cannot cancel shear, residual should remain: \(simpleRes)")
-    expect(advancedRes < 1e-6, "affine should recover the shear cleanly, got \(advancedRes)")
+/// Builds before 0.4.0 saved full fits, so a stored homography still decodes and applies.
+private func testSavedHomographyApplies() {
+    let json = #"{"homography":{"coefficients":[2,0,0,0,2,0,0,0]}}"#
+    guard let transform = try? JSONDecoder().decode(CalibrationTransform.self, from: Data(json.utf8)),
+          case .homography = transform
+    else { return expect(false, "saved homography should decode") }
+    let entry = CalibrationEntry(
+        key: CalibrationKey(orientation: 0, displayUUID: "1-2-3"), samples: [],
+        transform: transform, calibratedAt: Date(), maxResidual: 0)
+    let (x, y) = entry.apply(to: (0.25, 0.5))
+    expectClose(x, 0.5, 1e-12, "saved homography scales x")
+    expectClose(y, 1.0, 1e-12, "saved homography scales y")
 }
 
 // MARK: - Runner
@@ -140,7 +146,8 @@ enum CalibrationTestRunner {
         testOutOfRangeScaleRejected()
         testDegenerateSpreadFallsBack()
         testTooFewSamples()
-        testAdvancedAllowsAffineShear()
+        testShearLeavesResidual()
+        testSavedHomographyApplies()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")
