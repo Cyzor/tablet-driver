@@ -17,7 +17,7 @@ func checkWriter(_ report: Report, _ expect: (Bool, String) -> Void) {
         (v as? Data).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]] } ?? []
     }
 
-    let seed: [String: Any] = [
+    var seed: [String: Any] = [
         "_knownTablets": json([
             ["id": 0x357, "nickname": "Old name", "modelName": "PTH-660", "fieldFromNewerBuild": 1],
             ["id": 0x358, "nickname": "Other tablet", "modelName": "PTH-860"],
@@ -40,10 +40,22 @@ func checkWriter(_ report: Report, _ expect: (Bool, String) -> Void) {
         "device-0x357#second.expressKeyBindings": "second unit",
     ]
     expect(WacomWriter.prefix(0x03F9) == "device-0x3F9.", "Prefix in MockTab's case: \(WacomWriter.prefix(0x03F9))")
-    guard let ud = UserDefaults(suiteName: domain), let encoded = try? WacomEncoder.encode(report.tablets[0]) else {
+    guard let ud = UserDefaults(suiteName: domain), let encoded = try? WacomEncoder.encode(report.tablets[0]),
+          let paintValues = encoded.apps.first(where: { $0.bundleID == "com.example.paint" })?.values,
+          let coveredOnly = encoded.device.keys.sorted().first(where: { paintValues[$0] == nil }) else {
         expect(false, "Scratch domain and encode")
         return
     }
+    // MockTab already overrides Paint: one setting the import doesn't cover,
+    // and one it covers but Paint doesn't change in Wacom.
+    let pp = p + "appOverride-com.example.paint."
+    seed[p + "_appOverrides"] = json([
+        ["bundleID": "com.old.app", "appName": "Old", "overriddenKeys": ["tipBinding"]],
+        ["bundleID": "com.example.paint", "appName": "Paint in MockTab", "fieldFromNewerBuild": 1,
+         "overriddenKeys": ["smoothingStrength", coveredOnly]],
+    ])
+    seed[pp + "smoothingStrength"] = 0.7
+    seed[pp + coveredOnly] = "old"
     ud.removePersistentDomain(forName: domain)
     ud.setPersistentDomain(seed, forName: domain)
     defer { ud.removePersistentDomain(forName: domain) }
@@ -73,7 +85,6 @@ func checkWriter(_ report: Report, _ expect: (Bool, String) -> Void) {
 
     // Replaced
     expect(after[p + "_activeProfile"] == nil, "Active profile cleared")
-    expect(after[p + "appOverride-com.old.app.tipBinding"] == nil, "Old app override values removed")
     expect(ButtonBinding.decode(after[tp + "penButton3Binding"] as? String ?? "") == ButtonBinding.none,
            "A pen button with no equivalent becomes None")
     let keys = (after[p + "expressKeyBindings"] as? String).flatMap(ButtonBinding.decodeList) ?? []
@@ -82,14 +93,28 @@ func checkWriter(_ report: Report, _ expect: (Bool, String) -> Void) {
     expect(ButtonBinding.decode(after[tp + "tipBinding"] as? String ?? "")?.kind == .leftClick, "Pen tip written")
     expect(after[tp + "pressureCurve"] is Data, "Pressure curve stored as data")
 
+    // Apps merge
     let overrides = list(after[p + "_appOverrides"])
-    expect(overrides.map { $0["bundleID"] as? String } == ["com.example.paint"], "App list replaced: \(overrides)")
-    if let paint = overrides.first, let keys = paint["overriddenKeys"] as? [String] {
-        let expected = encoded.apps.first.map { $0.values.keys.sorted() } ?? []
-        expect(keys == expected, "Overridden keys match the values written: \(keys)")
-        expect(keys.allSatisfy { after[p + "appOverride-com.example.paint." + $0] != nil }, "Every overridden key has a value")
-        expect(paint["appName"] as? String == "Paint", "App name")
+    expect(overrides.map { $0["bundleID"] as? String } == ["com.old.app", "com.example.paint"],
+           "Apps merge, in their order: \(overrides.map { $0["bundleID"] ?? "" })")
+    expect(after[p + "appOverride-com.old.app.tipBinding"] as? String == "old"
+           && overrides.first?["overriddenKeys"] as? [String] == ["tipBinding"], "An app the backup doesn't set stays")
+    if let paint = overrides.last, let keys = paint["overriddenKeys"] as? [String] {
+        expect(keys == (Array(paintValues.keys) + ["smoothingStrength"]).sorted(),
+               "Paint overrides the imported values plus its own: \(keys)")
+        expect(keys.allSatisfy { after[pp + $0] != nil }, "Every overridden key has a value")
+        expect(after[pp + "smoothingStrength"] as? Double == 0.7, "A setting the import doesn't cover stays")
+        expect(after[pp + coveredOnly] == nil, "A covered setting Paint doesn't change follows All applications")
+        expect(paint["appName"] as? String == "Paint in MockTab" && paint["fieldFromNewerBuild"] as? Int == 1,
+               "MockTab's name and unknown fields stay")
+    } else {
+        expect(false, "Paint in the app list")
     }
+    var noApps = encoded
+    noApps.apps = []
+    let quiet = try? WacomWriter.plan(noApps, current: seed)
+    expect(quiet?.set[p + "_appOverrides"] == nil && quiet?.remove.contains { $0.contains("appOverride") } == false,
+           "A backup with no app settings leaves the app list alone")
 
     let tablets = list(after["_knownTablets"])
     let mine = tablets.first { $0["id"] as? Int == 0x357 }

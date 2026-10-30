@@ -7,9 +7,9 @@
 // UserDefaults, never the plist file.
 //
 // For the tablet's claimed unit (`device-0x{PID}.`), it writes the encoded
-// tablet and pen settings over MockTab's, replaces every app override, and
-// clears the active profile. Other settings stay. The app and pen lists keep
-// fields this tool doesn't know.
+// tablet, pen, and app settings over MockTab's and clears the active profile.
+// Other settings stay, including apps the import doesn't set. The app and pen
+// lists keep fields this tool doesn't know.
 
 import Foundation
 
@@ -75,16 +75,30 @@ enum WacomWriter {
         }
         if !e.pens.isEmpty { plan.set[p + "_knownTools"] = try data(tools) }
 
-        removeIfPresent(p + "_appOverrides")
-        for key in current.keys.sorted() where key.hasPrefix(p + "appOverride-") { plan.remove.append(key) }
-        var overrides: [[String: Any]] = []
-        for app in e.apps {
-            let ap = "\(p)appOverride-\(app.bundleID)."
-            for (key, value) in app.values { plan.set[ap + key] = value }
-            overrides.append(["bundleID": app.bundleID, "appName": app.appName,
-                              "overriddenKeys": app.values.keys.sorted()])
+        // Apps merge, so neither direction deletes the other side's apps. An
+        // app the import sets takes its values for every setting the import
+        // covers and keeps the rest; one it covers but doesn't set follows
+        // All applications, as in Wacom.
+        if !e.apps.isEmpty {
+            let covered = Set(e.device.keys).union(e.pens.flatMap(\.values.keys)).union(e.apps.flatMap(\.values.keys))
+            var overrides = try list(current[p + "_appOverrides"], key: p + "_appOverrides")
+            for app in e.apps {
+                let ap = "\(p)appOverride-\(app.bundleID)."
+                for key in current.keys.sorted() where key.hasPrefix(ap) && covered.contains(String(key.dropFirst(ap.count))) {
+                    plan.remove.append(key)
+                }
+                for (key, value) in app.values { plan.set[ap + key] = value }
+                let i = overrides.firstIndex { $0["bundleID"] as? String == app.bundleID }
+                let kept = (i.flatMap { overrides[$0]["overriddenKeys"] as? [String] } ?? []).filter { !covered.contains($0) }
+                let keys = Set(kept).union(app.values.keys).sorted()
+                if let i {
+                    overrides[i]["overriddenKeys"] = keys
+                } else {
+                    overrides.append(["bundleID": app.bundleID, "appName": app.appName, "overriddenKeys": keys])
+                }
+            }
+            plan.set[p + "_appOverrides"] = try data(overrides)
         }
-        plan.set[p + "_appOverrides"] = try data(overrides)
 
         // A key both removed and set is simply set.
         let setKeys = Set(plan.set.keys)
