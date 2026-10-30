@@ -782,6 +782,120 @@ private func testPanBeganCarriesHorizontalMotion() {
         "lifting after motion must close the pan")
 }
 
+/// Two fingers 20 pt apart, centered on `c`.
+private func twoAt(_ c: CGPoint) -> [(id: Int, screen: CGPoint)] {
+    [(id: 1, screen: CGPoint(x: c.x - 10, y: c.y)), (id: 2, screen: CGPoint(x: c.x + 10, y: c.y))]
+}
+
+/// Drives a two-finger pan through centroid `points`, 10 ms apart, and
+/// returns its scroll intents (phase and delta), then the lift's.
+private func touchPan(_ points: [CGPoint]) -> (scrolls: [(phase: TouchStateTracker.ScrollPhase, dx: Double, dy: Double)], lift: TouchStateTracker.Intent) {
+    var tracker = TouchStateTracker()
+    var t = 0.0
+    _ = panProcess(&tracker, [(id: 1, screen: CGPoint(x: points[0].x - 10, y: points[0].y))], at: t)
+    var out: [(phase: TouchStateTracker.ScrollPhase, dx: Double, dy: Double)] = []
+    for p in points {
+        t += 0.01
+        if case let .scrollDelta(dx, dy, phase) = panProcess(&tracker, twoAt(p), at: t) { out.append((phase, dx, dy)) }
+    }
+    return (out, panProcess(&tracker, [], at: t + 0.01))
+}
+
+private func touchLine(from start: CGPoint, degrees: Double, step: Double, count: Int) -> [CGPoint] {
+    let r = degrees * .pi / 180
+    return (1...count).map { CGPoint(x: start.x + sin(r) * step * Double($0), y: start.y + cos(r) * step * Double($0)) }
+}
+
+/// As with Pan View: a vertical two-finger scroll that turns sideways ends
+/// and begins again horizontally, so Finder's column view follows it.
+private func testTouchTurnSidewaysRestarts() {
+    let down = [CGPoint(x: 300, y: 300)] + touchLine(from: CGPoint(x: 300, y: 300), degrees: 0, step: 3, count: 20)
+    let across = touchLine(from: down.last!, degrees: 90, step: 3, count: 40)
+    let (scrolls, _) = touchPan(down + across)
+    let began = scrolls.filter { $0.phase == .began }
+    expectEqual(scrolls.filter { $0.phase == .ended }.count, 1, "a turn restarts the touch scroll once")
+    checks += 1
+    if !(began.count == 2 && abs(began[0].dy) > abs(began[0].dx) && abs(began[1].dx) > abs(began[1].dy)) {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: touch turn must begin vertical then horizontal, got \(began)\n".utf8))
+    }
+    let after = scrolls.drop { $0.phase != .ended }.dropFirst()
+    checks += 1
+    if after.contains(where: { $0.dy != 0 && $0.phase == .changed }) {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: after the restart the sideways scroll locks horizontal, got \(Array(after))\n".utf8))
+    }
+}
+
+private func testTouchTurnVerticalRestarts() {
+    let across = [CGPoint(x: 300, y: 300)] + touchLine(from: CGPoint(x: 300, y: 300), degrees: 90, step: 3, count: 20)
+    let down = touchLine(from: across.last!, degrees: 0, step: 3, count: 40)
+    let began = touchPan(across + down).scrolls.filter { $0.phase == .began }
+    checks += 1
+    if !(began.count == 2 && abs(began[1].dy) > abs(began[1].dx)) {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: a sideways touch scroll turning vertical begins again vertically, got \(began)\n".utf8))
+    }
+}
+
+/// Diagonal, wobbly, and gently drifting scrolls stay one gesture.
+private func testTouchSmoothScrollsDontRestart() {
+    let o = CGPoint(x: 300, y: 300)
+    let diagonal = [o] + touchLine(from: o, degrees: 40, step: 3, count: 80)
+    let wobble = (0...80).map { CGPoint(x: o.x + ($0 % 2 == 0 ? 0 : 2), y: o.y + Double($0) * 3) }
+    let first = touchLine(from: o, degrees: 40, step: 3, count: 20)
+    let drift = [o] + first + touchLine(from: first.last!, degrees: 50, step: 3, count: 40)
+    for (name, path) in [("diagonal", diagonal), ("wobbly vertical", wobble), ("40-to-50-degree drift", drift)] {
+        expectEqual(touchPan(path).scrolls.filter { $0.phase == .ended }.count, 0, "a \(name) touch scroll stays one gesture")
+    }
+}
+
+/// Lifted after the restart but before the next `.began`: nothing more goes
+/// out, since the first gesture already ended.
+private func testTouchLiftRightAfterRestartPostsNothing() {
+    let down = [CGPoint(x: 300, y: 300)] + touchLine(from: CGPoint(x: 300, y: 300), degrees: 0, step: 3, count: 20)
+    var path = down
+    var restartIndex: Int?
+    for n in 1...30 {
+        let candidate = down + touchLine(from: down.last!, degrees: 90, step: 3, count: n)
+        if touchPan(candidate).scrolls.last?.phase == .ended { restartIndex = n; path = candidate; break }
+    }
+    checks += 1
+    if restartIndex == nil {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: the turn must restart the touch scroll\n".utf8))
+        return
+    }
+    expectEqual(touchPan(path).lift, .none, "a lift between the restart and the next .began posts nothing")
+}
+
+/// After a restart, `.began` waits for the fresh lock, so fine jittery steps
+/// can't open it with a vertical-looking delta.
+private func testTouchRestartBeganWaitsForLock() {
+    let down = [CGPoint(x: 300, y: 300)] + touchLine(from: CGPoint(x: 300, y: 300), degrees: 0, step: 3, count: 20)
+    let across = (1...80).map { CGPoint(x: down.last!.x + Double($0), y: down.last!.y + ($0 % 2 == 0 ? 0 : 1.2)) }
+    let began = touchPan(down + across).scrolls.filter { $0.phase == .began }
+    checks += 1
+    if !(began.count == 2 && abs(began[1].dx) > abs(began[1].dy) && abs(began[1].dx) >= 3) {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: after a touch restart .began carries a clear sideways delta, got \(began)\n".utf8))
+    }
+}
+
+/// A first move exactly diagonal reads as vertical to AppKit, so a sideways
+/// turn after it still restarts.
+private func testTouchExactDiagonalStartCountsAsVertical() {
+    let o = CGPoint(x: 300, y: 300)
+    let start = [o] + (1...4).map { CGPoint(x: o.x + Double($0) * 0.6, y: o.y + Double($0) * 0.6) }
+    let across = touchLine(from: start.last!, degrees: 90, step: 3, count: 40)
+    let began = touchPan(start + across).scrolls.filter { $0.phase == .began }
+    checks += 1
+    if !(began.first.map { abs($0.dx) == abs($0.dy) } == true && began.count == 2 && abs(began[1].dx) > abs(began[1].dy)) {
+        failures += 1
+        FileHandle.standardError.write(Data("FAIL: an exact-diagonal touch start reads as vertical and restarts sideways, got \(began)\n".utf8))
+    }
+}
+
 /// Two fingers that commit to pan but never move posted no `.began`, so the
 /// lift must not post a stray `.ended`.
 private func testStillPanLiftPostsNothing() {
@@ -1852,6 +1966,12 @@ enum TouchStateTrackerTestRunner {
     static func main() {
         testPinchMagnifyEnvelope()
         testPanBeganCarriesHorizontalMotion()
+        testTouchTurnSidewaysRestarts()
+        testTouchTurnVerticalRestarts()
+        testTouchSmoothScrollsDontRestart()
+        testTouchLiftRightAfterRestartPostsNothing()
+        testTouchRestartBeganWaitsForLock()
+        testTouchExactDiagonalStartCountsAsVertical()
         testStillPanLiftPostsNothing()
         testPanDropToOneContactWindsDownAfterGrace()
         testPanBriefOneContactFrameDoesNotWindDown()

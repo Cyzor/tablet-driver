@@ -340,6 +340,19 @@ struct TouchStateTracker {
     private var scrollPreLockAccumX = 0.0
     private var scrollPreLockAccumY = 0.0
 
+    /// As in `PanScrollTracker`: AppKit keeps a phased gesture on the view
+    /// its `.began` picked, and the axis lock keeps a phase-free one on its
+    /// axis, so a scroll that settles along the other axis (a vertical start
+    /// turning sideways in Finder's column view) ends and begins again, with
+    /// a fresh lock. The axis the `.began` carried, and the raw travel since
+    /// the last check.
+    private var scrollLatchedAxis: ScrollAxis?
+    private var scrollStretchX = 0.0
+    private var scrollStretchY = 0.0
+    /// After a restart, `.began` waits for the fresh lock decision, so it
+    /// carries a clear direction rather than the first point of travel.
+    private var scrollRestarted = false
+
     /// Whether the live two-finger sequence has committed to pan (scroll), for
     /// the injector's stuck-scroll diagnostic only — keeps the probe out of
     /// this type. Meaningless outside `.scroll` mode.
@@ -620,6 +633,9 @@ struct TouchStateTracker {
     /// genuinely diagonal — give up on locking and stay omnidirectional for
     /// the rest of the gesture.
     static let scrollAxisLockRatio: Double = 2.0
+    /// Raw travel (screen points) of each stretch checked for settling along
+    /// the other axis; as `PanScrollTracker.axisTurnStretch`.
+    static let scrollTurnStretch: Double = 24.0
     /// Timed backstop clearing `scrollWoundDown` even if an
     /// all-fingers-lifted frame never arrives. Generous — a real gesture is
     /// long over well before this — but bounded, so a dropped lift frame can
@@ -1457,6 +1473,28 @@ struct TouchStateTracker {
         // (not the locked axis) so momentum coasts the way the hand
         // flicked if `twoFingerScrollMomentum` is ever back on — matching
         // `PanScrollTracker`, which likewise seeds from unlocked travel.
+        if twoFingerKind == .pan, lastScrollPhase != .ended, let latched = scrollLatchedAxis,
+           tracked.count >= 2 {
+            scrollStretchX += dx
+            scrollStretchY += dy
+            let sx = abs(scrollStretchX), sy = abs(scrollStretchY)
+            if hypot(sx, sy) >= Self.scrollTurnStretch {
+                scrollStretchX = 0
+                scrollStretchY = 0
+                let ratio = Self.scrollAxisLockRatio
+                let settled: ScrollAxis? = sx >= sy * ratio ? .horizontal
+                    : sy >= sx * ratio ? .vertical : nil
+                if let settled, settled != latched {
+                    resetScrollAxisLock()
+                    scrollRestarted = true
+                    pendingBeganDx = 0
+                    pendingBeganDy = 0
+                    lastScrollPhase = .ended
+                    return .scrollDelta(dx: 0, dy: 0, phase: .ended)
+                }
+            }
+        }
+
         var lockedDx = dx
         var lockedDy = dy
         if twoFingerKind == .pan {
@@ -1529,8 +1567,13 @@ struct TouchStateTracker {
             // Nothing posted yet: open with `.began` carrying the motion.
             pendingBeganDx += outDx
             pendingBeganDy += outDy
-            guard Swift.max(abs(pendingBeganDx), abs(pendingBeganDy)) >= 1 else { return .none }
+            guard Swift.max(abs(pendingBeganDx), abs(pendingBeganDy)) >= 1,
+                  !scrollRestarted || scrollAxisResolved else { return .none }
             defer { pendingBeganDx = 0; pendingBeganDy = 0 }
+            scrollLatchedAxis = abs(pendingBeganDx) > abs(pendingBeganDy) ? .horizontal : .vertical
+            scrollStretchX = 0
+            scrollStretchY = 0
+            scrollRestarted = false
             lastScrollPhase = .began
             return .scrollDelta(dx: pendingBeganDx, dy: pendingBeganDy, phase: .began)
         }
@@ -1824,6 +1867,10 @@ struct TouchStateTracker {
         scrollAxisResolved = false
         scrollPreLockAccumX = 0
         scrollPreLockAccumY = 0
+        scrollLatchedAxis = nil
+        scrollStretchX = 0
+        scrollStretchY = 0
+        scrollRestarted = false
     }
 
     /// Clears all sequence state back to `.idle`. Called internally on
