@@ -302,7 +302,7 @@ struct InfoView: View {
             injector.map { (isJittery: $0.isJittery, level: $0.jitterLevel) }
         }
         if let jitter, jitter.isJittery {
-            let level = String(format: "%.1f", jitter.level)
+            let level = Double(jitter.level).formatted(.number.precision(.fractionLength(1)))
             found.append(ConflictFinding(
                 description: String(localized: "RF interference: \(level) pt/sample", comment: "Conflict detection: RF interference jitter"),
                 remedy: String(localized: "Move wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Remedy line for an RF-interference finding in the conflict alert")))

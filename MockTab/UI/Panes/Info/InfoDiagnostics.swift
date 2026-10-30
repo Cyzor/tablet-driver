@@ -359,17 +359,17 @@ extension InfoView {
 
         let probe = pen.probe
         if probe.reportCount > 0 {
-            let avg = String(format: "%.2f", probe.averageMs)
-            let worst = String(format: "%.1f", probe.worstMs)
+            let avg = probe.averageMs.formatted(.number.precision(.fractionLength(2)))
+            let worst = probe.worstMs.formatted(.number.precision(.fractionLength(1)))
             lines += [String(localized: "HID latency    : \(avg) ms avg, \(worst) ms worst, \(probe.stallCount) stalls >\(Int(LatencyProbe.stallThresholdMs)) ms", comment: "Diagnostic: HID report delivery latency from kernel receipt to driver callback, steady-state usage only")]
             if probe.totalAverageMs > 0 {
-                let totalAvg = String(format: "%.2f", probe.totalAverageMs)
-                let totalWorst = String(format: "%.1f", probe.totalWorstMs)
+                let totalAvg = probe.totalAverageMs.formatted(.number.precision(.fractionLength(2)))
+                let totalWorst = probe.totalWorstMs.formatted(.number.precision(.fractionLength(1)))
                 lines += [String(localized: "Pipeline total : \(totalAvg) ms avg, \(totalWorst) ms worst (kernel receipt → events posted)", comment: "Diagnostic: total in-app latency from kernel receipt of a HID report to the synthesized events being posted")]
             }
         }
         if probe.connectStallCount > 0 {
-            let connectWorst = String(format: "%.1f", probe.connectWorstMs)
+            let connectWorst = probe.connectWorstMs.formatted(.number.precision(.fractionLength(1)))
             lines += [String(localized: "  (device connect: \(connectWorst) ms worst, \(probe.connectStallCount) stalls — excluded above)", comment: "Diagnostic: latency spikes during device connection, excluded from the steady-state HID latency line")]
         }
 

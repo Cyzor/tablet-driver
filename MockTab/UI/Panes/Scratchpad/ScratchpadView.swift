@@ -178,7 +178,7 @@ struct ScratchpadView: View {
             .scaledFrame(height: 8)
             .accessibilityHidden(true)
 
-            Text(String(format: "%.0f%%", currentPressure * 100))
+            Text(currentPressure.formatted(.percent.precision(.fractionLength(0))))
                 .appFont(.monospaced)
                 .foregroundStyle(.secondary)
                 .scaledFrame(width: 44, alignment: .trailing)

@@ -143,7 +143,7 @@ struct TouchView: View {
                     set: { settings.touchSensitivity = $0 }),
                 in: 0.25...4.0,
                 step: 0.25,
-                valueText: String(format: "%.2f×", settings.touchSensitivity),
+                valueText: settings.touchSensitivity.formatted(.number.precision(.fractionLength(2))) + "×",
                 spokenValue: settings.touchSensitivity.formatted(.number.precision(.fractionLength(0...2))),
                 caption: "Multiplier for cursor motion from finger drag."
             )

@@ -64,7 +64,7 @@ extension DisplayView {
                             set: { settings.displayBrightness = Int($0.rounded()) }),
                         in: 0...100)
                     .accessibilityLabel(Text("Brightness"))
-                    Text(settings.displayBrightness >= 0 ? "\(settings.displayBrightness)%" : "—")
+                    Text(settings.displayBrightness >= 0 ? settings.displayBrightness.formatted(.percent) : "—")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                         .scaledFrame(width: 48, alignment: .trailing)
@@ -107,7 +107,7 @@ extension DisplayView {
                                 get: { Double(settings.displayContrast >= 0 ? settings.displayContrast : 50) },
                                 set: { settings.displayContrast = Int($0.rounded()) }),
                             in: 0...100)
-                        Text(settings.displayContrast >= 0 ? "\(settings.displayContrast)%" : "—")
+                        Text(settings.displayContrast >= 0 ? settings.displayContrast.formatted(.percent) : "—")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
                             .scaledFrame(width: 48, alignment: .trailing)
@@ -149,6 +149,6 @@ extension DisplayView {
 
     /// Format a gamma-×10 value as its decimal label (22 → "2.2").
     func gammaLabel(_ timesTen: Int) -> String {
-        String(format: "%.1f", Double(timesTen) / 10.0)
+        (Double(timesTen) / 10.0).formatted(.number.precision(.fractionLength(1)))
     }
 }

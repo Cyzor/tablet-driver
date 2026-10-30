@@ -138,8 +138,8 @@ extension InfoView {
                     String(localized: "Battery", comment: "Row label in Info tab status table"),
                     value: batteryPercent.map { pct in
                         charging
-                            ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
-                            : "\(pct)%"
+                            ? "\(pct.formatted(.percent))  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
+                            : pct.formatted(.percent)
                     } ?? (charging
                         ? String(
                             localized: "Charging",
@@ -162,8 +162,8 @@ extension InfoView {
                 row(
                     String(localized: "Quick Keys Battery", comment: "Row label in Info tab status table — connected companion peripheral's battery"),
                     value: (companionContext?.batteryCharging ?? false)
-                        ? "\(pct)%  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
-                        : "\(pct)%",
+                        ? "\(pct.formatted(.percent))  \(String(localized: "(Charging)", comment: "Suffix when device is charging, e.g. '85%  (Charging)'"))"
+                        : pct.formatted(.percent),
                     ok: nil,
                     leadingSymbol: BatteryIndicator.symbolName(
                         pct: pct,

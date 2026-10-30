@@ -71,6 +71,6 @@ enum FootprintProbe {
     /// Formats a byte count as megabytes with one decimal, matching the
     /// units `vmmap` and Activity Monitor use for this figure.
     static func megabytes(_ bytes: UInt64) -> String {
-        String(format: "%.1f", Double(bytes) / (1024.0 * 1024.0))
+        (Double(bytes) / (1024.0 * 1024.0)).formatted(.number.precision(.fractionLength(1)))
     }
 }

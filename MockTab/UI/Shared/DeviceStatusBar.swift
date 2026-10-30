@@ -285,7 +285,7 @@ struct DeviceStatusBar: View {
         // Charging is conveyed by the bolt variant of the battery symbol —
         // no literal glyph in the text label.
         let sym = BatteryIndicator.symbolName(pct: pct, charging: context.batteryCharging)
-        return (sym, "\(pct)%")
+        return (sym, pct.formatted(.percent))
     }
 
     /// The receiver lists an enrolled remote whether or not it's reachable,
@@ -324,7 +324,7 @@ struct DeviceStatusBar: View {
     private var companionBatteryItem: (String, String)? {
         guard let pct = companionContext?.batteryPercent else { return nil }
         let sym = BatteryIndicator.symbolName(pct: pct, charging: companionContext?.batteryCharging == true)
-        return (sym, "\(pct)%")
+        return (sym, pct.formatted(.percent))
     }
 
     private var companionBatteryTint: Color {

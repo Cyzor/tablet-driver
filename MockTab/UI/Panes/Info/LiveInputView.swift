@@ -196,12 +196,9 @@ private struct LiveInputView: View {
                 }
 
                 liveRow(label: String(localized: "Tilt", comment: "Live Input table row label — pen tilt X/Y")) {
-                    Text(
-                        point != nil
-                            ? "X: \(String(format: "%+.1f", point!.tiltX))   Y: \(String(format: "%+.1f", point!.tiltY))"
-                            : String(localized: "X: +0.0   Y: +0.0", comment: "Default tilt display when no pen is detected")
-                    )
-                    .monospacedDigit()
+                    let tilt = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1)).sign(strategy: .always())
+                    Text(verbatim: "X: \((point?.tiltX ?? 0).formatted(tilt))   Y: \((point?.tiltY ?? 0).formatted(tilt))")
+                        .monospacedDigit()
                 }
 
                 liveRow(label: String(localized: "Hover", comment: "Live Input table row label — hover distance")) {

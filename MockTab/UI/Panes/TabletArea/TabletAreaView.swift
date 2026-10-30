@@ -827,7 +827,7 @@ private struct CursorOffsetPad: View {
     }
 
     private func formatted(_ value: Double) -> String {
-        String(format: "%.1f pt", value)
+        value.formatted(.number.precision(.fractionLength(1))) + " pt"
     }
 }
 

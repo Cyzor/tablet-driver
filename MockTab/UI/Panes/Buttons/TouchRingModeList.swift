@@ -323,7 +323,7 @@ private struct TouchRingModeListCore: View, Equatable {
                     comment: "Ring speed at minimum — rotation disabled")
                 : spoken
                     ? speed.formatted(.number.precision(.fractionLength(0...2)))
-                    : String(format: "%.2g×", speed)
+                    : speed.formatted(.number.precision(.significantDigits(1...2))) + "×"
         }
     }
 

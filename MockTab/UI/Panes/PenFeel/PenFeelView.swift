@@ -87,7 +87,7 @@ struct PenFeelView: View {
                     value: panScrollSpeedBinding,
                     in: 0.25...3.0,
                     step: 0.25,
-                    valueText: String(format: "%.2f×", tool.panScrollSpeed),
+                    valueText: tool.panScrollSpeed.formatted(.number.precision(.fractionLength(2))) + "×",
                     spokenValue: tool.panScrollSpeed.formatted(.number.precision(.fractionLength(0...2))),
                     caption:
                         "How fast content pans while pressing a Pan View button."
@@ -448,7 +448,7 @@ struct PenFeelView: View {
         // no effect the user could observe.
         tool.pressureThreshold < 0.005
             ? String(localized: "Off", comment: "Click threshold — disabled, previous behavior")
-            : String(format: "%.0f%%", tool.pressureThreshold * 100)
+            : tool.pressureThreshold.formatted(.percent.precision(.fractionLength(0)))
     }
 }
 

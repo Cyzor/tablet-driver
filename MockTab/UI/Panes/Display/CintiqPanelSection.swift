@@ -96,7 +96,7 @@ struct CintiqPanelSection: View {
                 }
             }
             .scaledFrame(width: 200)
-            Text(value.map { "\($0.current * 100 / max($0.max, 1))%" } ?? "—")
+            Text(value.map { ($0.current * 100 / max($0.max, 1)).formatted(.percent) } ?? "—")
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .scaledFrame(width: 48, alignment: .trailing)
