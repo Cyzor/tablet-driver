@@ -1094,6 +1094,10 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Click resolution
 
+    /// Points a second tap may land from the first and still count as a
+    /// double-click, at Double-Click Distance Off.
+    static let minimumDoubleClickDistance: Double = 2
+
     func resolveClick(
         _ candidate: CGPoint,
         snapshot: InjectionSnapshot
@@ -1103,9 +1107,9 @@ final class InputInjector: @unchecked Sendable {
             candidate.x - lastClickPosition.x,
             candidate.y - lastClickPosition.y)
 
-        // Off (0) still allows the wobble a single click tolerates, so the
-        // slider only ever adds to it and never counts tighter than Off.
-        let countThreshold = max(snapshot.doubleClickDistance, Double(Self.clickStrayRadius))
+        // Off (0) still allows a little wobble, and no value counts tighter
+        // than Off, so the slider runs one way.
+        let countThreshold = max(snapshot.doubleClickDistance, Self.minimumDoubleClickDistance)
         let withinTime = now - lastClickTime < snapshot.doubleClickInterval
         let withinDist = dist < countThreshold
 
