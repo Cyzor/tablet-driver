@@ -406,8 +406,9 @@ struct PenFeelView: View {
 
     private var smoothingLabel: String {
         switch tool.smoothingStrength {
-        case 0..<0.15: return String(localized: "Off", comment: "Steadiness strength — disabled")
-        case 0.15..<0.4: return String(localized: "Low", comment: "Steadiness strength label")
+        // Any strength above zero smooths, so only zero reads Off.
+        case ...0: return String(localized: "Off", comment: "Steadiness strength — disabled")
+        case ..<0.4: return String(localized: "Low", comment: "Steadiness strength label")
         case 0.4..<0.65: return String(localized: "Medium", comment: "Steadiness strength label")
         case 0.65..<0.85: return String(localized: "High", comment: "Steadiness strength label")
         default:
@@ -429,9 +430,9 @@ struct PenFeelView: View {
 
     private var pressureSmoothingLabel: String {
         switch tool.pressureSmoothingStrength {
-        case 0..<0.15:
+        case ...0:
             return String(localized: "Off", comment: "Pressure smoothing strength — disabled")
-        case 0.15..<0.4: return String(localized: "Low", comment: "Pressure smoothing strength label")
+        case ..<0.4: return String(localized: "Low", comment: "Pressure smoothing strength label")
         case 0.4..<0.65:
             return String(localized: "Medium", comment: "Pressure smoothing strength label")
         case 0.65..<0.85:
