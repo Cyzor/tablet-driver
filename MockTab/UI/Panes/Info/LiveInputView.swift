@@ -31,9 +31,14 @@ struct LiveInputSectionContent: View {
     /// general objectWillChange cascade (see DeviceContext.livePoint).
     @State private var livePointTick = 0
     @State private var lastTickAt: TimeInterval = 0
-    /// Redraws at most this often; the Scratchpad and Buttons pane show
-    /// motion live, so this section only needs to keep up roughly.
-    private static let redrawInterval: TimeInterval = 0.25
+    /// The point coordinate, tilt, and hover show, refreshed less often.
+    @State private var slowPoint: TabletPoint?
+    @State private var lastSlowAt: TimeInterval = 0
+    /// Pressure and rotation redraw this often, enough to look responsive;
+    /// the Scratchpad and Buttons pane show motion fully live.
+    private static let redrawInterval: TimeInterval = 0.1
+    /// Coordinate, tilt, and hover read fine at this slower rate.
+    private static let slowRedrawInterval: TimeInterval = 0.25
 
     var body: some View {
         let _ = BodyCounter.note("LiveInputSection")
@@ -42,6 +47,7 @@ struct LiveInputSectionContent: View {
         let _ = livePointTick
         LiveInputView(
             livePoint: deviceContext?.livePoint,
+            slowPoint: slowPoint,
             liveButtons: deviceContext?.liveButtons ?? LiveButtonState(),
             activeToolID: deviceContext?.activeToolID,
             registry: DeviceRegistry.shared,
@@ -58,10 +64,22 @@ struct LiveInputSectionContent: View {
             // A pen entering or leaving shows at once; motion in between
             // waits its turn.
             let now = ProcessInfo.processInfo.systemUptime
-            guard now - lastTickAt >= Self.redrawInterval || point?.inProximity != true else { return }
+            let edge = point?.inProximity != true || slowPoint?.inProximity != true
+            if edge || now - lastSlowAt >= Self.slowRedrawInterval {
+                slowPoint = point
+                lastSlowAt = now
+            }
+            guard edge || now - lastTickAt >= Self.redrawInterval else { return }
             lastTickAt = now
             livePointTick &+= 1
         }
+        // Buttons show the moment they change. The publisher replays its
+        // value to each new subscriber, and the body makes a new one every
+        // redraw, so the replay is dropped or each redraw would cause another.
+        .onReceive(
+            deviceContext?.$liveButtons.dropFirst().eraseToAnyPublisher()
+                ?? Empty().eraseToAnyPublisher()
+        ) { _ in livePointTick &+= 1 }
     }
 }
 
@@ -72,6 +90,8 @@ struct LiveInputSectionContent: View {
 
 private struct LiveInputView: View {
     let livePoint: TabletPoint?
+    /// Coordinate, tilt, and hover read this one, refreshed less often.
+    let slowPoint: TabletPoint?
     let liveButtons: LiveButtonState
     let activeToolID: String?
     let registry: DeviceRegistry
@@ -198,8 +218,8 @@ private struct LiveInputView: View {
                 // flicker on every report even with the pen at rest.
                 liveRow(label: String(localized: "Coordinate", comment: "Live Input table row label — raw X/Y position")) {
                     Text(
-                        point != nil
-                            ? "X: \(quantize(point!.x, to: 100))   Y: \(quantize(point!.y, to: 100))"
+                        slowPoint != nil
+                            ? "X: \(quantize(slowPoint!.x, to: 100))   Y: \(quantize(slowPoint!.y, to: 100))"
                             : String(localized: "X: 0   Y: 0", comment: "Default coordinate display when no pen is detected")
                     )
                     .monospacedDigit()
@@ -208,15 +228,15 @@ private struct LiveInputView: View {
 
                 liveRow(label: String(localized: "Tilt", comment: "Live Input table row label — pen tilt X/Y")) {
                     let tilt = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1)).sign(strategy: .always())
-                    Text(verbatim: "X: \((point?.tiltX ?? 0).formatted(tilt))   Y: \((point?.tiltY ?? 0).formatted(tilt))")
+                    Text(verbatim: "X: \((slowPoint?.tiltX ?? 0).formatted(tilt))   Y: \((slowPoint?.tiltY ?? 0).formatted(tilt))")
                         .monospacedDigit()
                 }
 
                 liveRow(label: String(localized: "Hover", comment: "Live Input table row label — hover distance")) {
-                    if let p = point, reportsHoverDistance {
+                    if let p = slowPoint, reportsHoverDistance {
                         Text("\(p.hoverDistance)   \(p.inProximity ? String(localized: "(In Range)", comment: "Hover proximity state") : String(localized: "(Out)", comment: "Hover proximity state — out of range"))")
                             .monospacedDigit()
-                    } else if let p = point {
+                    } else if let p = slowPoint {
                         Text(p.inProximity
                             ? String(localized: "In Range", comment: "Hover state without a height value — device reports only in/out")
                             : String(localized: "Out of Range", comment: "Hover state without a height value — device reports only in/out"))
