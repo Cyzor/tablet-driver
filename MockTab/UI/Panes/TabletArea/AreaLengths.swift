@@ -53,13 +53,26 @@ struct AreaLengths {
             scale = suffixScale
             break
         }
-        guard let value = try? Double(number, format: .number), value > 0 else { return nil }
+        guard let value = Self.decimal(number), value > 0 else { return nil }
         let side = surfaceMM.map { horizontal ? $0.width : $0.height } ?? 0
         switch typedUnit {
         case .millimeters: return value * scale / side
         case .inches: return value * 25.4 / side
         case .percent: return value / 100
         }
+    }
+
+    /// A typed number whose last "." or "," is the decimal point, whatever
+    /// the region uses: the region's parser stops at the other one, so
+    /// "12.5" read as 12 in Germany. No length here reaches a thousand, so
+    /// neither mark can be a thousands separator.
+    static func decimal(_ text: String, locale: Locale = .current) -> Double? {
+        var number = text
+        if let mark = number.lastIndex(where: { $0 == "." || $0 == "," }) {
+            let whole = number[..<mark].filter { $0 != "." && $0 != "," }
+            number = whole + (locale.decimalSeparator ?? ".") + number[number.index(after: mark)...]
+        }
+        return try? Double(number, format: .number.locale(locale))
     }
 
     private func value(of fraction: Double, horizontal: Bool) -> Double {
