@@ -124,7 +124,7 @@ extension TabletSettings {
 
         return TurnAssignments(
             expressKeys: bindings("expressKeyBindings", count: 16),
-            bezelButtons: bindings("bezelButtonBindings", count: 3),
+            bezelButtons: bindings("bezelButtonBindings", count: ControlTarget.bezelSlotCount),
             center: string("touchRingButtonBinding").flatMap(ButtonBinding.decode) ?? ButtonBinding(kind: .ringCycle),
             center2: string("touchRingButtonBinding2").flatMap(ButtonBinding.decode) ?? ButtonBinding(kind: .ringCycle2),
             sharedSlots: slots,

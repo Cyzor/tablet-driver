@@ -391,7 +391,7 @@ extension ButtonsView {
         Section {
             ForEach(0..<bezelButtonCount, id: \.self) { i in
                 bezelButtonRow(
-                    index: i,
+                    index: firstBezelButtonSlot + i,
                     label: String(
                         localized: "Bezel Button \(i + 1)",
                         comment: "Bezel button N label, e.g. 'Bezel Button 1'"), lb: lb)
@@ -682,7 +682,7 @@ extension ButtonsView {
         var bits: UInt64 = 0
         func set(_ target: ControlTarget, _ on: Bool) { if on { bits |= 1 << UInt64(target.bit) } }
         for (i, down) in lb.expressKeys.prefix(16).enumerated() { set(.expressKey(i), down) }
-        for (i, down) in lb.bezelButtons.prefix(3).enumerated() { set(.bezel(i), down) }
+        for (i, down) in lb.bezelButtons.enumerated() { set(.bezel(i), down) }
         set(.ringCenter(0), lb.touchRingButtonDown)
         set(.ringCenter(1), lb.touchRing2ButtonDown)
         set(.ring(0), lb.touchRingActive)
@@ -705,7 +705,7 @@ extension ButtonsView {
         if hasTouchRing && hasDualRings && hasMechanicalDial && !hasSplitPadLayout {
             bits |= 1 << UInt64(ControlTarget.ringCenter(1).bit)
         }
-        for i in 0..<min(bezelButtonCount, 3) { bits |= 1 << UInt64(ControlTarget.bezel(i).bit) }
+        for i in 0..<bezelButtonCount { bits |= 1 << UInt64(ControlTarget.bezel(firstBezelButtonSlot + i).bit) }
         if hasStripToggles {
             for i in 0..<2 { bits |= 1 << UInt64(ControlTarget.bezel(i).bit) }
         }

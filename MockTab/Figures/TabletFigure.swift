@@ -735,7 +735,9 @@ extension TabletFigure {
                     ? CGRect(x: across, y: a, width: depth, height: length)
                     : CGRect(x: a, y: across, width: length, height: depth)
             }
-            let keyDepth = pixels(min(m.keyDepth, laneDepth * 0.8))
+            var keyDepth = pixels(min(m.keyDepth, laneDepth * 0.8))
+            // Long keys stay longer than deep where their span cuts them short.
+            if case .keys(_, .long) = part.control { keyDepth = min(keyDepth, pixels(keyLength * 0.6)) }
             switch (part.control, controls?.entry) {
             case let (.keys(_, shape: .round), entry):
                 // Each its own circle, where the layout spaces it.

@@ -64,10 +64,10 @@ extension InputInjector {
         }
 
         // ── Bezel buttons (e.g. DTK-2400 OSD keys) ─────────────────────────────
-        // `buttons[16..18]`, with their own bindings: some devices use all 16
+        // `buttons[16...]`, with their own bindings: some devices use all 16
         // ExpressKey slots.
         let bezelBindings = snap.bezelButtonBindings
-        for i in 0..<3 {
+        for i in bezelBindings.indices {
             let auxIndex = 16 + i
             let down = pad.button(auxIndex)
             if down != lastAuxButtons[auxIndex] {

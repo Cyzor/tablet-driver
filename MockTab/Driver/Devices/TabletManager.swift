@@ -1061,7 +1061,7 @@ final class TabletManager: ObservableObject {
             if keys != context.liveButtons.expressKeys {
                 context.liveButtons.expressKeys = keys
             }
-            let bezelKeys = (16..<19).map { aux.button($0) }
+            let bezelKeys = (16..<(16 + ControlTarget.bezelSlotCount)).map { aux.button($0) }
             let ring1 = aux.rings.first, ring2 = aux.rings.dropFirst().first
             let touchRingActive = ring1?.position != nil
             let touchRing2Active = ring2?.position != nil
@@ -1653,6 +1653,10 @@ extension TabletSpec {
     /// Cintiq 21UX2 and 22HD. The toggles are buttons 16 and 17, so they
     /// arrive in bezel slots 0 and 1. The 21UX, 12WX, and 20WSX have none.
     var hasStripToggles: Bool { format == .cintiqV1 && hasTouchStrips && buttonCount > 16 }
+
+    /// The bezel slot of the first bezel button: after the strip toggles,
+    /// as on the Cintiq 22HD, whose panel keys take slots 2 to 4.
+    var firstBezelButtonSlot: Int { hasStripToggles ? 2 : 0 }
 
     /// Two touch strips, each with its own modes, as two rings or dials have.
     var hasIndependentStrips: Bool { touchStripCount == 2 }

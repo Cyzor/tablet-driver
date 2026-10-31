@@ -121,7 +121,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         guard let spec = WacomDeviceRegistry.spec(for: productID) else { return }
         let twoRotaries = spec.hasDualRings || spec.hasIndependentStrips
         settings.defaultBezelButtonBindings = spec.hasStripToggles
-            ? [ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2), .none]
+            ? [ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2)] + TabletSettings.noBezelButtonBindings.dropFirst(2)
             : TabletSettings.noBezelButtonBindings
         settings.applyRotaryHardware(
             controlCount: twoRotaries ? 2 : 1,

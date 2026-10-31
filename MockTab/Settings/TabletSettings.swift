@@ -809,7 +809,7 @@ final class TabletSettings: ObservableObject {
     @Published var defaultBezelButtonBindings = TabletSettings.noBezelButtonBindings {
         didSet { _bezelButtonCache = nil }
     }
-    static let noBezelButtonBindings = [ButtonBinding](repeating: .none, count: 3)
+    static let noBezelButtonBindings = [ButtonBinding](repeating: .none, count: ControlTarget.bezelSlotCount)
     @Published var touchRingButtonRaw: String = "" {
         didSet { persist("touchRingButtonBinding", touchRingButtonRaw) }
     }
@@ -877,8 +877,8 @@ final class TabletSettings: ObservableObject {
             let result: [ButtonBinding]
             if let arr = ButtonBinding.decodeList(bezelButtonRaw) {
                 var r = arr
-                while r.count < 3 { r.append(.none) }
-                result = Array(r.prefix(3))
+                while r.count < ControlTarget.bezelSlotCount { r.append(.none) }
+                result = Array(r.prefix(ControlTarget.bezelSlotCount))
             } else {
                 result = defaultBezelButtonBindings
             }

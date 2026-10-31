@@ -247,7 +247,7 @@ extension TabletLayoutIdentity.Entry {
 enum ControlTarget: Hashable {
     /// `LiveButtonState.expressKeys` and `expressKeyBindings`, 0–15.
     case expressKey(Int)
-    /// `bezelButtons`, 0–2.
+    /// `bezelButtons`, 0–4.
     case bezel(Int)
     /// A ring's center button or a dial's toggle key, 0 or 1:
     /// `touchRingButtonDown` and `touchRing2ButtonDown`.
@@ -257,15 +257,18 @@ enum ControlTarget: Hashable {
     case dial(Int)
     case strip(Int)
 
+    /// Bezel slots: a model's two strip toggles, if any, then its bezel buttons.
+    static let bezelSlotCount = 5
+
     /// A fixed bit for each target, so a set of them fits a `UInt64`.
     var bit: Int {
         switch self {
         case let .expressKey(i): return i
         case let .bezel(i): return 16 + i
-        case let .ringCenter(i): return 19 + i
-        case let .ring(i): return 21 + i
-        case let .dial(i): return 23 + i
-        case let .strip(i): return 25 + i
+        case let .ringCenter(i): return 21 + i
+        case let .ring(i): return 23 + i
+        case let .dial(i): return 25 + i
+        case let .strip(i): return 27 + i
         }
     }
 }
@@ -282,17 +285,29 @@ enum TabletLayoutExtras {
 
     /// Parts libwacom leaves out of a layout it has, drawn but not driven:
     /// the Cintiq 24HD's three display buttons on the top bezel, toward the
-    /// right, placed from the product's photos.
-    static let addedParts = "00F4 00F8: k3oT0 680-760"
+    /// right, placed from the product's photos, and the 22HD's three panel
+    /// keys at the top bezel's right end.
+    static let addedParts = """
+        00F4 00F8: k3oT0 680-760
+        005B 00FA: k3wT0 848-930
+        """
 
     /// Wacom layouts redrawn where libwacom's differs from the hardware,
     /// read after the generated table so they take its place. The Cintiq
     /// 21UX2 has four keys, a round strip toggle, and four more keys on each
     /// side, placed from the product's photos and manual, with its strips on
-    /// the back (`b`).
-    static let replaced = "00CC: sL0b 450-640, k4fL1 336-450, k1oL1 474-529, k4fL1 551-666, "
-        + "sR0b 450-640, k4fR1 336-450, k1oR1 474-529, k4fR1 551-666"
-    static let replacedIdentity = "00CC: s 1; k BCDE; k A; k FGHI; s 2; k KLMN; k J; k OPQR | m A=s1 J=s2"
+    /// the back (`b`). The 22HD has the same parts; its strips' span is a
+    /// guess from the 21UX2's.
+    static let replaced = """
+        00CC: sL0b 450-640, k4fL1 336-450, k1oL1 474-529, k4fL1 551-666, \
+        sR0b 450-640, k4fR1 336-450, k1oR1 474-529, k4fR1 551-666
+        005B 00FA: sL0b 439-656, k4fL1 309-464, k1oL1 481-512, k4fL1 529-686, \
+        sR0b 439-656, k4fR1 309-464, k1oR1 481-512, k4fR1 529-686
+        """
+    static let replacedIdentity = """
+        00CC: s 1; k BCDE; k A; k FGHI; s 2; k KLMN; k J; k OPQR | m A=s1 J=s2
+        005B 00FA: s 1; k BCDE; k A; k FGHI; s 2; k KLMN; k J; k OPQR | m A=s1 J=s2
+        """
 
     /// The models listed here.
     static let productIDs: Set<Int> = Set(packed.split(separator: "\n").flatMap { line in

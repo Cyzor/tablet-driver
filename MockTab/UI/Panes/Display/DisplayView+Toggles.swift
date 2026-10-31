@@ -69,7 +69,8 @@ extension DisplayView {
                 (binding, { String(localized: "Key \(i + 1)", comment: "Express key N label, e.g. 'Key 1'") })
             }
         }
-        rows += settings.bezelButtonBindings.prefix(max(spec?.bezelButtonCount ?? 0, 0)).enumerated().map { i, binding in
+        rows += settings.bezelButtonBindings.dropFirst(spec?.firstBezelButtonSlot ?? 0)
+            .prefix(max(spec?.bezelButtonCount ?? 0, 0)).enumerated().map { i, binding in
             (binding, { String(localized: "Bezel Button \(i + 1)", comment: "Bezel button N label, e.g. 'Bezel Button 1'") })
         }
         if spec?.hasMechanicalDial == true {

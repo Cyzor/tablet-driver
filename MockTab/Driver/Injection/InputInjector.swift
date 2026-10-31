@@ -605,7 +605,7 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Express key / touch ring state
 
-    var lastAuxButtons = [Bool](repeating: false, count: 19)
+    var lastAuxButtons = [Bool](repeating: false, count: 16 + ControlTarget.bezelSlotCount)
     var lastRingButtonDown = false
     /// Last ring mode the device's firmware reported (ExpressKey Remote).
     var lastHardwareRingMode: Int?

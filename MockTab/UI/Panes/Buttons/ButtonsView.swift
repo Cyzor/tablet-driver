@@ -130,6 +130,7 @@ struct ButtonsView: View {
     /// What each ring or dial's modes do, for jump-to-mode labels.
     var ringModeNames: [[String]] { settings.rotaryModeNames }
     var bezelButtonCount: Int { spec?.bezelButtonCount ?? 0 }
+    var firstBezelButtonSlot: Int { spec?.firstBezelButtonSlot ?? 0 }
     /// ExpressKey Remote: keys and a ring, no pen. Its firmware owns the
     /// ring's mode button, so that row is omitted.
     var isRemote: Bool { spec?.format == .expressKeyRemote }
