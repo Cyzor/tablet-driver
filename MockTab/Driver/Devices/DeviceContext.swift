@@ -276,8 +276,6 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// Transport type for this device: "USB", "Bluetooth", "Other", or "—".
     @Published var transport: String = "—"
 
-    /// USB speed label if connected via USB: "Low Speed", "Full Speed", "High Speed", "Super Speed", etc.
-    @Published var usbSpeed: String = "—"
 
     /// Battery percentage (0–100) if this device is wireless; nil if USB or
     /// unknown. Nil while `batteryCharging` means charging at an unknown

@@ -650,7 +650,6 @@ final class TabletManager: ObservableObject {
         context.connectionErrorMessage = nil
         context.isConnected = true
         context.transport = probe.transport
-        context.usbSpeed = Self.connectionInfo(for: device).speed
         // Diagnostic only; see `bluetoothAddressCandidate`.
         if probe.isBLE { context.bluetoothAddressCandidate = probe.rawSerialProbe }
 
@@ -1349,7 +1348,6 @@ final class TabletManager: ObservableObject {
         context.hasWiredDriverLifecycle = false
         context.isConnected = false
         context.transport = "—"
-        context.usbSpeed = "—"
         context.batteryPercent = nil
         context.batteryCharging = false
         context.wirelessLinked = nil
@@ -1490,7 +1488,6 @@ final class TabletManager: ObservableObject {
         target.isConnected = true
         if target.activeDriverRawProductID == rawPID {
             target.transport = source.transport
-            target.usbSpeed = source.usbSpeed
         }
         if target.batteryPercent == nil {
             target.batteryPercent = source.batteryPercent
@@ -1578,36 +1575,6 @@ final class TabletManager: ObservableObject {
                 self.latencyActivityToken = nil
             }
         }
-    }
-
-    private static func connectionInfo(
-        for device: IOHIDDevice
-    ) -> (transport: String, speed: String) {
-        let transport =
-            IOHIDDeviceGetProperty(
-                device, kIOHIDTransportKey as CFString) as? String ?? "Unknown"
-        guard transport.caseInsensitiveCompare("USB") == .orderedSame else {
-            return (transport, "—")
-        }
-        let service = IOHIDDeviceGetService(device)
-        guard service != IO_OBJECT_NULL else { return ("USB", "USB") }
-        for key in ["USB Device Speed", "Device Speed"] as [CFString] {
-            if let prop = IORegistryEntrySearchCFProperty(
-                service, kIOServicePlane, key, kCFAllocatorDefault,
-                IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents)
-            ) {
-                if let n = (prop as? NSNumber)?.intValue {
-                    switch n {
-                    case 0: return ("USB", String(localized: "Low Speed (1.5 Mb/s)", comment: "USB speed on the Info tab"))
-                    case 1: return ("USB", String(localized: "Full Speed (12 Mb/s)", comment: "USB speed on the Info tab"))
-                    case 2: return ("USB", String(localized: "High Speed (480 Mb/s)", comment: "USB speed on the Info tab"))
-                    case 3: return ("USB", String(localized: "SuperSpeed (5 Gb/s)", comment: "USB speed on the Info tab"))
-                    default: break
-                    }
-                }
-            }
-        }
-        return ("USB", "USB")
     }
 
     /// One-shot per launch. CGEventPost silently drops events without the

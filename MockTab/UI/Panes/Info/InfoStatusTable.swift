@@ -120,10 +120,13 @@ extension InfoView {
                 // Unplugged isn't a fault, so no ✕.
                 ok: isConnected ? true : nil)
 
+            let asleep = deviceContext?.isAsleepOnWirelessKit == true
             row(
                 String(localized: "Connection", comment: "Row label in Info tab status table"),
-                value: deviceContext?.connectionName ?? "—",
-                ok: isConnected ? true : nil)
+                value: asleep
+                    ? "\(deviceContext?.connectionName ?? "—") · \(String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep"))"
+                    : deviceContext?.connectionName ?? "—",
+                ok: isConnected && !asleep ? true : nil)
 
             // One row in every state, so a report arriving changes its value
             // instead of swapping in a new row. A model that has reported
@@ -152,7 +155,7 @@ extension InfoView {
                     // Affirmative green when healthy — this table is the
                     // place users come to check on the device.
                     // Gray while the tablet sleeps: the reading is from before.
-                    symbolColor: deviceContext?.isAsleepOnWirelessKit == true ? .secondary : batteryPercent.map {
+                    symbolColor: asleep ? .secondary : batteryPercent.map {
                         BatteryIndicator.tint(pct: $0, charging: charging, healthy: .green)
                     } ?? (charging ? .green : .secondary),
                     accessory: offersWirelessSleep ? AnyView(wirelessSleepPicker) : nil)
@@ -173,21 +176,6 @@ extension InfoView {
                         charging: companionContext?.batteryCharging ?? false,
                         healthy: .green))
             }
-
-            row(
-                String(localized: "Speed", comment: "Row label in Info tab status table — USB speed"),
-                value: deviceContext?.usbSpeed ?? "—",
-                ok: isConnected ? true : nil)
-
-            let asleep = deviceContext?.isAsleepOnWirelessKit == true
-            row(
-                String(localized: "Status", comment: "Row label in Info tab status table — driver status"),
-                value: asleep
-                    ? String(localized: "Asleep", comment: "Driver status value — a wireless tablet is asleep")
-                    : isConnected
-                    ? String(localized: "Active", comment: "Driver status value — device is active")
-                    : String(localized: "Idle", comment: "Driver status value — device is idle"),
-                ok: isConnected && !asleep ? true : nil)
 
             // Labeled with System Settings' own names. Granted rows keep a
             // button rather than going bare: revoking is the user's to do,
@@ -226,13 +214,6 @@ extension InfoView {
                     ? String(localized: "Review or turn off MockTab's permission to move the pointer and press keys.", comment: "Tooltip on Open System Settings button for a granted permission")
                     : String(localized: "Allow MockTab to move the pointer and press keys. Without this, the pen is read but moves nothing.", comment: "Tooltip on Grant button for Accessibility permission")
             )
-
-            row(
-                String(localized: "HID Manager", comment: "Row label in Info tab status table"),
-                value: tabletManager.hidManagerOpen
-                    ? String(localized: "Running", comment: "HID Manager status value")
-                    : String(localized: "Failed to open", comment: "HID Manager status value — error state"),
-                ok: tabletManager.hidManagerOpen ? true : false)
 
             row(
                 String(localized: "Profile", comment: "Row label in Info tab status table — active profile name"),

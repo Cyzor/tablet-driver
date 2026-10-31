@@ -303,7 +303,6 @@ extension InfoView {
             }
             let active = tabletManager.activeContext
             lines += [String(localized: "Transport : \(active?.transport ?? "—")", comment: "Diagnostic: USB/Bluetooth transport type")]
-            lines += [String(localized: "Speed     : \(active?.usbSpeed ?? "—")", comment: "Diagnostic: USB speed or Bluetooth version")]
             if let pct = active?.batteryPercent {
                 let chgStr = (active?.batteryCharging ?? false) ? String(localized: " (charging)", comment: "Battery status indicator") : ""
                 lines += [String(localized: "Battery   : \(pct)%\(chgStr)", comment: "Diagnostic: battery percentage and charging status")]
