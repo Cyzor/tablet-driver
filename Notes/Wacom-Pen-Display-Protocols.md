@@ -28,7 +28,7 @@ The Pro Pen (KP-503E) reports tool code `0x1E02` on the 27QHD. See the [pen tool
 
 ### ExpressKeys and Touch Strips
 
-Report `0x0C`. The layout varies by model. On the 21UX2 and 22HD, bytes 3–4 are touch-strip positions, and bit 0 of bytes 5 and 7 are the two center toggles. (kernel)
+Report `0x0C`. The layout varies by model. On the 21UX2 and 22HD, bytes 1–2 and 3–4 are the left and right touch strips, and bit 0 of bytes 5 and 7 are the two center toggles. The 22HD adds three panel keys in bits 0–2 of byte 9: bit 0 is the info key and bit 1 the wrench. (kernel)
 
 On the 24HD, byte 6 holds the left side's eight keys and byte 8 the right side's, one bit each from bit 0 at the top. Each side's first three are the mode keys beside its ring. ([evidence](Evidence/DTK-2400-Key-Order.md))
 
@@ -66,7 +66,7 @@ Every Cintiq with touch has its touch sensor as a separate USB device with its o
 
 - **27QHD Touch** (pen `0x032B`, touch `0x032C`) and **Cintiq Pro 16** (pen `0x03B2`, touch `0x03B3`) send a standard touch-screen collection that their descriptors fully describe. Parse it from the descriptor. The 27QHD Touch doesn't send the kernel's `WACOM_27QHDT` layout. (observed)
 - **Cintiq Pro 24** (DTH-2420) also sends a standard collection on report `0x88`, but declares no contact ID. Use the slot position as the ID. (observed, descriptor)
-- **13HD, 22HD, and 24HD Touch** follow the kernel's `wacom_24hdt_irq()`: report `0x01`, four 14-byte contact records, and a frame-wide contact count in byte 61, so one frame can span several reports. (kernel; observed on the 13HD Touch)
+- **13HD, 22HD, and 24HD Touch** follow the kernel's `wacom_24hdt_irq()`: report `0x01`, four 14-byte contact records, and a frame-wide contact count in byte 61, so one frame can span several reports. (kernel; observed on the 13HD Touch and 24HD Touch)
 
 ## ExpressKey Remote (EKR-100)
 
@@ -94,11 +94,12 @@ No captures of these exist, so read the named function in the kernel's `drivers/
 | Devices | Function | Notes |
 | --- | --- | --- |
 | PL-400 to PL-800 (Cintiq 15X, 18SX) | `wacom_pl_irq()` | Report `0x02`, 8 bytes. The tablet decides eraser vs. second button on entering range. A PL-800 confirms feature report `[0x02, 0x02]`. |
+| Cintiq Partner (PTU-600) | `wacom_ptu_irq()` | Report `0x02`, 8 bytes, as in `wacom_dtu_irq()`, except bit 2 marks the eraser and bit 3 its contact. Feature report `[0x02, 0x02]`. |
 | ExpressKey Remote | `wacom_remote_irq()`, `wacom_remote_status_irq()` | Covered above |
 
 ## Unverified
 
-- Touch on the 24HD (DTH-2400) and 22HD (DTH-2200): separate interface, format unknown.
+- Which key the 22HD's byte 9 bit 2 is.
 - Which ExpressKey Remote bit belongs to which physical key.
 
 ## Out of Scope: Business and Signature Displays

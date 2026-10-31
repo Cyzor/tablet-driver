@@ -59,8 +59,17 @@ packed value at `[4]`. (kernel)
 
 ## Intuos4 and Earlier
 
-Report `0x20`, 9 bytes: `[1]` = luminance (bits 0–4) | LED (bits 5–7);
-`[2]` = high luminance (bits 0–4). (kernel)
+Report `0x20`, 9 bytes:
+
+```
+[1] = 0x04 | slot         ring LED 0–3
+[2] = idle luminance      0–127
+[3] = active luminance    0–127, while the pen touches or a key is held
+[4] = key displays        0–15, plus 0x10 to turn them on
+```
+
+The tablet switches between the two luminances itself. (kernel; the key
+display byte observed, PTK-640)
 
 ## Cintiq 24HD and 21UX2
 
