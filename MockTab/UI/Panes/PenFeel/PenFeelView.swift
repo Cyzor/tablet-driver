@@ -418,8 +418,8 @@ struct PenFeelView: View {
 
     private var doubleClickLabel: String {
         switch settings.doubleClickDistance {
-        case ..<0.5: return String(localized: "Off", comment: "Double-click distance — disabled")
-        case 0.5..<8: return String(localized: "Low", comment: "Double-click distance label")
+        case ...0: return String(localized: "Off", comment: "Double-click distance — disabled")
+        case ..<8: return String(localized: "Low", comment: "Double-click distance label")
         case 8..<13: return String(localized: "Medium", comment: "Double-click distance label")
         case 13..<17: return String(localized: "High", comment: "Double-click distance label")
         default:
