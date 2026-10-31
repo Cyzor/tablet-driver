@@ -59,7 +59,7 @@ Reduces cursor wobble from hand tremor. Higher values smooth more aggressively b
 
 ## Double-Click Distance
 
-This setting controls how close two taps must be to count as a double-click. Increase the value if double-clicks fail to register; decrease it if accidental double-clicks occur during normal drawing. Drag to Off to disable position snapping.
+This setting controls how close two taps must be to count as a double-click. Increase the value if double-clicks fail to register; decrease it if accidental double-clicks occur during normal drawing. At Off, the second tap must land about where the first did.
 
 ## Movement
 

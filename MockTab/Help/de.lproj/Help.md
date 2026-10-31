@@ -59,7 +59,7 @@ Reduziert Cursorzittern durch Handunruhe. Höhere Werte glätten stärker, erhö
 
 ## Doppelklick-Abstand
 
-Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müssen, um als Doppelklick zu zählen. Erhöhe den Wert, wenn Doppelklicks nicht erkannt werden; senke ihn, wenn beim normalen Zeichnen versehentlich Doppelklicks entstehen. Ziehe den Regler auf Off, um das Positions-Snapping zu deaktivieren.
+Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müssen, um als Doppelklick zu zählen. Erhöhe den Wert, wenn Doppelklicks nicht erkannt werden; senke ihn, wenn beim normalen Zeichnen versehentlich Doppelklicks entstehen. Bei „Aus“ muss der zweite Tipp etwa dort landen, wo der erste lag.
 
 ## Bewegung
 

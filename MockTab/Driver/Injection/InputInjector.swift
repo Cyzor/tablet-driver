@@ -1103,8 +1103,9 @@ final class InputInjector: @unchecked Sendable {
             candidate.x - lastClickPosition.x,
             candidate.y - lastClickPosition.y)
 
-        let snapThreshold = snapshot.doubleClickDistance
-        let countThreshold = snapThreshold > 0 ? snapThreshold : 8.0
+        // Off (0) still allows the wobble a single click tolerates, so the
+        // slider only ever adds to it and never counts tighter than Off.
+        let countThreshold = max(snapshot.doubleClickDistance, Double(Self.clickStrayRadius))
         let withinTime = now - lastClickTime < snapshot.doubleClickInterval
         let withinDist = dist < countThreshold
 

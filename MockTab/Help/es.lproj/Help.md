@@ -59,7 +59,7 @@ Reduce el temblor del cursor causado por el pulso de la mano. Los valores más a
 
 ## Distancia de doble clic
 
-Este ajuste controla lo cerca que deben estar dos toques para contar como doble clic. Auméntalo si los dobles clics no se registran; bájalo si se producen dobles clics accidentales al dibujar con normalidad. Arrástralo hasta Off para desactivar el ajuste de posición.
+Este ajuste controla lo cerca que deben estar dos toques para contar como doble clic. Auméntalo si los dobles clics no se registran; bájalo si se producen dobles clics accidentales al dibujar con normalidad. En Desactivado, el segundo toque debe caer más o menos donde cayó el primero.
 
 ## Movimiento
 
