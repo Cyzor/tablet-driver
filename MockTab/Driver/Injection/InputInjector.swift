@@ -650,13 +650,16 @@ final class InputInjector: @unchecked Sendable {
     /// Same as `lastRingButtonDown`, for the second dial's own toggle key
     /// (PTK-670/870's right cluster center). Unused on every other device.
     var lastRing2ButtonDown = false
-    /// Last observed touch ring position (0–71). 0x7F = no contact.
+    /// Last accepted touch ring position (0–71). 0x7F = no contact.
     var lastRingPos: UInt8 = 0x7F
+    /// Holds back a hand resting on a ring; see `RingStepFilter`.
+    var ringSteps = RingStepFilter()
+    var ring2Steps = RingStepFilter()
     /// Last ring position before contact was lost, and when. Slow fingers
     /// drop out for a frame mid-turn (PTH-660); see `ringDropoutBridge`.
     var ringLiftPos: UInt8 = 0x7F
     var ringLiftTime: TimeInterval = 0
-    /// Last observed right touch ring position (DTK-2400). 0x7F = no contact.
+    /// Last accepted right touch ring position (DTK-2400). 0x7F = no contact.
     var lastRing2Pos: UInt8 = 0x7F
     /// Last observed Intuos3 WS touch strip positions. 0xFF = no contact.
     var lastStrip1Pos: UInt8 = 0xFF

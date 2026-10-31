@@ -152,19 +152,24 @@ extension InputInjector {
         } else if touchRingActive {
             ringLiftPos = 0x7F
         }
+        var ringHeld = false
         if touchRingActive, fromPos != 0x7F {
             var delta = Int(ringPos) - Int(fromPos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
             // Normalize to "increasing = up"; see `ringDeltaIsInverted`.
             if ringDeltaIsInverted { delta = -delta }
-            if delta != 0, let slot = activeSlot {
+            ringHeld = !ringSteps.accepts(delta)
+            if !ringHeld, delta != 0, let slot = activeSlot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ringAccum,
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         }
-        if !touchRingActive { ringAccum = 0 }
-        lastRingPos = touchRingActive ? ringPos : 0x7F
+        if !touchRingActive {
+            ringAccum = 0
+            ringSteps.reset()
+        }
+        if !ringHeld { lastRingPos = touchRingActive ? ringPos : 0x7F }
 
         // ── Touch ring 2 (Cintiq 24HD right side), with its own modes ─────
         let ring2Slot = snap.rotary(.second).activeSlot
@@ -184,18 +189,23 @@ extension InputInjector {
         }
 
         let ring2Pos = ring2?.position.map { UInt8($0) } ?? 0x7F
+        var ring2Held = false
         if touchRing2Active, lastRing2Pos != 0x7F {
             var delta = Int(ring2Pos) - Int(lastRing2Pos)
             if delta > 36 { delta -= 72 }
             if delta < -36 { delta += 72 }
             if ringDeltaIsInverted { delta = -delta }
-            if delta != 0, let slot = ring2Slot {
+            ring2Held = !ring2Steps.accepts(delta)
+            if !ring2Held, delta != 0, let slot = ring2Slot {
                 dispatchRingDelta(rawDelta: delta, slot: slot, accum: &ring2Accum,
                                   at: cursorPos, snapshot: snap, settings: settings)
             }
         }
-        if !touchRing2Active { ring2Accum = 0 }
-        lastRing2Pos = touchRing2Active ? ring2Pos : 0x7F
+        if !touchRing2Active {
+            ring2Accum = 0
+            ring2Steps.reset()
+        }
+        if !ring2Held { lastRing2Pos = touchRing2Active ? ring2Pos : 0x7F }
 
         // ── Touch strips, no wrap: each is its own rotary. ─────────────────
 
