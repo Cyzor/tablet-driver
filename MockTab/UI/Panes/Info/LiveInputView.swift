@@ -30,6 +30,10 @@ struct LiveInputSectionContent: View {
     /// livePoint publishes, since that no longer rides tabletManager's
     /// general objectWillChange cascade (see DeviceContext.livePoint).
     @State private var livePointTick = 0
+    @State private var lastTickAt: TimeInterval = 0
+    /// Redraws at most this often; the Scratchpad and Buttons pane show
+    /// motion live, so this section only needs to keep up roughly.
+    private static let redrawInterval: TimeInterval = 0.25
 
     var body: some View {
         let _ = BodyCounter.note("LiveInputSection")
@@ -50,7 +54,14 @@ struct LiveInputSectionContent: View {
         .onReceive(
             deviceContext?.livePointPublisher.eraseToAnyPublisher()
                 ?? Empty().eraseToAnyPublisher()
-        ) { _ in livePointTick &+= 1 }
+        ) { point in
+            // A pen entering or leaving shows at once; motion in between
+            // waits its turn.
+            let now = ProcessInfo.processInfo.systemUptime
+            guard now - lastTickAt >= Self.redrawInterval || point?.inProximity != true else { return }
+            lastTickAt = now
+            livePointTick &+= 1
+        }
     }
 }
 
