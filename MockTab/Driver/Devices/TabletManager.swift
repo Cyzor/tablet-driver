@@ -286,8 +286,9 @@ final class TabletManager: ObservableObject {
     //   1. infoViewVisible — set by SettingsWindowController when the Info tab
     //      is frontmost.  When false, livePoint / liveButtons are never written
     //      at all, so @Published fires zero times during normal use.
-    //   2. uiUpdateCounter — when the Info tab IS visible, further throttle to
-    //      ~16 Hz so SwiftUI layout work stays negligible.
+    //   2. UIUpdateThrottle — when the Info tab IS visible, a per-tablet count
+    //      on the HID thread passes ~16 Hz to main, so the reports in between
+    //      never wake it.
 
     /// True when MockTab is the frontmost application. Set by AppDelegate on
     /// didBecomeActive/willResignActive. Combined with infoViewVisible to gate updates.
@@ -345,8 +346,6 @@ final class TabletManager: ObservableObject {
         _calibrationActive.withLock { $0 = active }
     }
 
-    private var uiUpdateCounter = 0
-    private static let uiUpdateInterval = 8  // every 8th report ≈ 16 Hz at 133 Hz
 
     /// A contact alive this many frames or fewer when it disappears counts
     /// as "short-lived" for `CaptureTouchPipeline.shortLivedContacts` — at
@@ -889,6 +888,7 @@ final class TabletManager: ObservableObject {
         // Slow path: active-context switching (proximity-enter from a non-active
         // device) and per-report UI updates still hop to main. Throughput-critical
         // CGEvent posting never waits on either.
+        let uiThrottle = UIUpdateThrottle()
         let onTablet: @Sendable (TabletPoint) -> Void = { [weak self, contextHandle] point in
             guard let context = contextHandle.context else { return }
             let injector = context.injector
@@ -905,11 +905,18 @@ final class TabletManager: ObservableObject {
             // ── HID-thread gate: skip the Task hop when nothing needs to run.
             // At 200 Hz, a Task per report with nothing to do would allocate on
             // the most common path.
+            // The UI throttle counts here, not on main, so the reports it
+            // drops never wake main. Wheel steps always go: one dropped
+            // would never light the wheel.
+            if !point.inProximity { uiThrottle.reset() }
+            let uiDue = point.inProximity
+                && self?.appIsFrontmost == true && self?.infoViewVisible == true
+                && (uiThrottle.isDue() || point.mouseWheelDelta != 0)
             let needsHop: Bool
             if isActive {
                 needsHop = !point.inProximity  // proximity-exit cleanup
                     || (point.inProximity && !wasInProximity)  // proximity-enter: re-arm assertion
-                    || self?.appIsFrontmost == true && self?.infoViewVisible == true  // UI update
+                    || uiDue  // UI update
                     || self?.calibrationActive == true  // calibration sample
             } else {
                 // A device that isn't driving the cursor still owes apps the
@@ -966,7 +973,6 @@ final class TabletManager: ObservableObject {
 
             // ── UI state — gated + throttled ─────────────────────────────────
             if !point.inProximity {
-                self.uiUpdateCounter = 0
                 self.penExitedProximity()
                 // Clearing livePoint/liveButtons/activeToolID while hidden made
                 // Info flash on every proximity change instead of staying put —
@@ -992,14 +998,11 @@ final class TabletManager: ObservableObject {
             // normal drawing use, including when MockTab is backgrounded.
             guard appIsFrontmost && infoViewVisible else { return }
 
-            // Ahead of the throttle, which would drop most single wheel steps.
             let now = ProcessInfo.processInfo.systemUptime
             if point.mouseWheelDelta != 0 { context.mouseWheelLastStep = now }
 
-            // Throttle continuous updates to ~16 Hz.
-            self.uiUpdateCounter += 1
-            guard self.uiUpdateCounter >= Self.uiUpdateInterval else { return }
-            self.uiUpdateCounter = 0
+            // About 16 Hz: the pen thread marked this report due.
+            guard uiDue else { return }
 
             let toolIsMouse = context.activeToolIsMouse
             // Must match the injection path exactly — run the raw reading
@@ -1833,4 +1836,22 @@ private final class DongleTransport {
         self.handle = handle
         self.home = home
     }
+}
+
+/// Counts one tablet's reports on HIDThread, so live UI state updates about
+/// 16 times a second without waking main for the reports in between.
+/// HIDThread-confined.
+private final class UIUpdateThrottle: @unchecked Sendable {
+    /// Every 8th report: about 16 Hz at 133 Hz.
+    private static let interval = 8
+    private var count = 0
+
+    func isDue() -> Bool {
+        count += 1
+        guard count >= Self.interval else { return false }
+        count = 0
+        return true
+    }
+
+    func reset() { count = 0 }
 }
