@@ -315,7 +315,6 @@ extension InfoView {
         lines += [String(localized: "HID Manager    : \(tabletManager.hidManagerOpen ? String(localized: "open", comment: "HID Manager status") : String(localized: "failed to open", comment: "HID Manager status"))", comment: "Diagnostic: HID Manager status")]
         lines += [String(localized: "Input Monitor  : \(inputMonitoringGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Input Monitoring permission")]
         lines += [String(localized: "Accessibility  : \(accessibilityGranted ? String(localized: "granted", comment: "Permission status") : String(localized: "not granted", comment: "Permission status"))", comment: "Diagnostic: Accessibility permission")]
-        lines += [String(localized: "Launch at login: \(launchAtLogin ? String(localized: "enabled", comment: "Launch at login status") : String(localized: "disabled", comment: "Launch at login status"))", comment: "Diagnostic: Launch at login setting")]
         lines += [String(localized: "Profile        : \(profileLabel)", comment: "Diagnostic: active profile name")]
 
         lines += [""]
@@ -346,28 +345,6 @@ extension InfoView {
             lines += [String(localized: "Pen dead band  : \(band.width) counts, last applied \(band.lastApplied) (setting \(band.setting), tablet \(ids))", comment: "Diagnostic: tablet counts the pen must move before the cursor follows; the width last applied to a report; the stored setting (-1 = the tablet's default); the product IDs the default came from")]
         }
 
-        if let jitterHist = pen.jitterHistogram {
-            let jitterTotal = jitterHist.reduce(0, +)
-            if jitterTotal > 0 {
-                // Cumulative since this tool came into proximity, unlike
-                // the instantaneous jitter level — so a snapshot between
-                // hover sessions still shows recent jitter, not zero.
-                var bounds = CursorSmoother.jitterHistogramBucketsPtPerSample.map { "<\($0)" }
-                bounds.append(">\(CursorSmoother.jitterHistogramBucketsPtPerSample.last!)")
-                let parts = zip(bounds, jitterHist).map { "\($0):\($1)" }
-                lines += [String(localized: "Jitter (pt/sample): \(parts.joined(separator: "  "))", comment: "Diagnostic: histogram of hover-jitter sample magnitudes, cumulative for this tool's proximity session")]
-            } else {
-                lines += [String(localized: "Jitter (pt/sample): no hover samples yet", comment: "Diagnostic: jitter histogram is empty")]
-            }
-
-            // Non-zero means this machine hits the stale-cache window; zero on a
-            // machine still losing modifiers rules that mechanism out.
-            let drops = pen.staleModifierCacheDrops
-            if drops > 0 {
-                lines += [String(localized: "Modifier resync: \(drops) move events deferred to the keyboard", comment: "Diagnostic: count of move events that omitted physical modifier bits because the cached keyboard state was older than the report being stamped")]
-            }
-        }
-
         let probe = pen.probe
         if probe.reportCount > 0 {
             let avg = probe.averageMs.formatted(.number.precision(.fractionLength(2)))
@@ -392,12 +369,6 @@ extension InfoView {
             lines += [String(localized: "Report gaps    : \(parts.joined(separator: "  "))", comment: "Diagnostic: histogram of inter-report arrival gaps, in milliseconds, for spotting bursty/coalesced delivery")]
         }
 
-        // Memory counterpart to the latency lines above.
-        if let footprint = FootprintProbe.read() {
-            let current = FootprintProbe.megabytes(footprint.current)
-            let peak = FootprintProbe.megabytes(footprint.peak)
-            lines += [String(localized: "Memory         : \(current) MB now, \(peak) MB peak", comment: "Diagnostic: process memory footprint, current and lifetime peak, in megabytes")]
-        }
 
         if let parsed = unrecognizedDriver?.parsedDescriptor {
             lines += [""]

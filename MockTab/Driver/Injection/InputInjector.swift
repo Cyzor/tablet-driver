@@ -481,9 +481,6 @@ final class InputInjector: @unchecked Sendable {
     /// Spikes above ~3 pt/sample while hovering suggest RF interference.
     var jitterLevel: CGFloat { smoother.jitterLevel }
     var isJittery: Bool { smoother.isJittery }
-    /// Cumulative histogram of hover-jitter samples, never reset by
-    /// tip-down/proximity-exit transitions — see `CursorSmoother.jitterHistogram`.
-    var jitterHistogram: [UInt64] { smoother.jitterHistogram }
 
     /// Per-report pressure smoothing (opens up as pressure rises toward a
     /// firm stroke, unlike the position filter above which opens up with
@@ -766,10 +763,6 @@ final class InputInjector: @unchecked Sendable {
     /// clock, so `moveSafeEventFlags` can tell a current cache from a stale one.
     var tapLastPhysicalFlagsAtNs: UInt64 = 0
 
-    /// Move events that dropped physical bits for a stale cache. Reported in
-    /// diagnostics: non-zero on a machine losing modifiers confirms the window
-    /// is real there; zero rules this mechanism out.
-    var staleModifierCacheDrops: UInt64 = 0
 
     /// True when no physical tablet control is held. If this holds and
     /// `groundTruthSyntheticFlags` is non-empty, the flags are a leak.

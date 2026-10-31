@@ -434,21 +434,16 @@ struct PenThreadReadings: Sendable {
         let gapHistogramMs: [UInt64]
     }
 
-    /// Nil with no active tablet.
-    let jitterHistogram: [UInt64]?
     /// The hover jitter the conflicts row warns about; false with no
     /// active tablet.
     let isJittery: Bool
     let jitterLevel: Double
-    let staleModifierCacheDrops: UInt64
     let deadBand: InputInjector.PenDeadBandReading?
     let probe: Probe
 
     init(injector: InputInjector?, probe p: LatencyProbe) {
-        jitterHistogram = injector?.jitterHistogram
         isJittery = injector?.isJittery ?? false
         jitterLevel = Double(injector?.jitterLevel ?? 0)
-        staleModifierCacheDrops = injector?.staleModifierCacheDrops ?? 0
         deadBand = injector?.penDeadBandReading
         probe = Probe(
             reportCount: p.reportCount, averageMs: p.averageMs, worstMs: p.worstMs,

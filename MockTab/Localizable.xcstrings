@@ -7294,35 +7294,6 @@
         }
       }
     },
-    "disabled" : {
-      "comment" : "Launch at login status",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "deaktiviert"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "disabled"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "deshabilitado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "無効"
-          }
-        }
-      }
-    },
     "Disabled" : {
       "comment" : "Launch at Login status value",
       "localizations" : {
@@ -8281,29 +8252,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ログイン時に MockTab が自動的に起動するようにします。"
-          }
-        }
-      }
-    },
-    "enabled" : {
-      "comment" : "Launch at login status",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "aktiviert"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "activado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有効"
           }
         }
       }
@@ -10847,52 +10795,6 @@
         }
       }
     },
-    "Jitter (pt/sample): %@" : {
-      "comment" : "Diagnostic: histogram of hover-jitter sample magnitudes, cumulative for this tool's proximity session",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jitter (pt/Sample): %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vibración (pt/muestra): %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ジッター (pt/サンプル): %@"
-          }
-        }
-      }
-    },
-    "Jitter (pt/sample): no hover samples yet" : {
-      "comment" : "Diagnostic: jitter histogram is empty",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jitter (pt/Sample): noch keine Schwebe-Messwerte"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vibración (pt/muestra): aún no hay muestras de proximidad"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ジッター (pt/サンプル): ホバーのサンプルがまだありません"
-          }
-        }
-      }
-    },
     "JSON" : {
       "comment" : "Short label inside backup/restore tile",
       "localizations" : {
@@ -11286,29 +11188,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ログイン時に起動"
-          }
-        }
-      }
-    },
-    "Launch at login: %@" : {
-      "comment" : "Diagnostic: Launch at login setting",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bei Anmeldung starten: %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir al iniciar sesión: %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ログイン時に起動: %@"
           }
         }
       }
@@ -12204,35 +12083,6 @@
         }
       }
     },
-    "Memory         : %@ MB now, %@ MB peak" : {
-      "comment" : "Diagnostic: process memory footprint, current and lifetime peak, in megabytes",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Speicher       : %1$@ MB jetzt, %2$@ MB Spitze"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Memory         : %1$@ MB now, %2$@ MB peak"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Memoria        : %1$@ MB ahora, %2$@ MB máximo"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "メモリ         : 現在 %1$@ MB、ピーク %2$@ MB"
-          }
-        }
-      }
-    },
     "Merge All Windows" : {
       "comment" : "Window menu: merge all open windows into one tabbed window",
       "localizations" : {
@@ -12739,29 +12589,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "モード %1$lld: %2$@"
-          }
-        }
-      }
-    },
-    "Modifier resync: %llu move events deferred to the keyboard" : {
-      "comment" : "Diagnostic: count of move events that omitted physical modifier bits because the cached keyboard state was older than the report being stamped",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modifier-Resync: %llu Bewegungsereignisse an die Tastatur delegiert"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resincronización de modificadores: %llu eventos de movimiento delegados al teclado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "修飾キー再同期: %llu 件の移動イベントをキーボードに委譲"
           }
         }
       }

@@ -47,7 +47,6 @@ extension InputInjector {
                 systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
                 tapPhysicalManaged: tapLastPhysicalFlags,
                 syntheticFlags: synthetic)
-        if !current { staleModifierCacheDrops &+= 1 }
         return CGEventFlags(rawValue: ModifierMath.moveEventFlags(
             tapPhysicalManaged: tapLastPhysicalFlags,
             syntheticFlags: synthetic,
