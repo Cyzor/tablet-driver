@@ -226,6 +226,397 @@
         }
       }
     },
+    "Details…" : {
+      "comment" : "Button on the Conflicts row that opens an alert describing the detected conflicts",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detalles…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "詳細…"
+          }
+        }
+      }
+    },
+    "Move mouse, keyboard, and Wi-Fi receivers away from the tablet." : {
+      "comment" : "Conflict alert body for wireless interference",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Halte Empfänger von Maus, Tastatur und WLAN vom Grafiktablett fern."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aleje de la tableta los receptores de ratón, teclado y Wi-Fi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マウス、キーボード、Wi-Fi の受信機をタブレットから離してください。"
+          }
+        }
+      }
+    },
+    "OK" : {
+      "comment" : "Button that closes the conflict alert",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceptar"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        }
+      }
+    },
+    "OpenTabletDriver is running" : {
+      "comment" : "Conflict alert title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenTabletDriver läuft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenTabletDriver está en ejecución"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenTabletDriver が動作しています"
+          }
+        }
+      }
+    },
+    "Other tablet drivers are running" : {
+      "comment" : "Conflict alert title when drivers from two or more vendors are running",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Grafiktablett-Treiber laufen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hay otros controladores de tableta en ejecución"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "他のタブレットドライバが動作しています"
+          }
+        }
+      }
+    },
+    "Show what may affect the tablet." : {
+      "comment" : "Tooltip on Details button for Conflicts row",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anzeigen, was das Grafiktablett beeinträchtigen kann."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar lo que puede afectar a la tableta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットに影響する可能性のあるものを表示します。"
+          }
+        }
+      }
+    },
+    "the Wacom driver" : {
+      "comment" : "Mid-sentence name in a list of running drivers, such as \"the Wacom driver and OpenTabletDriver\"",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "der Wacom-Treiber"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el controlador de Wacom"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wacom のドライバ"
+          }
+        }
+      }
+    },
+    "The Wacom driver is running" : {
+      "comment" : "Conflict alert title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Wacom-Treiber läuft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El controlador de Wacom está en ejecución"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wacom のドライバが動作しています"
+          }
+        }
+      }
+    },
+    "the Xencelabs driver" : {
+      "comment" : "Mid-sentence name in a list of running drivers, such as \"the Xencelabs driver and OpenTabletDriver\"",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "der Xencelabs-Treiber"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "el controlador de Xencelabs"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xencelabs のドライバ"
+          }
+        }
+      }
+    },
+    "The Xencelabs driver is running" : {
+      "comment" : "Conflict alert title",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Xencelabs-Treiber läuft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El controlador de Xencelabs está en ejecución"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xencelabs のドライバが動作しています"
+          }
+        }
+      }
+    },
+    "Wacom driver" : {
+      "comment" : "Conflicts status value: Wacom's driver is running",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wacom-Treiber"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controlador de Wacom"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wacom ドライバ"
+          }
+        }
+      }
+    },
+    "Wacom helpers  : %@" : {
+      "comment" : "Diagnostic: harmless Wacom apps running, such as its updater; the argument lists bundle IDs",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wacom-Helfer   : %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayudantes Wacom: %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wacom ヘルパー : %@"
+          }
+        }
+      }
+    },
+    "While %@ run, the pointer may jump or click on its own. Quit or uninstall them." : {
+      "comment" : "Conflict alert body when two or more other tablet drivers are running; the argument lists them, such as \"the Wacom driver and OpenTabletDriver\"",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange %@ laufen, kann der Zeiger springen oder von selbst klicken. Beende oder deinstalliere sie."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mientras %@ estén en ejecución, el puntero puede saltar o hacer clic por sí solo. Ciérrelos o desinstálelos."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@が動作中は、ポインタが飛んだり、勝手にクリックしたりすることがあります。終了するか、アンインストールしてください。"
+          }
+        }
+      }
+    },
+    "While it runs, the pointer may jump or click on its own. Quit or uninstall it." : {
+      "comment" : "Conflict alert body when one other tablet driver is running",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange er läuft, kann der Zeiger springen oder von selbst klicken. Beende oder deinstalliere ihn."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mientras esté en ejecución, el puntero puede saltar o hacer clic por sí solo. Ciérrelo o desinstálelo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "動作中はポインタが飛んだり、勝手にクリックしたりすることがあります。終了するか、アンインストールしてください。"
+          }
+        }
+      }
+    },
+    "Wireless interference" : {
+      "comment" : "Conflicts status value and alert title: wireless interference makes the pen jitter",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funkstörung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interferencia inalámbrica"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無線干渉"
+          }
+        }
+      }
+    },
+    "Wireless interference also affects the pen. Move mouse, keyboard, and Wi-Fi receivers away from the tablet." : {
+      "comment" : "Conflict alert paragraph for wireless interference, after the text about other drivers",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch eine Funkstörung beeinträchtigt den Stift. Halte Empfänger von Maus, Tastatur und WLAN vom Grafiktablett fern."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las interferencias inalámbricas también afectan al lápiz. Aleje de la tableta los receptores de ratón, teclado y Wi-Fi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無線干渉もペンに影響しています。マウス、キーボード、Wi-Fi の受信機をタブレットから離してください。"
+          }
+        }
+      }
+    },
+    "Xencelabs driver" : {
+      "comment" : "Conflicts status value: the Xencelabs driver is running",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xencelabs-Treiber"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controlador de Xencelabs"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xencelabs ドライバ"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -4865,29 +5256,6 @@
         }
       }
     },
-    "Conflicting driver: %@" : {
-      "comment" : "Conflict detection: named process is running",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Treiberkonflikt: %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Controlador en conflicto: %@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "競合するドライバ: %@"
-          }
-        }
-      }
-    },
     "Conflicts" : {
       "comment" : "Row label in Info tab status table",
       "localizations" : {
@@ -8693,35 +9061,6 @@
         }
       }
     },
-    "Fix…" : {
-      "comment" : "Button on the Conflicts row that opens an alert describing the detected conflicts",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beheben…"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fix…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reparar…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "修正…"
-          }
-        }
-      }
-    },
     "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation." : {
       "localizations" : {
         "de" : {
@@ -12310,35 +12649,6 @@
         }
       }
     },
-    "MockTab found the following issues that may interfere with tablet operation:" : {
-      "comment" : "First sentence of conflict alert body",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab hat die folgenden Probleme gefunden, die den Grafiktablett-Betrieb beeinträchtigen können:"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "MockTab found the following issues that may interfere with tablet operation:"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab encontró los siguientes problemas que pueden interferir con el funcionamiento de la tableta:"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab は、タブレットの動作に干渉する可能性のある以下の問題を検出しました："
-          }
-        }
-      }
-    },
     "MockTab Help" : {
       "comment" : "Help menu: open help window\nHelp window title",
       "localizations" : {
@@ -12636,29 +12946,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "3本指を一緒に動かすとドラッグします。"
-          }
-        }
-      }
-    },
-    "Move wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet." : {
-      "comment" : "Remedy line for an RF-interference finding in the conflict alert",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wireless-Empfänger (Maus, Tastatur, Wi-Fi-Dongles) vom Grafiktablett entfernen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aleje los receptores inalámbricos (ratones, teclados, dongles Wi-Fi) de la tableta."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ワイヤレスレシーバー（マウス、キーボード、Wi-Fi ドングル）をタブレットから遠ざけてください。"
           }
         }
       }
@@ -14482,35 +14769,6 @@
         }
       }
     },
-    "Potential Conflicts Detected" : {
-      "comment" : "Alert title when user taps Fix on the Conflicts row",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mögliche Konflikte erkannt"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Potential Conflicts Detected"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Posibles conflictos detectados"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "潜在的な競合を検出しました"
-          }
-        }
-      }
-    },
     "Preparing calibration…" : {
       "comment" : "A message in the calibration overlay indicating that it is preparing.",
       "isCommentAutoGenerated" : true,
@@ -15471,29 +15729,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MockTabを終了"
-          }
-        }
-      }
-    },
-    "Quit or disable it, then restart MockTab. Check System Settings → General → Login Items to stop it launching at startup." : {
-      "comment" : "Remedy line for a conflicting-driver finding in the conflict alert",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beenden oder deaktivieren, dann MockTab neu starten. Unter Systemeinstellungen → Allgemein → Anmeldeobjekte den automatischen Start verhindern."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ciérrelo o desactívelo y luego reinicie MockTab. En Configuración del sistema → General → Elementos de inicio de sesión, evite que se inicie automáticamente."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "終了または無効にしてから、MockTab を再起動してください。「システム設定」→「一般」→「ログイン項目」で自動起動を無効にできます。"
           }
         }
       }
@@ -18476,35 +18711,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "接続中のタブレットをすべて表示"
-          }
-        }
-      }
-    },
-    "Show details about detected conflicts with other tablet drivers and how to resolve them." : {
-      "comment" : "Tooltip on Fix button for Conflicts row",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Details zu erkannten Konflikten mit anderen Grafiktablett-Treibern anzeigen und erfahren, wie du sie beheben kannst."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Show details about detected conflicts with other tablet drivers and how to resolve them."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar detalles sobre los conflictos detectados con otros controladores de tableta y cómo resolverlos."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "他のタブレットドライバーとの競合の詳細と、その解決方法を表示します。"
           }
         }
       }

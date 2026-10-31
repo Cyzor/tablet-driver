@@ -107,7 +107,9 @@ struct CaptureResult: Codable {
     /// - 28: `appEnvironment.otherMockTabCopies` and `competingDrivers`.
     /// - 29: `appSettings.penBindings` from the pen in use at the end, with
     ///   `penBindingSources` and `penBindingsTool`.
-    var captureVersion: Int = 29
+    /// - 30: `competingDrivers` holds process names and bundle IDs;
+    ///   `appEnvironment.otherWacomApps`.
+    var captureVersion: Int = 30
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -665,8 +667,11 @@ struct CaptureAppEnvironment: Codable {
     let installLocation: String
     /// Other running copies of MockTab. Each reads the tablet and clicks too.
     var otherMockTabCopies: Int? = nil
-    /// Other tablet drivers running, by the Conflicts row's labels.
+    /// Other tablet drivers running, by process name or bundle ID (the
+    /// Conflicts row's labels before version 30).
     var competingDrivers: [String]? = nil
+    /// Wacom apps running that leave the tablet alone, such as its updater.
+    var otherWacomApps: [String]? = nil
 }
 
 struct CaptureAppSettings: Codable {

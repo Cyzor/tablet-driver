@@ -274,12 +274,14 @@ extension InfoView {
                 String(localized: "Conflicts", comment: "Row label in Info tab status table"),
                 value: conflicts.isEmpty
                     ? String(localized: "None detected", comment: "Conflicts status value — no conflicts")
+                    : conflicts.count == 1
+                    ? conflicts[0].rowValue
                     : String(localized: "\(conflicts.count) detected", comment: "Conflicts status value when conflicts are found, showing count"),
                 ok: conflicts.isEmpty ? true : false,
                 action: conflicts.isEmpty ? nil : { showConflictAlert() },
-                // Ellipsis: opens an alert rather than fixing anything directly.
-                actionLabel: String(localized: "Fix…", comment: "Button on the Conflicts row that opens an alert describing the detected conflicts"),
-                actionHelp: String(localized: "Show details about detected conflicts with other tablet drivers and how to resolve them.", comment: "Tooltip on Fix button for Conflicts row"),
+                // Ellipsis: opens an alert.
+                actionLabel: String(localized: "Details…", comment: "Button on the Conflicts row that opens an alert describing the detected conflicts"),
+                actionHelp: String(localized: "Show what may affect the tablet.", comment: "Tooltip on Details button for Conflicts row"),
                 reservesActionSpace: true
             )
 
@@ -302,7 +304,7 @@ extension InfoView {
     ///
     /// Trailing ellipsis only when the action needs more from the user
     /// before completing (a prompt, alert, sheet). "Enable"/"Disable" act at
-    /// once; "Grant…"/"Fix…" don't.
+    /// once; "Grant…"/"Details…" don't.
     @ViewBuilder
     func row(
         _ label: String, value: String,

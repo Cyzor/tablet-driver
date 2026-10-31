@@ -351,13 +351,15 @@ final class CaptureSessionCoordinator: ObservableObject {
             $0.bundleIdentifier == Bundle.main.bundleIdentifier && $0.processIdentifier != ownPID
         }.count
         let names = Set(running.compactMap(\.localizedName) + running.compactMap(\.bundleIdentifier))
+        let conflicts = ConflictProcessMatcher.matches(liveNames: names)
         return CaptureAppEnvironment(
             accessibilityGranted: AXIsProcessTrusted(),
             inputMonitoringGranted:
                 IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted,
             installLocation: location,
             otherMockTabCopies: otherCopies,
-            competingDrivers: ConflictProcessMatcher.matchedLabels(liveNames: names))
+            competingDrivers: conflicts.drivers.map(\.name),
+            otherWacomApps: conflicts.wacomHelpers)
     }
 
     private func touchSettingsSnapshot(_ source: DeviceContext?) -> CaptureTouchSettings? {

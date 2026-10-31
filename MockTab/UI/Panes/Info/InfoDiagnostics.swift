@@ -325,8 +325,19 @@ extension InfoView {
         } else {
             lines += [String(localized: "Conflicts      : \(conflicts.count)", comment: "Diagnostic: number of conflicting drivers")]
             for conflict in conflicts {
-                lines += ["  ⚠ \(conflict.description)"]
+                switch conflict {
+                case .driver(_, let names):
+                    lines += names.map { "  ⚠ \($0)" }
+                case .interference(let level):
+                    let value = level.formatted(.number.precision(.fractionLength(1)))
+                    lines += ["  ⚠ " + String(localized: "RF interference: \(value) pt/sample", comment: "Conflict detection: RF interference jitter")]
+                }
             }
+        }
+        // Listed for reports, not counted: they leave the tablet alone.
+        let helpers = ConflictProcessMatcher.matches(liveNames: Self.knownRunningAppNames ?? []).wacomHelpers
+        if !helpers.isEmpty {
+            lines += [String(localized: "Wacom helpers  : \(helpers.joined(separator: ", "))", comment: "Diagnostic: harmless Wacom apps running, such as its updater; the argument lists bundle IDs")]
         }
 
         // Copied on the pen thread, which updates these with every report.

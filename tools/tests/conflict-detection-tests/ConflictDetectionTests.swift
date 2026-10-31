@@ -40,16 +40,16 @@ private func expectEqual<T: Equatable>(_ a: T, _ b: T, _ message: @autoclosure (
 /// x, which used to make an empty name match the first competingProcesses
 /// entry regardless of what was actually running.
 private func testEmptyNameNeverMatches() {
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: [""])
-    expect(found.isEmpty, "empty-string process name produced a false-positive finding")
+    let found = ConflictProcessMatcher.matches(liveNames: [""])
+    expect(found == .init(), "empty-string process name produced a false-positive finding")
 }
 
 /// "Xencelabs" (a harmless UI helper) is a literal prefix of
 /// "XencelabsDriver" (the actual driver process). Prefix matching used to
 /// flag the harmless helper as the driver conflict.
 private func testHelperProcessThatPrefixesADriverNameDoesNotMatch() {
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: ["Xencelabs"])
-    expect(found.isEmpty, "a helper process whose name prefixes a real driver name should not match")
+    let found = ConflictProcessMatcher.matches(liveNames: ["Xencelabs"])
+    expect(found == .init(), "a helper process whose name prefixes a real driver name should not match")
 }
 
 private func testUnrelatedRunningAppsProduceNoFindings() {
@@ -57,52 +57,69 @@ private func testUnrelatedRunningAppsProduceNoFindings() {
         "Finder", "com.apple.finder", "Safari", "com.apple.Safari",
         "Xcode", "com.apple.dt.Xcode", "",
     ]
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: liveNames)
-    expect(found.isEmpty, "unrelated running apps produced findings: \(found)")
+    let found = ConflictProcessMatcher.matches(liveNames: liveNames)
+    expect(found == .init(), "unrelated running apps produced findings: \(found)")
 }
 
 // MARK: - Real matches still fire
 
+private func driverNames(_ m: ConflictProcessMatcher.Matches) -> [String] { m.drivers.map(\.name) }
+
 private func testExactNameMatches() {
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: ["OpenTabletDriver.UX"])
-    expectEqual(found, ["OpenTabletDriver UX"], "exact process name should match")
+    let found = ConflictProcessMatcher.matches(liveNames: ["OpenTabletDriver.UX"])
+    expectEqual(found.drivers, [.init(vendor: .openTabletDriver, name: "OpenTabletDriver.UX")],
+                "exact process name should match")
 }
 
-/// Wacom apps match by bundle ID, whatever they're named.
+/// Wacom apps match by bundle ID, whatever they're named; helpers that
+/// leave the tablet alone are kept apart from drivers.
 private func testWacomAppsMatchByBundleID() {
     let liveNames: Set<String> = [
         "WacomTouchDriver", "com.wacom.WacomTouchDriver",
         "UpgradeHelper", "com.wacom.UpgradeHelper",
         "Wacom Center", "com.wacom.WacomCenter",
     ]
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: liveNames)
-    expectEqual(found, [
-        "Wacom software (UpgradeHelper)", "Wacom software (WacomCenter)",
-        "Wacom software (WacomTouchDriver)",
-    ], "every running Wacom app should be reported once")
+    let found = ConflictProcessMatcher.matches(liveNames: liveNames)
+    expectEqual(found.drivers, [.init(vendor: .wacom, name: "com.wacom.WacomTouchDriver")],
+                "every running Wacom driver should be reported once")
+    expectEqual(found.wacomHelpers, ["com.wacom.UpgradeHelper", "com.wacom.WacomCenter"],
+                "Wacom helpers should be listed apart from drivers")
+}
+
+private func testWacomHelpersAloneAreNotDrivers() {
+    let found = ConflictProcessMatcher.matches(liveNames: ["com.wacom.UpgradeHelper"])
+    expect(found.drivers.isEmpty, "a Wacom updater alone should not count as a driver")
+}
+
+/// A Wacom app outside the helper list counts as a driver.
+private func testUnknownWacomAppCountsAsDriver() {
+    let found = ConflictProcessMatcher.matches(liveNames: ["com.wacom.SomethingNew"])
+    expectEqual(driverNames(found), ["com.wacom.SomethingNew"],
+                "an unlisted Wacom app should count as a driver")
 }
 
 private func testWacomNamesWithoutBundleIDDoNotMatch() {
-    let found = ConflictProcessMatcher.matchedLabels(
+    let found = ConflictProcessMatcher.matches(
         liveNames: ["WacomTabletDriver", "com.wacom.", "org.example.com.wacom.Tool"])
-    expect(found.isEmpty, "Wacom-like names without a Wacom bundle ID produced findings: \(found)")
+    expect(found == .init(), "Wacom-like names without a Wacom bundle ID produced findings: \(found)")
 }
 
 private func testXencelabsDriverMatchesButHelpersDoNot() {
     // XencelabsAgent and Xencelabs (UI helpers) are deliberately excluded —
     // only the actual driver process is a real conflict risk.
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: ["XencelabsDriver"])
-    expectEqual(found, ["Xencelabs Driver"], "Xencelabs driver process should match")
+    let found = ConflictProcessMatcher.matches(liveNames: ["XencelabsDriver"])
+    expectEqual(found.drivers, [.init(vendor: .xencelabs, name: "XencelabsDriver")],
+                "Xencelabs driver process should match")
 
-    let helpersOnly = ConflictProcessMatcher.matchedLabels(liveNames: ["XencelabsAgent", "Xencelabs"])
-    expect(helpersOnly.isEmpty, "Xencelabs UI helpers should not be flagged as conflicts")
+    let helpersOnly = ConflictProcessMatcher.matches(liveNames: ["XencelabsAgent", "Xencelabs"])
+    expect(helpersOnly == .init(), "Xencelabs UI helpers should not be flagged as conflicts")
 }
 
-private func testMultipleDistinctProcessesAllReported() {
-    let liveNames: Set<String> = ["com.wacom.TabletDriver", "OpenTabletDriver.UX", ""]
-    let found = ConflictProcessMatcher.matchedLabels(liveNames: liveNames)
-    expectEqual(Set(found), ["Wacom software (TabletDriver)", "OpenTabletDriver UX"],
-                "distinct competing processes should each be reported")
+private func testMultipleDistinctProcessesAllReportedInVendorOrder() {
+    let liveNames: Set<String> = ["XencelabsDriver", "OpenTabletDriver.UX", "com.wacom.TabletDriver", ""]
+    let found = ConflictProcessMatcher.matches(liveNames: liveNames)
+    expectEqual(driverNames(found), ["com.wacom.TabletDriver", "OpenTabletDriver.UX", "XencelabsDriver"],
+                "distinct competing processes should each be reported, by vendor")
 }
 
 // MARK: - Runner
@@ -115,9 +132,11 @@ enum ConflictDetectionTestRunner {
         testUnrelatedRunningAppsProduceNoFindings()
         testExactNameMatches()
         testWacomAppsMatchByBundleID()
+        testWacomHelpersAloneAreNotDrivers()
+        testUnknownWacomAppCountsAsDriver()
         testWacomNamesWithoutBundleIDDoNotMatch()
         testXencelabsDriverMatchesButHelpersDoNot()
-        testMultipleDistinctProcessesAllReported()
+        testMultipleDistinctProcessesAllReportedInVendorOrder()
 
         if failures == 0 {
             print("ok — \(checks) checks passed")

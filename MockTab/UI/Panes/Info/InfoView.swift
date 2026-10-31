@@ -282,49 +282,103 @@ struct InfoView: View {
 
     // MARK: - Conflict detection
 
-    struct ConflictFinding {
-        let description: String
-        let remedy: String
+    enum ConflictFinding: Equatable {
+        /// Process names or bundle IDs, for the diagnostics text.
+        case driver(ConflictProcessMatcher.Vendor, names: [String])
+        case interference(pointsPerSample: Double)
+
+        /// What the Conflicts row shows when this is the only finding.
+        var rowValue: String {
+            switch self {
+            case .driver(.wacom, _):
+                String(localized: "Wacom driver", comment: "Conflicts status value: Wacom's driver is running")
+            case .driver(.openTabletDriver, _):
+                "OpenTabletDriver"
+            case .driver(.xencelabs, _):
+                String(localized: "Xencelabs driver", comment: "Conflicts status value: the Xencelabs driver is running")
+            case .interference:
+                Self.interferenceTitle
+            }
+        }
+
+        static var interferenceTitle: String {
+            String(localized: "Wireless interference", comment: "Conflicts status value and alert title: wireless interference makes the pen jitter")
+        }
     }
 
     private func detectConflicts(liveNames: Set<String>) -> [ConflictFinding] {
-        var found: [ConflictFinding] = []
-
-        let driverRemedy = String(localized: "Quit or disable it, then restart MockTab. Check System Settings → General → Login Items to stop it launching at startup.", comment: "Remedy line for a conflicting-driver finding in the conflict alert")
-        for label in ConflictProcessMatcher.matchedLabels(liveNames: liveNames) {
-            found.append(ConflictFinding(
-                description: String(localized: "Conflicting driver: \(label)", comment: "Conflict detection: named process is running"),
-                remedy: driverRemedy))
-        }
+        let drivers = ConflictProcessMatcher.matches(liveNames: liveNames).drivers
+        var found = Dictionary(grouping: drivers, by: \.vendor)
+            .sorted { $0.key < $1.key }
+            .map { ConflictFinding.driver($0.key, names: $0.value.map(\.name)) }
 
         let jitter = HIDThread.shared.performAndWait {
             [injector = tabletManager.activeContext?.injector] in
             injector.map { (isJittery: $0.isJittery, level: $0.jitterLevel) }
         }
         if let jitter, jitter.isJittery {
-            let level = Double(jitter.level).formatted(.number.precision(.fractionLength(1)))
-            found.append(ConflictFinding(
-                description: String(localized: "RF interference: \(level) pt/sample", comment: "Conflict detection: RF interference jitter"),
-                remedy: String(localized: "Move wireless receivers (mice, keyboards, Wi-Fi dongles) away from the tablet.", comment: "Remedy line for an RF-interference finding in the conflict alert")))
+            found.append(.interference(pointsPerSample: Double(jitter.level)))
         }
 
         return found
     }
 
     func showConflictAlert() {
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = String(localized: "Potential Conflicts Detected", comment: "Alert title when user taps Fix on the Conflicts row")
-
-        let intro = String(localized: "MockTab found the following issues that may interfere with tablet operation:", comment: "First sentence of conflict alert body")
-        var sections = [intro]
-        for (i, conflict) in conflicts.enumerated() {
-            sections.append("\(i + 1). \(conflict.description)\n   \(conflict.remedy)")
+        var vendors: [ConflictProcessMatcher.Vendor] = []
+        var interference = false
+        for conflict in conflicts {
+            switch conflict {
+            case .driver(let vendor, _): vendors.append(vendor)
+            case .interference: interference = true
+            }
         }
 
-        alert.informativeText = sections.joined(separator: "\n\n")
-        alert.addButton(withTitle: "OK")
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        var paragraphs: [String] = []
+        if let vendor = vendors.first, vendors.count == 1 {
+            alert.messageText = Self.runningTitle(vendor)
+            paragraphs.append(String(localized: "While it runs, the pointer may jump or click on its own. Quit or uninstall it.", comment: "Conflict alert body when one other tablet driver is running"))
+        } else if !vendors.isEmpty {
+            alert.messageText = String(localized: "Other tablet drivers are running", comment: "Conflict alert title when drivers from two or more vendors are running")
+            let names = vendors.map(Self.sentenceName).formatted(.list(type: .and))
+            paragraphs.append(String(localized: "While \(names) run, the pointer may jump or click on its own. Quit or uninstall them.", comment: "Conflict alert body when two or more other tablet drivers are running; the argument lists them, such as \"the Wacom driver and OpenTabletDriver\""))
+        }
+        if interference {
+            if vendors.isEmpty {
+                alert.messageText = ConflictFinding.interferenceTitle
+                paragraphs.append(String(localized: "Move mouse, keyboard, and Wi-Fi receivers away from the tablet.", comment: "Conflict alert body for wireless interference"))
+            } else {
+                paragraphs.append(String(localized: "Wireless interference also affects the pen. Move mouse, keyboard, and Wi-Fi receivers away from the tablet.", comment: "Conflict alert paragraph for wireless interference, after the text about other drivers"))
+            }
+        }
+
+        alert.informativeText = paragraphs.joined(separator: "\n\n")
+        alert.addButton(withTitle: String(localized: "OK", comment: "Button that closes the conflict alert"))
         alert.runModal()
+    }
+
+    private static func runningTitle(_ vendor: ConflictProcessMatcher.Vendor) -> String {
+        switch vendor {
+        case .wacom:
+            String(localized: "The Wacom driver is running", comment: "Conflict alert title")
+        case .openTabletDriver:
+            String(localized: "OpenTabletDriver is running", comment: "Conflict alert title")
+        case .xencelabs:
+            String(localized: "The Xencelabs driver is running", comment: "Conflict alert title")
+        }
+    }
+
+    /// Mid-sentence name, for the list in the alert body.
+    private static func sentenceName(_ vendor: ConflictProcessMatcher.Vendor) -> String {
+        switch vendor {
+        case .wacom:
+            String(localized: "the Wacom driver", comment: "Mid-sentence name in a list of running drivers, such as \"the Wacom driver and OpenTabletDriver\"")
+        case .openTabletDriver:
+            "OpenTabletDriver"
+        case .xencelabs:
+            String(localized: "the Xencelabs driver", comment: "Mid-sentence name in a list of running drivers, such as \"the Xencelabs driver and OpenTabletDriver\"")
+        }
     }
 
     func enableLaunchAtLogin() {
