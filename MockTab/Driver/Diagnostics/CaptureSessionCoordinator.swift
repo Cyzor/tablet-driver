@@ -217,7 +217,11 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// unlike `touchSettingsSnapshot()` — gating these the same way left
     /// non-Wacom captures with no app-side configuration at all.
     private func appSettingsSnapshot(_ source: DeviceContext?) -> CaptureAppSettings? {
-        guard let s = source?.settings else { return nil }
+        guard let source else { return nil }
+        let s = source.settings
+        let band = HIDThread.shared.performAndWait { [injector = source.injector] in
+            injector.penDeadBandReading
+        }
         return CaptureAppSettings(
             activeAreaX: s.activeAreaX,
             activeAreaY: s.activeAreaY,
@@ -246,7 +250,13 @@ final class CaptureSessionCoordinator: ObservableObject {
             requireContact: s.requireContact.kindNames,
             doubleClickDistance: s.doubleClickDistance,
             relativeCursorMovement: s.relativeCursorMovement,
-            invertRotation: s.invertRotation)
+            invertRotation: s.invertRotation,
+            penDeadBand: band.map {
+                CapturePenDeadBand(
+                    width: $0.width, lastApplied: $0.lastApplied, setting: $0.setting,
+                    productID: String(format: "0x%04X", $0.deviceProductID),
+                    pairedProductID: $0.pairedProductID == 0 ? nil : String(format: "0x%04X", $0.pairedProductID))
+            })
     }
 
     /// Every tool the registry has ever recorded for this tablet, newest

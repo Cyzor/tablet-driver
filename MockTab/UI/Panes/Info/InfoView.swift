@@ -428,11 +428,13 @@ struct PenThreadReadings {
     /// Nil with no active tablet.
     let jitterHistogram: [UInt64]?
     let staleModifierCacheDrops: UInt64
+    let deadBand: InputInjector.PenDeadBandReading?
     let probe: Probe
 
     init(injector: InputInjector?, probe p: LatencyProbe) {
         jitterHistogram = injector?.jitterHistogram
         staleModifierCacheDrops = injector?.staleModifierCacheDrops ?? 0
+        deadBand = injector?.penDeadBandReading
         probe = Probe(
             reportCount: p.reportCount, averageMs: p.averageMs, worstMs: p.worstMs,
             stallCount: p.stallCount, totalAverageMs: p.totalAverageMs,

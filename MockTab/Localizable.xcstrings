@@ -341,6 +341,29 @@
         }
       }
     },
+    "Pen dead band  : %lld counts, last applied %lld (setting %lld, tablet %@)" : {
+      "comment" : "Diagnostic: tablet counts the pen must move before the cursor follows; the width last applied to a report; the stored setting (-1 = the tablet's default); the product IDs the default came from",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stift-Totzone  : %1$lld Counts, zuletzt angewendet %2$lld (Einstellung %3$lld, Tablett %4$@)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zona muerta del lápiz: %1$lld unidades, última aplicada %2$lld (ajuste %3$lld, tableta %4$@)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンのデッドバンド: %1$lld カウント、最後の適用値 %2$lld（設定 %3$lld、タブレット %4$@）"
+          }
+        }
+      }
+    },
     "Show what may affect the tablet." : {
       "comment" : "Tooltip on Details button for Conflicts row",
       "localizations" : {

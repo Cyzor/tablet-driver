@@ -109,7 +109,8 @@ struct CaptureResult: Codable {
     ///   `penBindingSources` and `penBindingsTool`.
     /// - 30: `competingDrivers` holds process names and bundle IDs;
     ///   `appEnvironment.otherWacomApps`.
-    var captureVersion: Int = 30
+    /// - 31: `appSettings.penDeadBand`.
+    var captureVersion: Int = 31
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -706,6 +707,11 @@ struct CaptureAppSettings: Codable {
     var doubleClickDistance: Double?
     var relativeCursorMovement: Bool?
     var invertRotation: Bool?
+    /// The pen dead band at capture start, as the pen thread holds it:
+    /// width from the current settings, width last applied to a report (0
+    /// before the pen first enters range), the stored setting (-1 for the
+    /// tablet's default), and the product IDs the default came from.
+    var penDeadBand: CapturePenDeadBand?
 
     // Buttons — explains "a pen button does nothing".
     /// The active pen's actions as the injector reads them, by kind only, so
@@ -718,6 +724,15 @@ struct CaptureAppSettings: Codable {
     /// The pen `penBindings` belong to, named as in `everSeenTools`. Nil
     /// when no pen entered since launch, so they're the tablet's defaults.
     var penBindingsTool: String?
+}
+
+/// See `CaptureAppSettings.penDeadBand`.
+struct CapturePenDeadBand: Codable {
+    var width: Int
+    var lastApplied: Int
+    var setting: Int
+    var productID: String
+    var pairedProductID: String?
 }
 
 /// `CaptureAppSettings`' pen fields, read when the capture ends.

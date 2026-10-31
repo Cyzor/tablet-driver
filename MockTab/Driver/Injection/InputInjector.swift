@@ -452,6 +452,25 @@ final class InputInjector: @unchecked Sendable {
 
     /// The setting, or the tablet's default when unset. A tablet on the
     /// wireless kit is named by the paired product.
+    /// The dead band as it stands, for diagnostics: the width the current
+    /// settings give, the width last applied to a report, and the product
+    /// IDs the default was chosen from. Read on HIDThread.
+    struct PenDeadBandReading {
+        let width: Int
+        let lastApplied: Int
+        let setting: Int
+        let deviceProductID: Int
+        let pairedProductID: Int
+    }
+
+    var penDeadBandReading: PenDeadBandReading? {
+        guard let snap = injectionSnapshot else { return nil }
+        return PenDeadBandReading(
+            width: penDeadBandWidth(snap: snap), lastApplied: positionDeadBand.width,
+            setting: snap.penDeadBand, deviceProductID: deviceProductID,
+            pairedProductID: snap.pairedProductID)
+    }
+
     func penDeadBandWidth(snap: InjectionSnapshot) -> Int {
         if snap.penDeadBand >= 0 { return snap.penDeadBand }
         let productID = snap.pairedProductID != 0 ? snap.pairedProductID : deviceProductID

@@ -346,6 +346,13 @@ extension InfoView {
             PenThreadReadings(injector: injector, probe: .shared)
         }
 
+        if let band = pen.deadBand {
+            let ids = band.pairedProductID != 0
+                ? String(format: "0x%04X → 0x%04X", band.deviceProductID, band.pairedProductID)
+                : String(format: "0x%04X", band.deviceProductID)
+            lines += [String(localized: "Pen dead band  : \(band.width) counts, last applied \(band.lastApplied) (setting \(band.setting), tablet \(ids))", comment: "Diagnostic: tablet counts the pen must move before the cursor follows; the width last applied to a report; the stored setting (-1 = the tablet's default); the product IDs the default came from")]
+        }
+
         if let jitterHist = pen.jitterHistogram {
             let jitterTotal = jitterHist.reduce(0, +)
             if jitterTotal > 0 {
