@@ -61,7 +61,7 @@ struct PenFeelView: View {
                         "Radius for reliable double-clicks."
                 )
                 .help(
-                    "How close a second tap must land to the first to count as a double-click. Drag to Off to disable position snapping.")
+                    "How close a second tap must land to the first to count as a double-click.")
             }
 
             Section("Movement") {
