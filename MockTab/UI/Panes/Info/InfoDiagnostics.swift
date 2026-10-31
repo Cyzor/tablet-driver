@@ -273,7 +273,7 @@ extension InfoView {
     /// Deliberately not a live-reading computed property — an earlier
     /// version re-rendered on any incidental InfoView redraw, discarding an
     /// in-progress text selection. Called explicitly and cached.
-    func buildDiagnosticText() -> String {
+    func buildDiagnosticText(pen: PenThreadReadings) -> String {
         var lines: [String] = []
 
         lines += [String(localized: "Generated : \(DateStamp.full())", comment: "Diagnostic: timestamp when info was generated")]
@@ -338,12 +338,6 @@ extension InfoView {
         let helpers = ConflictProcessMatcher.matches(liveNames: Self.knownRunningAppNames ?? []).wacomHelpers
         if !helpers.isEmpty {
             lines += [String(localized: "Wacom helpers  : \(helpers.joined(separator: ", "))", comment: "Diagnostic: harmless Wacom apps running, such as its updater; the argument lists bundle IDs")]
-        }
-
-        // Copied on the pen thread, which updates these with every report.
-        let pen = HIDThread.shared.performAndWait {
-            [injector = tabletManager.activeContext?.injector] in
-            PenThreadReadings(injector: injector, probe: .shared)
         }
 
         if let band = pen.deadBand {

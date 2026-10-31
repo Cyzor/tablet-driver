@@ -455,7 +455,7 @@ final class InputInjector: @unchecked Sendable {
     /// The dead band as it stands, for diagnostics: the width the current
     /// settings give, the width last applied to a report, and the product
     /// IDs the default was chosen from. Read on HIDThread.
-    struct PenDeadBandReading {
+    struct PenDeadBandReading: Sendable {
         let width: Int
         let lastApplied: Int
         let setting: Int

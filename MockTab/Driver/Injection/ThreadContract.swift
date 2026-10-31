@@ -69,4 +69,12 @@ extension HIDThread {
         done.wait()
         return result!
     }
+
+    /// Runs `body` on the pen thread and hands back its result without
+    /// blocking the caller, which keeps main from waiting on the pen thread.
+    func value<T: Sendable>(_ body: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in
+            perform { continuation.resume(returning: body()) }
+        }
+    }
 }

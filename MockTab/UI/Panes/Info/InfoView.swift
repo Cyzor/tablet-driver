@@ -179,18 +179,20 @@ struct InfoView: View {
     private func refresh() {
         refreshPermissions()
         launchAtLogin = Self.knownLaunchAtLogin
-        if let names = Self.knownRunningAppNames { conflicts = detectConflicts(liveNames: names) }
-        refreshDiagnosticSnapshot()
-        // Both queries are round trips to system services, about 60 ms
-        // together, so they run off the main thread.
+        // Both system queries are round trips to services, about 60 ms
+        // together, so they run off the main thread, and main never waits
+        // on the pen thread for its readings either.
         Task {
+            let pen = await penReadings()
+            if let names = Self.knownRunningAppNames { conflicts = detectConflicts(liveNames: names, pen: pen) }
+            showDiagnostics(pen)
             async let login = Self.readLaunchAtLogin()
             async let names = Task.detached { Self.runningAppNames() }.value
             let (enabled, liveNames) = await (login, names)
             Self.knownRunningAppNames = liveNames
             launchAtLogin = enabled
-            conflicts = detectConflicts(liveNames: liveNames)
-            refreshDiagnosticSnapshot()
+            conflicts = detectConflicts(liveNames: liveNames, pen: pen)
+            showDiagnostics(pen)
         }
     }
 
@@ -239,9 +241,20 @@ struct InfoView: View {
     /// Single choke point for updating `diagnosticSnapshot`, so every
     /// trigger also stamps `diagnosticSnapshotAt`.
     func refreshDiagnosticSnapshot() {
-        diagnosticSnapshot = buildDiagnosticText()
+        Task { showDiagnostics(await penReadings()) }
+    }
+
+    private func showDiagnostics(_ pen: PenThreadReadings) {
+        diagnosticSnapshot = buildDiagnosticText(pen: pen)
         diagnosticSnapshotAt = Date()
         textHasSelection = false
+    }
+
+    /// Copied on the pen thread, which updates these with every report.
+    private func penReadings() async -> PenThreadReadings {
+        await HIDThread.shared.value { [injector = tabletManager.activeContext?.injector] in
+            PenThreadReadings(injector: injector, probe: .shared)
+        }
     }
 
     /// Ask for Accessibility: the system alert when it can still appear,
@@ -306,18 +319,14 @@ struct InfoView: View {
         }
     }
 
-    private func detectConflicts(liveNames: Set<String>) -> [ConflictFinding] {
+    private func detectConflicts(liveNames: Set<String>, pen: PenThreadReadings) -> [ConflictFinding] {
         let drivers = ConflictProcessMatcher.matches(liveNames: liveNames).drivers
         var found = Dictionary(grouping: drivers, by: \.vendor)
             .sorted { $0.key < $1.key }
             .map { ConflictFinding.driver($0.key, names: $0.value.map(\.name)) }
 
-        let jitter = HIDThread.shared.performAndWait {
-            [injector = tabletManager.activeContext?.injector] in
-            injector.map { (isJittery: $0.isJittery, level: $0.jitterLevel) }
-        }
-        if let jitter, jitter.isJittery {
-            found.append(.interference(pointsPerSample: Double(jitter.level)))
+        if pen.isJittery {
+            found.append(.interference(pointsPerSample: pen.jitterLevel))
         }
 
         return found
@@ -412,8 +421,8 @@ struct InfoView: View {
 
 /// Pen-thread values the diagnostics text shows, copied on the pen thread so
 /// none is read halfway through an update.
-struct PenThreadReadings {
-    struct Probe {
+struct PenThreadReadings: Sendable {
+    struct Probe: Sendable {
         let reportCount: UInt64
         let averageMs: Double
         let worstMs: Double
@@ -427,12 +436,18 @@ struct PenThreadReadings {
 
     /// Nil with no active tablet.
     let jitterHistogram: [UInt64]?
+    /// The hover jitter the conflicts row warns about; false with no
+    /// active tablet.
+    let isJittery: Bool
+    let jitterLevel: Double
     let staleModifierCacheDrops: UInt64
     let deadBand: InputInjector.PenDeadBandReading?
     let probe: Probe
 
     init(injector: InputInjector?, probe p: LatencyProbe) {
         jitterHistogram = injector?.jitterHistogram
+        isJittery = injector?.isJittery ?? false
+        jitterLevel = Double(injector?.jitterLevel ?? 0)
         staleModifierCacheDrops = injector?.staleModifierCacheDrops ?? 0
         deadBand = injector?.penDeadBandReading
         probe = Probe(
