@@ -34,6 +34,12 @@ expect(!guardOn.holds(elapsed: 0.5, travelMM: 1.0), "travel past the settled rad
 expect(!guardOn.holds(elapsed: 0.150, travelMM: 1.0), "at exactly 150 ms the settled radius applies")
 expect(guardOn.holds(elapsed: 0.149, travelMM: 1.0), "just before 150 ms the settling radius applies")
 
+// Samples wait while the nib settles, then a still pen presses in place.
+expect(TouchdownGuard.defers(elapsed: 0), "a contact's first sample waits")
+expect(TouchdownGuard.defers(elapsed: 0.149), "samples wait until the nib settles")
+expect(!TouchdownGuard.defers(elapsed: 0.150), "at 150 ms a held pen is pressing in place")
+expect(!TouchdownGuard.defers(elapsed: 2), "a long press doesn't wait")
+
 // Off.
 let guardOff = TouchdownGuard(radiusMM: 0)
 expect(!guardOff.holds(elapsed: 0, travelMM: 0), "radius 0 never holds")

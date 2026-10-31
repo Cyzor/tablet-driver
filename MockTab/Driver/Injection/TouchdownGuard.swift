@@ -12,6 +12,10 @@ import Foundation
 /// a fraction of a millimeter is many points. The nib wobbles most just after
 /// contact, so the radius is wider then.
 ///
+/// Nothing the pen does while held is lost. Until the nib settles, its
+/// samples wait (`defers`): a stroke replays them where and when they
+/// happened, and a tap posts their pressure where it touched down.
+///
 /// Free of AppKit and TabletKit so the checks can compile it.
 struct TouchdownGuard {
     /// Settled radius in millimeters. 0 turns the guard off.
@@ -29,6 +33,13 @@ struct TouchdownGuard {
         guard radiusMM > 0 else { return false }
         let radius = elapsed < Self.settleSeconds ? radiusMM * Self.settlingFactor : radiusMM
         return travelMM <= radius
+    }
+
+    /// Whether a held contact `elapsed` seconds old may still be a tap or a
+    /// stroke, so its samples wait. Once the nib settles, a pen still held is
+    /// pressing in place, and its pressure goes out as it comes.
+    static func defers(elapsed: Double) -> Bool {
+        elapsed < settleSeconds
     }
 
     /// Pen travel in millimeters between two tablet positions, each a

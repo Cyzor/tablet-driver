@@ -255,6 +255,7 @@ extension InputInjector {
                 // contact would swallow this one's release.
                 tipClickSwallowed = false
                 touchdownHeld = false
+                touchdownWithheld.removeAll(keepingCapacity: true)
                 if fireContactDeferredButtons(at: screenPoint, snap: snap, settings: settings) {
                     // Require Contact: contact performs the held button's
                     // action in place of the tip's click.
@@ -382,19 +383,40 @@ extension InputInjector {
             var heldPressurePosted = false
             if dragging {
                 if touchdownHeld {
-                    // The pointer stays put, but pressure still reaches
-                    // drawing apps: a still pen can build up or grow a dot.
-                    if (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon {
-                        postMouseDrag(
-                            button: activeButton, at: tipDownOrigin, pressure: pressure, point: point,
-                            pose: pose, snapshot: snap)
-                        heldPressurePosted = true
+                    let elapsed = ProcessInfo.processInfo.systemUptime - touchdownTime
+                    if TouchdownGuard.defers(elapsed: elapsed),
+                        touchdownWithheld.count < Self.touchdownWithheldCapacity
+                    {
+                        // Tap or stroke isn't known yet, so the sample waits.
+                        withholdForTouchdown(
+                            screenPoint, pressure: pressure, point: point, pose: pose)
+                    } else {
+                        // Pressing in place. The pointer stays put, but pressure
+                        // still reaches drawing apps: a still pen can build up
+                        // or grow a dot.
+                        if !touchdownWithheld.isEmpty {
+                            noteTouchdownGuardForCapture("presses in place after \(Int(elapsed * 1000)) ms")
+                        }
+                        postWithheldAtTouchdown(snap: snap)
+                        if (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon {
+                            postMouseDrag(
+                                button: activeButton, at: tipDownOrigin, pressure: pressure, point: point,
+                                pose: pose, snapshot: snap)
+                            heldPressurePosted = true
+                        }
                     }
                 } else if !withinDragThreshold {
+                    replayWithheld(snap: snap)
                     postMouseDrag(
                         button: activeButton, at: screenPoint, pressure: pressure, point: point,
                         pose: pose, snapshot: snap)
                     didEmitDragSinceDown = true
+                } else if !touchdownWithheld.isEmpty,
+                    touchdownWithheld.count < Self.touchdownWithheldCapacity
+                {
+                    // The guard let go, but the drag threshold still holds the
+                    // drag: the stroke's start keeps waiting for the replay.
+                    withholdForTouchdown(screenPoint, pressure: pressure, point: point, pose: pose)
                 }
             } else if panScroll.isActive {
                 // Panning: motion became scrolling above; the cursor stays put.
@@ -472,9 +494,57 @@ extension InputInjector {
 
     private static func mmText(_ mm: Double) -> String { String(format: "%.2f", mm) }
 
-    private func noteTouchdownGuardForCapture(_ what: String) {
+    private func noteTouchdownGuardForCapture(_ what: @autoclosure () -> String) {
         guard HIDCapture.shared.isCapturing else { return }
-        HIDCapture.shared.recordNote(tag: "MockTab", "touchdown guard \(what)")
+        HIDCapture.shared.recordNote(tag: "MockTab", "touchdown guard \(what())")
+    }
+
+    /// Keeps a sample the held contact doesn't post, with its report time.
+    private func withholdForTouchdown(
+        _ screenPoint: CGPoint, pressure: Double, point: TabletPoint,
+        pose: (tiltX: Double, tiltY: Double, rotation: Double)
+    ) {
+        touchdownWithheld.append(WithheldPenSample(
+            screen: screenPoint, pressure: pressure, point: point, pose: pose,
+            timestampNs: Self.currentReportTimestampNs))
+    }
+
+    /// A stroke: posts each withheld sample where and when it happened,
+    /// oldest first, so the stroke keeps the start the guard held back.
+    /// Report times keep brush engines' speeds right and never run backward,
+    /// since nothing posted after the press.
+    private func replayWithheld(snap: InjectionSnapshot) {
+        guard !touchdownWithheld.isEmpty else { return }
+        let reportTime = Self.currentReportTimestampNs
+        for sample in touchdownWithheld {
+            Self.currentReportTimestampNs = sample.timestampNs
+            postMouseDrag(
+                button: activeButton, at: sample.screen, pressure: sample.pressure,
+                point: sample.point, pose: sample.pose, snapshot: snap)
+            lastPostedPoint = sample.screen
+            lastPostedPressure = sample.pressure
+        }
+        Self.currentReportTimestampNs = reportTime
+        noteTouchdownGuardForCapture("replays \(touchdownWithheld.count) samples")
+        touchdownWithheld.removeAll(keepingCapacity: true)
+    }
+
+    /// A tap, or a pen pressing in place: posts the withheld pressure at the
+    /// touchdown point, at each sample's report time. The pointer stays put,
+    /// and a dab still gets its pressure.
+    private func postWithheldAtTouchdown(snap: InjectionSnapshot) {
+        guard !touchdownWithheld.isEmpty else { return }
+        let reportTime = Self.currentReportTimestampNs
+        for sample in touchdownWithheld
+        where (sample.pressure - lastPostedPressure).magnitude > Self.pressureEpsilon {
+            Self.currentReportTimestampNs = sample.timestampNs
+            postMouseDrag(
+                button: activeButton, at: tipDownOrigin, pressure: sample.pressure,
+                point: sample.point, pose: sample.pose, snapshot: snap)
+            lastPostedPressure = sample.pressure
+        }
+        Self.currentReportTimestampNs = reportTime
+        touchdownWithheld.removeAll(keepingCapacity: true)
     }
 
     /// Barrel-button changes, through the Xencelabs debounce or directly.
@@ -735,12 +805,16 @@ extension InputInjector {
             tipClickSwallowed = false
             lastTipDown = false
         } else if lastTipDown {
+            // A held tap releases where it touched down, as on a lift. What
+            // it withheld is dropped: the pen has already left.
             postMouseUp(
-                button: activeButton, at: exitPoint,
+                button: activeButton, at: touchdownHeld ? tipDownOrigin : exitPoint,
                 clickCount: activeClickCount,
                 snapshot: snap)
             lastTipDown = false
         }
+        touchdownHeld = false
+        touchdownWithheld.removeAll(keepingCapacity: true)
         releaseHeldPointerButtons(at: exitPoint, snapshot: snap)
         // Safety valve for modifiers stranded by a lost release report.
         releaseAllSyntheticModifiers()
@@ -904,8 +978,11 @@ extension InputInjector {
     ) {
         if touchdownHeld {
             touchdownHeld = false
+            postWithheldAtTouchdown(snap: snap)
             noteTouchdownGuardForCapture("held the tap, \(Self.mmText(touchdownMaxTravelMM)) mm at most")
         }
+        // What the drag threshold still held never posts, as before.
+        touchdownWithheld.removeAll(keepingCapacity: true)
         if tipClickSwallowed {
             tipClickSwallowed = false
             return
