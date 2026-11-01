@@ -906,7 +906,7 @@ final class TabletManager: ObservableObject {
             // At 200 Hz, a Task per report with nothing to do would allocate on
             // the most common path.
             // The UI throttle counts here, not on main, so the reports it
-            // drops never wake main. Wheel steps always go: one dropped
+            // skips never wake main. Wheel steps always go: one skipped
             // would never light the wheel.
             if !point.inProximity { uiThrottle.reset() }
             let uiDue = point.inProximity

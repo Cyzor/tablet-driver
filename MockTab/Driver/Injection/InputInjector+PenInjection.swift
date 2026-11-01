@@ -806,7 +806,7 @@ extension InputInjector {
             lastTipDown = false
         } else if lastTipDown {
             // A held tap releases where it touched down, as on a lift. What
-            // it withheld is dropped: the pen has already left.
+            // it withheld is discarded: the pen has already left.
             postMouseUp(
                 button: activeButton, at: touchdownHeld ? tipDownOrigin : exitPoint,
                 clickCount: activeClickCount,

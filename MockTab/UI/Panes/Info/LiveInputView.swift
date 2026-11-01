@@ -75,7 +75,7 @@ struct LiveInputSectionContent: View {
         }
         // Buttons show the moment they change. The publisher replays its
         // value to each new subscriber, and the body makes a new one every
-        // redraw, so the replay is dropped or each redraw would cause another.
+        // redraw, so the replay is skipped or each redraw would cause another.
         .onReceive(
             deviceContext?.$liveButtons.dropFirst().eraseToAnyPublisher()
                 ?? Empty().eraseToAnyPublisher()
