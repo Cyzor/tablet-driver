@@ -85,7 +85,17 @@ Report `0x11` carries key and ring events:
 
 The center button cycles the ring mode, and the remote lights the matching LED itself. A driver can read the mode but can't set it. (observed)
 
-Report `0x10` is the receiver's pairing table, sent about every 600 ms. It holds five 6-byte slots, with slot `i`'s serial at bytes `i*6 + 4` through `i*6 + 6`. A slot is in use when its serial isn't zero. (observed)
+Where each key sits, from libwacom's layout. A capture that pressed every key once, from the bottom row up, matches it.
+
+| Keys | Position |
+| --- | --- |
+| 1–5 | Around the ring: left, upper left, upper right, right, bottom |
+| 6, 7, 8 | Top row below the ring: left, middle, right |
+| 9, 10, 11 | Second row: left, middle, right |
+| 12, 13, 14 | Third row: left, middle, right |
+| 16, 15, 17 | Bottom row: left, middle, right |
+
+Report `0x10` is the receiver's pairing table, sent about every 600 ms. It holds five 6-byte slots, with slot `i`'s serial at bytes `i*6 + 4` through `i*6 + 6`. A slot is in use when its serial isn't zero. (observed) Feature report `0x20` unpairs: `[0x20, slot]` for one slot, `[0x20, 0xFF]` for all. (kernel)
 
 ## Formats Known Only From the Kernel
 
@@ -100,7 +110,6 @@ No captures of these exist, so read the named function in the kernel's `drivers/
 ## Unverified
 
 - Which key the 22HD's byte 9 bit 2 is.
-- Which ExpressKey Remote bit belongs to which physical key.
 
 ## Out of Scope: Business and Signature Displays
 
