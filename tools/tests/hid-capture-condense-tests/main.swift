@@ -6,7 +6,7 @@
 // the run-collapse/transition-preservation logic behind the "Record Raw Data…"
 // capture tool.
 //
-// The app has no XCTest target, so this runs as a small executable compiled
+// This runs as a small executable compiled
 // against the real HIDCapture.swift. Run via
 // tools/tests/hid-capture-condense-tests/run.sh. Exits non-zero on the first
 // failure.

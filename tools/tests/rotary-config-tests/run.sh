@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run per-dial mode-storage checks against the real source files.
-# The app has no XCTest target, so this builds a small executable from
+# This builds a small executable from
 # RotaryConfig.swift, the model types it references, and the test main.
 set -e
 

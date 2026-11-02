@@ -25,8 +25,7 @@
 //      isn't practical to compile standalone; this test instead verifies
 //      the underlying decode behavior the guard relies on.
 //
-// The app has no XCTest target (by design — see the project's test
-// conventions), so this runs as a small executable compiled against the
+// This runs as a small executable compiled against the
 // real source files. Run via tools/tests/prefs-resilience-tests/run.sh. Exits
 // non-zero on the first failure.
 

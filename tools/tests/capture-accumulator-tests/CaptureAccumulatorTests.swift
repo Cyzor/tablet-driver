@@ -14,8 +14,7 @@
 // One case is replayed from real hardware — report 0xC0 of a Wacom CTH-690
 // capture, whose four samples were all-constant with known values.
 //
-// The app has no XCTest target (by design — see the project's test
-// conventions), so this runs as a small executable compiled against the real
+// This runs as a small executable compiled against the real
 // source file. Run via tools/tests/capture-accumulator-tests/run.sh.
 // Exits non-zero on the first failure.
 

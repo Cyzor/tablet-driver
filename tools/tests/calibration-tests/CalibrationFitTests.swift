@@ -4,8 +4,7 @@
 
 // CalibrationFitTests.swift — Standalone checks for the calibration fitting math.
 //
-// The app has no XCTest target (by design — see the project's test conventions),
-// so these run as a small executable compiled against the real CalibrationData.swift.
+// These run as a small executable compiled against the real CalibrationData.swift.
 // Run via tools/tests/calibration-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation

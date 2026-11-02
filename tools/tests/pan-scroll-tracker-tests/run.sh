@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run Scroll Drag release-velocity checks against the real source
-# file. The app has no XCTest target, so this builds a small executable from
+# file. This builds a small executable from
 # PanScrollTracker.swift plus the test main and runs it.
 # Sibling of tools/tests/touch-state-tracker-tests/run.sh.
 set -e

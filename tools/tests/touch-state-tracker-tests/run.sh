@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run touch-state intent checks against the real source file.
-# The app has no XCTest target, so this builds a small executable from
+# This builds a small executable from
 # TouchStateTracker.swift plus the test main and runs it.
 set -e
 

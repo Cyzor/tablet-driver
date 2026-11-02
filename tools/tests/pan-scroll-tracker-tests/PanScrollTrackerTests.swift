@@ -6,7 +6,7 @@
 // velocity, in particular the backdated-release path that Xencelabs barrel
 // buttons depend on.
 //
-// The app has no XCTest target, so these run as a small executable compiled
+// These run as a small executable compiled
 // against the real PanScrollTracker.swift. Run via
 // tools/tests/pan-scroll-tracker-tests/run.sh. Exits non-zero on the first failure.
 

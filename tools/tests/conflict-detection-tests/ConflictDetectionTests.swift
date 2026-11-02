@@ -6,8 +6,7 @@
 // ConflictProcessMatcher, the name-matching used by the Conflicts row in
 // the Info tab.
 //
-// The app has no XCTest target (by design — see the project's test
-// conventions), so these run as a small executable compiled against the
+// These run as a small executable compiled against the
 // real ConflictProcessMatcher.swift, seeded with synthetic process-name sets.
 // Run via tools/tests/conflict-detection-tests/run.sh. Exits non-zero on the
 // first failure.

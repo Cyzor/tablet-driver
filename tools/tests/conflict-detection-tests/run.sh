@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run the conflict-detection matcher checks against the real
-# source file. The app has no XCTest target, so this builds a small
+# source file. This builds a small
 # executable from ConflictProcessMatcher.swift plus the test main and runs it.
 # Exits non-zero on failure.
 set -e

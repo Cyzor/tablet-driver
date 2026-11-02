@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run HIDCapture.condense(_:) checks against the real source
-# file. The app has no XCTest target, so this builds a small executable from
+# file. This builds a small executable from
 # HIDCapture.swift plus the test main and runs it.
 # Sibling of tools/tests/pan-scroll-tracker-tests/run.sh.
 set -e

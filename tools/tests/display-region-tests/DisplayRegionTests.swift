@@ -6,7 +6,7 @@
 // sub-region mapping (tablet-driver#15): mapping the full tablet active area
 // onto a rectangular sub-region of a display instead of the whole display.
 //
-// The app has no XCTest target, so these run as a small executable compiled
+// These run as a small executable compiled
 // against the real DisplayMapper.swift plus a hand-written stand-in for
 // InjectionSnapshot (see TabletSettingsStub.swift for why). Run via
 // tools/tests/display-region-tests/run.sh. Exits non-zero on the first failure.

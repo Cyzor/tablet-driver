@@ -4,7 +4,7 @@
 
 // main.swift — Standalone checks for TabletFigure.
 //
-// The app has no XCTest target, so these run as a small executable compiled
+// These run as a small executable compiled
 // against the real TabletFigure.swift, the generated TabletLayoutTable.swift,
 // TabletLayoutIdentity.swift, and TabletOrientation.swift. Run via tools/tests/tablet-figure-tests/run.sh.
 // Exits non-zero on failure.

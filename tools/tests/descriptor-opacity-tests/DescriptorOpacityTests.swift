@@ -7,8 +7,7 @@
 // captured from three real devices: a Wacom CTH-690, a Wacom Intuos5 touch L,
 // and a Xencelabs (pen and Quick Keys interfaces).
 //
-// The app has no XCTest target (by design — see the project's test conventions),
-// so this runs as a small executable compiled against the real LiveHIDDescriptorInspector.swift.
+// This runs as a small executable compiled against the real LiveHIDDescriptorInspector.swift.
 // Run via tools/tests/descriptor-opacity-tests/run.sh. Exits non-zero on the first failure.
 
 import Foundation

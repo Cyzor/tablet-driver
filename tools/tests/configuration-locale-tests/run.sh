@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run the configuration-export locale round-trip checks against the real
-# source files. The app has no XCTest target, so this builds a small
+# source files. This builds a small
 # executable from ButtonBinding.swift + ControlSlot.swift (TouchRingMode)
 # plus the test main and runs it. Exits non-zero on failure.
 set -e

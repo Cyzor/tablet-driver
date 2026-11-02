@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run the HID descriptor readability checks against the real source file.
-# The app has no XCTest target, so this builds a small executable from
+# This builds a small executable from
 # LiveHIDDescriptorInspector.swift plus the test main and runs it. Exits non-zero on failure.
 set -e
 

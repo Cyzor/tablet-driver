@@ -5,7 +5,7 @@
 // ConfigurationDisplayRegionTests.swift — Standalone checks for the displayRegion
 // configuration-import backward compatibility added for tablet-driver#15.
 //
-// The app has no XCTest target, so these run as a small executable compiled
+// These run as a small executable compiled
 // against the real ConfigurationImporter.swift (decodeDeviceSettings/decodeStoredSettings)
 // plus a stand-in for the two types only `parse` (never called here) needs —
 // see StubTypes.swift for why. Run via

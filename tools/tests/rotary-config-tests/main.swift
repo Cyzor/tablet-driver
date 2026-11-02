@@ -4,7 +4,7 @@
 
 // main.swift — Standalone checks for per-control rotary mode storage.
 //
-// The app has no XCTest target, so these run as a small executable compiled
+// These run as a small executable compiled
 // against the real RotaryConfig.swift and ControlSlot.swift. Run via
 // tools/tests/rotary-config-tests/run.sh. Exits non-zero on failure.
 

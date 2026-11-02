@@ -1,6 +1,6 @@
 #!/bin/sh
 # Compile and run the settings-namespace claim-rule checks against the real
-# source. The app has no XCTest target, so this builds a small executable from
+# source. This builds a small executable from
 # DeviceInstanceClaims.swift plus the test main.
 #
 # DeviceInstanceClaims imports TabletKit (for DeviceInstanceKey), so it links
