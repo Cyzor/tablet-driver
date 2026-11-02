@@ -45,6 +45,7 @@ repeat each observation.
 | [UC-Logic](UC-Logic-Protocol.md) | Huion, Gaomon, XP-Pen, UGEE: self-description, pen, and buttons |
 | [macOS tablet event synthesis](macOS-Tablet-Event-Synthesis.md) | Proximity, pen, click, and scroll fields that apps check |
 | [Evidence](Evidence/README.md) | Annotated excerpts from captures that back key claims |
+| [Tablet and pen drawings](Tablet-and-Pen-Drawings.md) | Where the drawings come from, why they may differ from your tablet, and how to fix one |
 | [Measurement methods](Measurement-Methods.md) | Captures, edge sweeps, dial turns, and judging tilt with a brush |
 | [Developer notes](Project-Description.md) | Gotchas, advanced defaults keys, and build settings |
 

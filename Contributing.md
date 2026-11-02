@@ -49,6 +49,8 @@ under GPL-3.0-or-later.
 
 Adding a tablet model has its own guide:
 [`TabletKit/Extending-Support.md`](TabletKit/Extending-Support.md).
+[`Notes/Tablet-and-Pen-Drawings.md`](Notes/Tablet-and-Pen-Drawings.md)
+covers how the app draws it.
 
 ## Where to start
 

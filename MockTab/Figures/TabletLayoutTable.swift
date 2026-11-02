@@ -34,8 +34,9 @@
 /// parts. A part reads `<control><side><lane> <start>-<end>`:
 ///
 /// - control: `k` and a count for a run of keys, then `f`, `s`, or `w` for
-///   keys shorter than they are deep, about square, or longer; `c` for a
-///   cluster of keys; `r` for a ring; `d` for a dial; `s` for a strip.
+///   keys shorter than they are deep, about square, or longer, or `o` for
+///   small round keys; `c` for a cluster of keys; `r` for a ring; `d` for
+///   a dial; `s` for a strip.
 /// - side: `L`, `R`, `T`, or `B`, the edge it sits on in landscape.
 /// - lane: 0 nearest the edge, counting inward.
 ///   A trailing `b` marks a part on the tablet's back.

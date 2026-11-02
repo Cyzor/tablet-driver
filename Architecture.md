@@ -116,6 +116,8 @@ MockTab/
   Help/          The Help window's text, one file per language
 ```
 
+[Tablet and pen drawings](Notes/Tablet-and-Pen-Drawings.md) explains how `Figures/` draws every tablet and pen, where their layouts come from, and how to fix one.
+
 Swift extensions can't add stored properties, so a few large classes keep their data in the main file and split their behavior across extensions: `InputInjector` (pen, touch, tablet buttons and dials, and event posting) and `TabletSettings` (saving, profiles, per-app settings).
 
 ## Testing
