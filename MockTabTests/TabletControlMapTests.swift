@@ -74,14 +74,16 @@ struct TabletControlMapTests {
         #expect(!Self.mapped.isEmpty)
         for (spec, map) in Self.mapped {
             let identity = TabletLayoutIdentity.all[spec.productID]!
-            #expect(map.parts.count == identity.entries.count, "\(spec.name)")
-            let keys = map.parts.flatMap(\.keys)
+            // Parts added to a libwacom layout come last, outside its identity.
+            let listed = map.parts.filter { !$0.isAdded }
+            #expect(listed.count == identity.entries.count, "\(spec.name)")
+            let keys = listed.flatMap(\.keys)
             #expect(Set(keys.map(\.key)) == Set(identity.letters), "\(spec.name): every letter mapped")
             #expect(Set(map.targets).count == map.targets.count, "\(spec.name): no target twice")
             for target in map.targets {
                 switch target {
                 case let .expressKey(i): #expect((0..<16).contains(i), "\(spec.name)")
-                case let .bezel(i): #expect((0..<3).contains(i), "\(spec.name)")
+                case let .bezel(i): #expect((0..<ControlTarget.bezelSlotCount).contains(i), "\(spec.name)")
                 case let .ringCenter(i), let .ring(i), let .dial(i), let .strip(i):
                     #expect((0..<2).contains(i), "\(spec.name)")
                 }

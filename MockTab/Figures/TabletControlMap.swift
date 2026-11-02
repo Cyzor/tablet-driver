@@ -67,8 +67,34 @@ struct TabletControlMap: Equatable {
         guard let identity = TabletLayoutIdentity.all[productID],
               Set(identity.letters).count == identity.letters.count
         else { return nil }
-        return make(identity, family: family(for: spec), hasCenterRow: hasCenterRow(spec),
-                    keysAreBezel: spec.buttonCount == 0 && spec.bezelButtonCount > 0)
+        var map = make(identity, family: family(for: spec), hasCenterRow: hasCenterRow(spec),
+                       keysAreBezel: spec.buttonCount == 0 && spec.bezelButtonCount > 0)
+        map.parts += addedParts(productID: productID, identity: identity, bezelButtonCount: spec.bezelButtonCount)
+        return map
+    }
+
+    /// Keys added to a libwacom layout drive the bezel buttons in order,
+    /// after any strip toggles, as the Cintiq 24HD and 22HD report them.
+    static func addedParts(productID: Int, identity: TabletLayoutIdentity, bezelButtonCount: Int) -> [Part] {
+        guard let added = TabletFigure.parseLayouts(TabletLayoutExtras.addedParts)[productID] else { return [] }
+        var slot = identity.modeSwitches.values.filter { if case .strip = $0.control { true } else { false } }.count
+        let end = slot + bezelButtonCount
+        var letter = Character("a").asciiValue!
+        return added.map { part in
+            guard case let .keys(count, _) = part.control else {
+                return Part(entry: .run([]), isAdded: true)
+            }
+            var letters: [Character] = []
+            var keys: [Character: ControlTarget] = [:]
+            for _ in 0..<count {
+                let c = Character(UnicodeScalar(letter))
+                letter += 1
+                letters.append(c)
+                if slot < end { keys[c] = .bezel(slot) }
+                slot += 1
+            }
+            return Part(entry: .run(letters), keys: keys, isAdded: true)
+        }
     }
 
     /// The figure parts for a model by product ID, for drawing it in the

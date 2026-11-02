@@ -60,8 +60,8 @@ for id in ids {
     let name = WacomDeviceRegistry.spec(for: id)?.name ?? "?"
     let order = figure.controlsInReadingOrder()
 
-    // Every control the map drives is drawn, once.
-    let mapped = Set(controls.flatMap { ($0.control.map { [$0] } ?? []) + Array($0.keys.values) })
+    // Every control the map drives is drawn, once. Added parts stay out of reading order.
+    let mapped = Set(controls.filter { !$0.isAdded }.flatMap { ($0.control.map { [$0] } ?? []) + Array($0.keys.values) })
     expect(Set(order) == mapped && order.count == mapped.count,
            "\(hex(id)) \(name): drawn \(order.map(describe)) vs mapped \(mapped.map(describe).sorted())")
 
@@ -184,6 +184,19 @@ for id in ids {
         expect(restores != asymmetric.contains(id),
                "\(hex(id)) turning assignments around twice in \(orientation) \(restores ? "restores" : "doesn't restore") everything")
     }
+}
+
+// Keys added to a libwacom layout drive the bezel buttons left to right,
+// after any strip toggles, in the diagram's shapes.
+for (id, slots) in [(0x00F4, [0, 1, 2]), (0x00F8, [0, 1, 2]), (0x00FA, [2, 3, 4]), (0x005B, [2, 3, 4])] {
+    guard let figure = figure(id), let added = figure.controls?.last(where: \.isAdded),
+          case let .run(letters) = added.entry
+    else { expect(false, "\(hex(id)) has added keys"); continue }
+    expect(letters.compactMap { added.keys[$0] } == slots.map { .bezel($0) }, "\(hex(id)) added keys drive bezel slots \(slots)")
+    let drawn = figure.drawing(.bezel, in: CGRect(x: 0, y: 0, width: 516, height: 196), scale: 2).shapes
+    let targets = slots.map { ControlTarget.bezel($0) }
+    let keys = drawn.filter { $0.target.map(targets.contains) ?? false }.sorted { $0.rect.minX < $1.rect.minX }
+    expect(keys.compactMap(\.target) == targets, "\(hex(id)) added keys draw left to right")
 }
 
 // PTH-860 flipped: keys reverse, the corner lamps' modes move two places, and

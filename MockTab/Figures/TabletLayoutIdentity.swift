@@ -283,8 +283,8 @@ enum TabletLayoutExtras {
     static let packed = "520D: k3oT0 800-898"
     static let identity = "520D: k ABC"
 
-    /// Parts libwacom leaves out of a layout it has, drawn but not driven:
-    /// the Cintiq 24HD's three display buttons on the top bezel, toward the
+    /// Parts libwacom leaves out of a layout it has, whose keys drive the
+    /// bezel buttons left to right: the Cintiq 24HD's three display buttons on the top bezel, toward the
     /// right, placed from the product's photos, and the 22HD's three panel
     /// keys at the top bezel's right end.
     static let addedParts = """

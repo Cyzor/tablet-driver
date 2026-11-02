@@ -64,6 +64,8 @@ struct TabletFigure: Equatable {
         var control: ControlTarget?
         /// Each of the part's keys by letter.
         var keys: [Character: ControlTarget] = [:]
+        /// A part added to libwacom's layout, drawn small in the edge's bare depth.
+        var isAdded = false
     }
 }
 
@@ -495,10 +497,10 @@ extension TabletFigure {
         return m
     }
 
-    /// A part added to a libwacom layout, which drives nothing.
+    /// A part added to a libwacom layout.
     private func isAdded(_ index: Int) -> Bool {
         guard let controls else { return false }
-        return !controls.indices.contains(index)
+        return !controls.indices.contains(index) || controls[index].isAdded
     }
 
     /// Pads and split round buttons, which size like rings.
@@ -529,7 +531,7 @@ extension TabletFigure {
             let frontLanes = lanes.filter { !Self.isBackLane($0) }.count
             depths[side] = frontLanes > 1 ? m.wideBand
                 : laneCount(side) > 1 ? m.band * Self.backLaneBand : m.band
-            // Small buttons that drive nothing ride in a bare edge's depth.
+            // Added small buttons ride in a bare edge's depth.
             if parts.indices.allSatisfy({ parts[$0].side != side || isAdded($0) }) {
                 depths[side] = max(m.margin - m.inset - m.gutter, m.keyDepth)
             }
@@ -657,7 +659,7 @@ extension TabletFigure {
             }
             let items = edgeParts.filter { $0.part.lane == lane }.sorted { $0.part.start < $1.part.start }
                 .map { edgePart in
-                    // Parts added to a libwacom layout have no controls.
+                    // Parts added to a libwacom layout may have no controls.
                     let partControls = controls.flatMap { $0.indices.contains(edgePart.index) ? $0[edgePart.index] : nil }
                     return size(edgePart.part, controls: partControls, edgeLength: edgeLength,
                                 laneDepth: laneDepth / unit, metrics: m)
@@ -925,8 +927,8 @@ extension TabletFigure {
                       metrics m: Metrics) -> Item {
         var item = size(part, keepEveryKey: controls != nil, edgeLength: edgeLength, laneDepth: laneDepth, metrics: m)
         item.controls = controls
-        if self.controls != nil, controls == nil, part.control.isRoundKeys {
-            // An added button drives nothing, so it draws as small as a ring's mode key.
+        if self.controls != nil, controls?.isAdded ?? true, part.control.isRoundKeys {
+            // An added button draws as small as a ring's mode key.
             item.keyLength = m.keyDepth * 0.6
             item.keyGap = max(item.keyGap, item.keyLength * 0.6)
             item.length = Double(item.keyCount) * item.keyLength + Double(item.keyCount - 1) * item.keyGap
@@ -1575,8 +1577,8 @@ extension TabletFigure {
     /// The figure's controls as drawn, in the order you read them: edges
     /// left, top, right, then bottom; parts along each edge from its top or
     /// left; and each part's controls along the edge, then inward. A four-way
-    /// pad reads clockwise from its top key, then its center. Empty without
-    /// `controls`.
+    /// pad reads clockwise from its top key, then its center. Leaves out
+    /// added parts; empty without `controls`.
     func controlsInReadingOrder() -> [ControlTarget] {
         guard let controls else { return [] }
         // Big enough that every key and center button is drawn.
@@ -1607,7 +1609,8 @@ extension TabletFigure {
         let sideOrder: [Side] = [.left, .top, .right, .bottom]
 
         var groups: [(side: Int, along: Double, lane: Int, targets: [ControlTarget])] = []
-        for (part, list) in zip(parts, controls) {
+        // Added parts keep their own numbering and stay put when the tablet turns.
+        for (part, list) in zip(parts, controls) where !list.isAdded {
             let targets = ((list.control.map { [$0] } ?? []) + list.keys.values).filter { center[$0] != nil }
             guard !targets.isEmpty else { continue }
             let points = targets.map { center[$0]! }
