@@ -72,7 +72,7 @@ When clamping values, write `Swift.min(Swift.max(…))`. Don't add a `clamped(to
 
 - Bundle ID `com.cyzor.mocktab`, for macOS 13 and later, on Apple silicon and Intel
 - Signed with Developer ID (team `3R62GZR6Q2`) and the hardened runtime
-- Runs from the menu bar without a Dock icon (`LSUIElement`)
+- Shows a Dock icon unless the user turns it off in Info; the menu bar item stays either way
 - Not sandboxed, because reading tablets and posting events both need access a sandbox doesn't allow
 - Asks for Input Monitoring, to read the tablet, and Accessibility, to post events
 - Build with `xcodebuild -scheme MockTab`, not `-target`

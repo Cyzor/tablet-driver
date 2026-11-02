@@ -123,9 +123,9 @@ Swift extensions can't add stored properties, so a few large classes keep their 
 ## Testing
 
 - **TabletKit:** `cd TabletKit && swift test` replays captured reports through each decoder. It finishes in about a second.
-- **App:** `tools/tests/run-all-tests.sh` runs standalone checks for logic that doesn't fit Xcode's test system.
+- **App:** `tools/tests/run-all-tests.sh` runs standalone checks against the real source files. The `MockTabTests` target holds newer tests in Swift Testing; ⌘U runs it in Xcode.
 
-CI runs both.
+CI runs all three.
 
 ## Rules to Keep
 

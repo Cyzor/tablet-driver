@@ -77,8 +77,12 @@ Each pen sample is a mouse event (`mouseMoved` or `leftMouseDragged`) with
 AppKit matches a press with its drags and its release using two fields.
 Synthetic events leave both at zero, so set them:
 
-- `mouseEventNumber`: add 1 for each press, and repeat that number on the
-  press's drags and release.
+- `mouseEventNumber`: start from the system's own press count (the sum of
+  `CGEventSource.counterForEventType` for the three press types), add 1 for
+  each press, and repeat that number on the press's drags and release.
+  macOS 27 can mishandle a press numbered below the system's count: windows
+  fail to activate, or clicks vanish. (unverified; another input tool
+  reported it and adopted the same fix)
 - `mouseEventClickState`: always set it on the press, 1 for a single click.
   The release repeats the press's value, or uses 0 if the pointer moved
   more than a few points in between.
@@ -102,6 +106,13 @@ leaves the deltas that apps read through `NSEvent` at zero, so fill them in:
 - While momentum carries a scroll on after release, set the scroll phase to
   0 and use the momentum phase instead. Setting both on one event confuses
   AppKit and WebKit.
+- Set scroll phases even without momentum. AppKit keeps phase-free
+  scrolling on the view it first reached until scrolling pauses, so it
+  can't move on to the next view, as in Finder's column view. (observed)
+- AppKit also keeps a phased gesture on the view its first motion picked.
+  When a pan turns clearly to the other axis, end the gesture and begin a
+  new one, as lifting fingers off a trackpad does. (observed, Finder's
+  column view)
 
 **A known limit.** Some web pages reject synthesized scrolling that
 includes momentum, though every field that matters matches a trackpad's

@@ -144,6 +144,12 @@ type, not a barrel button, and bytes 6–7 hold the angle, not pressure. A
 decoder that reads it as a pen packet presses button 1 and jumps pressure on
 every other report. (observed, PTH-850 with an Intuos4/5 Art Pen)
 
+Each rotation packet also carries a position, in the same bytes as a pen
+packet's and just as precise: it sits within 2–4 counts of the midpoint of
+the pen packets around it. Treat it as a sample with the last pen packet's
+pressure, tilt, and buttons, and the Art Pen moves at the full report rate
+instead of half. (observed, PTH-850)
+
 ## ExpressKeys and Touch Ring
 
 **Intuos5 and Intuos Pro gen 1, report `0x03`.** The same layout arrives over
@@ -159,6 +165,12 @@ USB and through the ACK-40401 dongle. (observed, PTH-850)
 
 **Intuos4, report `0x0C`.** `[1]` ring (bit 7 valid, position 0–71), `[2]`
 bit 0 ring center button, `[3]` keys. (kernel, matches OpenTabletDriver)
+
+**Two touches on the ring.** The ring reports one position. A hand resting
+on two spots makes it flip between them on every report, which reads as
+fast back-and-forth turning. Wait for a second report in the new direction
+before treating a reversal as a turn; a real turn loses nothing.
+(observed, PTH-850)
 
 ## Intuos4 Wireless over Bluetooth (PTK-540WL)
 

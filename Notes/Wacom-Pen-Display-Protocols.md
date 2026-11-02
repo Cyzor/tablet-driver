@@ -121,7 +121,7 @@ These TabletKit tests check the layouts above, many with frames from real captur
 
 - [`CintiqV1DecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/CintiqV1DecoderTests.swift) and [`CintiqV1Decoder+PressureDepthTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/CintiqV1Decoder+PressureDepthTests.swift)
 - [`IntuosV1Decoder+ExtendedTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/IntuosV1Decoder+ExtendedTests.swift) (13HD ExpressKeys)
-- [`Wacom24HDTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/Wacom24HDTDecoderTests.swift) and [`Wacom27QHDTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/Wacom27QHDTDecoderTests.swift)
+- [`Wacom24HDTDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/Wacom24HDTDecoderTests.swift) and [`PrecisionTouchDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/PrecisionTouchDecoderTests.swift) (27QHD Touch)
 - [`ExpressKeyRemoteDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/ExpressKeyRemoteDecoderTests.swift)
 - [`WacomPLDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/WacomPLDecoderTests.swift)
 - [`DTUDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/DTUDecoderTests.swift) and [`DTUSDecoderTests`](https://github.com/Cyzor/TabletKit/blob/main/Tests/TabletKitTests/DTUSDecoderTests.swift)

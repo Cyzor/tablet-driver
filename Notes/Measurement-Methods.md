@@ -39,6 +39,15 @@ pen. If it doesn't, the sign or the axis is wrong.
 Press and lift many times at different speeds, and check that pressure
 rises smoothly from first contact, with no jump or dead zone.
 
+## Key Order
+
+Run `tools/hardware-check/key-order.sh` with MockTab open, and give the
+terminal Input Monitoring. It shows one key at a time where it sits on the
+tablet, records which button the tablet reports when you press it, and
+saves each key's raw report. Hold the tablet in landscape, and press only
+the key it asks for. A mismatch means the Buttons pane lights the wrong key
+for that model.
+
 ## Sharing What You Find
 
 Open an issue with the capture and your notes. Remove serial numbers first,
