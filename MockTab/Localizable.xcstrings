@@ -4998,6 +4998,9 @@
         }
       }
     },
+    "Content follows the pen." : {
+
+    },
     "Content follows your fingers." : {
       "localizations" : {
         "de" : {
@@ -5019,6 +5022,9 @@
           }
         }
       }
+    },
+    "Content moves opposite the pen." : {
+
     },
     "Content moves opposite your fingers." : {
       "localizations" : {
@@ -13792,6 +13798,9 @@
         }
       }
     },
+    "Pan View Direction" : {
+      "comment" : "Undo action name: Pan View reverse-direction toggle in the Pen Feel pane"
+    },
     "Pan View Momentum" : {
       "comment" : "Undo action name: Pan View trackpad-style momentum toggle in the Pen Feel pane",
       "localizations" : {
@@ -21847,6 +21856,9 @@
           }
         }
       }
+    },
+    "When on, content moves opposite to the pen while you hold Pan View, like a classic mouse wheel. When off, which is the default, the pen drags content along with it." : {
+
     },
     "When on, content moves opposite to your fingers, like a classic mouse wheel. When off, which is the default, content follows your fingers." : {
       "comment" : "Tooltip on the touch Reverse Direction switch",

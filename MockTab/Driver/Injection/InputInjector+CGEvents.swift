@@ -1083,7 +1083,7 @@ extension InputInjector {
             // `stop`, not `cancel`: no `.began` follows until the pen moves.
             driver.panMomentumTail.stop()
             driver.postPanScroll(driver.panScroll.engage(
-                reverse: snapshot.reverseScrollDirection,
+                reverse: snapshot.activeTool.panScrollReverse,
                 speed: snapshot.activeTool.panScrollSpeed))
         } else {
             let active = SharedPanScrollState.shared.driver ?? driver

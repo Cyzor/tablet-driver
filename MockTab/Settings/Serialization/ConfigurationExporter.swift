@@ -235,7 +235,7 @@ final class ConfigurationExporter {
             return (roundFrac(ud.double(forKey: prefix + key)), nil)
 
         case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection",
-             "panScrollMomentum":
+             "panScrollMomentum", "panScrollReverse":
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.bool(forKey: prefix + key), nil)
 

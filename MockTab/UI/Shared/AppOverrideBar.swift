@@ -58,7 +58,7 @@ struct AppOverrideBar: View {
         "doubleClickDistance",
         "invertRotation", "relativeCursorMovement", "tipUpAssistDelay", "dragThreshold",
         "requireContact",
-        "panScrollSpeed", "panScrollMomentum",
+        "panScrollSpeed", "panScrollMomentum", "panScrollReverse",
     ]
 
     static let buttonKeys: Set<String> = [

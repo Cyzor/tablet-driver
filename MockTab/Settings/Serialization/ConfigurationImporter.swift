@@ -231,7 +231,7 @@ struct ConfigurationImporter {
                 if let v = rawValue as? Double, v.isFinite { values[key] = v }
 
             case "proportionalMapping", "invertRotation", "relativeCursorMovement", "reverseRingDirection",
-                 "panScrollMomentum":
+                 "panScrollMomentum", "panScrollReverse":
                 if let v = rawValue as? Bool { values[key] = v }
 
             case "targetDisplayIndex":

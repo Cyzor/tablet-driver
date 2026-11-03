@@ -107,6 +107,14 @@ final class ToolSettings: ObservableObject {
         didSet { persist("panScrollMomentum", panScrollMomentum) }
     }
 
+    /// When true, Pan View moves content opposite the pen, as a scroll wheel
+    /// does; when false, content follows the pen. Per-tool and per app, like
+    /// the speed. Seeded once from the touch setting; see
+    /// `TabletSettings.seedPanScrollReverse`.
+    @Published var panScrollReverse: Bool = false {
+        didSet { persist("panScrollReverse", panScrollReverse) }
+    }
+
     /// Sends barrel rotation as synthetic tilt, suppressing real tilt. Obsolete
     /// since Art Pens advertise rotation (Photoshop now reads it directly); kept
     /// as a no-UI fallback, read from bare keys only so stale per-device values
@@ -268,6 +276,7 @@ final class ToolSettings: ObservableObject {
             "pressureThreshold", default: Self.deviceDefaultPressureThreshold(prefix: prefix))
         panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
         panScrollMomentum = loadBool("panScrollMomentum", default: false)
+        panScrollReverse = loadBool("panScrollReverse", default: false)
         useRotationAsTilt = ud.bool(forKey: "useRotationAsTilt")
         rotationTiltOffsetDegrees = ud.object(forKey: "rotationTiltOffsetDegrees") as? Double ?? 0.0
         rotationTiltMagnitude = Swift.min(

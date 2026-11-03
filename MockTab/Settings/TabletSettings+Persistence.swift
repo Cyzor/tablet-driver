@@ -95,6 +95,7 @@ extension TabletSettings {
         touchAreaWidth  = Swift.max(0.01, Swift.min(loadDouble("touchAreaWidth",  default: 1.0), 1.0))
         touchAreaHeight = Swift.max(0.01, Swift.min(loadDouble("touchAreaHeight", default: 1.0), 1.0))
         loadPressureCurve()
+        seedPanScrollReverse()
 
         // Sync resolved pressure values and app overrides into activeTool so PenFeel
         // and ButtonsView reflect the active override or profile.
@@ -116,6 +117,16 @@ extension TabletSettings {
         }
         isLoading = false
         migrateTargetDisplayUUID()
+    }
+
+    /// Pan View once took its direction from the touch Reverse Direction
+    /// setting, so a tablet's first load copies that value into Pan View's
+    /// own setting. Writing it either way keeps the two apart from then on.
+    func seedPanScrollReverse() {
+        guard devicePrefix.hasPrefix("device-0x"),
+            ud.object(forKey: devicePrefix + "panScrollReverse") == nil
+        else { return }
+        ud.set(ud.bool(forKey: devicePrefix + "naturalScrolling"), forKey: devicePrefix + "panScrollReverse")
     }
 
     /// Records the UUID for a specific-display mapping saved before UUIDs
