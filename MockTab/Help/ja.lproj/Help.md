@@ -256,4 +256,16 @@ Info ペインには、X/Y 位置、筆圧、傾き、回転、ホバー距離�
 
 ## 謝辞
 
-MockTab のデバイスデータとプロトコル調査は、2 つのオープンソースプロジェクトの成果に支えられています。[OpenTabletDriver](https://opentabletdriver.net/) は多くのメーカーのタブレット設定を提供しており、[Linux Wacom Project](https://linuxwacom.github.io/) は libwacom を通じた Wacom デバイスの寸法とコントロール配置の主要な情報源です。
+MockTab はオープンソースの成果の上に成り立っています。[OpenTabletDriver](https://opentabletdriver.net/) は多くのメーカーのタブレット設定を提供しています。[Linux Wacom Project](https://linuxwacom.github.io/) は libwacom を通じて Wacom デバイスの寸法とコントロール配置を提供し、Linux カーネルにも含まれる input-wacom ドライバと wacom-hid-descriptors コレクションで Wacom のデータ形式を記録しています。
+
+## ライセンス
+
+MockTab は [GNU General Public License バージョン 3 以降](https://www.gnu.org/licenses/gpl-3.0.html) のもとで配布されるフリーソフトウェアです。ソースコードは [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver) にあります。MockTab がタブレットの読み取りに使うライブラリ TabletKit は [Mozilla Public License 2.0](https://mozilla.org/MPL/2.0/) のもとで配布されています。
+
+タブレットの図は libwacom のコントロール配置を使っています。
+
+Copyright © 2011 Red Hat, Inc.
+
+Permission to use, copy, modify, distribute, and sell this software and its documentation for any purpose is hereby granted without fee, provided that the above copyright notice appear in all copies and that both that copyright notice and this permission notice appear in supporting documentation, and that the name of Red Hat not be used in advertising or publicity pertaining to distribution of the software without specific, written prior permission.  Red Hat makes no representations about the suitability of this software for any purpose.  It is provided "as is" without express or implied warranty.
+
+THE AUTHORS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
