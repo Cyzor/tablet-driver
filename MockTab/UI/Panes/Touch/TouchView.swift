@@ -135,22 +135,24 @@ struct TouchView: View {
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
 
-            SettingSliderRow(
-                "Cursor Speed",
-                value: settings.recordingBinding(
-                    String(localized: "Cursor Speed", comment: "Undo action name: touch cursor-speed multiplier in the Touch pane"),
-                    get: { settings.touchSensitivity },
-                    set: { settings.touchSensitivity = $0 }),
-                in: 0.25...4.0,
-                step: 0.25,
-                valueText: settings.touchSensitivity.formatted(.number.precision(.fractionLength(2))) + "×",
-                spokenValue: settings.touchSensitivity.formatted(.number.precision(.fractionLength(0...2))),
-                caption: "Multiplier for cursor motion from finger drag."
-            )
             // A pen display's touch puts the cursor under the finger, so speed has no effect.
-            .disabled(!settings.touchEnabled || spec?.isPenDisplay == true)
-            .opacity(settings.touchEnabled && spec?.isPenDisplay != true ? 1 : 0.5)
-            .help("Multiplier for cursor motion from finger drag. At 1.00, the cursor follows the natural mapping through the touch area. Raise it to move faster across the screen, or lower it for finer control.")
+            if spec?.isPenDisplay != true {
+                SettingSliderRow(
+                    "Cursor Speed",
+                    value: settings.recordingBinding(
+                        String(localized: "Cursor Speed", comment: "Undo action name: touch cursor-speed multiplier in the Touch pane"),
+                        get: { settings.touchSensitivity },
+                        set: { settings.touchSensitivity = $0 }),
+                    in: 0.25...4.0,
+                    step: 0.25,
+                    valueText: settings.touchSensitivity.formatted(.number.precision(.fractionLength(2))) + "×",
+                    spokenValue: settings.touchSensitivity.formatted(.number.precision(.fractionLength(0...2))),
+                    caption: "Multiplier for cursor motion from finger drag."
+                )
+                .disabled(!settings.touchEnabled)
+                .opacity(settings.touchEnabled ? 1 : 0.5)
+                .help("Multiplier for cursor motion from finger drag. At 1.00, the cursor follows the natural mapping through the touch area. Raise it to move faster across the screen, or lower it for finer control.")
+            }
         }
     }
 

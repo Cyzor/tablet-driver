@@ -22170,6 +22170,9 @@
         }
       }
     },
+    "Works with pens that rotate, such as the Art Pen. Available once one is used on this tablet." : {
+
+    },
     "X %@, Y %@" : {
       "comment" : "VoiceOver value of the tilt visualizer, matching the Live Input readout",
       "localizations" : {

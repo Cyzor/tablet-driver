@@ -16,6 +16,28 @@ struct PenFeelView: View {
 
     private var tool: ToolSettings { settings.activeTool }
 
+    /// This tablet's family, nil outside Wacom's (Xencelabs).
+    private var family: DeviceFamily? {
+        productID.flatMap { WacomDeviceRegistry.spec(for: $0)?.family }
+    }
+
+    /// Whether any cataloged pen's rotation decodes on this tablet. Without
+    /// one, Invert Rotation can never apply, so its row is hidden.
+    private var tabletDecodesRotation: Bool {
+        guard instanceKey != nil else { return true }
+        guard let family else { return false }
+        return ToolCatalog.tools(forFamily: family).contains { $0.capabilities(forFamily: family).hasRotation }
+    }
+
+    /// Whether this tablet has seen such a pen. Invert Rotation is
+    /// tablet-wide, so any one enables it.
+    private var tabletHasTurningPen: Bool {
+        guard let instanceKey, let family else { return true }
+        return registry.tools(for: instanceKey).contains { tool in
+            tool.toolCode.map { ToolCatalog.capabilities(forToolCode: $0, family: family).hasRotation } == true
+        }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -65,12 +87,17 @@ struct PenFeelView: View {
             }
 
             Section("Movement") {
-                DescribedToggle(
-                    "Invert Rotation Direction",
-                    isOn: invertRotationBinding,
-                    currentIcon: settings.invertRotation ? "arrow.counterclockwise" : "arrow.clockwise",
-                    current: settings.invertRotation ? " Counter-clockwise." : " Clockwise.",
-                    help: "Reverses the pen's twist direction. Turn it on per app for apps that read rotation backwards, such as Krita.")
+                if tabletDecodesRotation {
+                    DescribedToggle(
+                        "Invert Rotation Direction",
+                        isOn: invertRotationBinding,
+                        currentIcon: settings.invertRotation ? "arrow.counterclockwise" : "arrow.clockwise",
+                        current: settings.invertRotation ? " Counter-clockwise." : " Clockwise.",
+                        help: tabletHasTurningPen
+                            ? "Reverses the pen's twist direction. Turn it on per app for apps that read rotation backwards, such as Krita."
+                            : "Works with pens that rotate, such as the Art Pen. Available once one is used on this tablet.")
+                    .disabled(!tabletHasTurningPen)
+                }
 
                 DescribedToggle(
                     "Relative Cursor Movement",
