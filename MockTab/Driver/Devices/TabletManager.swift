@@ -1048,31 +1048,19 @@ final class TabletManager: ObservableObject {
         // Called on HIDThread. injectAux runs inline (it reads from injectionSnapshot
         // and posts CGEvents — both thread-safe). UI state mutations hop to main.
         let padUI = PadUISentState()
-        let onAux: @Sendable (PadState) -> Void = { [weak self, contextHandle] aux in
+        let onAux: @Sendable (PadState) -> Void = { [contextHandle] aux in
             guard let context = contextHandle.context else { return }
             context.injector.injectAux(pad: aux, settings: context.settings)
-            // HID-thread gate: no hop while no pane is watching, and none
-            // while the keys and ring flags are what the pane already shows.
-            // Ring scrubbing streams aux reports at ~100 Hz but the pane only
-            // shows touch and release. Same pattern as the gates in onTablet.
-            guard self?.appIsFrontmost == true && self?.infoViewVisible == true else {
-                padUI.forget()
-                return
-            }
+            // HID-thread gate: hop only when the keys or the touch flags
+            // change. Ring scrubbing streams aux reports at ~100 Hz, but the
+            // panes show only touch and release. Changes go to main even with
+            // no pane watching, so a key released meanwhile never stays lit.
             let shown = PadUISummary(aux)
             guard padUI.changes(to: shown) else { return }
-            Task { @MainActor [weak self, weak context] in
-            guard let self, let context else { return }
-            guard appIsFrontmost && infoViewVisible else { return }
+            Task { @MainActor [weak context] in
+            guard let context else { return }
             var buttons = context.liveButtons
-            buttons.expressKeys = shown.expressKeys
-            buttons.bezelButtons = shown.bezelButtons
-            buttons.touchRingActive = shown.touchRingActive
-            buttons.touchRing2Active = shown.touchRing2Active
-            buttons.touchRingButtonDown = shown.touchRingButtonDown
-            buttons.touchRing2ButtonDown = shown.touchRing2ButtonDown
-            buttons.touchStrip1Active = shown.touchStrip1Active
-            buttons.touchStrip2Active = shown.touchStrip2Active
+            shown.apply(to: &buttons)
             if buttons != context.liveButtons { context.liveButtons = buttons }
             } // end Task @MainActor
         }
@@ -1839,27 +1827,38 @@ private final class UIUpdateThrottle: @unchecked Sendable {
 }
 
 /// What the Info and Buttons panes show from one pad report: keys, and
-/// whether each ring and strip is touched, not where.
+/// whether each ring and strip is touched, not where. Bits, so comparing
+/// one per report allocates nothing.
 private struct PadUISummary: Equatable, Sendable {
-    let expressKeys: [Bool]
-    let bezelButtons: [Bool]
-    let touchRingActive: Bool
-    let touchRing2Active: Bool
-    let touchRingButtonDown: Bool
-    let touchRing2ButtonDown: Bool
-    let touchStrip1Active: Bool
-    let touchStrip2Active: Bool
+    /// Express keys in bits 0–15, bezel buttons from bit 16.
+    let keys: UInt32
+    /// Ring 1 and 2 touched, ring 1 and 2 buttons, strip 1 and 2 touched.
+    let touch: UInt8
 
     init(_ aux: PadState) {
-        expressKeys = (0..<16).map { aux.button($0) }
-        bezelButtons = (16..<(16 + ControlTarget.bezelSlotCount)).map { aux.button($0) }
+        var keys: UInt32 = 0
+        for i in 0..<(16 + ControlTarget.bezelSlotCount) where aux.button(i) { keys |= 1 << i }
+        self.keys = keys
         let ring1 = aux.rings.first, ring2 = aux.rings.dropFirst().first
-        touchRingActive = ring1?.position != nil
-        touchRing2Active = ring2?.position != nil
-        touchRingButtonDown = ring1?.buttonDown ?? false
-        touchRing2ButtonDown = ring2?.buttonDown ?? false
-        touchStrip1Active = aux.strips.first?.position != nil
-        touchStrip2Active = aux.strips.dropFirst().first?.position != nil
+        var touch: UInt8 = 0
+        if ring1?.position != nil { touch |= 1 }
+        if ring2?.position != nil { touch |= 2 }
+        if ring1?.buttonDown == true { touch |= 4 }
+        if ring2?.buttonDown == true { touch |= 8 }
+        if aux.strips.first?.position != nil { touch |= 16 }
+        if aux.strips.dropFirst().first?.position != nil { touch |= 32 }
+        self.touch = touch
+    }
+
+    func apply(to buttons: inout LiveButtonState) {
+        buttons.expressKeys = (0..<16).map { keys & (1 << $0) != 0 }
+        buttons.bezelButtons = (16..<(16 + ControlTarget.bezelSlotCount)).map { keys & (1 << $0) != 0 }
+        buttons.touchRingActive = touch & 1 != 0
+        buttons.touchRing2Active = touch & 2 != 0
+        buttons.touchRingButtonDown = touch & 4 != 0
+        buttons.touchRing2ButtonDown = touch & 8 != 0
+        buttons.touchStrip1Active = touch & 16 != 0
+        buttons.touchStrip2Active = touch & 32 != 0
     }
 }
 
@@ -1874,10 +1873,6 @@ private final class PadUISentState: @unchecked Sendable {
         sent = summary
         return true
     }
-
-    /// Forgets what was sent, as when no pane is watching, so the next
-    /// report goes through.
-    func forget() { sent = nil }
 }
 
 extension LiveButtonState {
