@@ -110,7 +110,8 @@ struct CaptureResult: Codable {
     /// - 30: `competingDrivers` holds process names and bundle IDs;
     ///   `appEnvironment.otherWacomApps`.
     /// - 31: `appSettings.penDeadBand`.
-    var captureVersion: Int = 31
+    /// - 32: `appEnvironment.macOSVersion` and `architecture`.
+    var captureVersion: Int = 32
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -673,6 +674,10 @@ struct CaptureAppEnvironment: Codable {
     var competingDrivers: [String]? = nil
     /// Wacom apps running that leave the tablet alone, such as its updater.
     var otherWacomApps: [String]? = nil
+    /// "13.6.1", for example.
+    var macOSVersion: String? = nil
+    /// "arm64" or "x86_64". An Intel build on Apple silicon runs under Rosetta.
+    var architecture: String? = nil
 }
 
 struct CaptureAppSettings: Codable {

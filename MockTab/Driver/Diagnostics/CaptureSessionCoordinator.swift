@@ -362,6 +362,12 @@ final class CaptureSessionCoordinator: ObservableObject {
         }.count
         let names = Set(running.compactMap(\.localizedName) + running.compactMap(\.bundleIdentifier))
         let conflicts = ConflictProcessMatcher.matches(liveNames: names)
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        #if arch(arm64)
+            let architecture = "arm64"
+        #else
+            let architecture = "x86_64"
+        #endif
         return CaptureAppEnvironment(
             accessibilityGranted: AXIsProcessTrusted(),
             inputMonitoringGranted:
@@ -369,7 +375,9 @@ final class CaptureSessionCoordinator: ObservableObject {
             installLocation: location,
             otherMockTabCopies: otherCopies,
             competingDrivers: conflicts.drivers.map(\.name),
-            otherWacomApps: conflicts.wacomHelpers)
+            otherWacomApps: conflicts.wacomHelpers,
+            macOSVersion: "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)",
+            architecture: architecture)
     }
 
     private func touchSettingsSnapshot(_ source: DeviceContext?) -> CaptureTouchSettings? {
