@@ -281,16 +281,17 @@ struct SettingSliderRow: View {
 // MARK: - BatteryIndicator
 
 /// Percent → SF Symbol / tint mapping shared by the device status bar and
-/// the Info pane's status table.
+/// the Info pane's status table. The `battery.25`-style names are the
+/// macOS 13 spellings; the `…percent` names start in macOS 14.
 enum BatteryIndicator {
     static func symbolName(pct: Int, charging: Bool) -> String {
-        guard !charging else { return "battery.100percent.bolt" }
+        guard !charging else { return "battery.100.bolt" }
         switch pct {
-        case 0..<13: return "battery.0percent"
-        case 13..<38: return "battery.25percent"
-        case 38..<63: return "battery.50percent"
-        case 63..<88: return "battery.75percent"
-        default: return "battery.100percent"
+        case 0..<13: return "battery.0"
+        case 13..<38: return "battery.25"
+        case 38..<63: return "battery.50"
+        case 63..<88: return "battery.75"
+        default: return "battery.100"
         }
     }
 

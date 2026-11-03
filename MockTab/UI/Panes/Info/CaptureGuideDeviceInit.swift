@@ -254,7 +254,10 @@ extension CaptureGuideView {
         case .penTip:
             return instruction("pencil.tip", String(localized: "Tap the pen’s tip to the tablet, then lift", comment: "Device data collection instruction: pen tip"), item)
         case .penButtons:
-            return instruction("button.horizontal", String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"), item)
+            // `button.horizontal` starts in macOS 14.
+            let icon = NSImage(systemSymbolName: "button.horizontal", accessibilityDescription: nil) != nil
+                ? "button.horizontal" : "capsule"
+            return instruction(icon, String(localized: "Hold down each button on the pen", comment: "Device data collection instruction: pen buttons"), item)
         case .eraser:
             return instruction("eraser.line.dashed", String(localized: "Touch the pen's eraser end to the tablet", comment: "Device data collection instruction: eraser"), item)
         case .tabletButtons:

@@ -258,7 +258,11 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         /// Stand-in for `symbolName` where it doesn't exist yet; nil when the
         /// preferred glyph ships on every system we run on.
         var symbolFallbackName: String? {
-            self == .rotate ? "crop.rotate" : nil
+            switch self {
+            case .rotate: return "crop.rotate"
+            case .zoom: return "arrow.up.left.and.arrow.down.right"
+            default: return nil
+            }
         }
 
         /// Speed to land on when a slot is freshly switched *to* this

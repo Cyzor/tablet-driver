@@ -285,7 +285,7 @@ struct ProfilesView: View {
                         )
 
                     VStack(spacing: 6) {
-                        Image(systemName: "document.badge.gearshape.fill")
+                        Image(systemName: "doc.badge.gearshape.fill")
                             .appFont(size: 26, weight: .semibold)
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(isDropTargeted ? Color.accentColor : Color.primary)
