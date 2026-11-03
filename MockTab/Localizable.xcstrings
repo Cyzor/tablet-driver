@@ -4999,7 +4999,26 @@
       }
     },
     "Content follows the pen." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inhalt folgt dem Stift."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El contenido sigue al lápiz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コンテンツがペンの動きに追従します。"
+          }
+        }
+      }
     },
     "Content follows your fingers." : {
       "localizations" : {
@@ -5024,7 +5043,26 @@
       }
     },
     "Content moves opposite the pen." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inhalt bewegt sich entgegen der Stiftbewegung."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El contenido se mueve en sentido contrario al del lápiz."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "コンテンツがペンの動きと逆方向に動きます。"
+          }
+        }
+      }
     },
     "Content moves opposite your fingers." : {
       "localizations" : {
@@ -13799,7 +13837,27 @@
       }
     },
     "Pan View Direction" : {
-      "comment" : "Undo action name: Pan View reverse-direction toggle in the Pen Feel pane"
+      "comment" : "Undo action name: Pan View reverse-direction toggle in the Pen Feel pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schwenkrichtung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dirección de desplazamiento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パンの方向"
+          }
+        }
+      }
     },
     "Pan View Momentum" : {
       "comment" : "Undo action name: Pan View trackpad-style momentum toggle in the Pen Feel pane",
@@ -21858,7 +21916,26 @@
       }
     },
     "When on, content moves opposite to the pen while you hold Pan View, like a classic mouse wheel. When off, which is the default, the pen drags content along with it." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ist es an, bewegt sich der Inhalt entgegen dem Stift, solange du „Ansicht schwenken“ hältst, wie bei einem klassischen Mausrad. Ist es aus, wie standardmäßig, zieht der Stift den Inhalt mit."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si está activado, el contenido se mueve al revés que el lápiz mientras mantienes Desplazar vista, como una rueda de ratón clásica. Si está desactivado, como viene por defecto, el lápiz arrastra el contenido consigo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オンにすると、「ビューをパン」を押している間、従来のマウスホイールのように、コンテンツがペンと逆方向に動きます。既定のオフでは、コンテンツがペンと一緒に動きます。"
+          }
+        }
+      }
     },
     "When on, content moves opposite to your fingers, like a classic mouse wheel. When off, which is the default, content follows your fingers." : {
       "comment" : "Tooltip on the touch Reverse Direction switch",
@@ -22171,7 +22248,26 @@
       }
     },
     "Works with pens that rotate, such as the Art Pen. Available once one is used on this tablet." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für Stifte, die sich drehen lassen, etwa den Art Pen. Verfügbar, sobald einer an diesem Tablet benutzt wurde."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funciona con lápices que giran, como el Art Pen. Disponible en cuanto se use uno en esta tableta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Art Pen など、回転を検出できるペンで使えます。このタブレットで一度使うと利用できるようになります。"
+          }
+        }
+      }
     },
     "X %@, Y %@" : {
       "comment" : "VoiceOver value of the tilt visualizer, matching the Live Input readout",

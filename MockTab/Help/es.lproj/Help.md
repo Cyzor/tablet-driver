@@ -63,13 +63,17 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 ## Movimiento
 
-**Invertir dirección de rotación** – Invierte el sentido de giro del lápiz. Actívalo por aplicación para las apps que interpretan la rotación al revés, como Krita.
+**Invertir dirección de rotación** – Invierte el sentido de giro de un lápiz que gira, como el Art Pen. Actívalo por app en las apps que leen la rotación al revés, como Krita.
 
 **Movimiento relativo del cursor** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla, como con un lápiz) al modo relativo (el cursor se mueve según la distancia que desplazas el lápiz, como con un ratón).
 
-## Pan View
+## Desplazar vista
 
-Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Pan View. Para usarlo, asigna la acción Pan View a cualquier botón del lápiz, tecla express o botón del puck en el panel Botones.
+**Velocidad** – Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Desplazar vista. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del puck en el panel Botones.
+
+**Invertir dirección** – Activado: el contenido se mueve al revés que el lápiz, como una rueda de ratón clásica. Desactivado: el contenido sigue al lápiz.
+
+**Desplazamiento con inercia** – El contenido sigue deslizándose un momento al soltar el botón. Algunas apps aplican su propia inercia en ambos casos.
 
 ## Comportamiento del clic
 

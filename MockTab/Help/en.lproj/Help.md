@@ -63,15 +63,17 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 ## Movement
 
-**Invert Rotation Direction** – reverses the pen's twist direction. Enable per-app for apps that interpret rotation backwards (e.g. Krita).
+**Invert Rotation Direction** – Reverses the twist direction of a pen that rotates, such as the Art Pen. Turn it on per app for apps that read rotation backwards, such as Krita.
 
 **Relative Cursor Movement** – switches from absolute mode (each point on the tablet maps to a fixed point on screen, like a stylus) to relative mode (the cursor moves by the distance you move the pen, like a mouse).
 
 ## Pan View
 
-Sets how fast content pans while a Pan View button is held. Assign the Pan View action to any pen barrel, express key, or puck button in the Buttons pane to use it.
+**Speed** – Sets how fast content pans while you hold a Pan View button. Assign the Pan View action to any pen barrel, express key, or puck button in the Buttons pane.
 
-Pan View coasts briefly after release when its momentum setting (in Pen Feel) is on. Response varies by app.
+**Reverse Direction** – On: content moves opposite to the pen, like a conventional mouse wheel. Off: content follows the pen.
+
+**Momentum Scrolling** – Content coasts briefly after you release the button. Some apps coast on their own either way.
 
 ## Click Behavior
 

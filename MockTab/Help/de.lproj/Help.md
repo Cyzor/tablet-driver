@@ -63,15 +63,17 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 ## Bewegung
 
-**Drehrichtung umkehren** – Kehrt die Drehrichtung des Stifts um. Aktiviere das pro App für Anwendungen, die Rotation verkehrt interpretieren, zum Beispiel Krita.
+**Drehrichtung umkehren** – Kehrt die Drehrichtung eines drehbaren Stifts um, etwa des Art Pen. Aktiviere das pro App für Anwendungen, die die Drehung verkehrt lesen, zum Beispiel Krita.
 
 **Relative Cursorbewegung** – Wechselt vom absoluten Modus (jeder Punkt auf dem Grafiktablett entspricht einem festen Punkt auf dem Bildschirm, wie bei einem Stift) in den relativen Modus (der Cursor bewegt sich um die Strecke, die du den Stift bewegst, wie bei einer Maus).
 
-## Pan View
+## Ansicht schwenken
 
-Legt fest, wie schnell sich Inhalte verschieben, während eine Pan-View-Taste gedrückt gehalten wird. Weise die Aktion Pan View im Tasten-Bereich einer Stifttaste, Express-Taste oder Puck-Taste zu, um sie zu nutzen.
+**Geschwindigkeit** – Legt fest, wie schnell sich Inhalte verschieben, während du eine Taste für „Ansicht schwenken“ gedrückt hältst. Weise die Aktion „Ansicht schwenken“ im Tasten-Bereich einer Stifttaste, Express-Taste oder Puck-Taste zu.
 
-Pan View läuft nach dem Loslassen kurz nach, wenn die zugehörige Trägheitseinstellung (in Stiftgefühl) aktiv ist. Die Reaktion hängt von der App ab.
+**Richtung umkehren** – An: Der Inhalt bewegt sich entgegen dem Stift, wie bei einem klassischen Mausrad. Aus: Der Inhalt folgt dem Stift.
+
+**Scrollen mit Nachlauf** – Der Inhalt läuft nach dem Loslassen der Taste kurz nach. Manche Apps lassen ihn in jedem Fall selbst nachlaufen.
 
 ## Klickverhalten
 
