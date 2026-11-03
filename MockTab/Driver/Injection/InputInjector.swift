@@ -152,9 +152,16 @@ final class InputInjector: @unchecked Sendable {
     var activeToolCode: UInt16 = 0x0802
 
     /// When true, the frontmost app consumes `.tabletPointer` CGEvents (Qt/GTK: Krita, GIMP).
-    /// Set by AppWatcher on every app switch. When false, postTabletPointerEvent is skipped,
-    /// saving one WindowServer IPC round-trip per inject() call.
+    /// When false, postTabletPointerEvent is skipped, saving one WindowServer
+    /// IPC round-trip per inject() call. HIDThread-owned; main sets it through
+    /// `setActiveAppNeedsTabletPointerEvents(_:)`.
     var activeAppNeedsTabletPointerEvents: Bool = false
+
+    /// Hands the frontmost app's need for `.tabletPointer` events to HIDThread,
+    /// which reads it on every report.
+    func setActiveAppNeedsTabletPointerEvents(_ needs: Bool) {
+        HIDThread.shared.perform { [weak self] in self?.activeAppNeedsTabletPointerEvents = needs }
+    }
 
     /// Click bookkeeping for `stampClickSequence`, matching hardware: each press
     /// gets an event number its drags and release share, and the release

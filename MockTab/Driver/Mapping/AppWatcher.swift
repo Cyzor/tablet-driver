@@ -37,7 +37,7 @@ final class AppWatcher {
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
-            ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
+            ctx.injector.setActiveAppNeedsTabletPointerEvents(needsTabletPointer)
         }
     }
 
@@ -99,7 +99,7 @@ final class AppWatcher {
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)
-            ctx.injector.activeAppNeedsTabletPointerEvents = needsTabletPointer
+            ctx.injector.setActiveAppNeedsTabletPointerEvents(needsTabletPointer)
             ctx.injector.releaseOnAppSwitch()
         }
     }
