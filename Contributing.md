@@ -116,6 +116,14 @@ three languages filled in.
 - macOS version and hardware tested on.
 - Steps to verify the change.
 
+New files start with this header, adjusted for the language's comment style and the current year:
+
+```swift
+// MockTab — native macOS driver for supported drawing tablets
+// SPDX-FileCopyrightText: 2026 MockTab contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+```
+
 Have an idea? Use the [feature request form](https://github.com/Cyzor/tablet-driver/issues/new?template=feature-request.yml). Suggestions that come with an offer to help build them usually move fastest.
 
 ## Forking
