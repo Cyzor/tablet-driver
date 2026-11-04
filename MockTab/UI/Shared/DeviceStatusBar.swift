@@ -131,7 +131,11 @@ struct ToolNameLabel: View {
         guard let toolID = context?.activeToolID ?? shownToolID else {
             return String(localized: "No tool in proximity", comment: "Tool name label when no pen is in range")
         }
-        if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }
+        // `knownTools` holds the tablet the UI loaded last, which needn't be
+        // this window's while it's disconnected.
+        if let t = registry.knownTools.first(where: { $0.id == toolID })
+            ?? registry.allKnownTools.first(where: { $0.id == toolID })
+        { return t.nickname }
         return toolID
     }
 }
