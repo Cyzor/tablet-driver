@@ -128,7 +128,7 @@ Algunos dispositivos tienen luces configurables. En el hardware con un anillo il
 
 ## Borrador
 
-La punta del borrador tiene su propia asignación y se configura en la sección del lápiz. Algunas aplicaciones de dibujo cambian automáticamente a la herramienta de borrado cuando reciben eventos de proximidad del borrador. Asigna Borrador a un botón lateral para que el lápiz actúe como su punta de borrador mientras lo mantienes pulsado, útil en lápices sin borrador.
+La punta del borrador tiene su propia asignación y se configura en la sección del lápiz. Algunas aplicaciones de dibujo cambian automáticamente a la herramienta de borrado cuando el borrador se acerca a la tableta. Asigna Borrador a un botón lateral para que el lápiz actúe como su punta de borrador mientras lo mantienes pulsado, útil en lápices sin borrador.
 
 ## Overrides por app
 
@@ -196,9 +196,9 @@ Como el área activa, pero del lado de la pantalla: recorta la zona del display 
 
 ## Dispositivos conectados
 
-El panel Devices muestra todas las tabletas y herramientas de lápiz que MockTab ha detectado. Cada fila indica el nombre del dispositivo, el tipo de conexión (USB o Bluetooth) y el estado actual.
+El panel Devices muestra todas las tabletas y lápices que MockTab ha detectado. Cada fila indica el nombre del dispositivo, el tipo de conexión (USB o Bluetooth) y el estado actual.
 
-Al seleccionar una fila de dispositivo, en el panel de detalles de la derecha aparecen los ajustes y herramientas específicos de ese modelo.
+Al seleccionar una fila de dispositivo, en el panel de detalles de la derecha aparecen los ajustes y lápices específicos de ese modelo.
 
 Los dispositivos desconectados permanecen en la lista para que sus perfiles sigan disponibles para inspección o ajuste aunque estén desenchufados. Cuando un dispositivo de la lista vuelve a conectarse, MockTab aplica automáticamente su configuración guardada.
 

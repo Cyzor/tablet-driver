@@ -418,7 +418,7 @@ struct TabletAreaView: View {
     // MARK: - Section heading
 
     private var sectionHeading: some View {
-        PaneSectionHeader("Active Surface Area") {
+        PaneSectionHeader("Active Area") {
             DeviceNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: boundKey)
         }
     }

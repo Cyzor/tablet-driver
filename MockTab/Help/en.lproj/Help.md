@@ -128,7 +128,7 @@ Some devices have configurable lights. On hardware with a lit dial ring, each mo
 
 ## Eraser
 
-The eraser tip has its own binding, configured in the pen section. Some drawing apps switch to their eraser tool automatically when they receive eraser proximity events. Set a side button to Eraser to use the pen as its eraser end while you hold the button, which suits pens without an eraser.
+The eraser tip has its own binding, configured in the pen section. Some drawing apps switch to their eraser tool automatically when the eraser end comes near the tablet. Set a side button to Eraser to use the pen as its eraser end while you hold the button, which suits pens without an eraser.
 
 ## Per-App Overrides
 
@@ -196,9 +196,9 @@ Like Active Area, but on the screen side: crops which part of the display the pe
 
 ## Connected Devices
 
-The Devices pane lists every tablet and pen tool that MockTab has detected. Each row shows the device name, connection type (USB or Bluetooth), and current status.
+The Devices pane lists every tablet and pen that MockTab has detected. Each row shows the device name, connection type (USB or Bluetooth), and current status.
 
-Selecting a device row reveals model-specific settings and tools in the details pane on the right.
+Selecting a device row reveals model-specific settings and pens in the details pane on the right.
 
 Disconnected devices remain in the list so their profiles remain available for inspection or adjustment even while unplugged. When a listed device reconnects, MockTab applies its saved settings automatically.
 

@@ -488,7 +488,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             comment: "Alert title: factory reset confirmation")
         alert.informativeText = String(
             localized:
-                "All tablets, tools, profiles, and button mappings will be erased. MockTab will restart.",
+                "MockTab erases all tablets, pens, profiles, and button mappings, then restarts.",
             comment: "Alert body: explaining the consequences of factory reset")
         alert.alertStyle = .warning
         let resetButton = alert.addButton(

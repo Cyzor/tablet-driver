@@ -166,7 +166,9 @@ struct DevicesView: View {
             Button("Cancel", role: .cancel) { pendingForgetTool = nil }
                 .keyboardShortcut(.cancelAction)
         } message: {
-            Text(String(localized: "This tool will reappear with its default name next time the tablet detects it.", comment: "Message explaining that removed tool nicknames are temporary"))
+            Text(pendingForgetTool?.isMouse == true
+                ? String(localized: "This mouse returns with its default name the next time you use it.", comment: "Message explaining that a removed mouse's nickname is temporary")
+                : String(localized: "This pen returns with its default name the next time you use it.", comment: "Message explaining that a removed pen's nickname is temporary"))
         }
         .alert(
             String(localized: "Remove \"\(pendingRemoveTablet?.nickname ?? "")\"?", comment: "Confirmation alert when removing a tablet"),
@@ -186,7 +188,7 @@ struct DevicesView: View {
             Button("Cancel", role: .cancel) { pendingRemoveTablet = nil }
                 .keyboardShortcut(.cancelAction)
         } message: {
-            Text(String(localized: "This will discard all settings, profiles, button mappings, and the saved tool list for this tablet. The tablet will be re-added with defaults the next time it connects.", comment: "Message explaining what gets wiped when removing a tablet"))
+            Text(String(localized: "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects.", comment: "Message explaining what gets wiped when removing a tablet"))
         }
     }
 
@@ -452,9 +454,9 @@ struct DevicesView: View {
                 // Aux-only devices (the Quick Keys puck) have no digitizer, so
                 // no pen ever belongs to them. Its pens live under the paired
                 // Pen Display and in Tools (All Tablets).
-                emptyState(String(localized: "This device has no pen tools.\nIts buttons are configured in the Buttons tab.", comment: "Empty state shown in the tools list for an aux-only device like the Quick Keys puck"))
+                emptyState(String(localized: "This device has no pens.\nSet up its buttons in the Buttons pane.", comment: "Empty state shown in the pens list for an aux-only device like the Quick Keys puck"))
             } else if registry.knownTools.isEmpty {
-                emptyState(String(localized: "No tools detected yet.\nMove the pen over the tablet to register it.", comment: "Empty state message in tools list — singular tablet"))
+                emptyState(String(localized: "No pens yet.\nHold a pen over the tablet to add it.", comment: "Empty state message in pens list — singular tablet"))
             } else {
                 ForEach(displayTools(registry.knownTools)) { tool in
                     toolRow(tool, forDevice: effectiveTabletID)
@@ -463,7 +465,7 @@ struct DevicesView: View {
         } header: {
             // Header shows which tablet's tools are listed
             HStack(spacing: 0) {
-                Text("Tools").appFont(.headline)
+                Text("Pens").appFont(.headline)
                     .fixedSize()
                 if let id = effectiveTabletID,
                     let tablet = registry.knownTablets.first(where: { $0.id == id })
@@ -506,7 +508,9 @@ struct DevicesView: View {
             // available in the context menu.
             VStack(alignment: .leading, spacing: 1) {
                 if isEditing {
-                    TextField(String(localized: "Tool name", comment: "Placeholder text in rename tool field"), text: $editingName)
+                    TextField(tool.isMouse
+                        ? String(localized: "Mouse name", comment: "Placeholder text in rename mouse field")
+                        : String(localized: "Pen name", comment: "Placeholder text in rename pen field"), text: $editingName)
                         .labelsHidden()
                         .textFieldStyle(.plain)
                         .multilineTextAlignment(.leading)
@@ -541,7 +545,7 @@ struct DevicesView: View {
             .help("\(tool.kind) · \(shownID(tool.displayID))")
             .accessibilityHint(Text("\(tool.kind), \(shownID(tool.displayID))"))
 
-            RowActionsMenu(accessibilityLabel: "Tool actions", subject: tool.nickname) {
+            RowActionsMenu(accessibilityLabel: tool.isMouse ? "Mouse actions" : "Pen actions", subject: tool.nickname) {
                 toolMenuEntries(tool, deviceID: deviceID, inAllSection: inAllSection)
             }
         }
@@ -572,14 +576,14 @@ struct DevicesView: View {
     private var allToolsSection: some View {
         Section {
             if registry.allKnownTools.isEmpty {
-                emptyState(String(localized: "No tools detected yet.\nMove the pen over a tablet to register it.", comment: "Empty state message in tools list — multiple tablets"))
+                emptyState(String(localized: "No pens yet.\nHold a pen over a tablet to add it.", comment: "Empty state message in pens list — multiple tablets"))
             } else {
                 ForEach(displayTools(registry.allKnownTools)) { tool in
                     toolRow(tool, forDevice: nil)
                 }
             }
         } header: {
-            Text("Tools (All Tablets)").appFont(.headline)
+            Text("Pens (All Tablets)").appFont(.headline)
         }
     }
 
@@ -720,7 +724,7 @@ struct DevicesView: View {
                 !trimmed.isEmpty, trimmed != tool.nickname
             else { return }
             let oldName = tool.nickname
-            let renameToolAction = String(localized: "Rename Tool", comment: "Undo action name when renaming a tool")
+            let renameToolAction = Self.renameActionName(tool)
             registry.renameToolEverywhere(id: toolID, to: trimmed)
             registerRenameUndo(
                 renameToolAction,
@@ -750,7 +754,7 @@ struct DevicesView: View {
         // Empty or unchanged names end the edit and keep the old name.
         guard !trimmed.isEmpty, trimmed != tool.nickname else { return }
         let oldName = tool.nickname
-        let renameToolAction = String(localized: "Rename Tool", comment: "Undo action name when renaming a tool")
+        let renameToolAction = Self.renameActionName(tool)
         registry.renameTool(id: toolID, to: trimmed, forDevice: deviceID)
         registerRenameUndo(
             renameToolAction,
@@ -773,6 +777,19 @@ struct DevicesView: View {
 
     // MARK: - Undo/Redo helpers
 
+    private static func renameActionName(_ tool: DeviceRegistry.KnownTool) -> String {
+        tool.isMouse
+            ? String(localized: "Rename Mouse", comment: "Undo action name when renaming a mouse")
+            : String(localized: "Rename Pen", comment: "Undo action name when renaming a pen")
+    }
+
+    /// "Remove Mouse" only when every removed entry is a mouse.
+    private static func removeActionName(_ tools: [DeviceRegistry.KnownTool]) -> String {
+        !tools.isEmpty && tools.allSatisfy(\.isMouse)
+            ? String(localized: "Remove Mouse", comment: "Undo action name when removing a mouse")
+            : String(localized: "Remove Pen", comment: "Undo action name when removing a pen")
+    }
+
     /// Registers an undoable rename, self-recursively so it also redoes —
     /// same idiom as `TabletSettings.recordToggle`, needed here because
     /// `DeviceRegistry` renames bypass `TabletSettings.record` entirely.
@@ -784,7 +801,7 @@ struct DevicesView: View {
         undoManager?.setActionName(name)
     }
 
-    /// Self-recursive so "Remove Tool" also redoes: undo restores every
+    /// Self-recursive so "Remove Pen" also redoes: undo restores every
     /// snapshot, then re-removes the same tool ids the same way (per-device
     /// vs. everywhere, per snapshot) and re-registers.
     private func registerToolRemovalUndo(_ snapshots: [DeviceRegistry.ToolRemovalSnapshot]) {
@@ -792,7 +809,7 @@ struct DevicesView: View {
             for snapshot in snapshots { target.restoreTool(snapshot) }
             self.registerToolRemovalRedo(snapshots)
         }
-        undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
+        undoManager?.setActionName(Self.removeActionName(snapshots.map(\.tool)))
     }
 
     /// Registers the re-removal as its own undoable step, so it only runs
@@ -813,7 +830,7 @@ struct DevicesView: View {
             guard !newSnapshots.isEmpty else { return }
             self.registerToolRemovalUndo(newSnapshots)
         }
-        undoManager?.setActionName(String(localized: "Remove Tool", comment: "Undo action name when removing a tool"))
+        undoManager?.setActionName(Self.removeActionName(oldSnapshots.map(\.tool)))
     }
 
     /// Self-recursive so "Remove Tablet" also redoes.

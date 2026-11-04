@@ -128,7 +128,7 @@ Einige Geräte haben konfigurierbare Beleuchtung. Bei Hardware mit beleuchtetem 
 
 ## Radierer
 
-Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wird. Manche Zeichenprogramme wechseln automatisch zum Radiergummi-Werkzeug, wenn sie Radierer-Proximity-Ereignisse empfangen. Belege einen Seitenknopf mit Radierer, damit der Stift beim Gedrückthalten wie seine Radiererspitze wirkt – praktisch für Stifte ohne Radierer.
+Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wird. Manche Zeichenprogramme wechseln automatisch zum Radiergummi-Werkzeug, wenn die Radiererspitze in die Nähe des Grafiktabletts kommt. Belege einen Seitenknopf mit Radierer, damit der Stift beim Gedrückthalten wie seine Radiererspitze wirkt – praktisch für Stifte ohne Radierer.
 
 ## App-spezifische Overrides
 
@@ -196,9 +196,9 @@ Wie der aktive Bereich, nur auf der Bildschirmseite: legt fest, welchen Teil des
 
 ## Verbundene Geräte
 
-Unter Devices siehst du alle Grafiktabletts und Stiftwerkzeuge, die MockTab erkannt hat. Neben dem Namen stehen Verbindungsart (USB oder Bluetooth) und Status.
+Unter Devices siehst du alle Grafiktabletts und Stifte, die MockTab erkannt hat. Neben dem Namen stehen Verbindungsart (USB oder Bluetooth) und Status.
 
-Wählst du ein Gerät aus, erscheinen rechts die passenden Einstellungen und Werkzeuge.
+Wählst du ein Gerät aus, erscheinen rechts die passenden Einstellungen und Stifte.
 
 Auch nicht verbundene Geräte bleiben in der Liste, damit du ihre Profile prüfen oder anpassen kannst. Sobald ein Gerät wieder verbunden wird, übernimmt MockTab automatisch die gespeicherten Einstellungen.
 

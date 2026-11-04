@@ -159,7 +159,7 @@ extension TabletSettings {
         toolCache[toolID]?.reload()
 
         // Self-recursive so this also redoes — see `importAppOverride`.
-        record(String(localized: "Import Tool Settings", comment: "Undo action name for a preset/profile change")) { [weak self] in
+        record(String(localized: "Import Pen Settings", comment: "Undo action name for a preset/profile change")) { [weak self] in
             guard let self else { return }
             for key in Self.toolSettingsKeys {
                 if let v = previousValues[key] {
@@ -169,7 +169,7 @@ extension TabletSettings {
                 }
             }
             self.toolCache[toolID]?.reload()
-            self.record(String(localized: "Import Tool Settings", comment: "Undo action name for a preset/profile change")) { [weak self] in
+            self.record(String(localized: "Import Pen Settings", comment: "Undo action name for a preset/profile change")) { [weak self] in
                 self?.importToolSettings(toolID: toolID, from: values, overwrite: true)
             }
         }

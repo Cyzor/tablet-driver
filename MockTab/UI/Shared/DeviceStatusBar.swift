@@ -129,7 +129,7 @@ struct ToolNameLabel: View {
 
     private var displayName: String {
         guard let toolID = context?.activeToolID ?? shownToolID else {
-            return String(localized: "No tool in proximity", comment: "Tool name label when no pen is in range")
+            return String(localized: "No pen nearby", comment: "Pen name label when no pen is near the tablet")
         }
         // `knownTools` holds the tablet the UI loaded last, which needn't be
         // this window's while it's disconnected.
@@ -361,7 +361,7 @@ struct DeviceStatusBar: View {
                 localized: "\(name), not supported on this tablet",
                 comment: "Status bar tool slot for a pen that doesn't work with the tablet; the argument is the pen's name")
         }
-        return String(localized: "No tool", comment: "Tool name in status bar when no pen is active")
+        return String(localized: "No pen", comment: "Pen name in status bar when no pen is near")
     }
 
     private var activeAppName: String? {

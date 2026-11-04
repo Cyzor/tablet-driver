@@ -103,8 +103,8 @@ struct ImportPreviewSheet: View {
 
     private var note: some View {
         Text(
-            String(localized: "Imported as new profiles. App overrides and tool settings apply right away.",
-                   comment: "Import sheet: footer; imported profiles wait until activated, but app overrides and tool settings take effect right away")
+            String(localized: "Imported as new profiles. App overrides and pen settings apply right away.",
+                   comment: "Import sheet: footer; imported profiles wait until activated, but app overrides and pen settings take effect right away")
         )
         .appFont(.settingsLabel).foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
@@ -201,7 +201,7 @@ struct ImportPreviewSheet: View {
                     .appFont(.settingsBadge).foregroundStyle(.tertiary)
             }
             if !entry.toolSettings.isEmpty {
-                Text(String(localized: "\(entry.toolSettings.count) tool setting", comment: "Count of per-tool settings found in the backup for this tablet"))
+                Text(String(localized: "\(entry.toolSettings.count) pen setting", comment: "Count of per-pen settings found in the backup for this tablet"))
                     .appFont(.settingsBadge).foregroundStyle(.tertiary)
             }
         }

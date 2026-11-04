@@ -713,7 +713,9 @@ private struct ConfigurationSummaryView: View {
             ? String(localized: "Pen", comment: "Tool type: pen")
             : (tool.kind.lowercased() == "eraser"
                 ? String(localized: "Eraser", comment: "Tool type: eraser")
-                : String(localized: "Tool", comment: "Tool type: generic"))
+                : (tool.isMouse
+                    ? String(localized: "Mouse", comment: "Tool type: mouse")
+                    : String(localized: "Pen", comment: "Tool type: pen")))
 
         HStack(alignment: .top, spacing: 8) {
             Text(toolKind)

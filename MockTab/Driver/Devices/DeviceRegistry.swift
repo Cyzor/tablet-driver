@@ -82,6 +82,11 @@ final class DeviceRegistry: ObservableObject {
             if let tc = toolCode { return "0x\(String(format: "%04X", tc))" }
             return "—"
         }
+
+        /// A puck-style mouse rather than a pen, by its tool code.
+        var isMouse: Bool {
+            id == "mouse" || toolCode.map { ToolCatalog.spec(forToolCode: $0)?.toolType == .mouse } == true
+        }
     }
 
     @Published var knownTablets: [KnownTablet] = []
