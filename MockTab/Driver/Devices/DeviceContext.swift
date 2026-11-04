@@ -256,8 +256,8 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// the pen lifts off.
     @Published var lastKnownToolCode: UInt16 = 0
 
-    /// The ToolSettings for the pen currently in proximity.
-    /// Points to the device-default ToolSettings until the first tool-enter fires.
+    /// The ToolSettings for the pen currently in proximity, or the last one seen.
+    /// Points to the device-default ToolSettings before any tool is seen.
     @Published var activeTool: ToolSettings
 
     // MARK: - Per-device observable state (synced from driver callbacks)
@@ -700,6 +700,7 @@ final class DeviceContext: ObservableObject, Identifiable {
         self.settings = s
         self.injector = InputInjector(vendorID: vendorID, productID: instanceKey.productID)
         self.activeTool = s.activeTool
+        self.lastKnownToolCode = s.lastToolCode
     }
 
     /// Model-only construction: window-restore stubs and callers that predate

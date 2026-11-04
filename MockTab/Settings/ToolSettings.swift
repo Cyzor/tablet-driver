@@ -260,7 +260,11 @@ final class ToolSettings: ObservableObject {
     /// something each window creates).
     weak var undoManager: UndoManager?
 
-    init(prefix: String, fallbackPrefix: String? = nil, isMouse: Bool = false) {
+    /// The tool these settings belong to; nil for the tablet-wide set.
+    let toolID: String?
+
+    init(prefix: String, fallbackPrefix: String? = nil, isMouse: Bool = false, toolID: String? = nil) {
+        self.toolID = toolID
         self.prefix = prefix
         self.fallbackPrefix = fallbackPrefix
         self.isMouse = isMouse

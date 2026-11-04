@@ -67,7 +67,8 @@ extension ButtonsView {
                     binding: tipBinding,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[0],
-                    storedActionUnreadable: tool.unreadableKind("tipBinding") != nil)
+                    storedActionUnreadable: tool.unreadableKind("tipBinding") != nil,
+                    showsNoneAsValue: true)
             }
 
             // Eraser — only for non-mouse tools
@@ -79,7 +80,8 @@ extension ButtonsView {
                     offersEraser: true,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[1],
-                    storedActionUnreadable: tool.unreadableKind("eraserBinding") != nil)
+                    storedActionUnreadable: tool.unreadableKind("eraserBinding") != nil,
+                    showsNoneAsValue: true)
                 .disabled(!penHasEraser)
                 .help(penHasEraser ? "" : String(localized: "This pen has no eraser.", comment: "Tooltip on the greyed-out Eraser row in Buttons tab"))
             }
@@ -93,7 +95,8 @@ extension ButtonsView {
                     offersEraser: !isMouse,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[2],
-                    storedActionUnreadable: tool.unreadableKind("penButton1Binding") != nil)
+                    storedActionUnreadable: tool.unreadableKind("penButton1Binding") != nil,
+                    showsNoneAsValue: true)
             }
             // Button 2
             if btnCount >= 2 {
@@ -104,7 +107,8 @@ extension ButtonsView {
                     offersEraser: !isMouse,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[3],
-                    storedActionUnreadable: tool.unreadableKind("penButton2Binding") != nil)
+                    storedActionUnreadable: tool.unreadableKind("penButton2Binding") != nil,
+                    showsNoneAsValue: true)
             }
             // Button 3
             if btnCount >= 3 {
@@ -115,7 +119,8 @@ extension ButtonsView {
                     offersEraser: !isMouse,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[4],
-                    storedActionUnreadable: tool.unreadableKind("penButton3Binding") != nil)
+                    storedActionUnreadable: tool.unreadableKind("penButton3Binding") != nil,
+                    showsNoneAsValue: true)
             }
             // Button 4
             if btnCount >= 4 {
@@ -125,7 +130,8 @@ extension ButtonsView {
                     binding: pen4Binding,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[5],
-                    storedActionUnreadable: tool.unreadableKind("penButton4Binding") != nil)
+                    storedActionUnreadable: tool.unreadableKind("penButton4Binding") != nil,
+                    showsNoneAsValue: true)
             }
             // Button 5
             if btnCount >= 5 {
@@ -135,18 +141,22 @@ extension ButtonsView {
                     binding: pen5Binding,
                     modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
                     recordRequestToken: penRecordTokens[6],
-                    storedActionUnreadable: tool.unreadableKind("penButton5Binding") != nil)
+                    storedActionUnreadable: tool.unreadableKind("penButton5Binding") != nil,
+                    showsNoneAsValue: true)
             }
 
             // Wheel row — airbrush fingerwheel or scroll wheel
             if hasWheel {
                 buttonRow(Self.wheelLabel(tool: toolSpec), isActive: isMouse && mouseWheelTurning, binding: wheelBinding,
                           modeNames: ringModeNames, isMechanicalDialHardware: hasMechanicalDial,
-                          storedActionUnreadable: tool.unreadableKind("wheelBinding") != nil)
+                          storedActionUnreadable: tool.unreadableKind("wheelBinding") != nil,
+                    showsNoneAsValue: true)
             }
         } header: {
             PaneSectionHeader(isMouse ? "Mouse Buttons" : "Pen Buttons") {
-                ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
+                ToolNameLabel(
+                    tabletManager: tabletManager, registry: registry, instanceKey: instanceKey,
+                    shownToolID: settings.activeTool.toolID)
             }
         }
     }

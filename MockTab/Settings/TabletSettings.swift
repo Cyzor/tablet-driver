@@ -91,7 +91,8 @@ final class TabletSettings: ObservableObject {
     // MARK: - Per-tool settings
 
     /// The tool settings currently active on this device.
-    /// Starts as the device-default tool; swapped by TabletManager on tool-enter.
+    /// Starts as the last tool seen, or the device default before any;
+    /// swapped by TabletManager on tool-enter.
     @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.") {
         didSet {
             activeTool.undoManager = undoManager
@@ -127,17 +128,41 @@ final class TabletSettings: ObservableObject {
         let ts: ToolSettings
         if id == "stylus" || id == "eraser" || id == "mouse" {
             // Device-default tool: reads/writes to the same devicePrefix as TabletSettings.
-            ts = ToolSettings(prefix: devicePrefix, isMouse: isMouse)
+            ts = ToolSettings(prefix: devicePrefix, isMouse: isMouse, toolID: id)
         } else {
             // Per-serial tool: reads from its own namespace, falls back to device defaults.
             ts = ToolSettings(
                 prefix: "\(devicePrefix)tool-\(id).",
                 fallbackPrefix: devicePrefix,
-                isMouse: isMouse)
+                isMouse: isMouse,
+                toolID: id)
         }
         ts.undoManager = undoManager
         toolCache[id] = ts
         return ts
+    }
+
+    // The tool seen last on this tablet. The panes open on its own settings,
+    // since editing the tablet-wide ones it overrides would change nothing.
+    private var lastToolIDKey: String { devicePrefix + "_lastToolID" }
+    private var lastToolCodeKey: String { devicePrefix + "_lastToolCode" }
+
+    /// Tool code of the tool seen last, or 0.
+    var lastToolCode: UInt16 { UInt16(truncatingIfNeeded: ud.integer(forKey: lastToolCodeKey)) }
+
+    /// Records the tool whose settings a tool enter made active.
+    func noteLastTool(id: String, toolCode: UInt16) {
+        if ud.string(forKey: lastToolIDKey) != id { ud.set(id, forKey: lastToolIDKey) }
+        if lastToolCode != toolCode { ud.set(Int(toolCode), forKey: lastToolCodeKey) }
+    }
+
+    /// The last tool's settings, or the tablet-wide set before any tool is seen.
+    private func lastUsedTool() -> ToolSettings {
+        guard let id = ud.string(forKey: lastToolIDKey), !id.isEmpty else {
+            return ToolSettings(prefix: devicePrefix)
+        }
+        let isMouse = ToolCatalog.spec(forToolCode: lastToolCode)?.toolType == .mouse
+        return toolSettings(forID: id, isMouse: isMouse)
     }
 
     // MARK: - Active area (fractions of the full digitizer surface, 0.0..1.0)
@@ -1027,7 +1052,7 @@ final class TabletSettings: ObservableObject {
             loadProfileList()
             loadAppOverrides()
         }
-        activeTool = ToolSettings(prefix: devicePrefix)
+        activeTool = lastUsedTool()
         activeTool.undoManager = undoManager
         reloadAll()
     }
@@ -1060,7 +1085,7 @@ final class TabletSettings: ObservableObject {
     private func loadForDevice(prefix: String) {
         devicePrefix = prefix
         toolCache.removeAll()
-        activeTool = ToolSettings(prefix: devicePrefix)
+        activeTool = lastUsedTool()
         activeTool.undoManager = undoManager
         // Clear undo stack to prevent cross-device undo entries
         undoManager?.removeAllActions()

@@ -13289,6 +13289,35 @@
         }
       }
     },
+    "Not nearby" : {
+      "comment" : "Spoken and tooltip text for a pen whose settings show while it's away",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht in der Nähe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Not nearby"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No está cerca"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "近くにありません"
+          }
+        }
+      }
+    },
     "Not supported on this tablet" : {
       "comment" : "Note after a pen's name when it doesn't work with the tablet",
       "localizations" : {

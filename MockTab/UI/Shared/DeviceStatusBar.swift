@@ -14,6 +14,8 @@ private struct StatusCaptionLabel: View {
     let isLive: Bool
     /// A quiet note after the name, such as a pen this tablet doesn't support.
     var note: String? = nil
+    /// Says what a gray dot means, to VoiceOver and in a tooltip, never on screen.
+    var awayText: String? = nil
 
     @Environment(\.accessibilityDifferentiateWithoutColor)
     private var differentiateWithoutColor
@@ -33,6 +35,8 @@ private struct StatusCaptionLabel: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityValue(isLive ? "" : awayText ?? "")
+        .help(isLive ? "" : awayText ?? "")
     }
 
     @ViewBuilder
@@ -93,11 +97,17 @@ struct ToolNameLabel: View {
     @ObservedObject var tabletManager: TabletManager
     @ObservedObject var registry:      DeviceRegistry
     var instanceKey: DeviceInstanceKey?
+    /// The tool whose settings the pane shows, named even while it's away.
+    var shownToolID: String? = nil
 
     var body: some View {
         let _ = BodyCounter.note("ToolName")
-        StatusCaptionLabel(name: displayName, isLive: context?.activeToolID != nil, note: supportNote)
+        StatusCaptionLabel(
+            name: displayName, isLive: context?.activeToolID != nil, note: supportNote,
+            awayText: shownToolID == nil ? nil : String(
+                localized: "Not nearby", comment: "Spoken and tooltip text for a pen whose settings show while it's away"))
     }
+
 
     private var context: DeviceContext? {
         tabletManager.context(forKey: instanceKey)
@@ -118,7 +128,7 @@ struct ToolNameLabel: View {
     }
 
     private var displayName: String {
-        guard let toolID = context?.activeToolID else {
+        guard let toolID = context?.activeToolID ?? shownToolID else {
             return String(localized: "No tool in proximity", comment: "Tool name label when no pen is in range")
         }
         if let t = registry.knownTools.first(where: { $0.id == toolID }) { return t.nickname }

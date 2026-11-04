@@ -859,6 +859,7 @@ final class TabletManager: ObservableObject {
             // doesn't swap the settings panes to a second copy of the pen.
             let settingsID = DeviceRegistry.tipSiblingID(of: toolID) ?? toolID
             let toolSets = context.settings.toolSettings(forID: settingsID, isMouse: identity.isMouse)
+            context.settings.noteLastTool(id: settingsID, toolCode: identity.toolCode)
             // Reassigning the same tool would reload all its settings.
             if context.activeTool !== toolSets { context.activeTool = toolSets }
             if context.settings.activeTool !== toolSets { context.settings.activeTool = toolSets }

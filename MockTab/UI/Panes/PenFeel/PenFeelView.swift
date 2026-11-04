@@ -300,7 +300,9 @@ struct PenFeelView: View {
                 "Sets how much pressure the tip needs before it counts as contact. It works like sensitivity, but for the point where contact starts rather than the response curve. Raise it for a firmer, more deliberate click, or lower it for the lightest possible touch. At Off, which is the default, the tip registers from the sensor's own floor.")
         } header: {
             PaneSectionHeader("Pressure Curve") {
-                ToolNameLabel(tabletManager: tabletManager, registry: registry, instanceKey: instanceKey)
+                ToolNameLabel(
+                    tabletManager: tabletManager, registry: registry, instanceKey: instanceKey,
+                    shownToolID: settings.activeTool.toolID)
             }
         }
     }

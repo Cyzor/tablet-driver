@@ -88,6 +88,9 @@ struct ButtonBindingControl: View, Equatable {
     /// The saved action is one this build can't read, so the field shows the
     /// default standing in for it.
     var storedActionUnreadable: Bool = false
+    /// Shows None as a value, where an unassigned control would surprise:
+    /// a pen tip set to None doesn't click.
+    var showsNoneAsValue: Bool = false
     @State private var isRecording = false
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
@@ -113,6 +116,7 @@ struct ButtonBindingControl: View, Equatable {
                 && lhs.offersModeJumps == rhs.offersModeJumps
                 && lhs.recordRequestToken == rhs.recordRequestToken
                 && lhs.storedActionUnreadable == rhs.storedActionUnreadable
+                && lhs.showsNoneAsValue == rhs.showsNoneAsValue
         }
     }
 
@@ -347,6 +351,7 @@ struct ButtonBindingControl: View, Equatable {
                 : modifierGlyphs(pendingModifiers) + "…"
         }
         if binding.kind == .none {
+            if showsNoneAsValue { return String(localized: "None", comment: "Button action: no action") }
             return String(
                 localized: "Record Shortcut",
                 comment: "Placeholder in shortcut recorder field when empty")
