@@ -4,52 +4,29 @@
 
 import Foundation
 
-/// Holds a tap's drags until the pen travels away from where it touched
-/// down, so a nib that wobbles on contact still clicks.
+/// Drag Threshold: holds a contact's drags for its first moments, so a quick
+/// tap whose nib wobbles still clicks where it touched down.
 ///
-/// Measured on the tablet, in millimeters, so it holds the same however small
-/// the area or large the display: on a small tablet mapped to a big screen,
-/// a fraction of a millimeter is many points. The nib wobbles most just after
-/// contact, so the radius is wider then.
+/// Measured in screen points, as apps tell a click from a drag, so the most
+/// the cursor waits behind the pen is the radius on any mapping.
 ///
-/// Nothing the pen does while held is lost. Until the nib settles, its
-/// samples wait (`defers`): a stroke replays them where and when they
-/// happened, and a tap posts their pressure where it touched down.
+/// The hold ends at whichever comes first, the radius or `holdSeconds`, so a
+/// drag or stroke never waits longer than that. The guard loses nothing the
+/// pen does while it holds: a stroke replays the held samples where and when
+/// they happened, and a tap posts their pressure where it touched down.
 ///
 /// Free of AppKit and TabletKit so the checks can compile it.
 struct TouchdownGuard {
-    /// Settled radius in millimeters. 0 turns the guard off.
-    var radiusMM: Double
-    /// How long after contact the wider radius applies.
-    static let settleSeconds: Double = 0.150
-    /// How much wider the radius is while the nib settles.
-    static let settlingFactor: Double = 2.5
-    /// Radius when the defaults key isn't set.
-    static let defaultRadiusMM: Double = 0.7
+    /// Radius in points. 0 turns the guard off.
+    var radius: Double
+    /// Longest a contact holds, however little it travels.
+    static let holdSeconds: Double = 0.150
+    /// Drag Threshold's default, in points.
+    static let defaultRadius: Double = 5
 
-    /// Whether a contact `elapsed` seconds old, `travelMM` from its touchdown
-    /// point, should still hold its drags.
-    func holds(elapsed: Double, travelMM: Double) -> Bool {
-        guard radiusMM > 0 else { return false }
-        let radius = elapsed < Self.settleSeconds ? radiusMM * Self.settlingFactor : radiusMM
-        return travelMM <= radius
-    }
-
-    /// Whether a held contact `elapsed` seconds old may still be a tap or a
-    /// stroke, so its samples wait. Once the nib settles, a pen still held is
-    /// pressing in place, and its pressure goes out as it comes.
-    static func defers(elapsed: Double) -> Bool {
-        elapsed < settleSeconds
-    }
-
-    /// Pen travel in millimeters between two tablet positions, each a
-    /// fraction (0...1) of the active area, given its size.
-    static func travelMM(
-        from start: (x: Double, y: Double), to end: (x: Double, y: Double),
-        areaMM: (width: Double, height: Double)
-    ) -> Double {
-        let dx = (end.x - start.x) * areaMM.width
-        let dy = (end.y - start.y) * areaMM.height
-        return (dx * dx + dy * dy).squareRoot()
+    /// Whether a contact `elapsed` seconds old, `travel` points from its
+    /// touchdown point, should still hold its drags.
+    func holds(elapsed: Double, travel: Double) -> Bool {
+        radius > 0 && elapsed < Self.holdSeconds && travel <= radius
     }
 }

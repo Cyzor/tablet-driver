@@ -531,17 +531,10 @@ final class TabletSettings: ObservableObject {
     @Published var tipUpAssistDelay: Double = 0.0 {
         didSet { persist("tipUpAssistDelay", tipUpAssistDelay) }
     }
-    /// Minimum distance (points) the pen must travel from tip-down before a
-    /// drag is posted. 0 = off. Absorbs hand tremor / pressure-driven jitter
-    /// right at tip-down so a light tap doesn't register as a drag.
-    @Published var dragThreshold: Double = 0.0 {
+    /// Points the pen may wobble after tip-down before a tap becomes a drag,
+    /// held for 150 ms at most — see `TouchdownGuard`. 0 = off.
+    @Published var dragThreshold: Double = TouchdownGuard.defaultRadius {
         didSet { persist("dragThreshold", dragThreshold) }
-    }
-    /// Millimeters of pen travel a tap may wobble before it drags — see
-    /// `TouchdownGuard`. No UI: an experimental `defaults`-only knob; 0 turns
-    /// it off. Clamped 0…5 in `reloadAll()`.
-    @Published var touchdownClickGuardMM: Double = TouchdownGuard.defaultRadiusMM {
-        didSet { persist("touchdownClickGuardMM", touchdownClickGuardMM) }
     }
     /// Side-button actions that wait for tip contact. Empty: all act while
     /// hovering.

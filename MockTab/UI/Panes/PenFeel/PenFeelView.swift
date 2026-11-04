@@ -330,7 +330,7 @@ struct PenFeelView: View {
             settings.tipUpAssistDelay, settings.dragThreshold, settings.requireContact
         )
         let toolDefaults: ToolResetState = (.linear, 0, 0, 0, 1.0, false, false)
-        let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, 0.0, [])
+        let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, TouchdownGuard.defaultRadius, [])
 
         settings.undoManager?.beginUndoGrouping()
         applyToolReset(toolDefaults, undoTo: toolOld)

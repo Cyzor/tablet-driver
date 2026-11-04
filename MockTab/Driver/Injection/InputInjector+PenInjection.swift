@@ -250,7 +250,6 @@ extension InputInjector {
             let tipKind = (activeToolIsEraser ? tool.eraserBinding : tool.tipBinding).kind
             if tipDown {
                 cancelPendingMouseUp()
-                didEmitDragSinceDown = false
                 // Each contact decides afresh; a flag left from an earlier
                 // contact would swallow this one's release.
                 tipClickSwallowed = false
@@ -287,7 +286,7 @@ extension InputInjector {
                     let (clickPt, count) = resolveClick(screenPoint, snapshot: snap)
                     activeClickCount = count
                     tipDownOrigin = clickPt
-                    armTouchdownGuard(point: point, snap: snap)
+                    armTouchdownGuard(snap: snap)
                     postMouseDown(
                         button: activeButton, at: clickPt,
                         pressure: pressure, clickCount: count,
@@ -371,52 +370,20 @@ extension InputInjector {
                     at: screenPoint, pressure: pressure, point: point, pose: pose,
                     snapshot: snap)
             }
-            if dragging { updateTouchdownGuard(point: point, snap: snap) }
-            // Drag threshold: no drag until the pen travels dragThreshold
-            // from touchdown, so a shaky tap stays a click.
-            let withinDragThreshold =
-                tipDown && !didEmitDragSinceDown
-                && snap.dragThreshold > 0
-                && hypot(screenPoint.x - tipDownOrigin.x, screenPoint.y - tipDownOrigin.y)
-                    < snap.dragThreshold
-
-            var heldPressurePosted = false
             if dragging {
+                updateTouchdownGuard(at: screenPoint, snap: snap)
+                if touchdownHeld, touchdownWithheld.count >= Self.touchdownWithheldCapacity {
+                    touchdownHeld = false
+                    noteTouchdownGuardForCapture("lets go with no room to hold more")
+                }
                 if touchdownHeld {
-                    let elapsed = ProcessInfo.processInfo.systemUptime - touchdownTime
-                    if TouchdownGuard.defers(elapsed: elapsed),
-                        touchdownWithheld.count < Self.touchdownWithheldCapacity
-                    {
-                        // Tap or stroke isn't known yet, so the sample waits.
-                        withholdForTouchdown(
-                            screenPoint, pressure: pressure, point: point, pose: pose)
-                    } else {
-                        // Pressing in place. The pointer stays put, but pressure
-                        // still reaches drawing apps: a still pen can build up
-                        // or grow a dot.
-                        if !touchdownWithheld.isEmpty {
-                            noteTouchdownGuardForCapture("presses in place after \(Int(elapsed * 1000)) ms")
-                        }
-                        postWithheldAtTouchdown(snap: snap)
-                        if (pressure - lastPostedPressure).magnitude > Self.pressureEpsilon {
-                            postMouseDrag(
-                                button: activeButton, at: tipDownOrigin, pressure: pressure, point: point,
-                                pose: pose, snapshot: snap)
-                            heldPressurePosted = true
-                        }
-                    }
-                } else if !withinDragThreshold {
+                    // Tap or stroke isn't known yet, so the sample waits.
+                    withholdForTouchdown(screenPoint, pressure: pressure, point: point, pose: pose)
+                } else {
                     replayWithheld(snap: snap)
                     postMouseDrag(
                         button: activeButton, at: screenPoint, pressure: pressure, point: point,
                         pose: pose, snapshot: snap)
-                    didEmitDragSinceDown = true
-                } else if !touchdownWithheld.isEmpty,
-                    touchdownWithheld.count < Self.touchdownWithheldCapacity
-                {
-                    // The guard let go, but the drag threshold still holds the
-                    // drag: the stroke's start keeps waiting for the replay.
-                    withholdForTouchdown(screenPoint, pressure: pressure, point: point, pose: pose)
                 }
             } else if panScroll.isActive {
                 // Panning: motion became scrolling above; the cursor stays put.
@@ -453,7 +420,6 @@ extension InputInjector {
                 // Deferred and debounced releases post here, so they land on
                 // the touchdown point too.
                 lastPostedPoint = tipDownOrigin
-                if heldPressurePosted { lastPostedPressure = pressure }
             } else {
                 lastPostedPoint = screenPoint
                 lastPostedPressure = pressure
@@ -465,34 +431,29 @@ extension InputInjector {
 
     // MARK: - Touchdown guard
 
-    /// Starts holding a tap's drags, when the tablet's size is known and the
-    /// guard is on. Mice click with a button, so they're left alone.
-    private func armTouchdownGuard(point: TabletPoint, snap: InjectionSnapshot) {
-        guard !activeToolIsMouse, digitizerSizeMM != nil, snap.touchdownClickGuardMM > 0 else { return }
+    /// Starts holding a contact's drags while Drag Threshold is on. Mice click
+    /// with a button, so the guard leaves them alone.
+    private func armTouchdownGuard(snap: InjectionSnapshot) {
+        guard !activeToolIsMouse, snap.dragThreshold > 0 else { return }
         touchdownHeld = true
-        touchdownTablet = Self.digitizerFraction(point)
         touchdownTime = ProcessInfo.processInfo.systemUptime
-        touchdownMaxTravelMM = 0
+        touchdownMaxTravel = 0
     }
 
-    /// Lets the drags go once the pen travels past the guard's radius.
-    private func updateTouchdownGuard(point: TabletPoint, snap: InjectionSnapshot) {
-        guard touchdownHeld, let size = digitizerSizeMM else { return }
-        let travel = TouchdownGuard.travelMM(
-            from: touchdownTablet, to: Self.digitizerFraction(point), areaMM: size)
-        touchdownMaxTravelMM = Swift.max(touchdownMaxTravelMM, travel)
+    /// Lets the drags go once the pen travels past the guard's radius or the
+    /// hold time runs out.
+    private func updateTouchdownGuard(at screenPoint: CGPoint, snap: InjectionSnapshot) {
+        guard touchdownHeld else { return }
+        let travel = Double(hypot(screenPoint.x - tipDownOrigin.x, screenPoint.y - tipDownOrigin.y))
+        touchdownMaxTravel = Swift.max(touchdownMaxTravel, travel)
         let elapsed = ProcessInfo.processInfo.systemUptime - touchdownTime
-        guard !TouchdownGuard(radiusMM: snap.touchdownClickGuardMM).holds(elapsed: elapsed, travelMM: travel)
+        guard !TouchdownGuard(radius: snap.dragThreshold).holds(elapsed: elapsed, travel: travel)
         else { return }
         touchdownHeld = false
-        noteTouchdownGuardForCapture("lets go after \(Int(elapsed * 1000)) ms, \(Self.mmText(travel)) mm")
+        noteTouchdownGuardForCapture("lets go after \(Int(elapsed * 1000)) ms, \(Self.ptText(travel)) pt")
     }
 
-    private static func digitizerFraction(_ point: TabletPoint) -> (x: Double, y: Double) {
-        (Double(point.x) / Double(Swift.max(point.maxX, 1)), Double(point.y) / Double(Swift.max(point.maxY, 1)))
-    }
-
-    private static func mmText(_ mm: Double) -> String { String(format: "%.2f", mm) }
+    private static func ptText(_ pt: Double) -> String { String(format: "%.1f", pt) }
 
     private func noteTouchdownGuardForCapture(_ what: @autoclosure () -> String) {
         guard HIDCapture.shared.isCapturing else { return }
@@ -529,9 +490,9 @@ extension InputInjector {
         touchdownWithheld.removeAll(keepingCapacity: true)
     }
 
-    /// A tap, or a pen pressing in place: posts the withheld pressure at the
-    /// touchdown point, at each sample's report time. The pointer stays put,
-    /// and a dab still gets its pressure.
+    /// A tap: posts the withheld pressure at the touchdown point, at each
+    /// sample's report time. The pointer stays put, and a dab still gets its
+    /// pressure.
     private func postWithheldAtTouchdown(snap: InjectionSnapshot) {
         guard !touchdownWithheld.isEmpty else { return }
         let reportTime = Self.currentReportTimestampNs
@@ -979,9 +940,8 @@ extension InputInjector {
         if touchdownHeld {
             touchdownHeld = false
             postWithheldAtTouchdown(snap: snap)
-            noteTouchdownGuardForCapture("held the tap, \(Self.mmText(touchdownMaxTravelMM)) mm at most")
+            noteTouchdownGuardForCapture("held the tap, \(Self.ptText(touchdownMaxTravel)) pt at most")
         }
-        // What the drag threshold still held never posts, as before.
         touchdownWithheld.removeAll(keepingCapacity: true)
         if tipClickSwallowed {
             tipClickSwallowed = false

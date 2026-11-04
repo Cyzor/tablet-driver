@@ -74,7 +74,7 @@ final class SharedPanScrollState {
 /// | `hoverDragButton` | click binding down, or Click Lock | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
 /// | `clickLocked` | Click Lock press, or a Click Lock tip's first contact | next press or tip contact, proximity exit (`releaseClickLock`), tool change/disconnect | Left button stuck down |
 /// | `tipClickSwallowed` | tip contact with the tip set to None, while Click Lock holds, during Pan View, or firing a contact-deferred button | tip lift, proximity exit, next tip contact | Next lift posts no mouseUp |
-/// | `touchdownHeld` / `touchdownWithheld` | tip contact with the touchdown guard on | travel past its radius (replays the samples), tip lift (posts them at the touchdown point, then the release there), settling time passed (posts them there), proximity exit, next tip contact | Pointer pinned at the touchdown point; a later contact replays stale samples |
+/// | `touchdownHeld` / `touchdownWithheld` | tip contact with Drag Threshold on | travel past its radius or its hold time passed (replays the samples), tip lift (posts them at the touchdown point, then the release there), no room to hold more, proximity exit, next tip contact | Pointer pinned at the touchdown point; a later contact replays stale samples |
 /// | `contactDeferredButtons` / `contactFiredButtons` | Require Contact: barrel button with a checked action pressed while hovering / its tip contact | button release, proximity exit; the fired bits also tip lift and tool change | Button's action held, or a later release posts an up nothing pressed |
 /// | `barrelEraserButtons` / `barrelEraserActive` | barrel button set to Eraser pressed / the switch to the eraser it causes | button release (the switch back waits for tip lift), proximity exit | Pen stays the eraser |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
@@ -349,20 +349,17 @@ final class InputInjector: @unchecked Sendable {
     /// The front app changed mid-stroke, so the pen's proximity still has to
     /// reach it; sent at tip-up.
     var proximityOwedToFrontApp = false
-    /// True after the first leftMouseDragged is posted following a tip-down.
-    /// Used to guarantee Pages sees at least one drag event even when deltas are tiny.
-    var didEmitDragSinceDown = false
     /// True while the tip is down with its binding set to None: the contact
     /// posted no mouseDown, so it must post no drag or mouseUp either.
     var tipClickSwallowed = false
     /// True while a Click Lock binding holds the left button. Released by the
     /// next press, proximity exit, tool change, or disconnect.
     var clickLocked = false
-    /// Screen position at the moment the tip went down. Anchor for the drag
-    /// threshold gate — see `TabletSettings.dragThreshold`.
+    /// Screen position at the moment the tip went down. Anchor for Drag
+    /// Threshold (`TouchdownGuard`).
     var tipDownOrigin: CGPoint = .zero
     /// `TouchdownGuard` holds this contact's drags; the pointer stays at
-    /// `tipDownOrigin` until the pen travels away.
+    /// `tipDownOrigin` until the pen travels away or the hold time runs out.
     var touchdownHeld = false
     /// A pen sample a held contact hasn't posted yet.
     struct WithheldPenSample {
@@ -379,22 +376,13 @@ final class InputInjector: @unchecked Sendable {
         samples.reserveCapacity(InputInjector.touchdownWithheldCapacity)
         return samples
     }()
-    /// Room for the settling time at Wacom's fastest report rates; a fuller
-    /// contact presses in place.
+    /// Room for the hold time at the fastest report rates; a fuller contact
+    /// lets go early.
     static let touchdownWithheldCapacity = 64
-    /// Where the tip touched down, as a fraction of the digitizer, and when.
-    var touchdownTablet: (x: Double, y: Double) = (0, 0)
+    /// When the tip touched down.
     var touchdownTime: TimeInterval = 0
-    /// Farthest the pen traveled while held, in millimeters, for the capture log.
-    var touchdownMaxTravelMM: Double = 0
-    /// The digitizer's size in millimeters, or nil when the spec doesn't say,
-    /// which leaves the guard off.
-    lazy var digitizerSizeMM: (width: Double, height: Double)? = {
-        guard let spec = WacomDeviceRegistry.spec(for: deviceProductID),
-              let w = spec.activeWidthMM, w > 0, let h = spec.activeHeightMM, h > 0
-        else { return nil }
-        return (w, h)
-    }()
+    /// Farthest the pen traveled while held, in points, for the capture log.
+    var touchdownMaxTravel: Double = 0
     var lastEraserMode = false  // Track eraser/tip flip while in proximity
     // Named fields, not a collection: cheaper at 133 Hz and readable in a debugger.
     var lastButton1Down = false
