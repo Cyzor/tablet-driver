@@ -357,8 +357,13 @@ final class CaptureSessionCoordinator: ObservableObject {
             : (path.hasPrefix("/Applications/") ? "applications" : "other")
         let running = NSWorkspace.shared.runningApplications
         let ownPID = ProcessInfo.processInfo.processIdentifier
-        let otherCopies = running.filter {
-            $0.bundleIdentifier == Bundle.main.bundleIdentifier && $0.processIdentifier != ownPID
+        // Self-built copies and forks often change the bundle ID or keep only
+        // the name, and still read the tablet and click.
+        let otherCopies = running.filter { app in
+            guard app.processIdentifier != ownPID else { return false }
+            let id = app.bundleIdentifier ?? ""
+            return id == "com.cyzor.mocktab" || id.hasPrefix("com.cyzor.mocktab.")
+                || app.localizedName == "MockTab"
         }.count
         let names = Set(running.compactMap(\.localizedName) + running.compactMap(\.bundleIdentifier))
         let conflicts = ConflictProcessMatcher.matches(liveNames: names)
