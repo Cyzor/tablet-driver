@@ -329,6 +329,8 @@ extension InputInjector {
             touchSequenceSawRotate = false
             touchSequenceBothCounted = false
             touchOwnedPointerPosition = nil
+            // Fingers lifted: other devices may move the pointer next.
+            lastDeltaOrigin = nil
         } else if projected.count >= 2 {
             touchSequenceSawTwoFingers = true
         }
@@ -641,6 +643,7 @@ extension InputInjector {
             mouseCursorPosition: target,
             mouseButton: .left)
         else { return }
+        stampMouseDelta(e, to: target)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }

@@ -511,6 +511,7 @@ extension InputInjector {
         e.setIntegerValueField(.mouseEventClickState, value: Int64(clickCount))
         e.flags = currentEventFlags
         finalizeAndPost(e)
+        lastDeltaOrigin = location
     }
 
     func postMouseUp(
@@ -544,6 +545,7 @@ extension InputInjector {
         // Click state is set in `stampClickSequence`, from the press.
         e.flags = currentEventFlags
         finalizeAndPost(e)
+        lastDeltaOrigin = location
     }
 
     func postMouseDrag(
@@ -576,12 +578,20 @@ extension InputInjector {
         }
         // Synthetic events default to zero deltas, which breaks controls that read
         // deltaX/Y (Xcode's minimap). NSEvent's deltaY is positive-up, so negate.
-        e.setIntegerValueField(
-            .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
-        e.setIntegerValueField(
-            .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
+        stampMouseDelta(e, to: location)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
+    }
+
+    /// Rounds the positions, not the step, so the deltas of a slow stroke
+    /// add up to the distance moved instead of rounding each step up or down.
+    func stampMouseDelta(_ e: CGEvent, to location: CGPoint) {
+        let origin = lastDeltaOrigin ?? currentCursorPosition()
+        e.setIntegerValueField(
+            .mouseEventDeltaX, value: Int64(location.x.rounded() - origin.x.rounded()))
+        e.setIntegerValueField(
+            .mouseEventDeltaY, value: Int64(location.y.rounded() - origin.y.rounded()))
+        lastDeltaOrigin = location
     }
 
     func postMouseMoved(
@@ -602,10 +612,7 @@ extension InputInjector {
             e.setDoubleValueField(.tabletEventTiltY, value: pose.tiltY)
             e.setDoubleValueField(.tabletEventRotation, value: pose.rotation)
         }
-        e.setIntegerValueField(
-            .mouseEventDeltaX, value: Int64((location.x - lastPostedPoint.x).rounded()))
-        e.setIntegerValueField(
-            .mouseEventDeltaY, value: Int64((location.y - lastPostedPoint.y).rounded()))
+        stampMouseDelta(e, to: location)
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }
@@ -674,6 +681,8 @@ extension InputInjector {
         stampProximityFields(m, entering: entering, eraser: eraser)
         m.flags = moveSafeEventFlags
         finalizeAndPost(m)
+        // This copy moves the pointer, so the next move's delta starts here.
+        lastDeltaOrigin = location
     }
 
     /// The pen a tool code belongs to: an eraser end's own code maps to its

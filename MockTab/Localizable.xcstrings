@@ -226,744 +226,6 @@
         }
       }
     },
-    "%lld pen setting" : {
-      "comment" : "Count of per-pen settings found in the backup for this tablet",
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Stifteinstellung"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Stifteinstellungen"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "%lld pen setting"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "new",
-                  "value" : "%lld pen settings"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ajuste de lápiz"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ajustes de lápiz"
-                }
-              }
-            }
-          }
-        },
-        "ja" : {
-          "variations" : {
-            "plural" : {
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ペン設定"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Active Area" : {
-      "comment" : "Section header in Tablet Area tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktiver Bereich"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Active Area"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Área activa"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アクティブ領域"
-          }
-        }
-      }
-    },
-    "Import Pen Settings" : {
-      "comment" : "Undo action name for a preset/profile change",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stifteinstellungen importieren"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Import Pen Settings"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importar ajustes de lápiz"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン設定をインポート"
-          }
-        }
-      }
-    },
-    "Imported as new profiles. App overrides and pen settings apply right away." : {
-      "comment" : "Import sheet: footer; imported profiles wait until activated, but app overrides and pen settings take effect right away",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird als neue Profile importiert. App-Overrides und Stifteinstellungen gelten sofort."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Imported as new profiles. App overrides and pen settings apply right away."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se importa como perfiles nuevos. Las excepciones de app y los ajustes de lápiz se aplican al momento."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新しいプロファイルとして読み込まれます。アプリ別設定とペン設定はすぐに反映されます。"
-          }
-        }
-      }
-    },
-    "MockTab erases all tablets, pens, profiles, and button mappings, then restarts." : {
-      "comment" : "Alert body: explaining the consequences of factory reset",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab löscht alle Grafiktabletts, Stifte, Profile und Tastenbelegungen und startet dann neu."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "MockTab erases all tablets, pens, profiles, and button mappings, then restarts."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab borra todas las tabletas, lápices, perfiles y asignaciones de botones, y luego se reinicia."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTabはすべてのタブレット、ペン、プロファイル、ボタン割り当てを削除してから再起動します。"
-          }
-        }
-      }
-    },
-    "Mouse" : {
-      "comment" : "Tool type: mouse",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maus"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Mouse"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ratón"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マウス"
-          }
-        }
-      }
-    },
-    "Mouse actions" : {
-      "comment" : "Accessibility label for the ellipsis menu on a mouse row in the Devices pane.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mausaktionen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Mouse actions"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Acciones del ratón"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マウス操作"
-          }
-        }
-      }
-    },
-    "Mouse name" : {
-      "comment" : "Placeholder text in rename mouse field",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mausname"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Mouse name"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nombre del ratón"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マウス名"
-          }
-        }
-      }
-    },
-    "No pen" : {
-      "comment" : "Pen name in status bar when no pen is near",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kein Stift"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No pen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sin lápiz"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペンなし"
-          }
-        }
-      }
-    },
-    "No pen nearby" : {
-      "comment" : "Pen name label when no pen is near the tablet",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kein Stift in der Nähe"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No pen nearby"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ningún lápiz cerca"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペンが近くにありません"
-          }
-        }
-      }
-    },
-    "No pens yet.\nHold a pen over a tablet to add it." : {
-      "comment" : "Empty state message in pens list — multiple tablets",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Stifte.\nHalte einen Stift über ein Grafiktablett, um ihn hinzuzufügen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No pens yet.\nHold a pen over a tablet to add it."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aún no hay lápices.\nAcerca un lápiz a una tableta para añadirlo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "まだペンがありません。\nペンをタブレットに近づけると追加されます。"
-          }
-        }
-      }
-    },
-    "No pens yet.\nHold a pen over the tablet to add it." : {
-      "comment" : "Empty state message in pens list — singular tablet",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Stifte.\nHalte einen Stift über das Grafiktablett, um ihn hinzuzufügen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "No pens yet.\nHold a pen over the tablet to add it."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aún no hay lápices.\nAcerca un lápiz a la tableta para añadirlo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "まだペンがありません。\nペンをタブレットに近づけると追加されます。"
-          }
-        }
-      }
-    },
-    "Pen actions" : {
-      "comment" : "Accessibility label for the ellipsis menu on a pen row in the Devices pane.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stiftaktionen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Pen actions"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Acciones del lápiz"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン操作"
-          }
-        }
-      }
-    },
-    "Pen name" : {
-      "comment" : "Placeholder text in rename pen field",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stiftname"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Pen name"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nombre del lápiz"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン名"
-          }
-        }
-      }
-    },
-    "Pens" : {
-      "comment" : "Section header: pens for current tablet",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stifte"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Pens"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lápices"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン"
-          }
-        }
-      }
-    },
-    "Pens (All Tablets)" : {
-      "comment" : "A heading for the section that lists all pens, regardless of which tablet they're on.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stifte (alle Grafiktabletts)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Pens (All Tablets)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lápices (todas las tabletas)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン (すべてのタブレット)"
-          }
-        }
-      }
-    },
-    "Remove Mouse" : {
-      "comment" : "Undo action name when removing a mouse",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maus entfernen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Remove Mouse"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quitar ratón"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マウスを削除"
-          }
-        }
-      }
-    },
-    "Remove Pen" : {
-      "comment" : "Undo action name when removing a pen",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stift entfernen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Remove Pen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quitar lápiz"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペンを削除"
-          }
-        }
-      }
-    },
-    "Rename Mouse" : {
-      "comment" : "Undo action name when renaming a mouse",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maus umbenennen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Rename Mouse"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Renombrar ratón"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マウスの名前変更"
-          }
-        }
-      }
-    },
-    "Rename Pen" : {
-      "comment" : "Undo action name when renaming a pen",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stift umbenennen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Rename Pen"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Renombrar lápiz"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペンの名前変更"
-          }
-        }
-      }
-    },
-    "This device has no pens.\nSet up its buttons in the Buttons pane." : {
-      "comment" : "Empty state shown in the pens list for an aux-only device like the Quick Keys puck",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Gerät hat keine Stifte.\nSeine Tasten stellst du unter „Tasten“ ein."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "This device has no pens.\nSet up its buttons in the Buttons pane."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este dispositivo no tiene lápices.\nConfigura sus botones en Botones."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このデバイスにペンはありません。\nボタンは「ボタン」で設定します。"
-          }
-        }
-      }
-    },
-    "This mouse returns with its default name the next time you use it." : {
-      "comment" : "Message explaining that a removed mouse's nickname is temporary",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Maus erscheint wieder mit ihrem Standardnamen, wenn du sie das nächste Mal benutzt."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "This mouse returns with its default name the next time you use it."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este ratón volverá con su nombre predeterminado la próxima vez que lo uses."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このマウスは、次に使ったときにデフォルト名で再表示されます。"
-          }
-        }
-      }
-    },
-    "This pen returns with its default name the next time you use it." : {
-      "comment" : "Message explaining that a removed pen's nickname is temporary",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser Stift erscheint wieder mit seinem Standardnamen, wenn du ihn das nächste Mal benutzt."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "This pen returns with its default name the next time you use it."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este lápiz volverá con su nombre predeterminado la próxima vez que lo uses."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このペンは、次に使ったときにデフォルト名で再表示されます。"
-          }
-        }
-      }
-    },
-    "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects." : {
-      "comment" : "Message explaining what gets wiped when removing a tablet",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dadurch werden alle Einstellungen, Profile, Tastenzuordnungen und die gespeicherte Stiftliste für dieses Grafiktablett verworfen. Beim nächsten Anschließen wird das Grafiktablett mit den Standardwerten neu hinzugefügt."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esto descartará todos los ajustes, perfiles, asignaciones de botones y la lista de lápices guardada para esta tableta. La tableta se añadirá de nuevo con los valores predeterminados la próxima vez que se conecte."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このタブレットのすべての設定、プロファイル、ボタン割り当て、および保存されたペンリストが破棄されます。次回接続時にデフォルト設定で再追加されます。"
-          }
-        }
-      }
-    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -1073,9 +335,6 @@
           }
         }
       }
-    },
-    "(%@)" : {
-      "shouldTranslate" : false
     },
     "(Charging)" : {
       "comment" : "Suffix when device is charging, e.g. '85%  (Charging)'",
@@ -1338,35 +597,6 @@
         }
       }
     },
-    "%@: %@" : {
-      "comment" : "Profiles summary item: a setting's name and its value",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@: %2$@"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@: %2$@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@: %2$@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@: %2$@"
-          }
-        }
-      }
-    },
     "%@ in use" : {
       "comment" : "Status bar tool slot when another tablet, not this window's, is connected and in use",
       "localizations" : {
@@ -1549,6 +779,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@、速度 %2$@"
+          }
+        }
+      }
+    },
+    "%@: %@" : {
+      "comment" : "Profiles summary item: a setting's name and its value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
           }
         }
       }
@@ -1830,6 +1089,77 @@
         }
       },
       "shouldTranslate" : false
+    },
+    "%lld pen setting" : {
+      "comment" : "Count of per-pen settings found in the backup for this tablet",
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Stifteinstellung"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Stifteinstellungen"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld pen setting"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "new",
+                  "value" : "%lld pen settings"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ajuste de lápiz"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ajustes de lápiz"
+                }
+              }
+            }
+          }
+        },
+        "ja" : {
+          "variations" : {
+            "plural" : {
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ペン設定"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "%lld points" : {
       "comment" : "VoiceOver: a length on screen, in points",
@@ -2775,6 +2105,35 @@
         }
       }
     },
+    "Active Area" : {
+      "comment" : "Section header in Tablet Area tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktiver Bereich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Active Area"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Área activa"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アクティブ領域"
+          }
+        }
+      }
+    },
     "Active Displays" : {
       "localizations" : {
         "de" : {
@@ -3174,35 +2533,6 @@
         }
       }
     },
-    "App       : MockTab %@ (build %@)" : {
-      "comment" : "Diagnostic: app version and build number",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App       : MockTab %1$@ (Build %2$@)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "App       : MockTab %1$@ (build %2$@)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App       : MockTab %1$@ (build %2$@)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App       : MockTab %1$@ (ビルド %2$@)"
-          }
-        }
-      }
-    },
     "App" : {
       "comment" : "Profiles summary: row kind for an app's override",
       "localizations" : {
@@ -3228,6 +2558,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アプリ"
+          }
+        }
+      }
+    },
+    "App       : MockTab %@ (build %@)" : {
+      "comment" : "Diagnostic: app version and build number",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App       : MockTab %1$@ (Build %2$@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "App       : MockTab %1$@ (build %2$@)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App       : MockTab %1$@ (build %2$@)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App       : MockTab %1$@ (ビルド %2$@)"
           }
         }
       }
@@ -6121,35 +5480,6 @@
         }
       }
     },
-    "Custom" : {
-      "comment" : "Profiles summary: a setting changed by hand, matching no preset",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benutzerdefiniert"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Custom"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Personalizada"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "カスタム"
-          }
-        }
-      }
-    },
     "Current mode" : {
       "comment" : "Ring diagram caption while the control is inactive",
       "localizations" : {
@@ -6221,6 +5551,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "カーソル速度"
+          }
+        }
+      }
+    },
+    "Custom" : {
+      "comment" : "Profiles summary: a setting changed by hand, matching no preset",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefiniert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Custom"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalizada"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カスタム"
           }
         }
       }
@@ -10581,6 +9940,35 @@
         }
       }
     },
+    "Import Pen Settings" : {
+      "comment" : "Undo action name for a preset/profile change",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stifteinstellungen importieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Import Pen Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importar ajustes de lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン設定をインポート"
+          }
+        }
+      }
+    },
     "Import Profile" : {
       "comment" : "Undo action name for a preset/profile change",
       "localizations" : {
@@ -10600,6 +9988,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "プロファイルをインポート"
+          }
+        }
+      }
+    },
+    "Imported as new profiles. App overrides and pen settings apply right away." : {
+      "comment" : "Import sheet: footer; imported profiles wait until activated, but app overrides and pen settings take effect right away",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird als neue Profile importiert. App-Overrides und Stifteinstellungen gelten sofort."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported as new profiles. App overrides and pen settings apply right away."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se importa como perfiles nuevos. Las excepciones de app y los ajustes de lápiz se aplican al momento."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しいプロファイルとして読み込まれます。アプリ別設定とペン設定はすぐに反映されます。"
           }
         }
       }
@@ -12547,6 +11964,35 @@
         }
       }
     },
+    "MockTab erases all tablets, pens, profiles, and button mappings, then restarts." : {
+      "comment" : "Alert body: explaining the consequences of factory reset",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab löscht alle Grafiktabletts, Stifte, Profile und Tastenbelegungen und startet dann neu."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab erases all tablets, pens, profiles, and button mappings, then restarts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab borra todas las tabletas, lápices, perfiles y asignaciones de botones, y luego se reinicia."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTabはすべてのタブレット、ペン、プロファイル、ボタン割り当てを削除してから再起動します。"
+          }
+        }
+      }
+    },
     "MockTab Help" : {
       "comment" : "Help menu: open help window\nHelp window title",
       "localizations" : {
@@ -12773,6 +12219,64 @@
         }
       }
     },
+    "Mouse" : {
+      "comment" : "Tool type: mouse",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mouse"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ratón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マウス"
+          }
+        }
+      }
+    },
+    "Mouse actions" : {
+      "comment" : "Accessibility label for the ellipsis menu on a mouse row in the Devices pane.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mausaktionen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mouse actions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones del ratón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マウス操作"
+          }
+        }
+      }
+    },
     "Mouse Buttons" : {
       "comment" : "Section header in Buttons tab when active tool is a mouse",
       "extractionState" : "manual",
@@ -12799,6 +12303,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "マウスボタン"
+          }
+        }
+      }
+    },
+    "Mouse name" : {
+      "comment" : "Placeholder text in rename mouse field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mausname"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Mouse name"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre del ratón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マウス名"
           }
         }
       }
@@ -13212,6 +12745,122 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "他のAppが起動していません"
+          }
+        }
+      }
+    },
+    "No pen" : {
+      "comment" : "Pen name in status bar when no pen is near",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Stift"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No pen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンなし"
+          }
+        }
+      }
+    },
+    "No pen nearby" : {
+      "comment" : "Pen name label when no pen is near the tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Stift in der Nähe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No pen nearby"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ningún lápiz cerca"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンが近くにありません"
+          }
+        }
+      }
+    },
+    "No pens yet.\nHold a pen over a tablet to add it." : {
+      "comment" : "Empty state message in pens list — multiple tablets",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Stifte.\nHalte einen Stift über ein Grafiktablett, um ihn hinzuzufügen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No pens yet.\nHold a pen over a tablet to add it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay lápices.\nAcerca un lápiz a una tableta para añadirlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "まだペンがありません。\nペンをタブレットに近づけると追加されます。"
+          }
+        }
+      }
+    },
+    "No pens yet.\nHold a pen over the tablet to add it." : {
+      "comment" : "Empty state message in pens list — singular tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Stifte.\nHalte einen Stift über das Grafiktablett, um ihn hinzuzufügen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No pens yet.\nHold a pen over the tablet to add it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay lápices.\nAcerca un lápiz a la tableta para añadirlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "まだペンがありません。\nペンをタブレットに近づけると追加されます。"
           }
         }
       }
@@ -13823,35 +13472,6 @@
         }
       }
     },
-    "On" : {
-      "comment" : "Profiles summary: a setting turned on",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "On"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オン"
-          }
-        }
-      }
-    },
     "OK" : {
       "comment" : "Button that closes the conflict alert",
       "localizations" : {
@@ -13894,6 +13514,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OLEDの明るさ"
+          }
+        }
+      }
+    },
+    "On" : {
+      "comment" : "Profiles summary: a setting turned on",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "On"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オン"
           }
         }
       }
@@ -14445,6 +14094,35 @@
         }
       }
     },
+    "Pen actions" : {
+      "comment" : "Accessibility label for the ellipsis menu on a pen row in the Devices pane.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stiftaktionen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pen actions"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones del lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン操作"
+          }
+        }
+      }
+    },
     "Pen Buttons" : {
       "comment" : "Section header in Buttons tab when active tool is a pen",
       "extractionState" : "manual",
@@ -14552,6 +14230,93 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ペンの感度"
+          }
+        }
+      }
+    },
+    "Pen name" : {
+      "comment" : "Placeholder text in rename pen field",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stiftname"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pen name"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre del lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン名"
+          }
+        }
+      }
+    },
+    "Pens" : {
+      "comment" : "Section header: pens for current tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stifte"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pens"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lápices"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン"
+          }
+        }
+      }
+    },
+    "Pens (All Tablets)" : {
+      "comment" : "A heading for the section that lists all pens, regardless of which tablet they're on.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stifte (alle Grafiktabletts)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pens (All Tablets)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lápices (todas las tabletas)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン (すべてのタブレット)"
           }
         }
       }
@@ -14865,7 +14630,7 @@
       }
     },
     "Pressure" : {
-      "comment" : "Live Input table row label\nSection header in Pen Feel tab",
+      "comment" : "Live Input table row label",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16138,6 +15903,64 @@
         }
       }
     },
+    "Remove Mouse" : {
+      "comment" : "Undo action name when removing a mouse",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maus entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove Mouse"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar ratón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マウスを削除"
+          }
+        }
+      }
+    },
+    "Remove Pen" : {
+      "comment" : "Undo action name when removing a pen",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stift entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove Pen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンを削除"
+          }
+        }
+      }
+    },
     "Remove Tablet" : {
       "comment" : "Undo action name when removing a tablet",
       "localizations" : {
@@ -16238,6 +16061,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アプリ別設定の名前を変更"
+          }
+        }
+      }
+    },
+    "Rename Mouse" : {
+      "comment" : "Undo action name when renaming a mouse",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maus umbenennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rename Mouse"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renombrar ratón"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "マウスの名前変更"
+          }
+        }
+      }
+    },
+    "Rename Pen" : {
+      "comment" : "Undo action name when renaming a pen",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stift umbenennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Rename Pen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renombrar lápiz"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンの名前変更"
           }
         }
       }
@@ -20488,6 +20369,64 @@
         }
       }
     },
+    "This device has no pens.\nSet up its buttons in the Buttons pane." : {
+      "comment" : "Empty state shown in the pens list for an aux-only device like the Quick Keys puck",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Gerät hat keine Stifte.\nSeine Tasten stellst du unter „Tasten“ ein."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This device has no pens.\nSet up its buttons in the Buttons pane."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este dispositivo no tiene lápices.\nConfigura sus botones en Botones."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスにペンはありません。\nボタンは「ボタン」で設定します。"
+          }
+        }
+      }
+    },
+    "This mouse returns with its default name the next time you use it." : {
+      "comment" : "Message explaining that a removed mouse's nickname is temporary",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Maus erscheint wieder mit ihrem Standardnamen, wenn du sie das nächste Mal benutzt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This mouse returns with its default name the next time you use it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este ratón volverá con su nombre predeterminado la próxima vez que lo uses."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このマウスは、次に使ったときにデフォルト名で再表示されます。"
+          }
+        }
+      }
+    },
     "This pen has no eraser." : {
       "comment" : "Tooltip on the greyed-out Eraser row in Buttons tab",
       "localizations" : {
@@ -20517,6 +20456,35 @@
         }
       }
     },
+    "This pen returns with its default name the next time you use it." : {
+      "comment" : "Message explaining that a removed pen's nickname is temporary",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Stift erscheint wieder mit seinem Standardnamen, wenn du ihn das nächste Mal benutzt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This pen returns with its default name the next time you use it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este lápiz volverá con su nombre predeterminado la próxima vez que lo uses."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このペンは、次に使ったときにデフォルト名で再表示されます。"
+          }
+        }
+      }
+    },
     "This tablet doesn't report a usable USB ID, so a recording from it couldn't identify it." : {
       "comment" : "Capture error shown when the device's USB identifiers are missing or zero",
       "localizations" : {
@@ -20542,6 +20510,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "このタブレットは有効なUSB IDを報告しないため、記録してもデバイスを特定できません。"
+          }
+        }
+      }
+    },
+    "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects." : {
+      "comment" : "Message explaining what gets wiped when removing a tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dadurch werden alle Einstellungen, Profile, Tastenzuordnungen und die gespeicherte Stiftliste für dieses Grafiktablett verworfen. Beim nächsten Anschließen wird das Grafiktablett mit den Standardwerten neu hinzugefügt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto descartará todos los ajustes, perfiles, asignaciones de botones y la lista de lápices guardada para esta tableta. La tableta se añadirá de nuevo con los valores predeterminados la próxima vez que se conecte."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このタブレットのすべての設定、プロファイル、ボタン割り当て、および保存されたペンリストが破棄されます。次回接続時にデフォルト設定で再追加されます。"
           }
         }
       }

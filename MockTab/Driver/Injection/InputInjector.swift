@@ -618,6 +618,10 @@ final class InputInjector: @unchecked Sendable {
     var panScrollCoasts = false
 
     var lastPostedPoint: CGPoint = .zero
+    /// Where the last pointer event went, or nil to read the pointer. Pan
+    /// View moves `lastPostedPoint` with the pen while the pointer stays put,
+    /// so deltas start from here.
+    var lastDeltaOrigin: CGPoint?
     var lastPostedPressure: Double = -1.0
     var lastPostedRotation: Double = 0.0
     var hasPostedPoint = false

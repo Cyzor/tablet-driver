@@ -798,6 +798,8 @@ extension InputInjector {
             schedulePanScrollSafetyNet(snap: snap)
         }
         hasPostedPoint = false
+        // Other devices may move the pointer meanwhile; see `stampMouseDelta`.
+        lastDeltaOrigin = nil
         displayMapper.clearRelativeAnchor()
         // End momentum tails; see releaseHeldStateForToolChange.
         if panMomentumTail.isRunning || touchMomentumTail.isRunning {
