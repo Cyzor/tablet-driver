@@ -13,6 +13,26 @@ extension InputInjector {
 
     // MARK: - Express key injection
 
+    func updateAuxButton(_ control: AuxButtonState.Control, down: Bool,
+                         binding: ButtonBinding, mechanicalPulse: Bool = false,
+                         at location: CGPoint, snapshot: InjectionSnapshot,
+                         settings: TabletSettings?) {
+        let actions = auxButtons.update(control, down: down, binding: binding,
+                                        mechanicalPulse: mechanicalPulse)
+        for action in actions {
+            fireButtonAction(action.binding, down: action.down, at: location,
+                             snapshot: snapshot, settings: settings, isAux: true)
+        }
+    }
+
+    func releaseAuxButtons(at location: CGPoint, snapshot: InjectionSnapshot) {
+        for action in auxButtons.releaseAll() {
+            fireButtonAction(action.binding, down: false, at: location,
+                             snapshot: snapshot, isAux: true)
+        }
+        hardwareRingButtonDown = false
+    }
+
     /// Ring and strip steps are taps, not holds. Pairing down and up keeps a
     /// binding's modifiers from leaking across steps.
     func fireKeyTap(_ binding: ButtonBinding,
@@ -46,21 +66,9 @@ extension InputInjector {
         // ── Express keys ───────────────────────────────────────────────────────
         for i in 0..<16 {
             let down = pad.button(i)
-            let hasMechanicalPulse = pad.pressedThisReport.contains(i)
-            if down != lastAuxButtons[i] {
-                // Update first so fireButtonAction's quiescent check sees the new state.
-                lastAuxButtons[i] = down
-                fireButtonAction(bindings[i], down: down, at: cursorPos,
-                                 snapshot: snap, settings: settings, isAux: true)
-            } else if down && hasMechanicalPulse && bindings[i].kind != .clickLock {
-                // A re-press arrived before its release: force up then down so
-                // it isn't swallowed. Click Lock skips this, since some decoders
-                // flag every held frame as a new press and each would toggle it.
-                fireButtonAction(bindings[i], down: false, at: cursorPos,
-                                 snapshot: snap, settings: settings, isAux: true)
-                fireButtonAction(bindings[i], down: true, at: cursorPos,
-                                 snapshot: snap, settings: settings, isAux: true)
-            }
+            updateAuxButton(.button(i), down: down, binding: bindings[i],
+                            mechanicalPulse: pad.pressedThisReport.contains(i),
+                            at: cursorPos, snapshot: snap, settings: settings)
         }
 
         // ── Bezel buttons (e.g. DTK-2400 OSD keys) ─────────────────────────────
@@ -70,17 +78,15 @@ extension InputInjector {
         for i in bezelBindings.indices {
             let auxIndex = 16 + i
             let down = pad.button(auxIndex)
-            if down != lastAuxButtons[auxIndex] {
-                lastAuxButtons[auxIndex] = down
-                fireButtonAction(bezelBindings[i], down: down, at: cursorPos,
-                                 snapshot: snap, settings: settings, isAux: true)
-            }
+            updateAuxButton(.button(auxIndex), down: down, binding: bezelBindings[i],
+                            at: cursorPos, snapshot: snap, settings: settings)
         }
 
         // ── Firmware-owned ring mode (ExpressKey Remote) ───────────────────────
         // The remote's center button switches its own mode LEDs, so the
         // active slot follows the reported mode and the button fires nothing:
         // a host-side cycle on the same press would drift out of step.
+        hardwareRingButtonDown = pad.hardwareMode != nil && (ring1?.buttonDown ?? false)
         if let mode = pad.hardwareMode {
             if mode != lastHardwareRingMode {
                 lastHardwareRingMode = mode
@@ -91,24 +97,19 @@ extension InputInjector {
                     }
                 }
             }
-            lastRingButtonDown = ring1?.buttonDown ?? false
         }
 
         // ── Touch ring center button ───────────────────────────────────────────
         let ringButtonDown = ring1?.buttonDown ?? false
-        if pad.hardwareMode == nil, ringButtonDown != lastRingButtonDown {
-            lastRingButtonDown = ringButtonDown
-            fireButtonAction(snap.touchRingButtonBinding, down: ringButtonDown,
-                             at: cursorPos, snapshot: snap, settings: settings, isAux: true)
+        if pad.hardwareMode == nil {
+            updateAuxButton(.ring, down: ringButtonDown, binding: snap.touchRingButtonBinding,
+                            at: cursorPos, snapshot: snap, settings: settings)
         }
 
         // ── Second dial's toggle key (PTK-670/870) ────────────────────────────
         let ring2ButtonDown = ring2?.buttonDown ?? false
-        if ring2ButtonDown != lastRing2ButtonDown {
-            lastRing2ButtonDown = ring2ButtonDown
-            fireButtonAction(snap.touchRingButtonBinding2, down: ring2ButtonDown,
-                             at: cursorPos, snapshot: snap, settings: settings, isAux: true)
-        }
+        updateAuxButton(.ring2, down: ring2ButtonDown, binding: snap.touchRingButtonBinding2,
+                        at: cursorPos, snapshot: snap, settings: settings)
 
         // ── Touch ring ─────────────────────────────────────────────────────────
         // 72 steps (0–71); 0x7F means no contact. Deltas wrap at 36.

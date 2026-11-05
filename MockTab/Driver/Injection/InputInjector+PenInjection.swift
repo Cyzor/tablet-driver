@@ -712,6 +712,7 @@ extension InputInjector {
         ThreadContract.expectPenThread()
         guard let snap = injectionSnapshot else { return }
         releaseBindingHeldButton(at: currentCursorPosition(), snapshot: snap)
+        releaseAuxButtons(at: currentCursorPosition(), snapshot: snap)
         commitProximityExit(snap: snap)
         // See releaseHeldStateForToolChange.
         if panMomentumTail.isRunning || touchMomentumTail.isRunning {
@@ -786,7 +787,8 @@ extension InputInjector {
         // carries the physical state on the last move.
         lastLoggedManagedFlags = 0
 
-        // Reset aux state so the next injectAux fires fresh transitions.
+        // Aux buttons have their own reports and outlive pen proximity. Keep
+        // their press bindings and modifier contributions until the real up.
         cancelPendingMouseUp()
         hoverDragButton = nil
         // Pan View survives the exit: its button owns the gesture. Suspend so
@@ -795,13 +797,6 @@ extension InputInjector {
             panScroll.suspend()
             schedulePanScrollSafetyNet(snap: snap)
         }
-        // A held Pan View key keeps its state, so its release ends the pan.
-        let panActive = panScroll.isActive
-        lastAuxButtons = lastAuxButtons.indices.map { i in
-            let binding = i < 16 ? snap.expressKeyBindings[i] : snap.bezelButtonBindings[i - 16]
-            return panActive && lastAuxButtons[i] && binding.kind == .scrollDrag
-        }
-        lastRingButtonDown = false
         hasPostedPoint = false
         displayMapper.clearRelativeAnchor()
         // End momentum tails; see releaseHeldStateForToolChange.

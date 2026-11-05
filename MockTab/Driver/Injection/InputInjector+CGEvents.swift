@@ -95,7 +95,8 @@ extension InputInjector {
         // our own posts pollute.
         let reconcileFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
-            remainingSyntheticFlags: groundTruthSyntheticFlags.rawValue))
+            remainingSyntheticFlags: groundTruthSyntheticFlags.rawValue
+                | SharedAuxModifierState.shared.groundTruthFlags.rawValue))
 
         for (bit, keyCode) in Self.modifierKeyCodes where excess.contains(bit) {
             guard let e = CGEvent(source: sessionSource) else { continue }
@@ -144,12 +145,12 @@ extension InputInjector {
         for key in modifierRefCounts.keys { modifierRefCounts[key] = 0 }
         lastSyntheticFlagChangeAt = ProcessInfo.processInfo.systemUptime
 
-        // Managed bits all clear: hidSystemState and tapLastPhysicalFlags both
-        // reflect our own earlier posts and would re-assert the bit. A key the user
-        // still holds is re-asserted by the OS.
+        // Keep aux holds, including those on other devices. The system and
+        // physical cache can contain our earlier posts, so don't reuse them
+        // for managed bits.
         let releaseFlags = CGEventFlags(rawValue: ModifierMath.releaseEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
-            remainingSyntheticFlags: 0))
+            remainingSyntheticFlags: SharedAuxModifierState.shared.groundTruthFlags.rawValue))
 
         // One flagsChanged per bit with its canonical keycode. Posted DIRECTLY (not via
         // finalizeAndPost) to avoid having currentEventFlags re-stamp the stale system value
@@ -163,10 +164,11 @@ extension InputInjector {
         }
 
         // Audit: log any released bit the OS still reports as held.
+        let released = toRelease.subtracting(SharedAuxModifierState.shared.groundTruthFlags)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50)) { [weak self] in
             guard self != nil else { return }
             let systemAfter = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
-            let stillStuck = toRelease.rawValue & systemAfter
+            let stillStuck = released.rawValue & systemAfter
             if stillStuck != 0 {
                 modLog.error("releaseAll: post-audit FAILED — bits 0x\(String(stillStuck, radix: 16), privacy: .public) STILL set in hidSystemState 50ms after release events posted")
             } else {
@@ -175,12 +177,17 @@ extension InputInjector {
         }
     }
 
-    /// Releases any plain (non-modifier) keys still held by a `.keyCombo` binding —
-    /// see `heldKeyComboRefCounts`. Posts a `keyUp` for each and clears the ref counts.
-    /// Safe to call when nothing is held (no-op).
-    func releaseAllHeldKeyComboKeys() {
-        guard !heldKeyComboRefCounts.isEmpty else { return }
-        let toRelease = heldKeyComboRefCounts.keys
+    /// Releases pen keys without interrupting an aux hold of the same key.
+    /// Watchdogs can also clear orphaned aux keys once no control is held.
+    func releaseAllHeldKeyComboKeys(includeAux: Bool = false) {
+        var toRelease = Set(heldKeyComboRefCounts.keys)
+        if includeAux {
+            toRelease.formUnion(heldAuxKeyComboRefCounts.keys)
+            heldAuxKeyComboRefCounts.removeAll()
+        } else {
+            toRelease.subtract(heldAuxKeyComboRefCounts.keys)
+        }
+        guard !heldKeyComboRefCounts.isEmpty || !toRelease.isEmpty else { return }
         modLog.info("releaseAllHeldKeyComboKeys: clearing keycodes \(Array(toRelease), privacy: .public)")
         heldKeyComboRefCounts.removeAll()
         lastKeyComboChangeAt = ProcessInfo.processInfo.systemUptime
@@ -954,10 +961,18 @@ extension InputInjector {
         }
         guard let e = event else { return }
 
+        // Releasing one owner must not lift a plain key another aux/pen
+        // binding still holds. Cleanup may already have cleared this owner's
+        // count, so subtract only from its own store.
+        let key = CGKeyCode(binding.keyCode)
+        let ownCount = (isAux ? heldAuxKeyComboRefCounts[key] : heldKeyComboRefCounts[key]) ?? 0
+        let otherCount = (isAux ? heldKeyComboRefCounts[key] : heldAuxKeyComboRefCounts[key]) ?? 0
+        let postKeyEvent = isModifierOnly || down || Swift.max(0, ownCount - 1) + otherCount == 0
+
         // Bracket with flagsChanged in hardware order (⌘ down, key down, key up,
         // ⌘ up). Rebelle tracks modifiers from flagsChanged alone.
         let bracketModifiers = !isModifierOnly && binding.modifierFlags != 0
-        if bracketModifiers && !down {
+        if bracketModifiers && !down && postKeyEvent {
             e.flags = currentEventFlags
             finalizeAndPost(e)
         }
@@ -1013,13 +1028,16 @@ extension InputInjector {
         // `heldKeyComboRefCounts`.
         if !isModifierOnly {
             let key = CGKeyCode(binding.keyCode)
-            let count = heldKeyComboRefCounts[key] ?? 0
+            var counts = isAux ? heldAuxKeyComboRefCounts : heldKeyComboRefCounts
+            let count = counts[key] ?? 0
             if down {
-                heldKeyComboRefCounts[key] = count + 1
+                counts[key] = count + 1
             } else {
-                heldKeyComboRefCounts[key] = Swift.max(0, count - 1)
-                if heldKeyComboRefCounts[key] == 0 { heldKeyComboRefCounts.removeValue(forKey: key) }
+                counts[key] = Swift.max(0, count - 1)
+                if counts[key] == 0 { counts.removeValue(forKey: key) }
             }
+            if isAux { heldAuxKeyComboRefCounts = counts }
+            else { heldKeyComboRefCounts = counts }
             lastKeyComboChangeAt = ProcessInfo.processInfo.systemUptime
         }
         // Post the flagsChanged brackets with the committed flags, one per bit,
@@ -1033,7 +1051,7 @@ extension InputInjector {
                 finalizeAndPost(fc)
             }
         }
-        if !(bracketModifiers && !down) {
+        if !(bracketModifiers && !down) && postKeyEvent {
             e.flags = currentEventFlags
             finalizeAndPost(e)
         }
