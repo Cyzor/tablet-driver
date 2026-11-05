@@ -48,7 +48,7 @@ struct ImportPreviewSheet: View {
             Divider()
             buttons
         }
-        .frame(width: 420)
+        .frame(width: 460)
     }
 
     // MARK: - Subviews
@@ -67,17 +67,21 @@ struct ImportPreviewSheet: View {
 
     private var entryList: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(plan.entries, id: \.productID) { entry in
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(plan.entries.enumerated()), id: \.element.productID) { index, entry in
+                    if index > 0 { Divider() }
                     Toggle(isOn: inclusionBinding(entry.productID)) {
                         entryRow(entry)
                     }
                     .toggleStyle(.checkbox)
+                    .padding(.vertical, 8)
+                    .help(String(localized: "Option-click to check or uncheck every tablet", comment: "Import sheet: tooltip on a tablet's checkbox"))
                     .accessibilityLabel(rowAccessibilityLabel(for: entry))
                     .accessibilityHint(Text("Includes or skips this profile in the import.", comment: "VoiceOver hint for a row in the import sheet"))
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
         }
         .frame(minHeight: 80, maxHeight: 300)
     }
@@ -86,7 +90,10 @@ struct ImportPreviewSheet: View {
         Binding(
             get: { !excluded.contains(productID) },
             set: { included in
-                if included { excluded.remove(productID) } else { excluded.insert(productID) }
+                // Option-click sets every box to the clicked one's new state.
+                let targets = NSEvent.modifierFlags.contains(.option)
+                    ? plan.entries.map(\.productID) : [productID]
+                if included { excluded.subtract(targets) } else { excluded.formUnion(targets) }
             })
     }
 
@@ -103,11 +110,11 @@ struct ImportPreviewSheet: View {
 
     private var note: some View {
         Text(
-            String(localized: "Imported as new profiles. App overrides and pen settings apply right away.",
+            String(localized: "Adds new profiles. App overrides and pen settings apply at once.",
                    comment: "Import sheet: footer; imported profiles wait until activated, but app overrides and pen settings take effect right away")
         )
         .appFont(.settingsLabel).foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
+        .lineLimit(1)
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
     }
@@ -130,6 +137,8 @@ struct ImportPreviewSheet: View {
 
     // MARK: - Entry Row
 
+    /// Three lines at most, none wrapping: tablet, new profile name, and what
+    /// comes along. Truncated text shows in full on hover.
     @ViewBuilder
     private func entryRow(_ entry: ImportPlan.TabletEntry) -> some View {
         let isExcluded = excluded.contains(entry.productID)
@@ -137,74 +146,52 @@ struct ImportPreviewSheet: View {
         let finalName = ts?.uniqueProfileName(entry.resolvedProfileName) ?? entry.resolvedProfileName
         let renamed = finalName != entry.resolvedProfileName
 
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(entry.nickname).fontWeight(.medium)
-                        .foregroundStyle(isExcluded ? Color.secondary : Color.primary)
-                        .lineLimit(1)
-                    Text(entry.modelName).appFont(.settingsBadge)
-                        .foregroundStyle(.secondary)
-                }
-
-                if !isExcluded {
-                    HStack(spacing: 4) {
-                        Text(String(localized: "→ New profile:", comment: "Import sheet: label before the profile name that will be created")).appFont(.settingsLabel).foregroundStyle(.secondary)
-                        Text("\"\(finalName)\"").appFont(.settingsLabel)
-                            .foregroundStyle(renamed ? Color.orange : Color.secondary)
-                        if renamed {
-                            Text(String(localized: "(renamed to avoid conflict)", comment: "Label when a profile name was changed to avoid a duplicate"))
-                                .appFont(.settingsBadge).foregroundStyle(.orange)
-                        }
-                    }
-                    if !entry.isKnown {
-                        Text(String(localized: "Not in your registry — profile will be available when this tablet connects.", comment: "Message when importing a profile for a tablet that hasn't been connected yet"))
-                            .appFont(.settingsBadge).foregroundStyle(.orange)
-                    }
-                    Text(String(localized: "\(entry.profileValues.count) setting", comment: "Count of settings in imported profile"))
-                        .appFont(.settingsBadge).foregroundStyle(.tertiary)
-                    extraContentSummary(for: entry, ts: ts)
-                } else {
-                    Text(String(localized: "Skipped", comment: "Label when a tablet profile is excluded from import"))
-                        .appFont(.settingsLabel).foregroundStyle(.secondary)
-                }
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Text(entry.nickname).fontWeight(.medium)
+                    .layoutPriority(1)
+                Text(entry.modelName).appFont(.settingsBadge)
+                    .foregroundStyle(.secondary)
             }
+            .lineLimit(1)
 
-            Spacer(minLength: 0)
+            Text(String(localized: "New profile “\(finalName)”", comment: "Import sheet: the profile name the import will create"))
+                .appFont(.settingsLabel)
+                .foregroundStyle(renamed ? Color.orange : Color.secondary)
+                .lineLimit(1).truncationMode(.middle)
+                .help(renamed
+                    ? String(localized: "Renamed to avoid a profile with the same name", comment: "Import sheet: tooltip on a new profile name that was changed to avoid a duplicate")
+                    : finalName)
+
+            Text(contentSummary(for: entry))
+                .appFont(.settingsBadge).foregroundStyle(.tertiary)
+                .lineLimit(1)
+
+            if !entry.isKnown {
+                Text(String(localized: "Waits until this tablet connects", comment: "Import sheet: the backup's tablet hasn't been connected to this Mac yet"))
+                    .appFont(.settingsBadge).foregroundStyle(.orange)
+                    .lineLimit(1)
+            }
         }
-        .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6)
-            .strokeBorder(
-                isExcluded ? Color(NSColor.separatorColor).opacity(0.5) : Color(NSColor.separatorColor),
-                lineWidth: 1))
-        .opacity(isExcluded ? 0.5 : 1.0)
+        .opacity(isExcluded ? 0.4 : 1.0)
     }
 
-    /// Counts of profiles/overrides/tool-settings found in the backup for this
-    /// tablet. Conflicting overrides/tool settings (an existing local
-    /// customization for the same app/tool) are always skipped — kept local,
-    /// never silently clobbered. There's no overwrite option yet; the
-    /// control for that was disconnected until it's wired up for real (see
-    /// `importAppOverride`/`importToolSettings`'s `overwrite` parameter).
-    @ViewBuilder
-    private func extraContentSummary(for entry: ImportPlan.TabletEntry, ts: TabletSettings?) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if !entry.profiles.isEmpty {
-                Text(String(localized: "\(entry.profiles.count) profile", comment: "Count of profiles found in the backup for this tablet"))
-                    .appFont(.settingsBadge).foregroundStyle(.tertiary)
-            }
-            if !entry.overrides.isEmpty {
-                Text(String(localized: "\(entry.overrides.count) app override", comment: "Count of per-app overrides found in the backup for this tablet"))
-                    .appFont(.settingsBadge).foregroundStyle(.tertiary)
-            }
-            if !entry.toolSettings.isEmpty {
-                Text(String(localized: "\(entry.toolSettings.count) pen setting", comment: "Count of per-pen settings found in the backup for this tablet"))
-                    .appFont(.settingsBadge).foregroundStyle(.tertiary)
-            }
+    /// "31 settings · 3 profiles · 4 app overrides · 5 pen settings".
+    /// Conflicting overrides and pen settings are always skipped, keeping the
+    /// local ones (see `importAppOverride`/`importToolSettings`).
+    private func contentSummary(for entry: ImportPlan.TabletEntry) -> String {
+        var parts = [String(localized: "\(entry.profileValues.count) setting", comment: "Count of settings in imported profile")]
+        if !entry.profiles.isEmpty {
+            parts.append(String(localized: "\(entry.profiles.count) profile", comment: "Count of profiles found in the backup for this tablet"))
         }
+        if !entry.overrides.isEmpty {
+            parts.append(String(localized: "\(entry.overrides.count) app override", comment: "Count of per-app overrides found in the backup for this tablet"))
+        }
+        if !entry.toolSettings.isEmpty {
+            parts.append(String(localized: "\(entry.toolSettings.count) pen setting", comment: "Count of per-pen settings found in the backup for this tablet"))
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Actions
