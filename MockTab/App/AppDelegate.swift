@@ -44,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        suppressAutoFillPanel()
 
         // The Accessibility prompt is deferred to the first tablet connection
         // (TabletManager.promptForAccessibilityIfNeeded) so the request appears

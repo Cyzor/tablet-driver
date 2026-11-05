@@ -68,7 +68,6 @@ struct InlineNumberField: View {
             // Deferred a turn: focus asked for as the field is inserted
             // lands before it can take it.
             .onAppear {
-                hideAutoFillPanelDuringRename()
                 watchClicks()
                 DispatchQueue.main.async {
                     isFocused = true

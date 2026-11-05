@@ -379,19 +379,23 @@ struct RowActionsMenu<Content: View>: View {
     }
 }
 
-/// Keeps the system AutoFill panel invisible while a rename field takes focus.
-/// Its first appearance after launch flashes an empty rounded panel under the
-/// field (`SPRoundedWindow`, hosted by SafariPlatformSupport); no text-field
-/// setting turns it off. A name field has nothing to fill, so hide it.
+/// Keeps the system AutoFill panel out of sight in every MockTab window.
+/// The first text field focused after launch flashes an empty rounded panel
+/// beside it (`SPRoundedWindow`, from SafariPlatformSupport), and no
+/// text-field setting turns it off. MockTab's fields hold names and numbers,
+/// with nothing to fill, so hide the panel whenever it appears, and let clicks
+/// pass through it while it's up. Called once at launch.
 @MainActor
-func hideAutoFillPanelDuringRename() {
-    let deadline = ProcessInfo.processInfo.systemUptime + 1.0
-    Timer.scheduledTimer(withTimeInterval: 0.005, repeats: true) { timer in
-        let expired = ProcessInfo.processInfo.systemUptime > deadline
-        if expired { timer.invalidate() }
-        MainActor.assumeIsolated {  // scheduled on the main run loop
-            let panels = NSApp.windows.filter { String(describing: type(of: $0)) == "SPRoundedWindow" }
-            panels.forEach { $0.alphaValue = expired ? 1 : 0 }
+func suppressAutoFillPanel() {
+    NotificationCenter.default.addObserver(
+        forName: NSWindow.didChangeOcclusionStateNotification, object: nil, queue: .main
+    ) { note in
+        // Read the name here; only the window itself crosses to the main actor.
+        guard let object = note.object, String(describing: type(of: object)) == "SPRoundedWindow" else { return }
+        nonisolated(unsafe) let panel = object as? NSWindow
+        MainActor.assumeIsolated {  // queue: .main
+            panel?.alphaValue = 0
+            panel?.ignoresMouseEvents = true
         }
     }
 }
