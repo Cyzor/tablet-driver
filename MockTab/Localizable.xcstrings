@@ -6149,6 +6149,75 @@
         }
       }
     },
+    "Delete All" : {
+      "comment" : "Profile row menu item while Option is held: deletes every profile for this tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle löschen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar todos"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべて削除"
+          }
+        }
+      }
+    },
+    "Delete All Profiles" : {
+      "comment" : "Undo action name: Option-click Delete All in the Profiles pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Profile löschen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar todos los perfiles"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのプロファイルを削除"
+          }
+        }
+      }
+    },
+    "Delete every profile for this tablet (undoable)." : {
+      "comment" : "Help: Option-click Delete All in the profile row menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Profile dieses Grafiktabletts löschen (widerrufbar)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar todos los perfiles de esta tableta (se puede deshacer)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このタブレットのプロファイルをすべて削除します（取り消し可能）。"
+          }
+        }
+      }
+    },
     "Delete Profile" : {
       "comment" : "Undo action name for a preset/profile change",
       "localizations" : {

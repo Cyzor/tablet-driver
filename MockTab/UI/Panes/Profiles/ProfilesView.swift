@@ -52,6 +52,7 @@ struct ProfilesView: View {
                     editingName: $editingName,
                     onActivate: { settings.activate($0) },
                     onDelete: { settings.deleteProfileRecordingUndo($0) },
+                    onDeleteAll: { settings.deleteAllProfilesRecordingUndo() },
                     // Deferred a turn, as in the Devices pane: landing the field
                     // in the same turn as the gesture's own state changes loses
                     // the focus/select-all trigger in `.onAppear`.
@@ -469,11 +470,17 @@ private struct ProfileListView: View {
     @Binding var editingName: String
     let onActivate: (TabletSettings.Profile) -> Void
     let onDelete: (TabletSettings.Profile) -> Void
+    let onDeleteAll: () -> Void
     let onRenameBegin: (TabletSettings.Profile) -> Void
     let onRenameCommit: () -> Void
     let onRenameCancel: () -> Void
 
     @FocusState private var editFieldFocused: Bool
+    /// Before macOS 15: Option held when a row menu opens turns Delete into
+    /// Delete All. The menu doesn't change while open, so the item does what
+    /// it shows.
+    @State private var optionKeyDown = false
+    @State private var optionKeyMonitor: Any? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -491,6 +498,28 @@ private struct ProfileListView: View {
                     profileRow(preset)
                 }
             }
+        }
+        .onAppear {
+            if #available(macOS 15, *) { return }
+            optionKeyDown = NSEvent.modifierFlags.contains(.option)
+            guard optionKeyMonitor == nil else { return }
+            optionKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+                optionKeyDown = event.modifierFlags.contains(.option)
+                return event
+            }
+        }
+        .onDisappear {
+            if let optionKeyMonitor { NSEvent.removeMonitor(optionKeyMonitor) }
+            optionKeyMonitor = nil
+            optionKeyDown = false
+        }
+        // An open menu, or another app, swallows Option's release, so look
+        // again once either hands the keyboard back.
+        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
+            optionKeyDown = NSEvent.modifierFlags.contains(.option)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            optionKeyDown = NSEvent.modifierFlags.contains(.option)
         }
     }
 
@@ -577,13 +606,32 @@ private struct ProfileListView: View {
         }
         .help("Edit the profile name")
         Divider()
+        // macOS 15 swaps the item live while the menu is open. Earlier
+        // systems decide when the menu opens, from `optionKeyDown`.
+        if #available(macOS 15, *) {
+            deleteButton(preset).modifierKeyAlternate(.option) { deleteAllButton }
+        } else if optionKeyDown {
+            deleteAllButton
+        } else {
+            deleteButton(preset)
+        }
+    }
+
+    // `onDelete` is `deleteProfileRecordingUndo`, which snapshots the
+    // profile's stored values and its list position, so deleting really is
+    // undoable.
+    private func deleteButton(_ preset: TabletSettings.Profile) -> some View {
         Button(role: .destructive) { onDelete(preset) } label: {
             Label("Delete", systemImage: "trash")
         }
-        // `onDelete` is `deleteProfileRecordingUndo`, which snapshots the
-        // profile's stored values and its list position, so deleting really
-        // is undoable.
         .help("Delete this profile (undoable).")
+    }
+
+    private var deleteAllButton: some View {
+        Button(role: .destructive) { onDeleteAll() } label: {
+            Label(String(localized: "Delete All", comment: "Profile row menu item while Option is held: deletes every profile for this tablet"), systemImage: "trash")
+        }
+        .help(String(localized: "Delete every profile for this tablet (undoable).", comment: "Help: Option-click Delete All in the profile row menu"))
     }
 
     /// Focuses the rename text field and selects its full contents so the user

@@ -259,6 +259,37 @@ extension TabletSettings {
         }
     }
 
+    /// Deletes every profile for this tablet under one undo action
+    /// (Option-click "Delete All" in the Profiles pane).
+    func deleteAllProfilesRecordingUndo() {
+        guard !profiles.isEmpty else { return }
+        let captured = profiles
+        let activeID = activeProfile?.id
+        var snapshot: [String: Any] = [:]
+        for profile in captured {
+            let prefix = profileKeyPrefix(profile)
+            for key in Self.profileSettingKeys {
+                if let v = ud.object(forKey: prefix + key) { snapshot[prefix + key] = v }
+                ud.removeObject(forKey: prefix + key)
+            }
+        }
+        profiles = []
+        saveProfileList()
+        if activeID != nil { activate(nil) }
+
+        let name = String(localized: "Delete All Profiles", comment: "Undo action name: Option-click Delete All in the Profiles pane")
+        record(name) { [weak self] in
+            guard let self else { return }
+            for (key, value) in snapshot { self.ud.set(value, forKey: key) }
+            self.profiles = captured
+            self.saveProfileList()
+            if let activeID, let restored = captured.first(where: { $0.id == activeID }) {
+                self.activate(restored)
+            }
+            self.record(name) { [weak self] in self?.deleteAllProfilesRecordingUndo() }
+        }
+    }
+
     // MARK: - Profile persistence
 
     private var profileListKey: String { devicePrefix + "_presets" }
