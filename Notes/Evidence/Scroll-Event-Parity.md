@@ -1,6 +1,6 @@
 # Scroll Events: MockTab and a Trackpad
 
-Supports [Synthesizing tablet events: scrolling](../macOS-Tablet-Event-Synthesis.md#scrolling).
+Supports [macOS pen events: scrolling](../macOS-Pen-Events.md#scrolling).
 
 **Capture:** the same flick-and-coast scroll, once on Apple's trackpad and
 once through MockTab with momentum on, recorded as events reach an app.

@@ -5,7 +5,7 @@ A few things about MockTab that the code doesn't make obvious: one easy-to-miss 
 For the rest, start here:
 
 - `Architecture.md` explains the two threads, follows a pen report from tablet to app, and shows where things live.
-- `Notes/macOS-Tablet-Event-Synthesis.md` lists the event fields apps need to see pressure, tilt, and the pen's identity.
+- `Notes/macOS-Pen-Events.md` lists the event fields apps need to see pressure, tilt, and the pen's identity.
 - The `Notes/Wacom-*-Protocol.md` pages and `Notes/Xencelabs-Protocol.md` describe each tablet's reports.
 
 ## Uninstall Wacom's Driver First
