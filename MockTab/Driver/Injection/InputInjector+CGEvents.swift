@@ -961,18 +961,10 @@ extension InputInjector {
         }
         guard let e = event else { return }
 
-        // Releasing one owner must not lift a plain key another aux/pen
-        // binding still holds. Cleanup may already have cleared this owner's
-        // count, so subtract only from its own store.
-        let key = CGKeyCode(binding.keyCode)
-        let ownCount = (isAux ? heldAuxKeyComboRefCounts[key] : heldKeyComboRefCounts[key]) ?? 0
-        let otherCount = (isAux ? heldKeyComboRefCounts[key] : heldAuxKeyComboRefCounts[key]) ?? 0
-        let postKeyEvent = isModifierOnly || down || Swift.max(0, ownCount - 1) + otherCount == 0
-
         // Bracket with flagsChanged in hardware order (⌘ down, key down, key up,
         // ⌘ up). Rebelle tracks modifiers from flagsChanged alone.
         let bracketModifiers = !isModifierOnly && binding.modifierFlags != 0
-        if bracketModifiers && !down && postKeyEvent {
+        if bracketModifiers && !down {
             e.flags = currentEventFlags
             finalizeAndPost(e)
         }
@@ -1051,7 +1043,7 @@ extension InputInjector {
                 finalizeAndPost(fc)
             }
         }
-        if !(bracketModifiers && !down) && postKeyEvent {
+        if !(bracketModifiers && !down) {
             e.flags = currentEventFlags
             finalizeAndPost(e)
         }

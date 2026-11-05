@@ -29,13 +29,16 @@
 		AG000002 /* Exceptions for "MockTab" folder in "MockTabTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Driver/Injection/AuxButtonState.swift,
 				Driver/Injection/MomentumTail.swift,
 				Driver/Mapping/RelativeBallistics.swift,
 				Figures/TabletControlMap.swift,
 				Figures/TabletFigure.swift,
 				Figures/TabletLayoutIdentity.swift,
 				Figures/TabletLayoutTable.swift,
+				Settings/Model/ButtonBinding.swift,
 				Settings/Model/TabletOrientation.swift,
+				Settings/Serialization/UnknownFieldsCodec.swift,
 			);
 			target = ADT00001 /* MockTabTests */;
 		};
