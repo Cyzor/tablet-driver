@@ -129,14 +129,34 @@ final class ToolSettings: ObservableObject {
     @Published private var tipRaw: String = "" {
         didSet {
             persist("tipBinding", tipRaw)
-            _tipBinding = ButtonBinding.decode(tipRaw, orDefault: .leftClick)
+            _tipBinding = ButtonBinding.decode(tipRaw, orDefault: Self.builtInBinding(.tip, isMouse: isMouse))
         }
     }
 
     @Published private var eraserRaw: String = "" {
         didSet {
             persist("eraserBinding", eraserRaw)
-            _eraserBinding = ButtonBinding.decode(eraserRaw, orDefault: .eraser)
+            _eraserBinding = ButtonBinding.decode(eraserRaw, orDefault: Self.builtInBinding(.eraser, isMouse: isMouse))
+        }
+    }
+
+    enum ButtonSlot: Equatable {
+        case tip, eraser, wheel
+        /// A side or mouse button, counting from 1.
+        case button(Int)
+    }
+
+    /// The action a slot has until someone changes it. A mouse's buttons
+    /// click left, right, and middle; a pen's lower side button right-clicks.
+    static func builtInBinding(_ slot: ButtonSlot, isMouse: Bool) -> ButtonBinding {
+        switch slot {
+        case .tip: return .leftClick
+        case .eraser: return .eraser
+        case .wheel: return .none
+        case .button(1): return isMouse ? .leftClick : .rightClick
+        case .button(2): return isMouse ? .rightClick : .middleClick
+        case .button(3): return isMouse ? .middleClick : .none
+        case .button: return .none
         }
     }
 
@@ -156,15 +176,14 @@ final class ToolSettings: ObservableObject {
     @Published private var pen1Raw: String = "" {
         didSet {
             persist("penButton1Binding", pen1Raw)
-            // A mouse's buttons default to left, right, and middle; a pen's lower side button to right.
-            _pen1Binding = ButtonBinding.decode(pen1Raw, orDefault: isMouse ? .leftClick : .rightClick)
+            _pen1Binding = ButtonBinding.decode(pen1Raw, orDefault: Self.builtInBinding(.button(1), isMouse: isMouse))
         }
     }
 
     @Published private var pen2Raw: String = "" {
         didSet {
             persist("penButton2Binding", pen2Raw)
-            _pen2Binding = ButtonBinding.decode(pen2Raw, orDefault: isMouse ? .rightClick : .middleClick)
+            _pen2Binding = ButtonBinding.decode(pen2Raw, orDefault: Self.builtInBinding(.button(2), isMouse: isMouse))
         }
     }
 
@@ -184,28 +203,28 @@ final class ToolSettings: ObservableObject {
     @Published private var pen3Raw: String = "" {
         didSet {
             persist("penButton3Binding", pen3Raw)
-            _pen3Binding = ButtonBinding.decode(pen3Raw, orDefault: isMouse ? .middleClick : .none)
+            _pen3Binding = ButtonBinding.decode(pen3Raw, orDefault: Self.builtInBinding(.button(3), isMouse: isMouse))
         }
     }
 
     @Published private var pen4Raw: String = "" {
         didSet {
             persist("penButton4Binding", pen4Raw)
-            _pen4Binding = ButtonBinding.decode(pen4Raw, orDefault: .none)
+            _pen4Binding = ButtonBinding.decode(pen4Raw, orDefault: Self.builtInBinding(.button(4), isMouse: isMouse))
         }
     }
 
     @Published private var pen5Raw: String = "" {
         didSet {
             persist("penButton5Binding", pen5Raw)
-            _pen5Binding = ButtonBinding.decode(pen5Raw, orDefault: .none)
+            _pen5Binding = ButtonBinding.decode(pen5Raw, orDefault: Self.builtInBinding(.button(5), isMouse: isMouse))
         }
     }
 
     @Published private var wheelRaw: String = "" {
         didSet {
             persist("wheelBinding", wheelRaw)
-            _wheelBinding = ButtonBinding.decode(wheelRaw, orDefault: .none)
+            _wheelBinding = ButtonBinding.decode(wheelRaw, orDefault: Self.builtInBinding(.wheel, isMouse: isMouse))
         }
     }
 

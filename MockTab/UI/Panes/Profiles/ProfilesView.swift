@@ -639,6 +639,8 @@ private struct ConfigurationSummaryView: View {
     let offlineSettings: [String: TabletSettings]
     let toolsForDevice: (DeviceRegistry.KnownTablet) -> [DeviceRegistry.KnownTool]
     @Binding var isExpanded: Bool
+    /// Screenshot aid, as in the Devices pane: Option-Shift-click a card.
+    @State private var decoyingIDs = false
 
     var body: some View {
         DisclosureRow(
@@ -647,8 +649,11 @@ private struct ConfigurationSummaryView: View {
             isExpanded: $isExpanded
         ) {
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(tablets, id: \.id) { tablet in
+                // A companion such as the Quick Keys puck has no pens, so
+                // it would get an empty card.
+                ForEach(tablets.filter { TabletManager.staticSpec(forProductID: $0.productID)?.isAuxOnly != true }, id: \.id) { tablet in
                     tabletSummaryCard(tablet)
+                        .gesture(TapGesture().modifiers([.option, .shift]).onEnded { decoyingIDs.toggle() })
                 }
             }
         }
@@ -665,11 +670,10 @@ private struct ConfigurationSummaryView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(tablet.nickname)
-                    .appFont(.settingsLabel)
-                    .fontWeight(.medium)
+                    .appFont(.headline)
                     .lineLimit(1)
                 Text(tablet.modelName)
-                    .appFont(.settingsBadge)
+                    .appFont(.settingsLabel)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(
@@ -684,16 +688,28 @@ private struct ConfigurationSummaryView: View {
             if !nonDefault.isEmpty {
                 ForEach(nonDefault, id: \.self) { line in
                     Text(line)
-                        .appFont(.settingsBadge)
+                        .appFont(.settingsLabel)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            let tools = toolsForDevice(tablet)
+            let tools = Self.summaryTools(toolsForDevice(tablet))
+            let apps = ts.appOverrides.compactMap { o -> (name: String, lines: [String])? in
+                let lines = overrideLines(o, in: ts)
+                return lines.isEmpty ? nil : (o.appName, lines)
+            }
             if !tools.isEmpty {
+                let repeated = Self.repeatedNicknames(tools)
                 ForEach(tools, id: \.id) { tool in
-                    toolSummaryRow(tool, deviceSettings: ts, isLast: tool.id == tools.last?.id)
+                    toolSummaryRow(
+                        tool, deviceSettings: ts, showsID: repeated.contains(tool.nickname),
+                        isLast: apps.isEmpty && tool.id == tools.last?.id)
                 }
+            }
+            ForEach(Array(apps.enumerated()), id: \.offset) { i, app in
+                summaryRow(
+                    kind: String(localized: "App", comment: "Profiles summary: row kind for an app's override"),
+                    name: app.name, shownID: nil, details: app.lines, isLast: i == apps.count - 1)
             }
         }
         .padding(10)
@@ -702,12 +718,32 @@ private struct ConfigurationSummaryView: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
+    /// An eraser end uses its pen's settings, so it gets no row of its own
+    /// unless its pen hasn't been seen.
+    static func summaryTools(_ tools: [DeviceRegistry.KnownTool]) -> [DeviceRegistry.KnownTool] {
+        let ids = Set(tools.map(\.id))
+        return tools.filter { tool in
+            DeviceRegistry.tipSiblingID(of: tool.id).map { !ids.contains($0) } ?? true
+        }
+    }
+
+    /// Nicknames shared by more than one row, which then show their identifier.
+    static func repeatedNicknames(_ tools: [DeviceRegistry.KnownTool]) -> Set<String> {
+        var seen = Set<String>()
+        var repeated = Set<String>()
+        for tool in tools where !seen.insert(tool.nickname).inserted { repeated.insert(tool.nickname) }
+        return repeated
+    }
+
     @ViewBuilder
     private func toolSummaryRow(
-        _ tool: DeviceRegistry.KnownTool, deviceSettings: TabletSettings, isLast: Bool
+        _ tool: DeviceRegistry.KnownTool, deviceSettings: TabletSettings, showsID: Bool, isLast: Bool
     ) -> some View {
-        let t = deviceSettings.toolSettings(forID: tool.id)
-        let nonDefault = toolNonDefaultLines(t)
+        // The cache keeps the first instance made, so a mouse must be made
+        // as one or the driver inherits pen button defaults.
+        let t = deviceSettings.toolSettings(
+            forID: DeviceRegistry.tipSiblingID(of: tool.id) ?? tool.id, isMouse: tool.isMouse)
+        let nonDefault = toolNonDefaultLines(t, tool: tool, deviceSettings: deviceSettings)
         let toolKind =
             tool.kind.lowercased() == "pen"
             ? String(localized: "Pen", comment: "Tool type: pen")
@@ -717,72 +753,252 @@ private struct ConfigurationSummaryView: View {
                     ? String(localized: "Mouse", comment: "Tool type: mouse")
                     : String(localized: "Pen", comment: "Tool type: pen")))
 
-        HStack(alignment: .top, spacing: 8) {
-            Text(toolKind)
-                .appFont(.settingsBadge)
+        summaryRow(
+            kind: toolKind, name: tool.nickname.isEmpty ? tool.displayID : tool.nickname,
+            shownID: showsID && !tool.nickname.isEmpty
+                ? (decoyingIDs ? DevicesView.decoyID(for: tool.displayID) : tool.displayID) : nil,
+            details: nonDefault, isLast: isLast)
+    }
+
+    /// A pen or app row: its kind, its name, then what it changes.
+    private func summaryRow(kind: String, name: String, shownID: String?, details: [String], isLast: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(kind)
+                .appFont(.settingsLabel)
                 .foregroundStyle(.secondary)
-                .scaledFrame(width: 50, alignment: .leading)
-            Text(tool.nickname.isEmpty ? tool.displayID : tool.nickname)
-                .appFont(.settingsBadge)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            if !nonDefault.isEmpty {
-                Text(
-                    "(\(nonDefault.joined(separator: String(localized: ", ", comment: "List separator"))))"
-                )
-                .appFont(.settingsBadge)
-                .foregroundStyle(.tertiary)
+                .scaledFrame(width: 60, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text(name)
+                        .appFont(.settingsLabel)
+                        .lineLimit(1)
+                    if let shownID {
+                        Text(shownID)
+                            .appFont(.settingsLabel)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+                }
+                if !details.isEmpty {
+                    Text(details.joined(separator: Self.separator))
+                        .appFont(.settingsLabel)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .padding(.leading, 8)
         .padding(.bottom, isLast ? 0 : 4)
     }
 
+    private static var separator: String { String(localized: ", ", comment: "List separator") }
+
+    /// One summary item: a setting's name, as its pane labels it, and its value.
+    private static func item(_ name: String, _ value: String) -> String {
+        String(localized: "\(name): \(value)", comment: "Profiles summary item: a setting's name and its value")
+    }
+
+    private static func curveName(_ curve: BezierCurve) -> String {
+        switch curve {
+        case .soft: return String(localized: "Soft", comment: "Pressure curve preset button — soft response")
+        case .firm: return String(localized: "Firm", comment: "Pressure curve preset button — firm response")
+        case .linear: return String(localized: "Linear", comment: "Pressure curve preset button — linear response")
+        default: return customName
+        }
+    }
+
+    private static var customName: String {
+        String(localized: "Custom", comment: "Profiles summary: a setting changed by hand, matching no preset")
+    }
+
+    /// Tablet-wide settings that differ from the defaults.
     private func deviceNonDefaultLines(_ s: TabletSettings) -> [String] {
         var lines: [String] = []
-        if s.activeAreaX != 0 || s.activeAreaY != 0 {
-            lines.append(String(localized: "area offset", comment: "Device summary: area offset"))
+        if s.activeAreaX != 0 || s.activeAreaY != 0 || s.activeAreaWidth != 1.0 || s.activeAreaHeight != 1.0 {
+            lines.append(Self.item(Label.tabletArea, Self.customName))
         }
-        if s.activeAreaWidth != 1.0 || s.activeAreaHeight != 1.0 {
-            lines.append(String(localized: "area scaled", comment: "Device summary: area scaled"))
+        if s.targetDisplayIndex != 0 { lines.append(Self.item(Label.display, Self.displayName(s.targetDisplayIndex))) }
+        if s.pressureCurve != .linear { lines.append(Self.item(Label.pressureCurve, Self.curveName(s.pressureCurve))) }
+        if !s.proportionalMapping { lines.append(Self.item(Label.proportional, Self.onOff(false))) }
+        if s.invertRotation { lines.append(Self.item(Label.invertRotation, Self.onOff(true))) }
+        if s.relativeCursorMovement { lines.append(Self.item(Label.relative, Self.onOff(true))) }
+        if s.doubleClickDistance != 10 {
+            lines.append(Self.item(Label.doubleClick, PenFeelView.doubleClickLabel(s.doubleClickDistance)))
         }
-        if s.targetDisplayIndex != 0 {
-            lines.append(
-                String(
-                    localized: "display != primary", comment: "Device summary: non-primary display")
-            )
+        if s.tipUpAssistDelay != 0 {
+            lines.append(Self.item(Label.tipUpAssist, PenFeelView.tipUpAssistLabel(s.tipUpAssistDelay)))
         }
-        if s.pressureCurve.p1 != CGPoint(x: 0, y: 0) || s.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
-            lines.append(
-                String(localized: "pressure curve", comment: "Device summary: pressure curve"))
+        if s.dragThreshold != TouchdownGuard.defaultRadius {
+            lines.append(Self.item(Label.dragThreshold, PenFeelView.dragThresholdLabel(s.dragThreshold)))
         }
-        if s.proportionalMapping {
-            lines.append(
-                String(localized: "proportional", comment: "Device summary: proportional mapping"))
-        }
-        if s.invertRotation {
-            lines.append(
-                String(localized: "rotation inverted", comment: "Device summary: rotation inverted")
-            )
+        if !s.requireContact.isEmpty {
+            lines.append(Self.item(Label.requireContact, Self.requireContactName(s.requireContact)))
         }
         return lines
     }
 
-    private func toolNonDefaultLines(_ t: ToolSettings) -> [String] {
+    /// What an app's override sets, read straight from its stored keys: every
+    /// key it holds counts, even one set back to a default. Like the rest of
+    /// this summary, it skips express keys, rings, and touch.
+    private func overrideLines(_ o: TabletSettings.AppOverride, in s: TabletSettings) -> [String] {
+        let ud = UserDefaults.standard
+        let prefix = s.appOverrideKeyPrefix(o)
+        func value(_ key: String) -> Any? { ud.object(forKey: prefix + key) }
+        func double(_ key: String) -> Double? { (value(key) as? NSNumber)?.doubleValue }
+        func bool(_ key: String) -> Bool? { (value(key) as? NSNumber)?.boolValue }
         var lines: [String] = []
-        if t.pressureCurve.p1 != CGPoint(x: 0, y: 0) || t.pressureCurve.p2 != CGPoint(x: 1, y: 1) {
-            lines.append(String(localized: "curve", comment: "Tool summary: pressure curve"))
+        func binding(_ key: String, _ name: String, _ slot: ToolSettings.ButtonSlot) {
+            guard let raw = value(key) as? String else { return }
+            let b = ButtonBinding.decode(raw, orDefault: ToolSettings.builtInBinding(slot, isMouse: false))
+            lines.append(Self.item(name, b.displayLabel))
         }
-        if t.tipBinding != .leftClick {
-            lines.append(
-                String(localized: "tip ≠ default", comment: "Tool summary: non-default tip binding")
-            )
+        binding("tipBinding", Label.tip, .tip)
+        binding("eraserBinding", Label.eraser, .eraser)
+        for n in 1...5 {
+            binding("penButton\(n)Binding", ButtonsView.penButtonLabel(n, count: 5, isMouse: false), .button(n))
         }
-        if t.eraserBinding != .eraser {
-            lines.append(
-                String(
-                    localized: "eraser ≠ default",
-                    comment: "Tool summary: non-default eraser binding"))
+        binding("wheelBinding", ButtonsView.wheelLabel(tool: nil), .wheel)
+        if ["activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight"].contains(where: { value($0) != nil }) {
+            lines.append(Self.item(Label.tabletArea, Self.customName))
+        }
+        if let index = (value("targetDisplayIndex") as? NSNumber)?.intValue {
+            lines.append(Self.item(Label.display, Self.displayName(index)))
+        }
+        if let on = bool("proportionalMapping") { lines.append(Self.item(Label.proportional, Self.onOff(on))) }
+        if let data = value("pressureCurve") as? Data, let curve = try? JSONDecoder().decode(BezierCurve.self, from: data) {
+            lines.append(Self.item(Label.pressureCurve, Self.curveName(curve)))
+        }
+        if let v = double("pressureThreshold") {
+            lines.append(Self.item(Label.clickThreshold, PenFeelView.pressureThresholdLabel(v)))
+        }
+        if let v = double("smoothingStrength") { lines.append(Self.item(Label.steadiness, PenFeelView.steadinessLabel(v))) }
+        if let v = double("pressureSmoothingStrength") {
+            lines.append(Self.item(Label.pressureSmoothing, PenFeelView.pressureSmoothingLabel(v)))
+        }
+        if let v = double("panScrollSpeed") { lines.append(Self.item(Label.panView, Self.speed(v))) }
+        if let on = bool("panScrollReverse") { lines.append(Self.item(Label.reverse, Self.onOff(on))) }
+        if let on = bool("panScrollMomentum") { lines.append(Self.item(Label.momentum, Self.onOff(on))) }
+        if let on = bool("invertRotation") { lines.append(Self.item(Label.invertRotation, Self.onOff(on))) }
+        if let on = bool("relativeCursorMovement") { lines.append(Self.item(Label.relative, Self.onOff(on))) }
+        if let v = double("doubleClickDistance") { lines.append(Self.item(Label.doubleClick, PenFeelView.doubleClickLabel(v))) }
+        if let v = double("tipUpAssistDelay") { lines.append(Self.item(Label.tipUpAssist, PenFeelView.tipUpAssistLabel(v))) }
+        if let v = double("dragThreshold") { lines.append(Self.item(Label.dragThreshold, PenFeelView.dragThresholdLabel(v))) }
+        if let raw = (value("requireContact") as? NSNumber)?.intValue {
+            lines.append(Self.item(Label.requireContact, Self.requireContactName(RequireContactActions(rawValue: raw))))
+        }
+        return lines
+    }
+
+    private static func onOff(_ on: Bool) -> String {
+        on
+            ? String(localized: "On", comment: "Profiles summary: a setting turned on")
+            : String(localized: "Off", comment: "Feature disabled — drag threshold slider at minimum value")
+    }
+
+    private static func speed(_ v: Double) -> String {
+        v.formatted(.number.precision(.fractionLength(2))) + "×"
+    }
+
+    private static func requireContactName(_ actions: RequireContactActions) -> String {
+        let names = RequireContactActions.choices.filter { actions.contains($0.action) }
+            .map { ButtonBinding(kind: $0.kind).displayLabel }
+        return names.isEmpty ? ButtonBinding.none.displayLabel : names.joined(separator: separator)
+    }
+
+    /// Setting names, as the Buttons, Pen Feel, and Tablet Area panes label them.
+    private enum Label {
+        static var tip: String { String(localized: "Tip", comment: "Pen tip button row label in Buttons tab") }
+        static var eraser: String { String(localized: "Eraser", comment: "Eraser button row label in Buttons tab") }
+        static var tabletArea: String { String(localized: "Tablet Area", comment: "Tab name: tablet active area configuration") }
+        static var display: String { String(localized: "Display", comment: "Tab name: display mapping and preview") }
+        static var proportional: String { String(localized: "Proportional mapping", comment: "Checkbox label in Tablet Area tab") }
+        static var pressureCurve: String { String(localized: "Pressure Curve", comment: "Undo action name: pressure curve change") }
+        static var clickThreshold: String { String(localized: "Click Threshold") }
+        static var steadiness: String { String(localized: "Steadiness") }
+        static var pressureSmoothing: String { String(localized: "Pressure Smoothing") }
+        static var panView: String { String(localized: "Pan View", comment: "Button action: hold to pan/scroll with pen motion") }
+        static var reverse: String { String(localized: "Reverse Direction") }
+        static var momentum: String { String(localized: "Momentum Scrolling") }
+        static var invertRotation: String { String(localized: "Invert Rotation Direction", comment: "Toggle label in Pen Feel tab") }
+        static var relative: String { String(localized: "Relative Cursor Movement", comment: "Toggle label in Pen Feel tab") }
+        static var doubleClick: String { String(localized: "Double-Click Distance", comment: "Section header in Pen Feel tab") }
+        static var tipUpAssist: String { String(localized: "Tip-up Assist") }
+        static var dragThreshold: String { String(localized: "Drag Threshold") }
+        static var requireContact: String {
+            String(
+                localized: "Require Contact",
+                comment: "Setting label and undo action name: which side-button actions engage only while the pen touches the surface, in the Pen Feel pane")
+        }
+    }
+
+    /// The Display pane's wording for a mapping target.
+    private static func displayName(_ index: Int) -> String {
+        switch index {
+        case TabletSettings.displayModeAll: return String(localized: "All — span across all displays")
+        case TabletSettings.displayModeToggle: return String(localized: "Toggle between displays")
+        case TabletSettings.displayModeSpan: return String(localized: "Span selected displays")
+        default:
+            // A 1-based position in the active display list, as DisplayInfo stores it.
+            var count: UInt32 = 0
+            var ids = [CGDirectDisplayID](repeating: 0, count: 16)
+            if index > 0, CGGetActiveDisplayList(16, &ids, &count) == .success, index <= count,
+                let screen = NSScreen.screens.first(where: {
+                    $0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+                        == ids[index - 1]
+                })
+            {
+                return screen.localizedName
+            }
+            return String(localized: "Not connected", comment: "Connection status when this window's tablet is disconnected")
+        }
+    }
+
+    /// A pen's settings that differ from the built-in values, named as the
+    /// Buttons and Pen Feel panes name them.
+    private func toolNonDefaultLines(
+        _ t: ToolSettings, tool: DeviceRegistry.KnownTool, deviceSettings: TabletSettings
+    ) -> [String] {
+        let spec = tool.toolCode.flatMap { ToolCatalog.spec(forToolCode: $0) }
+        let isMouse = tool.isMouse
+        var lines: [String] = []
+        func binding(_ name: String, _ value: ButtonBinding, _ slot: ToolSettings.ButtonSlot) {
+            if value != ToolSettings.builtInBinding(slot, isMouse: isMouse) {
+                lines.append(Self.item(name, value.displayLabel))
+            }
+        }
+        binding(Label.tip, t.tipBinding, .tip)
+        if !isMouse {
+            binding(Label.eraser, t.eraserBinding, .eraser)
+        }
+        let count = ButtonsView.penButtonCount(tool: spec, device: nil)
+        let buttons = [t.penButton1Binding, t.penButton2Binding, t.penButton3Binding, t.penButton4Binding, t.penButton5Binding]
+        for n in 1...min(count, buttons.count) {
+            binding(ButtonsView.penButtonLabel(n, count: count, isMouse: isMouse), buttons[n - 1], .button(n))
+        }
+        if spec?.hasWheel == true {
+            binding(ButtonsView.wheelLabel(tool: spec), t.wheelBinding, .wheel)
+        }
+        if t.pressureCurve != .linear {
+            lines.append(Self.item(Label.pressureCurve, Self.curveName(t.pressureCurve)))
+        }
+        let thresholdDefault = ToolSettings.deviceDefaultPressureThreshold(prefix: deviceSettings.devicePrefix)
+        if abs(t.pressureThreshold - thresholdDefault) >= 0.005 {
+            lines.append(Self.item(Label.clickThreshold, PenFeelView.pressureThresholdLabel(t.pressureThreshold)))
+        }
+        if t.smoothingStrength > 0 {
+            lines.append(Self.item(Label.steadiness, PenFeelView.steadinessLabel(t.smoothingStrength)))
+        }
+        if t.pressureSmoothingStrength > 0 {
+            lines.append(Self.item(Label.pressureSmoothing, PenFeelView.pressureSmoothingLabel(t.pressureSmoothingStrength)))
+        }
+        var pan: [String] = []
+        if abs(t.panScrollSpeed - 1) >= 0.005 {
+            pan.append(Self.speed(t.panScrollSpeed))
+        }
+        if t.panScrollReverse { pan.append(Label.reverse) }
+        if t.panScrollMomentum { pan.append(Label.momentum) }
+        if !pan.isEmpty {
+            lines.append(Self.item(Label.panView, pan.joined(separator: Self.separator)))
         }
         return lines
     }

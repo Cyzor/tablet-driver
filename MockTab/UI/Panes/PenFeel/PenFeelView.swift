@@ -147,14 +147,7 @@ struct PenFeelView: View {
                     value: tipUpAssistBinding,
                     in: 0...200,
                     step: 10,
-                    valueText: settings.tipUpAssistDelay < 1
-                        ? String(
-                            localized: "Off",
-                            comment: "Feature disabled — tip-up assist slider at minimum value"
-                        )
-                        : String(
-                            localized: "\(Int(settings.tipUpAssistDelay)) ms",
-                            comment: "Delay in milliseconds, e.g. '80 ms'"),
+                    valueText: Self.tipUpAssistLabel(settings.tipUpAssistDelay),
                     caption:
                         "Prevents accidental stroke movement when lifting pen."
                 )
@@ -166,14 +159,7 @@ struct PenFeelView: View {
                     value: dragThresholdBinding,
                     in: 0...15,
                     step: 1,
-                    valueText: settings.dragThreshold < 1
-                        ? String(
-                            localized: "Off",
-                            comment: "Feature disabled — drag threshold slider at minimum value"
-                        )
-                        : String(
-                            localized: "\(Int(settings.dragThreshold)) pt",
-                            comment: "Distance in points, e.g. '3 pt'"),
+                    valueText: Self.dragThresholdLabel(settings.dragThreshold),
                     caption:
                         "Movement before a tap becomes a drag."
                 )
@@ -448,8 +434,11 @@ struct PenFeelView: View {
 
     // MARK: - Smoothing label
 
-    private var smoothingLabel: String {
-        switch tool.smoothingStrength {
+    private var smoothingLabel: String { Self.steadinessLabel(tool.smoothingStrength) }
+
+    /// Shared with the Profiles pane's pen summary.
+    static func steadinessLabel(_ strength: Double) -> String {
+        switch strength {
         // Any strength above zero smooths, so only zero reads Off.
         case ...0: return String(localized: "Off", comment: "Steadiness strength — disabled")
         case ..<0.4: return String(localized: "Low", comment: "Steadiness strength label")
@@ -460,8 +449,10 @@ struct PenFeelView: View {
         }
     }
 
-    private var doubleClickLabel: String {
-        switch settings.doubleClickDistance {
+    private var doubleClickLabel: String { Self.doubleClickLabel(settings.doubleClickDistance) }
+
+    static func doubleClickLabel(_ distance: Double) -> String {
+        switch distance {
         case ...0: return String(localized: "Off", comment: "Double-click distance — disabled")
         case ..<8: return String(localized: "Low", comment: "Double-click distance label")
         case 8..<13: return String(localized: "Medium", comment: "Double-click distance label")
@@ -472,8 +463,10 @@ struct PenFeelView: View {
         }
     }
 
-    private var pressureSmoothingLabel: String {
-        switch tool.pressureSmoothingStrength {
+    private var pressureSmoothingLabel: String { Self.pressureSmoothingLabel(tool.pressureSmoothingStrength) }
+
+    static func pressureSmoothingLabel(_ strength: Double) -> String {
+        switch strength {
         case ...0:
             return String(localized: "Off", comment: "Pressure smoothing strength — disabled")
         case ..<0.4: return String(localized: "Low", comment: "Pressure smoothing strength label")
@@ -487,13 +480,27 @@ struct PenFeelView: View {
         }
     }
 
-    private var pressureThresholdLabel: String {
+    private var pressureThresholdLabel: String { Self.pressureThresholdLabel(tool.pressureThreshold) }
+
+    static func tipUpAssistLabel(_ delay: Double) -> String {
+        delay < 1
+            ? String(localized: "Off", comment: "Feature disabled — tip-up assist slider at minimum value")
+            : String(localized: "\(Int(delay)) ms", comment: "Delay in milliseconds, e.g. '80 ms'")
+    }
+
+    static func dragThresholdLabel(_ distance: Double) -> String {
+        distance < 1
+            ? String(localized: "Off", comment: "Feature disabled — drag threshold slider at minimum value")
+            : String(localized: "\(Int(distance)) pt", comment: "Distance in points, e.g. '3 pt'")
+    }
+
+    static func pressureThresholdLabel(_ threshold: Double) -> String {
         // Anything that rounds to 0% reads as "Off" — the dead zone is then
         // narrower than InputInjector.tipPressureThreshold anyway, so it has
         // no effect the user could observe.
-        tool.pressureThreshold < 0.005
+        threshold < 0.005
             ? String(localized: "Off", comment: "Click threshold — disabled, previous behavior")
-            : tool.pressureThreshold.formatted(.percent.precision(.fractionLength(0)))
+            : threshold.formatted(.percent.precision(.fractionLength(0)))
     }
 }
 

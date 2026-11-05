@@ -1338,6 +1338,35 @@
         }
       }
     },
+    "%@: %@" : {
+      "comment" : "Profiles summary item: a setting's name and its value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
     "%@ in use" : {
       "comment" : "Status bar tool slot when another tablet, not this window's, is connected and in use",
       "localizations" : {
@@ -3174,6 +3203,35 @@
         }
       }
     },
+    "App" : {
+      "comment" : "Profiles summary: row kind for an app's override",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "App"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アプリ"
+          }
+        }
+      }
+    },
     "App name" : {
       "comment" : "Placeholder text in app rename field",
       "localizations" : {
@@ -3256,64 +3314,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "それでも適用"
-          }
-        }
-      }
-    },
-    "area offset" : {
-      "comment" : "Device summary: area offset",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bereichsversatz"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "area offset"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desplazamiento de área"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エリアオフセット"
-          }
-        }
-      }
-    },
-    "area scaled" : {
-      "comment" : "Device summary: area scaled",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bereich skaliert"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "area scaled"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Área escalada"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エリアスケール"
           }
         }
       }
@@ -6121,6 +6121,35 @@
         }
       }
     },
+    "Custom" : {
+      "comment" : "Profiles summary: a setting changed by hand, matching no preset",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefiniert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Custom"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Personalizada"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カスタム"
+          }
+        }
+      }
+    },
     "Current mode" : {
       "comment" : "Ring diagram caption while the control is inactive",
       "localizations" : {
@@ -6192,35 +6221,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "カーソル速度"
-          }
-        }
-      }
-    },
-    "curve" : {
-      "comment" : "Tool summary: pressure curve",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kurve"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "curve"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Curva"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "カーブ"
           }
         }
       }
@@ -7643,35 +7643,6 @@
         }
       }
     },
-    "display != primary" : {
-      "comment" : "Device summary: non-primary display",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Display != Primär"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "display != primary"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pantalla != Principal"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ディスプレイ != プライマリ"
-          }
-        }
-      }
-    },
     "Display Brightness" : {
       "comment" : "Undo action name: display calibration/mapping control in the Displays pane",
       "localizations" : {
@@ -8625,35 +8596,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "消しゴム"
-          }
-        }
-      }
-    },
-    "eraser ≠ default" : {
-      "comment" : "Tool summary: non-default eraser binding",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Radierer ≠ Standard"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "eraser ≠ default"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Borrador ≠ Predeterminado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "消しゴム ≠ デフォルト"
           }
         }
       }
@@ -13881,6 +13823,35 @@
         }
       }
     },
+    "On" : {
+      "comment" : "Profiles summary: a setting turned on",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "On"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activado"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オン"
+          }
+        }
+      }
+    },
     "OK" : {
       "comment" : "Button that closes the conflict alert",
       "localizations" : {
@@ -14922,35 +14893,6 @@
         }
       }
     },
-    "pressure curve" : {
-      "comment" : "Device summary: pressure curve",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Druckkurve"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "pressure curve"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Curva de presión"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "筆圧カーブ"
-          }
-        }
-      }
-    },
     "Pressure Curve" : {
       "comment" : "Undo action name: pressure curve change",
       "localizations" : {
@@ -15379,35 +15321,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "プロファイル"
-          }
-        }
-      }
-    },
-    "proportional" : {
-      "comment" : "Device summary: proportional mapping",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proportional"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "proportional"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proporcional"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "プロポーション"
           }
         }
       }
@@ -17928,35 +17841,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "回転"
-          }
-        }
-      }
-    },
-    "rotation inverted" : {
-      "comment" : "Device summary: rotation inverted",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drehung invertiert"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "rotation inverted"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rotación invertida"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "回転（反転）"
           }
         }
       }
@@ -20761,35 +20645,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ペン先"
-          }
-        }
-      }
-    },
-    "tip ≠ default" : {
-      "comment" : "Tool summary: non-default tip binding",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spitze ≠ Standard"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "tip ≠ default"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Punta ≠ Predeterminado"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン先 ≠ デフォルト"
           }
         }
       }
