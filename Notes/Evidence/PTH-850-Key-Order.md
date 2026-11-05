@@ -9,7 +9,9 @@ named each key by its place in libwacom's layout and recorded the report it
 sent.
 
 **What to look for:** byte 4 has one bit per key, from bit 0 at the top to
-bit 7 at the bottom, skipping the ring; byte 5 copies it. Byte 3 is the ring's
+bit 7 at the bottom, skipping the ring. Byte 5 holds the same bits for keys
+being touched, so it's set here too: the finger pressing a key also touches
+it. Byte 3 is the ring's
 center button. So key N in MockTab's Buttons pane is the Nth key from the top,
 and libwacom's letters run B to I down the edge, with A at the ring's center.
 

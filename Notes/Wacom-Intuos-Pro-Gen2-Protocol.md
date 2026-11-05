@@ -100,11 +100,15 @@ OpenTabletDriver's `IntuosV2OffsetReport` reads tilt as single bytes at 11 and
 | Offset | Field |
 | --- | --- |
 | 1 | Keys, one bit each, mechanical press |
-| 2 | Keys, capacitive touch — fires on the lightest contact |
+| 2 | Keys touched, same bits as `[1]`; set by the lightest contact |
 | 3 | Touch-ring center button, non-zero while pressed |
 | 4 | Touch-ring position 0–71 (5° steps); `0x7F` = no finger |
 
 Observed. `[4] != 0x7F` signals ring contact, not `[3]`.
+
+A touch usually arrives one report before its press, but can arrive with it.
+A palm brushing the keys while drawing sets `[2]` just as a resting finger
+does, so the byte can't tell intent from an accident.
 
 ## USB Finger Touch `0x21` (PTH-660, PTH-860)
 

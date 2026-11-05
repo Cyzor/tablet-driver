@@ -160,8 +160,12 @@ USB and through the ACK-40401 dongle. (observed, PTH-850)
 | 1 | Constant `0x80` |
 | 2 | Touch ring: bit 7 active, bits 0–6 position 0–71 |
 | 3 | Ring center button, 0 or 1 |
-| 4 | Keys 1–8, one bit each |
-| 5 | Copy of `[4]` |
+| 4 | Keys 1–8 pressed, one bit each |
+| 5 | Keys 1–8 touched, same bits: set while a finger rests on a key, pressed or not |
+
+A press sets both bytes, since the finger pressing a key also touches it. A
+finger resting on a key, or a palm brushing the keys while drawing, sets only
+`[5]`. (observed, PTH-850; the kernel agrees)
 
 **Intuos4, report `0x0C`.** `[1]` ring (bit 7 valid, position 0–71), `[2]`
 bit 0 ring center button, `[3]` keys. (kernel, matches OpenTabletDriver)
