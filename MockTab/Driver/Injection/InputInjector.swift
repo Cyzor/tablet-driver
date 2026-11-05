@@ -68,8 +68,9 @@ final class SharedPanScrollState {
 ///
 /// | State | Armed by | Released by | Leaks if stuck |
 /// |---|---|---|---|
-/// | `groundTruthSyntheticFlags` | aux/barrel binding posting a modifier | `releaseAllSyntheticModifiers` via proximity exit, 0.4s idle `watchdogTimer`, 1Hz `leakWatchdogTimer`, app switch (`releaseOnAppSwitch`) | Modifier stuck down system-wide |
-/// | `heldKeyComboRefCounts` | aux/barrel binding posting a plain (non-modifier) `.keyCombo` key | `releaseAllHeldKeyComboKeys` via the same four paths as `groundTruthSyntheticFlags` above | Letter/number key stuck down system-wide until the app quits |
+/// | `groundTruthSyntheticFlags` | barrel binding posting a modifier | `releaseAllSyntheticModifiers` via proximity exit, 0.4s idle `watchdogTimer`, 1Hz `leakWatchdogTimer`, app switch (`releaseOnAppSwitch`) | Modifier stuck down system-wide |
+/// | `heldKeyComboRefCounts` | pen binding posting a plain (non-modifier) `.keyCombo` key | `releaseAllHeldKeyComboKeys` via the same four paths as `groundTruthSyntheticFlags` above | Letter/number key stuck down system-wide until the app quits |
+/// | `heldAuxKeyComboRefCounts`, `SharedAuxModifierState` | aux binding posting a key/modifier | matching captured binding release, disconnect, quit; watchdogs when no control is held | Aux shortcut stuck down across devices |
 /// | `lastTipDown` | curved pressure ≥ `tipPressureThreshold`, subject to `tipUpDebounceTimer` on release | tip-up in `inject` (debounce-confirmed), proximity exit (incl. the 1Hz watchdog's forced exit — the only release on an unplug with the tip down) | Stroke never ends; button reads held |
 /// | `hoverDragButton` | click binding down, or Click Lock | binding up edge, proximity exit, `releaseBindingHeldButton` on tool change/disconnect | Movement posts drags instead of hover |
 /// | `clickLocked` | Click Lock press, or a Click Lock tip's first contact | next press or tip contact, proximity exit (`releaseClickLock`), tool change/disconnect | Left button stuck down |
@@ -86,7 +87,7 @@ final class SharedPanScrollState {
 /// | `watchdogTimer` | rearmed on every inject/injectAux/injectMouseButtons | fires after 0.4s idle → releases synthetic flags; deinit | (Safety net; see leak watchdog) |
 /// | `leakWatchdogTimer` (1Hz) | `init`, runs continuously | deinit only — by design, it must outlive quiescence | Backstop absent for the rows above |
 /// | `lastProximity` | pen in range | proximity exit; 1Hz watchdog forces exit after `stuckProximityTimeout` | Touch gated off as "pen busy" |
-/// | `lastAuxButtons`, `lastRingButtonDown` | express key / ring center down | matching up edge in `injectAux`; 0.4s `watchdogTimer` for modifier flags | Express-key binding stuck held |
+/// | `auxButtons` | express key / bezel / ring center down | matching up edge in `injectAux`, disconnect; deliberately survives pen proximity exits | Express-key binding stuck held |
 /// | `panMomentumTail`, `touchMomentumTail` | flick release with velocity | decay to zero; new gesture (`stop()` on two-finger landing or Pan View grab, since `.began` waits for motion); tool change, disconnect, proximity exit, app switch, sleep, quit (`stop()` posts a terminal event, for macOS 27's stuck-gesture timer); `cancel()` in deinit | Scrolling continues; on 27+ the app force-cancels it |
 /// | `touchDragPosition` | three-finger tap, then the next touch | `releaseTouchDrag` via lift (`.dragUp`), pen-busy wind-down, touch turned off, tool change/disconnect, 1Hz `leakWatchdogTimer` after 1s without touch frames | Left button stuck down |
 /// | `mechanicalDialGestureOpen`, `ring1/2GestureOpen` | `.zoom`/`.rotate` ring slot engaged (dial click or ring contact) | 0.4s `mechanicalDialGestureIdleTimer` after the last click (dial) or ring contact lift (capacitive); explicit `closeRingGestureEnvelopes()` on ring-mode-cycle/select-slot bindings and the modifier-held zoom fallback; **`deinit` closes silently** (timer invalidated, no `.ended` posted — see below) | Frontmost app stuck mid-pinch/-rotate |
@@ -199,7 +200,7 @@ final class InputInjector: @unchecked Sendable {
     fileprivate static var anyAuxControlHeld: Bool {
         liveInjectorsLock.withLock { live in
             for injector in live.table.allObjects {
-                if injector.lastAuxButtons.contains(true) || injector.lastRingButtonDown
+                if injector.auxButtons.hasHeldControls || injector.lastRingButtonDown
                     || injector.lastRing2ButtonDown
                     || injector.lastRingPos != 0x7F || injector.lastRing2Pos != 0x7F
                     || injector.lastStrip1Pos != 0xFF || injector.lastStrip2Pos != 0xFF
@@ -635,13 +636,15 @@ final class InputInjector: @unchecked Sendable {
 
     // MARK: - Express key / touch ring state
 
-    var lastAuxButtons = [Bool](repeating: false, count: 16 + ControlTarget.bezelSlotCount)
-    var lastRingButtonDown = false
+    var auxButtons = AuxButtonState()
+    var lastRingButtonDown: Bool { hardwareRingButtonDown || auxButtons.isHeld(.ring) }
+    /// Firmware-owned mode buttons have no host binding to release.
+    var hardwareRingButtonDown = false
     /// Last ring mode the device's firmware reported (ExpressKey Remote).
     var lastHardwareRingMode: Int?
     /// Same as `lastRingButtonDown`, for the second dial's own toggle key
     /// (PTK-670/870's right cluster center). Unused on every other device.
-    var lastRing2ButtonDown = false
+    var lastRing2ButtonDown: Bool { auxButtons.isHeld(.ring2) }
     /// Last accepted touch ring position (0–71). 0x7F = no contact.
     var lastRingPos: UInt8 = 0x7F
     /// Holds back a hand resting on a ring; see `RingStepFilter`.
@@ -661,8 +664,7 @@ final class InputInjector: @unchecked Sendable {
     var ringAccum: Double = 0
     var ring2Accum: Double = 0
     /// A zoom or rotate gesture is open on a touch ring, from contact to lift.
-    /// Keyed on `touchRingActive`, never `lastRingButtonDown`: proximity exit
-    /// clears the latter, and a blip must not read as a lift.
+    /// Keyed on `touchRingActive`, independently of the center button.
     var ring1GestureOpen = false
     var ring2GestureOpen = false
     /// The open gesture's kind on each ring, kept because the mode may change
@@ -726,7 +728,7 @@ final class InputInjector: @unchecked Sendable {
     // MARK: - Time-based leak watchdog
     //
     // A 1 Hz backstop that runs regardless of activity, for when
-    // `lastAuxButtons` is stuck (e.g. unplugged mid-press).
+    // aux button state is stuck (e.g. unplugged mid-press).
 
     private var leakWatchdogTimer: CFRunLoopTimer?
     /// Timestamp of the last groundTruthSyntheticFlags mutation.
@@ -768,7 +770,7 @@ final class InputInjector: @unchecked Sendable {
             && lastRingPos == 0x7F && lastRing2Pos == 0x7F
             && lastStrip1Pos == 0xFF && lastStrip2Pos == 0xFF
             && lastUSBMouseMask == 0
-            && !lastAuxButtons.contains(true)
+            && !auxButtons.hasHeldControls
     }
 
     /// Must run on HIDThread (where `watchdogTimer`, `lastInjectCallAt`, and
@@ -777,7 +779,8 @@ final class InputInjector: @unchecked Sendable {
         lastInjectCallAt = ProcessInfo.processInfo.systemUptime
         if let t = watchdogTimer { CFRunLoopTimerInvalidate(t) }
         watchdogTimer = nil
-        guard !groundTruthSyntheticFlags.isEmpty || !heldKeyComboRefCounts.isEmpty else { return }
+        guard !groundTruthSyntheticFlags.isEmpty || !heldKeyComboRefCounts.isEmpty
+                || !heldAuxKeyComboRefCounts.isEmpty else { return }
         let timer = CFRunLoopTimerCreateWithHandler(
             kCFAllocatorDefault,
             CFAbsoluteTimeGetCurrent() + watchdogInterval,
@@ -786,13 +789,14 @@ final class InputInjector: @unchecked Sendable {
         ) { [weak self] _ in
             guard let self,
                 !self.groundTruthSyntheticFlags.isEmpty || !self.heldKeyComboRefCounts.isEmpty
+                    || !self.heldAuxKeyComboRefCounts.isEmpty
             else { return }
             // Wacom pads stream while a key is held, so a timeout means the stream
             // stopped. Quick Keys report only changes, so trust the last known state;
             // the 1 Hz watchdog catches a stuck "held".
             guard self.tabletIsQuiescent else { return }
             self.releaseAllSyntheticModifiers()
-            self.releaseAllHeldKeyComboKeys()
+            self.releaseAllHeldKeyComboKeys(includeAux: true)
         }
         watchdogTimer = timer
         if let timer { CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes) }
@@ -809,7 +813,7 @@ final class InputInjector: @unchecked Sendable {
         CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
     }
 
-    /// 1 Hz leak check, which works even if `lastAuxButtons` is corrupt. Fires
+    /// 1 Hz leak check for orphaned keyboard state. Fires
     /// after 3 s with flags unchanged, the tablet idle, and nothing held.
     private func checkLeakWatchdog() {
         let idleInterval = ProcessInfo.processInfo.systemUptime - self.lastInjectCallAt
@@ -849,11 +853,12 @@ final class InputInjector: @unchecked Sendable {
         }
 
         // Same check for a plain key held by a `.keyCombo` binding.
-        if !self.heldKeyComboRefCounts.isEmpty {
+        if !self.heldKeyComboRefCounts.isEmpty || !self.heldAuxKeyComboRefCounts.isEmpty {
             let heldInterval = ProcessInfo.processInfo.systemUptime - self.lastKeyComboChangeAt
             if heldInterval > 3.0 && idleInterval > 3.0 && self.tabletIsQuiescent {
-                modLog.notice("leak-watchdog: releasing stuck keyCombo keys \(Array(self.heldKeyComboRefCounts.keys), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
-                self.releaseAllHeldKeyComboKeys()
+                let keys = Set(self.heldKeyComboRefCounts.keys).union(self.heldAuxKeyComboRefCounts.keys)
+                modLog.notice("leak-watchdog: releasing stuck keyCombo keys \(Array(keys), privacy: .public) (held \(Int(heldInterval))s, idle \(Int(idleInterval))s)")
+                self.releaseAllHeldKeyComboKeys(includeAux: true)
             }
         }
 
@@ -1124,11 +1129,14 @@ final class InputInjector: @unchecked Sendable {
         CGEventFlags.maskControl.rawValue: 0,
     ]
 
-    /// Keys held by plain `.keyCombo` bindings, ref-counted like modifiers so
+    /// Keys held by plain pen `.keyCombo` bindings, ref-counted like modifiers so
     /// the same watchdog, app-switch, and proximity-exit releases catch a lost
     /// key-up.
     var heldKeyComboRefCounts: [CGKeyCode: Int] = [:]
-    /// Timestamp of the last `heldKeyComboRefCounts` mutation, for the leak watchdog.
+    /// Aux keys survive pen proximity exits and app switches, just like
+    /// their modifiers. Only their owning buttons (or disconnect) release them.
+    var heldAuxKeyComboRefCounts: [CGKeyCode: Int] = [:]
+    /// Timestamp of the last pen or aux key-count mutation, for the leak watchdog.
     var lastKeyComboChangeAt: TimeInterval = 0
 
     /// Left-hand keycodes for each modifier: AppKit and Electron ignore
