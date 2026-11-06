@@ -1,5 +1,5 @@
-exe_bytes 9768080
-bundle_kb 12112
+exe_bytes 12301056
+bundle_kb 14220
 link AppKit
 link ApplicationServices
 link Carbon
