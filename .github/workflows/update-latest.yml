@@ -33,11 +33,11 @@ jobs:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       # main's CHANGELOG.md, not the tag's: the snapshot tag can trail it.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           ref: main
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           repository: Cyzor/mocktab-web
           ssh-key: ${{ secrets.MOCKTAB_WEB_DEPLOY_KEY }}
