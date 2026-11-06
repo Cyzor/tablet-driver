@@ -6,7 +6,7 @@ Una tableta gráfica es un dispositivo de entrada con lápiz que informa la posi
 
 ## MockTab
 
-MockTab es un controlador para macOS de tabletas gráficas Wacom y Xencelabs. Es compatible con tabletas USB y Bluetooth de las familias Wacom Intuos, Cintiq, Bamboo e Intuos Pro — con especial foco en hardware que el controlador oficial de Wacom ya no admite en las versiones modernas de macOS — además de tabletas con lápiz y pen displays de Xencelabs.
+MockTab es un controlador para macOS de tabletas gráficas Wacom y Xencelabs. Es compatible con tabletas USB y Bluetooth de las familias Wacom Intuos, Cintiq, Bamboo e Intuos Pro, además de tabletas con lápiz y pen displays de Xencelabs. Se centra en hardware que el controlador oficial de Wacom ya no admite en las versiones modernas de macOS.
 
 ## Desinstalar MockTab
 
@@ -87,7 +87,7 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 ## Diagrama del lápiz
 
-Pulsa cualquier botón mientras la ventana está abierta para resaltar su posición; así puedes identificar qué botón físico corresponde a cada ranura de asignación. Al hacer clic en una parte del diagrama — la punta, el borrador o un botón lateral — comienza la grabación de una nueva asignación para esa parte.
+Pulsa cualquier botón mientras la ventana está abierta para resaltar su posición; así puedes identificar qué botón físico corresponde a cada ranura de asignación. Haz clic en la punta, el borrador o un botón lateral del diagrama para grabar una nueva asignación.
 
 **Hover drag** – Mantén pulsado un botón con clic izquierdo, derecho o central mientras el lápiz flota para arrastrar sin tocar la superficie.
 
@@ -104,19 +104,17 @@ El diagrama muestra la posición de las teclas, anillos y diales de una tableta.
 - **Botones del ratón** – Clic izquierdo, derecho y central, doble clic y bloqueo de clic, que mantiene pulsado el botón izquierdo hasta la siguiente pulsación  
 - **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
 - **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
-- **Acciones especiales** – Desplazar vista, Borrador, Barra espaciadora, Escape, Cambiar pantalla, Distribuir en pantallas, Cambiar modo relativo y modos de anillos, diales y franjas  
+- **Acciones especiales** – Desplazar vista, Borrador, Barra espaciadora, Escape, F13 a F19, Cambiar pantalla, Distribuir en pantallas, Cambiar modo relativo, Mostrar configuración de MockTab y modos de anillos, diales y franjas  
 
 ## Touch Ring y dial
 
-Los anillos, diales y tiras táctiles admiten varios modos. Cada modo aparece como un resumen de una línea; haz clic en una fila del modo — o en su sector del diagrama junto a la lista — para abrir sus ajustes en el mismo sitio. Asigna Touch Ring Mode → **Ciclo** a un botón para ir pasando de un modo a otro, o **Ir al modo** para saltar directamente a un modo concreto. Cada franja tiene sus propios modos. En las Cintiq 21UX2 y 22HD, cada franja tiene al lado un botón **Cambiar franja**.
+Los anillos, diales y tiras táctiles tienen cada uno sus propios modos. Haz clic en un modo, o en su sector del diagrama, para cambiar sus ajustes. Para cambiar de modo con un botón, asigna **Ciclo** o **Ir al modo**.
 
-**Desplazar** – Convierte el anillo o dial en una rueda de desplazamiento. La velocidad es un multiplicador: 1× equivale a una línea por paso.
+**Desplazar** – Funciona como una rueda de desplazamiento. A 1×, cada paso desplaza una línea.
 
-**Zoom** y **Girar** – Amplían y giran el lienzo, igual que un gesto en el trackpad, en vez de repetir un atajo de teclado. A velocidad máxima, una vuelta del anillo gira el lienzo por completo. La compatibilidad varía según la app.
+**Zoom** y **Girar** – Amplían o giran el lienzo, igual que un gesto en el trackpad. La velocidad va de Desactivado a Máximo; en Máximo, una vuelta del anillo gira el lienzo por completo. La compatibilidad varía según la app.
 
 **Tecla** – Envía un atajo de teclado en cada dirección.
-
-En Zoom y Girar la velocidad va de Desactivado a Máximo en lugar de un número.
 
 ## Pantallas de teclas
 

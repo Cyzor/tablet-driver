@@ -6,7 +6,7 @@ A drawing tablet is an input device with a stylus that reports absolute position
 
 ## MockTab
 
-MockTab is a macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Cintiq, Bamboo, and Intuos Pro families — focusing on hardware that Wacom's own driver no longer supports on modern macOS releases — as well as Xencelabs pen tablets and pen displays.
+MockTab is a macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Cintiq, Bamboo, and Intuos Pro families, as well as Xencelabs pen tablets and pen displays. It focuses on hardware that Wacom's own driver no longer supports on modern macOS releases.
 
 ## Removing MockTab
 
@@ -87,7 +87,7 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 ## Pen Diagram
 
-Press any button while the window is open to highlight its position; this helps identify which physical button maps to which assignment slot. Clicking a part of the diagram — the tip, the eraser, or a barrel button — starts recording a new assignment for it.
+Press any button while the window is open to highlight its position; this helps identify which physical button maps to which assignment slot. Click the tip, the eraser, or a barrel button in the diagram to record a new assignment for it.
 
 **Hover drag** – Hold a button set to Left, Right, or Middle Click while the pen hovers to drag without touching the surface.
 
@@ -104,19 +104,17 @@ The diagram depicts positions of a tablet's keys, rings, and dials. Click a comp
 - **Mouse buttons** – Left, Right, and Middle Click, Double Click, and Click Lock, which holds the left button down until the next press  
 - **Keyboard shortcuts** – click the shortcut field and press any key combination  
 - **Modifier holds** – ⌘ ⌥ ⇧ ⌃ held for as long as the button remains pressed  
-- **Special actions** – Pan View, Eraser, Spacebar, Escape, Toggle Display, Span Displays, Toggle Relative Mode, and ring, dial, and strip modes  
+- **Special actions** – Pan View, Eraser, Spacebar, Escape, F13 through F19, Toggle Display, Span Displays, Toggle Relative Mode, Show MockTab Settings, and ring, dial, and strip modes  
 
 ## Touch Ring and Dial
 
-Rings, dials, and touch strips support multiple mode slots. Each mode appears as a one-line summary; click a mode row — or its wedge in the diagram beside the list — to open its settings in place. Assign Touch Ring Mode → **Cycle** to a button to step through modes, or **Jump to Mode** to jump directly to a specific mode. Each touch strip has its own modes. On the Cintiq 21UX2 and 22HD, a **Strip Toggle** button sits beside each strip.
+Rings, dials, and touch strips each have their own modes. Click a mode, or its wedge in the diagram, to change its settings. To switch modes from a button, assign **Cycle** or **Jump to Mode**.
 
-**Scroll** – Turns the ring or dial into a scroll wheel. Speed is a multiplier, where 1× gives one scroll line per step.
+**Scroll** – Works like a scroll wheel. At 1×, each step scrolls one line.
 
-**Zoom** and **Rotate** – Magnify and swivel the canvas, the way a trackpad pinch or twist does, instead of repeating a keyboard shortcut. At full speed, one turn of the ring takes the canvas all the way around. Support varies by app.
+**Zoom** and **Rotate** – Magnify or turn the canvas, the way a trackpad pinch or twist does. Speed runs from Off to Max; at Max, one turn of the ring turns the canvas all the way around. Support varies by app.
 
 **Key** – Sends a keyboard shortcut for each direction.
-
-Zoom and Rotate show a speed from Off to Max rather than a number.
 
 ## Key Displays
 

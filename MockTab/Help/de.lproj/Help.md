@@ -6,7 +6,7 @@ Ein Grafiktablett ist ein Eingabegerät mit Stift, das absolute Position, Druck,
 
 ## MockTab
 
-MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Grafiktabletts aus den Wacom-Familien Intuos, Cintiq, Bamboo und Intuos Pro — mit besonderem Fokus auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt — sowie Xencelabs-Stifttabletts und Pen-Displays.
+MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Grafiktabletts aus den Wacom-Familien Intuos, Cintiq, Bamboo und Intuos Pro sowie Xencelabs-Stifttabletts und Pen-Displays. Der Fokus liegt auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt.
 
 ## MockTab entfernen
 
@@ -87,7 +87,7 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 ## Stiftdiagramm
 
-Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuheben; so erkennst du, welcher physische Knopf welchem Zuordnungsslot entspricht. Wenn du auf einen Teil des Diagramms klickst — die Spitze, den Radierer oder eine Barrel-Taste — startet die Aufzeichnung einer neuen Zuordnung dafür.
+Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuheben; so erkennst du, welcher physische Knopf welchem Zuordnungsslot entspricht. Klicke im Diagramm auf die Spitze, den Radierer oder eine Barrel-Taste, um eine neue Zuordnung dafür aufzuzeichnen.
 
 **Hover drag** – Halte eine Taste mit Links-, Rechts- oder Mittelklick gedrückt, während der Stift schwebt, um zu ziehen, ohne die Oberfläche zu berühren.
 
@@ -104,19 +104,17 @@ Das Diagramm zeigt, wo Tasten, Ringe und Dials eines Grafiktabletts sitzen. Klic
 - **Maustasten** – Links-, Rechts- und Mittelklick, Doppelklick und Klick-Verriegelung, die die linke Taste bis zum nächsten Druck gedrückt hält  
 - **Tastaturkürzel** – Klicke ins Shortcut-Feld und drücke eine beliebige Tastenkombination  
 - **Gehaltene Modifikatortasten** – ⌘ ⌥ ⇧ ⌃ bleiben gedrückt, solange die Taste gehalten wird  
-- **Spezialaktionen** – Ansicht schwenken, Radierer, Leertaste, Escape, Display umschalten, Auf Displays verteilen, Relativen Modus umschalten sowie Modi für Ringe, Dials und Leisten  
+- **Spezialaktionen** – Ansicht schwenken, Radierer, Leertaste, Escape, F13 bis F19, Display umschalten, Auf Displays verteilen, Relativen Modus umschalten, MockTab-Einstellungen anzeigen sowie Modi für Ringe, Dials und Leisten  
 
 ## Berührungsring und Dial
 
-Ringe, Dials und Touch-Strips unterstützen mehrere Modusslots. Jeder Modus erscheint als kurze Ein-Zeilen-Zusammenfassung; ein Klick auf eine Moduszeile — oder auf ihren Keil im Diagramm neben der Liste — öffnet die Einstellungen direkt an Ort und Stelle. Weise Touch-Ring-Modus → **Wechseln** einer Taste zu, um durch die Modi zu schalten, oder **Zu Modus springen**, um direkt zu einem bestimmten Modus zu springen. Jede Leiste hat eigene Modi. Beim Cintiq 21UX2 und 22HD liegt neben jeder Leiste eine Taste **Leiste umschalten**.
+Ringe, Dials und Touch-Strips haben jeweils eigene Modi. Klicke auf einen Modus oder seinen Keil im Diagramm, um seine Einstellungen zu ändern. Um Modi per Taste zu wechseln, weise **Wechseln** oder **Zu Modus springen** zu.
 
-**Scrollen** – Macht aus Ring oder Dial ein Scrollrad. Die Geschwindigkeit ist ein Faktor: 1× entspricht einer Scrollzeile pro Schritt.
+**Scrollen** – Funktioniert wie ein Scrollrad. Bei 1× scrollt jeder Schritt eine Zeile.
 
-**Zoomen** und **Drehen** – Vergrößern und drehen die Arbeitsfläche, so wie es eine Trackpad-Geste tut, statt ein Tastenkürzel zu wiederholen. Bei voller Geschwindigkeit dreht eine Ringumdrehung die Arbeitsfläche einmal komplett herum. Die Unterstützung hängt von der App ab.
+**Zoomen** und **Drehen** – Vergrößern oder drehen die Arbeitsfläche wie eine Trackpad-Geste. Die Geschwindigkeit reicht von Aus bis Maximum; bei Maximum dreht eine Ringumdrehung die Arbeitsfläche einmal komplett herum. Die Unterstützung hängt von der App ab.
 
 **Taste** – Sendet für jede Richtung ein Tastenkürzel.
-
-Bei Zoomen und Drehen reicht die Geschwindigkeit von Aus bis Maximum statt einer Zahl.
 
 ## Tastendisplays
 
