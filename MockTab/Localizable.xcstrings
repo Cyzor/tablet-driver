@@ -13584,6 +13584,29 @@
         }
       }
     },
+    "Open %@" : {
+      "comment" : "Button action: open an app, document, or link; the argument names it",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ öffnen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir %@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@を開く"
+          }
+        }
+      }
+    },
     "Open GitHub Issue…" : {
       "comment" : "Button label: open a pre-filled GitHub issue for device support",
       "localizations" : {

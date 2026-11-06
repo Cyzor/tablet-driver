@@ -936,6 +936,9 @@ extension InputInjector {
         case .showSettings:
             guard down else { break }
             showSettingsHandler?()
+        case .open:
+            guard down, let url = binding.openURL else { break }
+            Task { @MainActor in ButtonOpenAction.open(url) }
         }
 
         // Safety valve: if nothing is physically held on the tablet but we still

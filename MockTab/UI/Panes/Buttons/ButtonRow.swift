@@ -26,31 +26,51 @@ func buttonRow(
     storedActionUnreadable: Bool = false,
     showsNoneAsValue: Bool = false
 ) -> some View {
-    HStack(spacing: 0) {
-        activeIndicator(isActive)
-        // Fixed minimum width with trailing alignment so the binding control
-        // starts at a consistent x position regardless of label length.
-        labelText(label, isActive: isActive)
-            .scaledFrame(minWidth: 100, alignment: .trailing)
-        ButtonBindingControl(
-            binding: binding, ringSlotCount: ringSlotCount,
-            offersSecondDial: offersSecondDial,
-            offersEraser: offersEraser,
-            modeNames: modeNames,
-            isMechanicalDialHardware: isMechanicalDialHardware,
-            isStripHardware: isStripHardware,
-            dialToggleControl: dialToggleControl,
-            placement: placement,
-            offersRingModes: offersRingModes,
-            offersModeJumps: offersModeJumps,
-            recordRequestToken: recordRequestToken,
-            storedActionUnreadable: storedActionUnreadable,
-            showsNoneAsValue: showsNoneAsValue)
-            .equatable()
-        Spacer(minLength: 0)
+    OpenTargetDropRow(binding: binding) { isDropTargeted in
+        HStack(spacing: 0) {
+            activeIndicator(isActive)
+            // Fixed minimum width with trailing alignment so the binding control
+            // starts at a consistent x position regardless of label length.
+            labelText(label, isActive: isActive)
+                .scaledFrame(minWidth: 100, alignment: .trailing)
+            ButtonBindingControl(
+                binding: binding, ringSlotCount: ringSlotCount,
+                offersSecondDial: offersSecondDial,
+                offersEraser: offersEraser,
+                modeNames: modeNames,
+                isMechanicalDialHardware: isMechanicalDialHardware,
+                isStripHardware: isStripHardware,
+                dialToggleControl: dialToggleControl,
+                placement: placement,
+                offersRingModes: offersRingModes,
+                offersModeJumps: offersModeJumps,
+                recordRequestToken: recordRequestToken,
+                storedActionUnreadable: storedActionUnreadable,
+                showsNoneAsValue: showsNoneAsValue,
+                isDropTargeted: isDropTargeted)
+                .equatable()
+            Spacer(minLength: 0)
+        }
     }
     .background(RecordFlash(token: recordRequestToken))
 }
+
+/// The whole row takes the drop, a bigger target than the field, while the
+/// field shows where it lands.
+private struct OpenTargetDropRow<Content: View>: View {
+    let binding: Binding<ButtonBinding>
+    @ViewBuilder let content: (Bool) -> Content
+    @State private var isTargeted = false
+
+    var body: some View {
+        content(isTargeted)
+            .contentShape(Rectangle())
+            .onDrop(
+                of: OpenTargetDropDelegate.types,
+                delegate: OpenTargetDropDelegate(binding: binding, isTargeted: $isTargeted))
+    }
+}
+
 
 /// Brief accent flash across a binding row when a diagram click targets it.
 /// Clicking the diagram with the pen also lights the tip row's live-press

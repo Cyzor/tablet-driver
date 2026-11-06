@@ -20,8 +20,9 @@ struct ButtonBinding: Codable, Equatable {
             // Second ring/dial's own mode-cycle actions (PTK-670/870's two
             // independent mechanical dials) — see touchRingActiveSlotIndex2.
             ringCycle2, ringSelectSlot2,
-            // Open this device's settings window.
-            showSettings
+            // Open this device's settings window; open `target`, an app,
+            // document, or link.
+            showSettings, open
     }
 
     var kind: Kind = .none {
@@ -30,6 +31,9 @@ struct ButtonBinding: Codable, Equatable {
     var keyCode: UInt16 = 0
     var modifierFlags: UInt64 = 0  // CGEventFlags raw value
     var keyLabel: String = ""  // display string for the key (e.g. "Z", "↩", "Space")
+    /// What `.open` opens: a file URL for an app or document, or a link.
+    /// Written only when set, so other kinds encode as they always have.
+    var target: String = ""
 
     /// Fields a future app version added that this build doesn't know about.
     /// Preserved verbatim on re-encode — see TabletSettings.Profile.unknownFields.
@@ -45,7 +49,7 @@ struct ButtonBinding: Codable, Equatable {
     var unrecognizedKindName: String? { unrecognizedKind }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
-        case kind, keyCode, modifierFlags, keyLabel
+        case kind, keyCode, modifierFlags, keyLabel, target
     }
 
     init(from decoder: Decoder) throws {
@@ -57,6 +61,7 @@ struct ButtonBinding: Codable, Equatable {
         keyCode = try c.decode(UInt16.self, forKey: .keyCode)
         modifierFlags = try c.decode(UInt64.self, forKey: .modifierFlags)
         keyLabel = try c.decode(String.self, forKey: .keyLabel)
+        target = try c.decodeIfPresent(String.self, forKey: .target) ?? ""
         unknownFields = try UnknownFieldsCodec.captureUnknown(
             from: decoder, knownKeys: Set(CodingKeys.allCases.map(\.rawValue)))
     }
@@ -67,6 +72,7 @@ struct ButtonBinding: Codable, Equatable {
         try c.encode(keyCode, forKey: .keyCode)
         try c.encode(modifierFlags, forKey: .modifierFlags)
         try c.encode(keyLabel, forKey: .keyLabel)
+        if !target.isEmpty { try c.encode(target, forKey: .target) }
         try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
     }
 
@@ -74,6 +80,7 @@ struct ButtonBinding: Codable, Equatable {
         lhs.kind == rhs.kind && lhs.unrecognizedKind == rhs.unrecognizedKind
             && lhs.keyCode == rhs.keyCode
             && lhs.modifierFlags == rhs.modifierFlags && lhs.keyLabel == rhs.keyLabel
+            && lhs.target == rhs.target
     }
 
     // MARK: Presets
@@ -97,6 +104,24 @@ struct ButtonBinding: Codable, Equatable {
         self.keyCode = keyCode
         self.modifierFlags = modifierFlags
         self.keyLabel = keyLabel
+    }
+
+    /// An `.open` binding for an app, document, folder, or link.
+    init(opening url: URL) {
+        kind = .open
+        target = url.absoluteString
+    }
+
+    /// What `.open` opens, or nil when `target` isn't a URL.
+    var openURL: URL? {
+        guard kind == .open, !target.isEmpty else { return nil }
+        return URL(string: target)
+    }
+
+    /// False when an `.open` binding names a file that's no longer there.
+    var openTargetExists: Bool {
+        guard let url = openURL else { return kind != .open }
+        return !url.isFileURL || FileManager.default.fileExists(atPath: url.path)
     }
 
     /// Modifier-only binding. The empty `keyLabel` tells InputInjector to post
@@ -206,6 +231,10 @@ struct ButtonBinding: Codable, Equatable {
             return String(
                 localized: "MockTab Settings",
                 comment: "Button action: open this tablet's settings window in MockTab")
+        case .open:
+            return String(
+                localized: "Open \(openTargetName)",
+                comment: "Button action: open an app, document, or link; the argument names it")
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""
@@ -215,6 +244,13 @@ struct ButtonBinding: Codable, Equatable {
             if f.contains(.maskCommand) { s += "⌘" }
             return s + keyLabel
         }
+    }
+
+    /// The app or file's name as Finder shows it, or the link as written.
+    private var openTargetName: String {
+        guard let url = openURL else { return target }
+        guard url.isFileURL else { return target }
+        return FileManager.default.displayName(atPath: url.path)
     }
 
     // MARK: JSON helpers

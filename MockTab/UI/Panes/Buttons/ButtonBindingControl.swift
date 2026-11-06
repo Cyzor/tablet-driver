@@ -4,6 +4,7 @@
 
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// How the Buttons pane names a turned tablet's rings, dials, and modes: by
 /// where you see them. Saved bindings still name the physical ring or dial
@@ -91,6 +92,9 @@ struct ButtonBindingControl: View, Equatable {
     /// Shows None as a value, where an unassigned control would surprise:
     /// a pen tip set to None doesn't click.
     var showsNoneAsValue: Bool = false
+    /// A drag the surrounding row would take is over it; the field lights
+    /// to show where it lands.
+    var isDropTargeted: Bool = false
     @State private var isRecording = false
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
@@ -117,6 +121,7 @@ struct ButtonBindingControl: View, Equatable {
                 && lhs.recordRequestToken == rhs.recordRequestToken
                 && lhs.storedActionUnreadable == rhs.storedActionUnreadable
                 && lhs.showsNoneAsValue == rhs.showsNoneAsValue
+                && lhs.isDropTargeted == rhs.isDropTargeted
         }
     }
 
@@ -436,21 +441,22 @@ struct ButtonBindingControl: View, Equatable {
 
     private var fieldTextColor: Color {
         if isRecording { return .accentColor }
-        if binding.kind == .none { return .secondary }
+        if isDropTargeted { return .primary }
+        if binding.kind == .none || !binding.openTargetExists { return .secondary }
         return .primary
     }
 
     @ViewBuilder private var fieldBackground: some View {
         RoundedRectangle(cornerRadius: 5, style: .continuous)
             .fill(
-                isRecording
+                isRecording || isDropTargeted
                     ? Color.accentColor.opacity(0.07)
                     : Color(NSColor.controlBackgroundColor)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .strokeBorder(
-                        isRecording ? Color.accentColor : Color(NSColor.separatorColor),
+                        isRecording || isDropTargeted ? Color.accentColor : Color(NSColor.separatorColor),
                         lineWidth: 1
                     )
             )
@@ -532,5 +538,42 @@ struct ButtonBindingControl: View, Equatable {
             binding = ButtonBinding(fromKey: event)
         }
         stopRecording()
+    }
+}
+
+/// Turns one dragged app, file, folder, or link into an Open action. A drag
+/// carrying several items is refused, so it can't pick one at random.
+struct OpenTargetDropDelegate: DropDelegate {
+    /// Files and apps, links, and text that reads as a link.
+    static let types: [UTType] = [.fileURL, .url, .plainText]
+    let binding: Binding<ButtonBinding>
+    let isTargeted: Binding<Bool>
+
+    private func soleProvider(_ info: DropInfo) -> NSItemProvider? {
+        let providers = info.itemProviders(for: Self.types)
+        return providers.count == 1 ? providers[0] : nil
+    }
+
+    func validateDrop(info: DropInfo) -> Bool { soleProvider(info) != nil }
+    func dropEntered(info: DropInfo) { isTargeted.wrappedValue = soleProvider(info) != nil }
+    func dropExited(info: DropInfo) { isTargeted.wrappedValue = false }
+
+    func performDrop(info: DropInfo) -> Bool {
+        isTargeted.wrappedValue = false
+        guard let provider = soleProvider(info) else { return false }
+        let binding = binding
+        let assign: @Sendable (URL?) -> Void = { url in
+            Task { @MainActor in
+                if let url { binding.wrappedValue = ButtonBinding(opening: url) } else { NSSound.beep() }
+            }
+        }
+        if provider.canLoadObject(ofClass: URL.self) {
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in assign(url) }
+        } else {
+            _ = provider.loadObject(ofClass: NSString.self) { text, _ in
+                assign((text as? NSString).flatMap { ButtonOpenAction.link(from: String($0)) })
+            }
+        }
+        return true
     }
 }

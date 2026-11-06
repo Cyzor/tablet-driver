@@ -37,6 +37,8 @@ let sampleBindings: [ButtonBinding] = [
     ButtonBinding(kind: .keyCombo, keyCode: 6, modifierFlags: CGEventFlags.maskCommand.rawValue, keyLabel: "Z"),
     ButtonBinding(kind: .keyCombo, keyCode: 105, keyLabel: "F13"),
     ButtonBinding(kind: .showSettings),
+    ButtonBinding(opening: URL(fileURLWithPath: "/Applications/Preview.app")),
+    ButtonBinding(opening: URL(string: "kmtrigger://macro=Radial%20Menu&value=pen")!),
 ]
 
 check(ButtonBinding.charLabel(keyCode: 80, modifiers: []) == "F19", "F19 should have its label")
@@ -47,6 +49,29 @@ for binding in sampleBindings {
     let decoded = ButtonBinding.decode(encoded)
     check(decoded == binding, "round-trip mismatch: \(binding) -> \(encoded) -> \(String(describing: decoded))")
 }
+
+// MARK: - Only Open writes a target, so older saved values encode as before
+
+let preTargetEncoding = #"{"kind":"keyCombo","keyCode":6,"modifierFlags":1048576,"keyLabel":"Z"}"#
+func jsonObject(_ s: String?) -> NSDictionary? {
+    s.flatMap { $0.data(using: .utf8) }.flatMap { try? JSONSerialization.jsonObject(with: $0) as? NSDictionary }
+}
+check(
+    jsonObject(ButtonBinding.decode(preTargetEncoding)?.encoded) == jsonObject(preTargetEncoding),
+    "a binding with no target should re-encode with the same fields")
+check(
+    ButtonBinding(kind: .showSettings).encoded.contains("target") == false,
+    "a binding with no target shouldn't write one")
+let openLink = ButtonBinding(opening: URL(string: "btt://trigger_named/?trigger_name=Ring")!)
+check(
+    openLink.openURL?.absoluteString == "btt://trigger_named/?trigger_name=Ring",
+    "an Open binding should keep its link verbatim")
+check(
+    ButtonBinding(kind: .keyCombo, keyCode: 6).openURL == nil,
+    "only Open bindings have a URL")
+check(
+    ButtonBinding(opening: URL(fileURLWithPath: "/nonexistent/Nothing.app")).openTargetExists == false,
+    "a missing file target should read as missing")
 
 // MARK: - Retired Middle Click + Tip loads as Middle Click
 
