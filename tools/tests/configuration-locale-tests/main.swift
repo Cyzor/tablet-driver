@@ -66,6 +66,13 @@ let openLink = ButtonBinding(opening: URL(string: "btt://trigger_named/?trigger_
 check(
     openLink.openURL?.absoluteString == "btt://trigger_named/?trigger_name=Ring",
     "an Open binding should keep its link verbatim")
+let macroLink = ButtonBinding(
+    opening: URL(string: "kmtrigger://macro=99FA2E4B-8F93-40CB-8A4C-BCC95C49EF07")!,
+    named: "BBEdit Go to Named Symbol")
+check(ButtonBinding.decode(macroLink.encoded) == macroLink, "a named Open binding should round-trip")
+check(
+    macroLink.displayLabel == "Open BBEdit Go to Named Symbol",
+    "a named Open binding should show its name, not the link: \(macroLink.displayLabel)")
 check(
     ButtonBinding(kind: .keyCombo, keyCode: 6).openURL == nil,
     "only Open bindings have a URL")

@@ -562,16 +562,18 @@ struct OpenTargetDropDelegate: DropDelegate {
         isTargeted.wrappedValue = false
         guard let provider = soleProvider(info) else { return false }
         let binding = binding
-        let assign: @Sendable (URL?) -> Void = { url in
+        let assign: @Sendable (URL?, String) -> Void = { url, name in
             Task { @MainActor in
-                if let url { binding.wrappedValue = ButtonBinding(opening: url) } else { NSSound.beep() }
+                if let url { binding.wrappedValue = ButtonBinding(opening: url, named: name) } else { NSSound.beep() }
             }
         }
-        if provider.canLoadObject(ofClass: URL.self) {
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in assign(url) }
+        if let macro = ButtonOpenAction.keyboardMaestroMacro(on: NSPasteboard(name: .drag)) {
+            binding.wrappedValue = ButtonBinding(opening: macro.url, named: macro.name)
+        } else if provider.canLoadObject(ofClass: URL.self) {
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in assign(url, "") }
         } else {
             _ = provider.loadObject(ofClass: NSString.self) { text, _ in
-                assign((text as? NSString).flatMap { ButtonOpenAction.link(from: String($0)) })
+                assign((text as? NSString).flatMap { ButtonOpenAction.link(from: String($0)) }, "")
             }
         }
         return true

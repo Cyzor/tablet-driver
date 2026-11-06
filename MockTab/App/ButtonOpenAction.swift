@@ -35,7 +35,31 @@ enum ButtonOpenAction {
         }
     }
 
-    // MARK: Dragged text
+    // MARK: Dragged items
+
+    /// The type a macro dragged from Keyboard Maestro's editor carries: a
+    /// property list array of macro UUIDs. Its plain text is the name.
+    nonisolated static let keyboardMaestroMacroIDsType = "com.stairways.keyboardmaestro.macrouidsarray"
+
+    /// The one macro a drag from Keyboard Maestro carries, as a link and its
+    /// name. Read from the pasteboard itself: the ID list's type isn't
+    /// declared to macOS, so SwiftUI's drop leaves it out.
+    static func keyboardMaestroMacro(on pasteboard: NSPasteboard) -> (url: URL, name: String)? {
+        guard let items = pasteboard.pasteboardItems, items.count == 1,
+            let data = items[0].data(forType: .init(keyboardMaestroMacroIDsType)),
+            let url = keyboardMaestroLink(fromMacroIDs: data)
+        else { return nil }
+        return (url, items[0].string(forType: .string) ?? "")
+    }
+
+    /// A link that runs the one macro in `data`, by UUID so a rename
+    /// doesn't break it. Nil for several macros or anything unreadable.
+    nonisolated static func keyboardMaestroLink(fromMacroIDs data: Data) -> URL? {
+        guard let ids = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String],
+            ids.count == 1, UUID(uuidString: ids[0]) != nil
+        else { return nil }
+        return URL(string: "kmtrigger://macro=" + ids[0])
+    }
 
     /// A link from dragged text: one word with a scheme, or a bare address
     /// like example.com, which gets https. Other text isn't a link.

@@ -106,10 +106,12 @@ struct ButtonBinding: Codable, Equatable {
         self.keyLabel = keyLabel
     }
 
-    /// An `.open` binding for an app, document, folder, or link.
-    init(opening url: URL) {
+    /// An `.open` binding for an app, document, folder, or link. `name`
+    /// labels a link whose text means nothing to people, such as a macro's.
+    init(opening url: URL, named name: String = "") {
         kind = .open
         target = url.absoluteString
+        keyLabel = name
     }
 
     /// What `.open` opens, or nil when `target` isn't a URL.
@@ -248,6 +250,7 @@ struct ButtonBinding: Codable, Equatable {
 
     /// The app or file's name as Finder shows it, or the link as written.
     private var openTargetName: String {
+        if !keyLabel.isEmpty { return keyLabel }
         guard let url = openURL else { return target }
         guard url.isFileURL else { return target }
         return FileManager.default.displayName(atPath: url.path)
