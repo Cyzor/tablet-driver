@@ -688,6 +688,17 @@ final class TabletManager: ObservableObject {
             // subscription would send every write twice.
             context.observeRingLED()
             context.observeInjectionSnapshot()
+            // Read the key when pressed: a restored window's stub adopts
+            // its instance later. Buttons, since a key just brought it up.
+            context.injector.showSettingsHandler = { [weak context] in
+                Task { @MainActor in
+                    guard let key = context?.instanceKey,
+                        let window = SettingsWindowManager.shared.openWindow(forInstanceKey: key),
+                        window.hasTab(.buttons)
+                    else { return }
+                    window.showTab(.buttons)
+                }
+            }
             context.hasWiredDriverLifecycle = true
         } else if context.activeDriverRawProductID == rawProductID {
             // This transport just outranked the one already installed, and

@@ -19,7 +19,9 @@ struct ButtonBinding: Codable, Equatable {
             relativeModeToggle, spanDisplaysToggle,
             // Second ring/dial's own mode-cycle actions (PTK-670/870's two
             // independent mechanical dials) — see touchRingActiveSlotIndex2.
-            ringCycle2, ringSelectSlot2
+            ringCycle2, ringSelectSlot2,
+            // Open this device's settings window.
+            showSettings
     }
 
     var kind: Kind = .none {
@@ -200,6 +202,10 @@ struct ButtonBinding: Codable, Equatable {
             return String(
                 localized: "Toggle Relative Mode",
                 comment: "Button action: switch between absolute and relative cursor movement")
+        case .showSettings:
+            return String(
+                localized: "MockTab Settings",
+                comment: "Button action: open this tablet's settings window in MockTab")
         case .keyCombo:
             let f = CGEventFlags(rawValue: modifierFlags)
             var s = ""

@@ -11990,6 +11990,29 @@
         }
       }
     },
+    "MockTab Settings" : {
+      "comment" : "Button action: open this tablet's settings window in MockTab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab-Einstellungen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuración de MockTab"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTabの設定"
+          }
+        }
+      }
+    },
     "MockTab stays in the menu bar. Show the Dock icon again from the Info pane or the menu bar icon." : {
       "comment" : "Alert body: explaining consequences of hiding Dock icon",
       "localizations" : {
@@ -13632,6 +13655,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "キャリブレーション オーバーレイを開いて、ペン ディスプレイの十字線目標をタップします。"
+          }
+        }
+      }
+    },
+    "Open this tablet's settings window" : {
+      "comment" : "Tooltip for the Show MockTab Settings option in the button action menu",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungsfenster dieses Grafiktabletts öffnen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir la ventana de configuración de esta tableta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このタブレットの設定ウインドウを開く"
           }
         }
       }
@@ -18509,6 +18555,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dock とアプリスイッチャーに MockTab を表示します。"
+          }
+        }
+      }
+    },
+    "Show MockTab Settings" : {
+      "comment" : "Button action menu: open this tablet's settings window",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab-Einstellungen anzeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar configuración de MockTab"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTabの設定を表示"
           }
         }
       }

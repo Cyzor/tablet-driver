@@ -1176,6 +1176,10 @@ final class InputInjector: @unchecked Sendable {
     /// `.spanDisplaysToggle` counterpart of `displayToggleForwarder`.
     var spanDisplaysForwarder: (() -> Void)?
 
+    /// Opens this device's settings window for `.showSettings`. Assigned by
+    /// TabletManager, which knows the window; called on HIDThread.
+    var showSettingsHandler: (() -> Void)?
+
     /// Advances the toggle rotation to the next display in the sequence.
     /// Called from fireButtonAction (HIDThread) when a `.displayToggle` binding fires.
     func cycleToggleDisplay(snapshot: InjectionSnapshot) {

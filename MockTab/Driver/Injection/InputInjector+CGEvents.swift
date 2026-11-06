@@ -933,6 +933,9 @@ extension InputInjector {
             }
         case .scrollDrag:
             fireScrollDrag(down: down, snapshot: snapshot)
+        case .showSettings:
+            guard down else { break }
+            showSettingsHandler?()
         }
 
         // Safety valve: if nothing is physically held on the tablet but we still

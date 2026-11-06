@@ -312,6 +312,9 @@ struct ButtonBindingControl: View, Equatable {
                 }
             }
             Divider()
+            Button("Show MockTab Settings") { binding = ButtonBinding(kind: .showSettings) }
+                .help("Open this tablet's settings window")
+            Divider()
             Button("⌘ Command") { binding = ButtonBinding(modifierOnly: .command) }
                 .help("Hold Command while the button is down")
             Button("⌥ Option") { binding = ButtonBinding(modifierOnly: .option) }
