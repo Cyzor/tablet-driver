@@ -35,7 +35,10 @@ let sampleBindings: [ButtonBinding] = [
     ButtonBinding(kind: .relativeModeToggle),
     ButtonBinding(kind: .spanDisplaysToggle),
     ButtonBinding(kind: .keyCombo, keyCode: 6, modifierFlags: CGEventFlags.maskCommand.rawValue, keyLabel: "Z"),
+    ButtonBinding(kind: .keyCombo, keyCode: 105, keyLabel: "F13"),
 ]
+
+check(ButtonBinding.charLabel(keyCode: 80, modifiers: []) == "F19", "F19 should have its label")
 
 for binding in sampleBindings {
     let encoded = binding.encoded

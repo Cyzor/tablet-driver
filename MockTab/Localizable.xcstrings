@@ -8718,6 +8718,29 @@
         }
       }
     },
+    "Function Keys" : {
+      "comment" : "Button action menu: submenu of F13 through F19",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funktionstasten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teclas de función"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファンクションキー"
+          }
+        }
+      }
+    },
     "Gamma" : {
       "localizations" : {
         "de" : {

@@ -230,6 +230,17 @@ struct ButtonBindingControl: View, Equatable {
                 binding = ButtonBinding(kind: .keyCombo, keyCode: 53, modifierFlags: 0, keyLabel: "⎋")
             }
             .help("Escape key")
+            // Keys most keyboards lack, so the recorder can't capture them.
+            // No app claims them, which makes them good triggers for menu apps.
+            Menu("Function Keys") {
+                ForEach(Self.extraFunctionKeys, id: \.keyCode) { key in
+                    Button {
+                        binding = ButtonBinding(kind: .keyCombo, keyCode: key.keyCode, keyLabel: key.label)
+                    } label: {
+                        Text(verbatim: key.label)
+                    }
+                }
+            }
             Button("Toggle Display") { binding = ButtonBinding(kind: .displayToggle) }
                 .help("Switch tablet mapping between displays")
             Button("Span Displays") { binding = ButtonBinding(kind: .spanDisplaysToggle) }
@@ -327,6 +338,12 @@ struct ButtonBindingControl: View, Equatable {
         )
         .accessibilityLabel("Click action menu")
     }
+
+    /// F13–F19 by key code (kVK_F13 through kVK_F19).
+    private static let extraFunctionKeys: [(keyCode: UInt16, label: String)] =
+        [105, 107, 113, 106, 64, 79, 80].map { code in
+            (code, ButtonBinding.charLabel(keyCode: code, modifiers: []))
+        }
 
     /// Two touch rings, as on the Cintiq 24HD: menus and labels say left and
     /// right instead of first and second.
