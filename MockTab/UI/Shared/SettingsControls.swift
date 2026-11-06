@@ -383,19 +383,60 @@ struct RowActionsMenu<Content: View>: View {
 /// The first text field focused after launch flashes an empty rounded panel
 /// beside it (`SPRoundedWindow`, from SafariPlatformSupport), and no
 /// text-field setting turns it off. MockTab's fields hold names and numbers,
-/// with nothing to fill, so hide the panel whenever it appears, and let clicks
-/// pass through it while it's up. Called once at launch.
+/// with nothing to fill, so hide the panel, and let clicks pass through it.
+/// Called once at launch.
+///
+/// The panel shows about 130 ms after a field takes focus, and stays hidden
+/// for a few milliseconds after it's created. The occlusion notification
+/// arrives only after it shows, 25 ms late, so a short poll starts at focus.
 @MainActor
 func suppressAutoFillPanel() {
+    // A field editor's selection changes as it takes focus.
+    NotificationCenter.default.addObserver(
+        forName: NSTextView.didChangeSelectionNotification, object: nil, queue: .main
+    ) { note in
+        // Read the flag here; only a Bool crosses to the main actor.
+        let isFieldEditor = (note.object as? NSTextView)?.isFieldEditor == true
+        guard isFieldEditor else { return }
+        MainActor.assumeIsolated { AutoFillPanelHider.watch() }  // queue: .main
+    }
+    // Backstop for a panel that shows without a focus change.
     NotificationCenter.default.addObserver(
         forName: NSWindow.didChangeOcclusionStateNotification, object: nil, queue: .main
     ) { note in
-        // Read the name here; only the window itself crosses to the main actor.
         guard let object = note.object, String(describing: type(of: object)) == "SPRoundedWindow" else { return }
-        nonisolated(unsafe) let panel = object as? NSWindow
-        MainActor.assumeIsolated {  // queue: .main
-            panel?.alphaValue = 0
-            panel?.ignoresMouseEvents = true
+        MainActor.assumeIsolated { AutoFillPanelHider.hide() }  // queue: .main
+    }
+}
+
+@MainActor
+private enum AutoFillPanelHider {
+    static var deadline: TimeInterval = 0
+    static var timer: Timer?
+
+    /// Checks every 2 ms until a second after the latest focus change.
+    static func watch() {
+        deadline = ProcessInfo.processInfo.systemUptime + 1.0
+        guard timer == nil else { return }
+        let poll = Timer(timeInterval: 0.002, repeats: true) { _ in
+            MainActor.assumeIsolated { tick() }  // main run loop
+        }
+        RunLoop.main.add(poll, forMode: .common)
+        timer = poll
+    }
+
+    private static func tick() {
+        hide()
+        if ProcessInfo.processInfo.systemUptime > deadline {
+            timer?.invalidate()
+            timer = nil
+        }
+    }
+
+    static func hide() {
+        for panel in NSApp.windows where String(describing: type(of: panel)) == "SPRoundedWindow" {
+            panel.alphaValue = 0
+            panel.ignoresMouseEvents = true
         }
     }
 }
