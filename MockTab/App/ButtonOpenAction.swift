@@ -29,9 +29,26 @@ enum ButtonOpenAction {
             NSWorkspace.shared.openApplication(at: url, configuration: .init()) { _, error in
                 if let error { openLog.error("open app failed: \(error.localizedDescription, privacy: .public)") }
             }
-        } else if !NSWorkspace.shared.open(url) {
-            openLog.error("open failed for a \(url.scheme ?? "?", privacy: .public) link")
-            NSSound.beep()
+        } else {
+            // A link for a menu bar app, like a Keyboard Maestro macro, would
+            // otherwise take focus from the front window for a moment.
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = !handlerRunsInBackground(url)
+            NSWorkspace.shared.open(url, configuration: configuration) { _, error in
+                guard error != nil else { return }
+                openLog.error("open failed for a \(url.scheme ?? "?", privacy: .public) link")
+                Task { @MainActor in NSSound.beep() }
+            }
+        }
+    }
+
+    /// Whether the app that opens `url` has no Dock icon or menu bar.
+    private static func handlerRunsInBackground(_ url: URL) -> Bool {
+        guard let app = NSWorkspace.shared.urlForApplication(toOpen: url),
+            let info = Bundle(url: app)?.infoDictionary
+        else { return false }
+        return ["LSUIElement", "LSBackgroundOnly"].contains { key in
+            (info[key] as? NSNumber)?.boolValue == true || (info[key] as? String) == "1"
         }
     }
 
