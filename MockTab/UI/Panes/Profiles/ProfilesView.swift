@@ -317,19 +317,11 @@ struct ProfilesView: View {
                     }
                     return true
                 }
-                .onDrag {
-                    guard let data = generateJSON() else { return NSItemProvider() }
-                    let provider = NSItemProvider()
-                    provider.registerDataRepresentation(
-                        forTypeIdentifier: UTType.json.identifier,
-                        visibility: .all
-                    ) { completion in
-                        completion(data, nil)
-                        return nil
-                    }
-                    provider.suggestedName = ConfigurationExporter.suggestedFileBaseName
-                    return provider
-                }
+                // A file promise, since Finder on macOS 13 makes nothing from
+                // a data-only SwiftUI drag.
+                .overlay(BackupFileDragSource(
+                    fileName: ConfigurationExporter.suggestedFileBaseName + ".json",
+                    makeData: generateJSON))
                 .contextMenu {
                     Button {
                         onExport()
@@ -1048,5 +1040,95 @@ private struct ConfigurationSummaryView: View {
             lines.append(Self.item(Label.panView, pan.joined(separator: Self.separator)))
         }
         return lines
+    }
+}
+
+// MARK: - BackupFileDragSource
+
+/// Drags the backup out as a file promise: Finder names the folder, then
+/// this view writes the file there. The pasteboard carries the JSON too, so a drop
+/// on another MockTab window imports it directly. It claims only left-button
+/// events, leaving hover and Control-click to the tile underneath.
+private struct BackupFileDragSource: NSViewRepresentable {
+    let fileName: String
+    let makeData: () -> Data?
+
+    func makeNSView(context: Context) -> DragView { DragView() }
+
+    func updateNSView(_ view: DragView, context: Context) {
+        view.fileName = fileName
+        view.makeData = makeData
+    }
+
+    final class DragView: NSView, NSDraggingSource, NSFilePromiseProviderDelegate {
+        var fileName = ""
+        var makeData: () -> Data? = { nil }
+        private var mouseDownEvent: NSEvent?
+
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            switch NSApp.currentEvent?.type {
+            case .leftMouseDown, .leftMouseDragged, .leftMouseUp: return super.hitTest(point)
+            default: return nil
+            }
+        }
+
+        override func mouseDown(with event: NSEvent) { mouseDownEvent = event }
+
+        override func mouseDragged(with event: NSEvent) {
+            guard let start = mouseDownEvent else { return }
+            let a = start.locationInWindow, b = event.locationInWindow
+            guard hypot(b.x - a.x, b.y - a.y) >= 3, let data = makeData() else { return }
+            mouseDownEvent = nil
+
+            let provider = BackupPromiseProvider(fileType: UTType.json.identifier, delegate: self)
+            provider.data = data
+            let item = NSDraggingItem(pasteboardWriter: provider)
+            item.setDraggingFrame(bounds, contents: snapshot())
+            beginDraggingSession(with: [item], event: start, source: self)
+        }
+
+        override func mouseUp(with event: NSEvent) { mouseDownEvent = nil }
+
+        /// The tile as drawn, as SwiftUI's drag showed it.
+        private func snapshot() -> NSImage {
+            guard let content = window?.contentView,
+                  let rep = content.bitmapImageRepForCachingDisplay(in: convert(bounds, to: content))
+            else { return NSWorkspace.shared.icon(for: .json) }
+            content.cacheDisplay(in: convert(bounds, to: content), to: rep)
+            let image = NSImage(size: bounds.size)
+            image.addRepresentation(rep)
+            return image
+        }
+
+        func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
+            .copy
+        }
+
+        func filePromiseProvider(_ provider: NSFilePromiseProvider, fileNameForType fileType: String) -> String {
+            fileName
+        }
+
+        func filePromiseProvider(_ provider: NSFilePromiseProvider, writePromiseTo url: URL, completionHandler: @escaping (Error?) -> Void) {
+            do {
+                try ((provider as? BackupPromiseProvider)?.data ?? Data()).write(to: url)
+                completionHandler(nil)
+            } catch {
+                completionHandler(error)
+            }
+        }
+    }
+
+    /// Adds the JSON itself beside the promise.
+    final class BackupPromiseProvider: NSFilePromiseProvider {
+        var data = Data()
+        private static let json = NSPasteboard.PasteboardType(UTType.json.identifier)
+
+        override func writableTypes(for pasteboard: NSPasteboard) -> [NSPasteboard.PasteboardType] {
+            super.writableTypes(for: pasteboard) + [Self.json]
+        }
+
+        override func pasteboardPropertyList(forType type: NSPasteboard.PasteboardType) -> Any? {
+            type == Self.json ? data : super.pasteboardPropertyList(forType: type)
+        }
     }
 }
