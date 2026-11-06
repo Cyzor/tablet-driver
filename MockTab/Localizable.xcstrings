@@ -10084,36 +10084,6 @@
         }
       }
     },
-    "Included displays" : {
-      "comment" : "Caption above display rotation thumbnails",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktivierte Displays"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Displays in rotation — ⌘+click individual, ⇧+click ranges"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pantallas incluidas"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有効なディスプレイ"
-          }
-        }
-      }
-    },
     "Includes or skips this profile in the import." : {
       "comment" : "VoiceOver hint for a row in the import sheet",
       "localizations" : {
