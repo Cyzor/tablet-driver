@@ -61,6 +61,32 @@ enum ButtonOpenAction {
         return URL(string: "kmtrigger://macro=" + ids[0])
     }
 
+    /// The type a record dragged from DEVONthink carries: a property list
+    /// array with each record's item link and name. Its file URL points
+    /// inside the database, and groups have none.
+    nonisolated static let devonthinkItemLinksType = "DTItemLinksPboardType"
+
+    /// The one record a drag from DEVONthink carries, as its item link and
+    /// name. Read from the pasteboard itself, like a Keyboard Maestro macro;
+    /// only the pasteboard translates this legacy type name, not its items.
+    static func devonthinkRecord(on pasteboard: NSPasteboard) -> (url: URL, name: String)? {
+        guard pasteboard.pasteboardItems?.count == 1,
+            let data = pasteboard.data(forType: .init(devonthinkItemLinksType))
+        else { return nil }
+        return devonthinkRecord(fromItemLinks: data)
+    }
+
+    /// The item link and name of the one record in `data`. The link opens
+    /// the record in DEVONthink and survives a rename or move. Nil for
+    /// several records or anything unreadable.
+    nonisolated static func devonthinkRecord(fromItemLinks data: Data) -> (url: URL, name: String)? {
+        guard let records = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [[String: Any]],
+            records.count == 1, let link = records[0]["URL"] as? String,
+            link.hasPrefix("x-devonthink-item://"), let url = URL(string: link)
+        else { return nil }
+        return (url, records[0]["Name"] as? String ?? "")
+    }
+
     /// A link from dragged text: one word with a scheme, or a bare address
     /// like example.com, which gets https. Other text isn't a link.
     nonisolated static func link(from text: String) -> URL? {

@@ -567,8 +567,9 @@ struct OpenTargetDropDelegate: DropDelegate {
                 if let url { binding.wrappedValue = ButtonBinding(opening: url, named: name) } else { NSSound.beep() }
             }
         }
-        if let macro = ButtonOpenAction.keyboardMaestroMacro(on: NSPasteboard(name: .drag)) {
-            binding.wrappedValue = ButtonBinding(opening: macro.url, named: macro.name)
+        let drag = NSPasteboard(name: .drag)
+        if let item = ButtonOpenAction.keyboardMaestroMacro(on: drag) ?? ButtonOpenAction.devonthinkRecord(on: drag) {
+            binding.wrappedValue = ButtonBinding(opening: item.url, named: item.name)
         } else if provider.canLoadObject(ofClass: URL.self) {
             _ = provider.loadObject(ofClass: URL.self) { url, _ in assign(url, "") }
         } else {
