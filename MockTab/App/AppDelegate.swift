@@ -110,6 +110,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HelpWindowController.shared.saveState()
     }
 
+    /// `mocktab:` links; see `MockTabLink`. Anything else is ignored.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            switch MockTabLink(url) {
+            case .settings(let section): SettingsWindowManager.shared.show(link: section)
+            case .help(let section): HelpWindowController.shared.show(section: section)
+            case nil: continue
+            }
+        }
+    }
+
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         true
     }

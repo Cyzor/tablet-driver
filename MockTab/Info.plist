@@ -33,6 +33,18 @@
          read-only and even for a device already paired by the system. -->
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>MockTab uses Bluetooth to read signal strength from your tablet while collecting diagnostic data, to help tell a weak connection apart from a software problem.</string>
+    <!-- mocktab:// links open a settings pane or Help section; see MockTabLink -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.cyzor.mocktab.link</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>mocktab</string>
+            </array>
+        </dict>
+    </array>
     <!-- Human-readable app name -->
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 MockTab contributors. Licensed under GPL-3.0-or-later.</string>

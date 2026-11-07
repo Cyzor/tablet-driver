@@ -234,6 +234,37 @@ final class SettingsWindowManager: ObservableObject {
         window.showTab(tab)
     }
 
+    /// Opens a `mocktab://settings` link in the settings window nearest the
+    /// front. A link usually comes while another app is active, when no
+    /// window is key, so this goes by window order. A device without the
+    /// pane gets its window brought forward.
+    func show(link section: HelpSection?) {
+        let front = NSApp.orderedWindows.lazy
+            .compactMap { window in self.windows.first { $0.window === window && window.isVisible } }
+            .first ?? ensureDefaultWindow()
+        NSApp.activate(ignoringOtherApps: true)
+        if let tab = section.flatMap(Self.tab(for:)), front.hasTab(tab) {
+            front.showTab(tab)
+        } else {
+            front.show()
+        }
+    }
+
+    private static func tab(for section: HelpSection) -> SettingsWindowController.Tab? {
+        switch section {
+        case .tabletArea: .tabletArea
+        case .penFeel: .penFeel
+        case .buttons: .buttons
+        case .touch: .touch
+        case .display: .display
+        case .devices: .devices
+        case .profiles: .profiles
+        case .scratchpad: .scratchpad
+        case .info: .info
+        case .about, .website: nil
+        }
+    }
+
     /// Help > Collect Device Data: opens the collection sheet on the frontmost
     /// settings window, else on the window for the most relevant tablet —
     /// active, then connected, then last seen (`activeDeviceKey`).
