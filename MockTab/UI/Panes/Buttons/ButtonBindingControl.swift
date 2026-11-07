@@ -95,6 +95,8 @@ struct ButtonBindingControl: View, Equatable {
     /// to show where it lands.
     var isDropTargeted: Bool = false
     @State private var isRecording = false
+    /// An Open action whose file is gone or whose link no app opens.
+    @State private var openTargetMissing = false
     @State private var monitor: Any?
     /// Modifier keys accumulated while recording (before any base key is pressed).
     @State private var pendingModifiers: NSEvent.ModifierFlags = []
@@ -129,15 +131,26 @@ struct ButtonBindingControl: View, Equatable {
     fileprivate static let unreadableNote: LocalizedStringKey =
         "MockTab can't read this saved action, so it uses the default."
 
-    private var showsUnreadableMark: Bool { storedActionUnreadable && !isRecording }
+    fileprivate static let missingTargetNote: LocalizedStringKey =
+        "MockTab can't find what this action opens, so the button does nothing."
+
+    /// Why the field shows a question mark, if it does.
+    private var markNote: LocalizedStringKey? {
+        if isRecording { return nil }
+        if storedActionUnreadable { return Self.unreadableNote }
+        if openTargetMissing { return Self.missingTargetNote }
+        return nil
+    }
+
+    private var showsUnreadableMark: Bool { markNote != nil }
 
     /// VoiceOver hears the mark's note ahead of the field's usual hint.
     private struct UnreadableHint: ViewModifier {
-        let isOn: Bool
+        let note: LocalizedStringKey?
         func body(content: Content) -> some View {
-            if isOn {
+            if let note {
                 content.accessibilityHint(
-                    Text(ButtonBindingControl.unreadableNote) + Text(verbatim: " ")
+                    Text(note) + Text(verbatim: " ")
                         + Text(ButtonBindingControl.recordHelp))
             } else {
                 content
@@ -169,15 +182,15 @@ struct ButtonBindingControl: View, Equatable {
             .buttonStyle(.plain)
             .background(fieldBackground)
             .help(Self.recordHelp)
-            .modifier(UnreadableHint(isOn: showsUnreadableMark))
+            .modifier(UnreadableHint(note: markNote))
             // Outside the field's tooltip, which would otherwise cover it.
             .overlay(alignment: .trailing) {
-                if showsUnreadableMark {
+                if let markNote {
                     Image(systemName: "questionmark.circle")
                         .foregroundStyle(.tertiary)
                         .imageScale(.medium)
                         .padding(.trailing, 8)
-                        .help(Self.unreadableNote)
+                        .help(markNote)
                         .accessibilityHidden(true)
                 }
             }
@@ -203,6 +216,18 @@ struct ButtonBindingControl: View, Equatable {
         .onChange(of: recordRequestToken) { _ in
             if !isRecording { startRecording() }
         }
+        // A target goes missing in another app, so look again on return
+        // rather than on every redraw or a timer.
+        .onAppear(perform: checkOpenTarget)
+        .onChange(of: binding) { _ in checkOpenTarget() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            checkOpenTarget()
+        }
+    }
+
+    private func checkOpenTarget() {
+        let missing = binding.kind == .open && !binding.openTargetExists
+        if missing != openTargetMissing { openTargetMissing = missing }
     }
 
     // MARK: - Menu
@@ -441,7 +466,7 @@ struct ButtonBindingControl: View, Equatable {
     private var fieldTextColor: Color {
         if isRecording { return .accentColor }
         if isDropTargeted { return .primary }
-        if binding.kind == .none || !binding.openTargetExists { return .secondary }
+        if binding.kind == .none || openTargetMissing { return .secondary }
         return .primary
     }
 
@@ -542,8 +567,8 @@ struct ButtonBindingControl: View, Equatable {
 
 /// Turns one dragged app, file, folder, or link into an Open action. An
 /// AppKit drop target: SwiftUI's drop handling left Drafts stuck after a
-/// refused drop. It reads the drag as it arrives, so the field lights only
-/// for what it takes, and lets clicks pass through to the row.
+/// refused drop. Hovering judges the drag by its types alone; only a drop
+/// reads it, and what it can't open slides back. Clicks pass through.
 struct OpenTargetDropTarget: NSViewRepresentable {
     let binding: Binding<ButtonBinding>
     let isTargeted: Binding<Bool>
@@ -567,7 +592,7 @@ struct OpenTargetDropTarget: NSViewRepresentable {
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
         override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-            let takes = ButtonOpenAction.openTarget(on: sender.draggingPasteboard) != nil
+            let takes = ButtonOpenAction.mightOpenTarget(on: sender.draggingPasteboard)
             isTargeted?.wrappedValue = takes
             return takes ? .copy : []
         }

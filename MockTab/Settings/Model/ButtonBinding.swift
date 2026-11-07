@@ -120,10 +120,15 @@ struct ButtonBinding: Codable, Equatable {
         return URL(string: target)
     }
 
-    /// False when an `.open` binding names a file that's no longer there.
+    /// False when an `.open` binding names a file that's gone or in the
+    /// Trash, or a link no app on this Mac opens.
     var openTargetExists: Bool {
         guard let url = openURL else { return kind != .open }
-        return !url.isFileURL || FileManager.default.fileExists(atPath: url.path)
+        // As ButtonOpenAction.canOpen, which harnesses build without this file.
+        guard url.isFileURL else { return NSWorkspace.shared.urlForApplication(toOpen: url) != nil }
+        var relationship = FileManager.URLRelationship.other
+        try? FileManager.default.getRelationship(&relationship, of: .trashDirectory, in: .allDomainsMask, toItemAt: url)
+        return FileManager.default.fileExists(atPath: url.path) && relationship != .contains
     }
 
     /// Modifier-only binding. The empty `keyLabel` tells InputInjector to post

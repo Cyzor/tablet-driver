@@ -11840,6 +11840,29 @@
         }
       }
     },
+    "MockTab can't find what this action opens, so the button does nothing." : {
+      "comment" : "Tooltip and VoiceOver hint on a button set to open an app, file, or link that's gone or that no app on this Mac opens",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab findet nicht, was diese Aktion öffnet, daher bewirkt die Taste nichts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab no encuentra lo que abre esta acción, así que el botón no hace nada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアクションで開く対象が見つからないため、ボタンは何もしません。"
+          }
+        }
+      }
+    },
     "MockTab can't read some of this yet. The file helps." : {
       "comment" : "Shown during collection when reports arrived that no decoder could read",
       "localizations" : {

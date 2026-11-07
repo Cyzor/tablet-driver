@@ -77,6 +77,23 @@ do {
     expect(ButtonOpenAction.link(from: "") == nil, "Nothing isn't a link")
 }
 
+// The Trash: macOS won't launch from it, so nothing there counts.
+do {
+    let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("open-drop-tests-\(getpid()).txt")
+    FileManager.default.createFile(atPath: scratch.path, contents: Data("x".utf8))
+    expect(ButtonOpenAction.canOpen(scratch), "A file outside the Trash opens")
+    expect(!ButtonOpenAction.isInTrash(scratch), "A temporary file isn't in the Trash")
+    var trashed: NSURL?
+    if (try? FileManager.default.trashItem(at: scratch, resultingItemURL: &trashed)) != nil, let trashed = trashed as URL? {
+        expect(ButtonOpenAction.isInTrash(trashed), "A trashed file is in the Trash: \(trashed.path)")
+        expect(!ButtonOpenAction.canOpen(trashed), "A trashed file doesn't open")
+        try? FileManager.default.removeItem(at: trashed)
+    } else {
+        print("open-drop-tests: no Trash here, skipping the Trash checks")
+        try? FileManager.default.removeItem(at: scratch)
+    }
+}
+
 // A whole drag: what the row's drop target reads from the pasteboard.
 MainActor.assumeIsolated {
     defer { board.releaseGlobally() }
@@ -87,19 +104,26 @@ MainActor.assumeIsolated {
         print("open-drop-tests: no pasteboard here, skipping the drag checks")
         return
     }
-    let app = drag([[.fileURL: "file:///Applications/LaunchBar.app/"]])
-    expect(app?.url.path == "/Applications/LaunchBar.app", "An app opens: \(String(describing: app))")
+    let app = drag([[.fileURL: "file:///System/Applications/Calculator.app/"]])
+    expect(app?.url.path == "/System/Applications/Calculator.app", "An app opens: \(String(describing: app))")
     expect(app?.name == "", "An app's name comes from Finder")
     let message = drag([[.URL: "message:%3Cabc@example.com%3E", .init("public.url-name"): "Lunch?", .string: "Lunch?"]])
     expect(message?.url.scheme == "message", "A message opens by link: \(String(describing: message?.url))")
     expect(message?.name == "Lunch?", "It's named by its subject: \(String(describing: message?.name))")
-    expect(drag([[.string: "btt://trigger_named/?trigger_name=Menu"]])?.url.scheme == "btt", "Link text opens")
+    expect(drag([[.string: "https://example.com/menu"]])?.url.host == "example.com", "Link text opens")
+    expect(drag([[.string: "mocktab-test-unclaimed://menu"]]) == nil, "A link no app opens is refused")
+    expect(drag([[.string: "https://example.com/" + String(repeating: "a", count: 3000)]]) == nil,
+           "An over-long link is refused")
+    expect(drag([[.fileURL: "file:///nonexistent-\(getpid()).app/"]]) == nil, "A missing file is refused")
     expect(drag([[.string: "A draft\nwith lines",
                   .init("com.apple.pasteboard.promised-file-content-type"): "public.utf8-plain-text",
                   .init("com.agiletortoise.Drafts.draft"): "{}"]]) == nil,
            "A draft's text isn't taken, and its promised file isn't touched")
-    expect(drag([[.fileURL: "file:///Applications/LaunchBar.app/"], [.fileURL: "file:///Applications/BBEdit.app/"]]) == nil,
+    expect(ButtonOpenAction.mightOpenTarget(on: board), "Hovering judges by types, so text lights the field")
+    expect(drag([[.fileURL: "file:///System/Applications/Calculator.app/"],
+                 [.fileURL: "file:///System/Applications/Chess.app/"]]) == nil,
            "Several items are refused")
+    expect(!ButtonOpenAction.mightOpenTarget(on: board), "Several items don't light the field")
 }
 
 if failures > 0 {

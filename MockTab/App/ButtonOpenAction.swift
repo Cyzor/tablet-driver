@@ -104,19 +104,49 @@ enum ButtonOpenAction {
         return (url, records[0]["Name"] as? String ?? "")
     }
 
+    /// Whether a drag might hold something `openTarget(on:)` takes, judged
+    /// from its types alone: nothing is read while a drag only passes over.
+    static func mightOpenTarget(on pasteboard: NSPasteboard) -> Bool {
+        guard pasteboard.pasteboardItems?.count == 1, let types = pasteboard.types else { return false }
+        return !Set(types).isDisjoint(with: openTargetTypes)
+    }
+
     /// What the one item on `pasteboard` would open, and its name: a Keyboard
     /// Maestro macro, a DEVONthink record, an app, file, or folder, a link, or
-    /// text that reads as a link. Nil for anything else, or several items.
+    /// text that reads as a link. Nil for anything else, several items, a
+    /// link longer than `maxLinkLength`, or one no app on this Mac opens.
     /// Reads only types already on the pasteboard, never a promised file.
     static func openTarget(on pasteboard: NSPasteboard) -> (url: URL, name: String)? {
         guard pasteboard.pasteboardItems?.count == 1 else { return nil }
-        if let item = keyboardMaestroMacro(on: pasteboard) ?? devonthinkRecord(on: pasteboard) { return item }
-        if let url = pasteboard.readObjects(forClasses: [NSURL.self])?.first as? URL {
+        var found = keyboardMaestroMacro(on: pasteboard) ?? devonthinkRecord(on: pasteboard)
+        if found == nil, let url = pasteboard.readObjects(forClasses: [NSURL.self])?.first as? URL {
             // A file's name comes from Finder, so it follows a rename.
-            return (url, url.isFileURL ? "" : linkName(on: pasteboard))
+            found = (url, url.isFileURL ? "" : linkName(on: pasteboard))
         }
-        guard let text = pasteboard.string(forType: .string), let url = link(from: text) else { return nil }
-        return (url, "")
+        if found == nil, let text = pasteboard.string(forType: .string),
+            text.utf8.count <= maxLinkLength, let url = link(from: text) {
+            found = (url, "")
+        }
+        guard let found, found.url.absoluteString.utf8.count <= maxLinkLength, canOpen(found.url) else { return nil }
+        return found
+    }
+
+    /// Longer than any link a person would put on a button, and short
+    /// enough that a stray paste of a document is refused.
+    nonisolated static let maxLinkLength = 2048
+
+    /// A file that exists outside the Trash, or a link some app on this Mac
+    /// claims. macOS won't launch an app from the Trash.
+    nonisolated static func canOpen(_ url: URL) -> Bool {
+        if url.isFileURL { return FileManager.default.fileExists(atPath: url.path) && !isInTrash(url) }
+        return NSWorkspace.shared.urlForApplication(toOpen: url) != nil
+    }
+
+    /// In the user's Trash or a volume's, where a path check would miss it.
+    nonisolated static func isInTrash(_ url: URL) -> Bool {
+        var relationship = FileManager.URLRelationship.other
+        try? FileManager.default.getRelationship(&relationship, of: .trashDirectory, in: .allDomainsMask, toItemAt: url)
+        return relationship == .contains
     }
 
     /// Types `openTarget(on:)` reads, for a drop target to register.
@@ -129,7 +159,7 @@ enum ButtonOpenAction {
     static func linkName(on pasteboard: NSPasteboard) -> String {
         guard let items = pasteboard.pasteboardItems, items.count == 1 else { return "" }
         let name = items[0].string(forType: .init("public.url-name")) ?? ""
-        return name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
     }
 
     /// A link from dragged text: one word with a scheme, or a bare address
