@@ -64,10 +64,7 @@ private struct OpenTargetDropRow<Content: View>: View {
 
     var body: some View {
         content(isTargeted)
-            .contentShape(Rectangle())
-            .onDrop(
-                of: OpenTargetDropDelegate.types,
-                delegate: OpenTargetDropDelegate(binding: binding, isTargeted: $isTargeted))
+            .overlay(OpenTargetDropTarget(binding: binding, isTargeted: $isTargeted))
     }
 }
 

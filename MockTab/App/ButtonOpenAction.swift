@@ -104,6 +104,34 @@ enum ButtonOpenAction {
         return (url, records[0]["Name"] as? String ?? "")
     }
 
+    /// What the one item on `pasteboard` would open, and its name: a Keyboard
+    /// Maestro macro, a DEVONthink record, an app, file, or folder, a link, or
+    /// text that reads as a link. Nil for anything else, or several items.
+    /// Reads only types already on the pasteboard, never a promised file.
+    static func openTarget(on pasteboard: NSPasteboard) -> (url: URL, name: String)? {
+        guard pasteboard.pasteboardItems?.count == 1 else { return nil }
+        if let item = keyboardMaestroMacro(on: pasteboard) ?? devonthinkRecord(on: pasteboard) { return item }
+        if let url = pasteboard.readObjects(forClasses: [NSURL.self])?.first as? URL {
+            // A file's name comes from Finder, so it follows a rename.
+            return (url, url.isFileURL ? "" : linkName(on: pasteboard))
+        }
+        guard let text = pasteboard.string(forType: .string), let url = link(from: text) else { return nil }
+        return (url, "")
+    }
+
+    /// Types `openTarget(on:)` reads, for a drop target to register.
+    static let openTargetTypes: [NSPasteboard.PasteboardType] = [
+        .fileURL, .URL, .string, .init(keyboardMaestroMacroIDsType), .init(devonthinkItemLinksType),
+    ]
+
+    /// The name a dragged link carries, such as a message's subject or a
+    /// page's title. Empty when it has none.
+    static func linkName(on pasteboard: NSPasteboard) -> String {
+        guard let items = pasteboard.pasteboardItems, items.count == 1 else { return "" }
+        let name = items[0].string(forType: .init("public.url-name")) ?? ""
+        return name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// A link from dragged text: one word with a scheme, or a bare address
     /// like example.com, which gets https. Other text isn't a link.
     nonisolated static func link(from text: String) -> URL? {

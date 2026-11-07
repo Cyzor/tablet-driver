@@ -4,7 +4,6 @@
 
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// How the Buttons pane names a turned tablet's rings, dials, and modes: by
 /// where you see them. Saved bindings still name the physical ring or dial
@@ -541,42 +540,50 @@ struct ButtonBindingControl: View, Equatable {
     }
 }
 
-/// Turns one dragged app, file, folder, or link into an Open action. A drag
-/// carrying several items is refused, so it can't pick one at random.
-struct OpenTargetDropDelegate: DropDelegate {
-    /// Files and apps, links, and text that reads as a link.
-    static let types: [UTType] = [.fileURL, .url, .plainText]
+/// Turns one dragged app, file, folder, or link into an Open action. An
+/// AppKit drop target: SwiftUI's drop handling left Drafts stuck after a
+/// refused drop. It reads the drag as it arrives, so the field lights only
+/// for what it takes, and lets clicks pass through to the row.
+struct OpenTargetDropTarget: NSViewRepresentable {
     let binding: Binding<ButtonBinding>
     let isTargeted: Binding<Bool>
 
-    private func soleProvider(_ info: DropInfo) -> NSItemProvider? {
-        let providers = info.itemProviders(for: Self.types)
-        return providers.count == 1 ? providers[0] : nil
+    func makeNSView(context: Context) -> DropView {
+        let view = DropView()
+        view.registerForDraggedTypes(ButtonOpenAction.openTargetTypes)
+        return view
     }
 
-    func validateDrop(info: DropInfo) -> Bool { soleProvider(info) != nil }
-    func dropEntered(info: DropInfo) { isTargeted.wrappedValue = soleProvider(info) != nil }
-    func dropExited(info: DropInfo) { isTargeted.wrappedValue = false }
+    func updateNSView(_ view: DropView, context: Context) {
+        view.binding = binding
+        view.isTargeted = isTargeted
+    }
 
-    func performDrop(info: DropInfo) -> Bool {
-        isTargeted.wrappedValue = false
-        guard let provider = soleProvider(info) else { return false }
-        let binding = binding
-        let assign: @Sendable (URL?, String) -> Void = { url, name in
-            Task { @MainActor in
-                if let url { binding.wrappedValue = ButtonBinding(opening: url, named: name) } else { NSSound.beep() }
-            }
+    final class DropView: NSView {
+        var binding: Binding<ButtonBinding>?
+        var isTargeted: Binding<Bool>?
+
+        // Only drags land here; clicks and hovering reach the row.
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+            let takes = ButtonOpenAction.openTarget(on: sender.draggingPasteboard) != nil
+            isTargeted?.wrappedValue = takes
+            return takes ? .copy : []
         }
-        let drag = NSPasteboard(name: .drag)
-        if let item = ButtonOpenAction.keyboardMaestroMacro(on: drag) ?? ButtonOpenAction.devonthinkRecord(on: drag) {
-            binding.wrappedValue = ButtonBinding(opening: item.url, named: item.name)
-        } else if provider.canLoadObject(ofClass: URL.self) {
-            _ = provider.loadObject(ofClass: URL.self) { url, _ in assign(url, "") }
-        } else {
-            _ = provider.loadObject(ofClass: NSString.self) { text, _ in
-                assign((text as? NSString).flatMap { ButtonOpenAction.link(from: String($0)) }, "")
-            }
+
+        override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+            isTargeted?.wrappedValue == true ? .copy : []
         }
-        return true
+
+        override func draggingExited(_ sender: NSDraggingInfo?) { isTargeted?.wrappedValue = false }
+        override func draggingEnded(_ sender: NSDraggingInfo) { isTargeted?.wrappedValue = false }
+
+        override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+            isTargeted?.wrappedValue = false
+            guard let item = ButtonOpenAction.openTarget(on: sender.draggingPasteboard) else { return false }
+            binding?.wrappedValue = ButtonBinding(opening: item.url, named: item.name)
+            return true
+        }
     }
 }
