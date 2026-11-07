@@ -105,6 +105,9 @@ Das Diagramm zeigt, wo Tasten, Ringe und Dials eines Grafiktabletts sitzen. Klic
 - **Tastaturkürzel** – Klicke ins Shortcut-Feld und drücke eine beliebige Tastenkombination  
 - **Gehaltene Modifikatortasten** – ⌘ ⌥ ⇧ ⌃ bleiben gedrückt, solange die Taste gehalten wird  
 - **Spezialaktionen** – Ansicht schwenken, Radierer, Leertaste, Escape, F13 bis F19, Display umschalten, Auf Displays verteilen, Relativen Modus umschalten, MockTab-Einstellungen anzeigen sowie Modi für Ringe, Dials und Leisten  
+- **Öffnen** – Ziehe eine App, eine Datei, einen Link oder ein Keyboard-Maestro-Makro auf die Zeile einer Taste. Ein Fragezeichen bedeutet, dass das Ziel fehlt  
+
+Um ein Skript, einen Automator-Arbeitsablauf oder einen Kurzbefehl auszuführen, sichere ihn als App und ziehe diese auf die Zeile, oder gib ihm in den Systemeinstellungen oder in Kurzbefehle ein Tastaturkürzel und weise dieses zu.
 
 ## Berührungsring und Dial
 

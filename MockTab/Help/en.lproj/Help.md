@@ -105,6 +105,9 @@ The diagram depicts positions of a tablet's keys, rings, and dials. Click a comp
 - **Keyboard shortcuts** – click the shortcut field and press any key combination  
 - **Modifier holds** – ⌘ ⌥ ⇧ ⌃ held for as long as the button remains pressed  
 - **Special actions** – Pan View, Eraser, Spacebar, Escape, F13 through F19, Toggle Display, Span Displays, Toggle Relative Mode, Show MockTab Settings, and ring, dial, and strip modes  
+- **Open** – drag an app, file, link, or Keyboard Maestro macro onto a button's row. A question mark means its target is gone  
+
+To run a script, Automator workflow, or shortcut, save it as an app and drag that, or give it a keyboard shortcut in System Settings or Shortcuts and assign the shortcut.
 
 ## Touch Ring and Dial
 
