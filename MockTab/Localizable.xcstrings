@@ -3692,7 +3692,7 @@
       }
     },
     "Cancel" : {
-      "comment" : "Button label: cancel factory reset\nButton label: cancel hide Dock icon\nImport sheet: dismiss button",
+      "comment" : "Button label: cancel factory reset\nButton label: cancel hide Dock icon\nEdit URL sheet: cancel button\nImport sheet: dismiss button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7736,6 +7736,52 @@
             "value" : "プロファイル名を編集"
           }
         }
+      }
+    },
+    "Edit URL" : {
+      "comment" : "Edit URL sheet title\nVoiceOver action on a button row: type the URL the button opens",
+      "localizations" : {
+        "de" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URL bearbeiten"
+            }
+          },
+        "es" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Editar URL"
+            }
+          },
+        "ja" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URLを編集"
+            }
+          }
+      }
+    },
+    "Edit URL…" : {
+      "comment" : "Button row right-click menu: type the URL the button opens",
+      "localizations" : {
+        "de" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URL bearbeiten…"
+            }
+          },
+        "es" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Editar URL…"
+            }
+          },
+        "ja" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URLを編集…"
+            }
+          }
       }
     },
     "Email goes to %@" : {
@@ -12653,6 +12699,29 @@
         }
       }
     },
+    "No app on this Mac opens this URL." : {
+      "comment" : "Edit URL sheet: no installed app handles the typed URL's scheme",
+      "localizations" : {
+        "de" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Keine App auf diesem Mac öffnet diese URL."
+            }
+          },
+        "es" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Ninguna app de este Mac abre esta URL."
+            }
+          },
+        "ja" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "このMacにはこのURLを開けるアプリがありません。"
+            }
+          }
+      }
+    },
     "No button assigned to toggle" : {
       "comment" : "Label when no button is assigned to display toggle",
       "localizations" : {
@@ -13487,7 +13556,7 @@
       }
     },
     "OK" : {
-      "comment" : "Button that closes the conflict alert",
+      "comment" : "Button that closes the conflict alert\nEdit URL sheet: confirm button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20498,6 +20567,29 @@
         }
       }
     },
+    "This isn't a URL." : {
+      "comment" : "Edit URL sheet: the typed text isn't a usable URL",
+      "localizations" : {
+        "de" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Das ist keine URL."
+            }
+          },
+        "es" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Esto no es una URL."
+            }
+          },
+        "ja" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URLではありません。"
+            }
+          }
+      }
+    },
     "This mouse returns with its default name the next time you use it." : {
       "comment" : "Message explaining that a removed mouse's nickname is temporary",
       "localizations" : {
@@ -20795,6 +20887,29 @@
             "value" : "ペン先アシスト"
           }
         }
+      }
+    },
+    "To open a file, drag it onto the button's row." : {
+      "comment" : "Edit URL sheet: the typed text is a file path, which this sheet doesn't take",
+      "localizations" : {
+        "de" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Um eine Datei zu öffnen, ziehe sie auf die Zeile der Taste."
+            }
+          },
+        "es" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "Para abrir un archivo, arrástralo a la fila del botón."
+            }
+          },
+        "ja" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "ファイルを開くには、ボタンの行にドラッグします。"
+            }
+          }
       }
     },
     "Toggle between displays" : {
@@ -21650,6 +21765,29 @@
             "value" : "認識されていないタブレット"
           }
         }
+      }
+    },
+    "URL" : {
+      "comment" : "Edit URL sheet: text field label",
+      "localizations" : {
+        "de" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URL"
+            }
+          },
+        "es" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URL"
+            }
+          },
+        "ja" : {
+            "stringUnit" : {
+              "state" : "translated",
+              "value" : "URL"
+            }
+          }
       }
     },
     "Use a button press to cycle the tablet's active mapping between selected displays." : {

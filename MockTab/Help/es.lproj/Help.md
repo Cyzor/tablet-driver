@@ -105,7 +105,7 @@ El diagrama muestra la posición de las teclas, anillos y diales de una tableta.
 - **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
 - **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
 - **Acciones especiales** – Desplazar vista, Borrador, Barra espaciadora, Escape, F13 a F19, Cambiar pantalla, Distribuir en pantallas, Cambiar modo relativo, Mostrar configuración de MockTab y modos de anillos, diales y franjas  
-- **Abrir** – Arrastra una app, un archivo, un enlace o una macro de Keyboard Maestro a la fila de un botón. Un signo de interrogación indica que el destino ya no está  
+- **Abrir** – Arrastra una app, un archivo, un enlace o una macro de Keyboard Maestro a la fila de un botón. Un signo de interrogación indica que el destino ya no está. Para escribir o corregir una URL, haz clic derecho en la fila y elige Editar URL  
 
 Para ejecutar un script, un flujo de trabajo de Automator o un atajo, guárdalo como app y arrástrala, o dale una combinación de teclas en Ajustes del Sistema o en Atajos y asigna esa combinación.
 

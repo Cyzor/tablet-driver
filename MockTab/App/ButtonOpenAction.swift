@@ -131,6 +131,16 @@ enum ButtonOpenAction {
         return found
     }
 
+    /// The URL typed or pasted into Edit URL, read like dragged text. Nil
+    /// when it isn't a URL, names a file, is too long, or nothing on this
+    /// Mac opens it.
+    nonisolated static func typedLink(_ text: String) -> URL? {
+        guard text.utf8.count <= maxLinkLength, let url = link(from: text), !url.isFileURL,
+            url.absoluteString.utf8.count <= maxLinkLength, canOpen(url)
+        else { return nil }
+        return url
+    }
+
     /// Longer than any link a person would put on a button, and short
     /// enough that a stray paste of a document is refused.
     nonisolated static let maxLinkLength = 2048
@@ -163,12 +173,28 @@ enum ButtonOpenAction {
     }
 
     /// A link from dragged text: one word with a scheme, or a bare address
-    /// like example.com, which gets https. Other text isn't a link.
+    /// like example.com, which gets https. Other text, including a file's
+    /// path, isn't a link.
     nonisolated static func link(from text: String) -> URL? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) == nil else { return nil }
         if let url = URL(string: trimmed), url.scheme?.isEmpty == false { return url }
-        guard trimmed.contains("."), !trimmed.hasPrefix(".") else { return nil }
-        return URL(string: "https://" + trimmed)
+        guard let url = URL(string: "https://" + trimmed), let host = url.host, isHostName(host) else { return nil }
+        return url
+    }
+
+    /// Dotted labels of letters, digits, and hyphens, like example.com.
+    private nonisolated static func isHostName(_ host: String) -> Bool {
+        let labels = host.split(separator: ".", omittingEmptySubsequences: false)
+        return labels.count > 1 && labels.allSatisfy { label in
+            !label.isEmpty && label.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" }
+        }
+    }
+
+    /// Whether typed text names a file rather than a link: a path, or a
+    /// file URL. Files go onto a row by drag, which follows a rename.
+    nonisolated static func looksLikeFile(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("/") || trimmed.hasPrefix("~") || trimmed.lowercased().hasPrefix("file:")
     }
 }

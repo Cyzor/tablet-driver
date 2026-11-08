@@ -26,7 +26,7 @@ func buttonRow(
     storedActionUnreadable: Bool = false,
     showsNoneAsValue: Bool = false
 ) -> some View {
-    OpenTargetDropRow(binding: binding) { isDropTargeted in
+    OpenTargetDropRow(binding: binding) { isDropTargeted, editURL in
         HStack(spacing: 0) {
             activeIndicator(isActive)
             // Fixed minimum width with trailing alignment so the binding control
@@ -49,6 +49,10 @@ func buttonRow(
                 showsNoneAsValue: showsNoneAsValue,
                 isDropTargeted: isDropTargeted)
                 .equatable()
+                // VoiceOver can't open a right-click menu, so it gets the item as an action.
+                .accessibilityAction(named: Text("Edit URL", comment: "VoiceOver action on a button row: type the URL the button opens")) {
+                    editURL()
+                }
             Spacer(minLength: 0)
         }
     }
@@ -56,15 +60,28 @@ func buttonRow(
 }
 
 /// The whole row takes the drop, a bigger target than the field, while the
-/// field shows where it lands.
+/// field shows where it lands. Its right-click menu offers Edit URL…, for a
+/// URL that has nothing to drag or needs fixing.
 private struct OpenTargetDropRow<Content: View>: View {
     let binding: Binding<ButtonBinding>
-    @ViewBuilder let content: (Bool) -> Content
+    @ViewBuilder let content: (Bool, @escaping () -> Void) -> Content
     @State private var isTargeted = false
+    @State private var editsURL = false
 
     var body: some View {
-        content(isTargeted)
+        content(isTargeted) { editsURL = true }
             .overlay(OpenTargetDropTarget(binding: binding, isTargeted: $isTargeted))
+            .overlay(RightClickMenuHost { _ in
+                let menu = NSMenu()
+                let item = NSMenuItem(
+                    title: String(localized: "Edit URL…", comment: "Button row right-click menu: type the URL the button opens"),
+                    action: #selector(RingMenuTarget.selectAction(_:)), keyEquivalent: "")
+                item.target = RingMenuTarget.shared
+                item.representedObject = RingMenuAction { editsURL = true }
+                menu.addItem(item)
+                return menu
+            })
+            .sheet(isPresented: $editsURL) { EditURLSheet(binding: binding) }
     }
 }
 

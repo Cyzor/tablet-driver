@@ -75,6 +75,23 @@ do {
            "A reminder's title and link aren't a link")
     expect(ButtonOpenAction.link(from: ".hidden") == nil, "A leading dot isn't an address")
     expect(ButtonOpenAction.link(from: "") == nil, "Nothing isn't a link")
+    expect(ButtonOpenAction.link(from: "/Applications/Calculator.app") == nil, "A path isn't an address")
+    expect(ButtonOpenAction.link(from: "~/Desktop/notes.txt") == nil, "A home path isn't an address")
+    expect(ButtonOpenAction.link(from: "bücher.de") != nil,
+           "A non-ASCII address is still an address")
+}
+
+// Edit URL: typed text follows the drop rules.
+do {
+    expect(ButtonOpenAction.typedLink(" example.com ")?.absoluteString == "https://example.com",
+           "A typed bare address gets https")
+    expect(ButtonOpenAction.typedLink("two words") == nil, "Typed text with spaces isn't a URL")
+    expect(ButtonOpenAction.typedLink("file:///Applications/Calculator.app") == nil, "A typed file URL is refused")
+    expect(ButtonOpenAction.looksLikeFile("/Applications/Calculator.app"), "A dropped Finder path reads as a file")
+    expect(!ButtonOpenAction.looksLikeFile("things:///add"), "A link doesn't read as a file")
+    expect(ButtonOpenAction.typedLink("no-such-scheme-mocktab://x") == nil, "A URL no app opens is refused")
+    let long = "https://example.com/" + String(repeating: "a", count: ButtonOpenAction.maxLinkLength)
+    expect(ButtonOpenAction.typedLink(long) == nil, "A URL over the cap is refused")
 }
 
 // The Trash: macOS won't launch from it, so nothing there counts.
