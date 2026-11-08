@@ -382,8 +382,9 @@ struct RowActionsMenu<Content: View>: View {
 /// Keeps the system AutoFill panel out of sight in every MockTab window.
 /// The first text field focused after launch flashes an empty rounded panel
 /// beside it (`SPRoundedWindow`, from SafariPlatformSupport), and no
-/// text-field setting turns it off. MockTab's fields hold names and numbers,
-/// with nothing to fill, so hide the panel, and let clicks pass through it.
+/// text-field setting turns it off. MockTab's fields hold names, numbers,
+/// and URLs, with nothing to fill, so turn AutoFill off app-wide, and hide
+/// the panel if it shows anyway.
 /// Called once at launch.
 ///
 /// The panel shows about 130 ms after a field takes focus, and stays hidden
@@ -391,6 +392,10 @@ struct RowActionsMenu<Content: View>: View {
 /// arrives only after it shows, 25 ms late, so a short poll starts at focus.
 @MainActor
 func suppressAutoFillPanel() {
+    // Nothing here takes contact details or passwords. With AppKit's AutoFill
+    // heuristics off, focus starts neither the panel nor its helper process.
+    // The hider below stays as a backstop in case a macOS update ignores the key.
+    UserDefaults.standard.register(defaults: ["NSAutoFillHeuristicsEnabled": false])
     // A field editor's selection changes as it takes focus.
     NotificationCenter.default.addObserver(
         forName: NSTextView.didChangeSelectionNotification, object: nil, queue: .main
