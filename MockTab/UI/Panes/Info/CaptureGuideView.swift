@@ -113,6 +113,10 @@ struct CaptureGuideView: View {
         // Tied to the view rather than to each of the three exit paths
         // (Done, Cancel, auto-finish) — the sheet always disappears.
         .onDisappear {
+            // Backstop for a route that closes the sheet without Cancel or
+            // Done: an unfinished collection would keep recording and
+            // rewriting its interim file.
+            if engine.isRunning { engine.cancelCapture() }
             coordinator.stop()
             checklistTimer?.invalidate()
             checklistTimer = nil
@@ -276,6 +280,8 @@ struct CaptureGuideView: View {
                     if engine.isRunning { showCancelConfirm = true } else { onDismiss() }
                 }
                 .foregroundStyle(.secondary)
+                // Escape asks too, rather than closing the sheet mid-collection.
+                .keyboardShortcut(.cancelAction)
             }
             Spacer()
             if isComplete {
