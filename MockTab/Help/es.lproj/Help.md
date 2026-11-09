@@ -79,6 +79,8 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 **Requerir contacto** – Marca Clic derecho, Clic central, Doble clic o Desplazar vista para que los botones laterales con esa acción solo actúen con el lápiz apoyado. Las acciones sin marcar funcionan sin tocar.
 
+Si mantienes pulsado un botón con clic izquierdo, derecho o central mientras el lápiz flota, arrastras sin tocar la superficie. Al marcar Clic derecho o Clic central en Requerir contacto, esto se desactiva para esos botones.
+
 **Asistencia de levantamiento** – Mantiene el clic del lápiz activo durante un instante después de levantar la punta, si todavía te estás moviendo rápido, para evitar cortes involuntarios del trazo al dibujar deprisa. Arrástralo hasta Off para desactivarlo.
 
 **Umbral de arrastre** – Exige que el lápiz recorra una distancia mínima antes de que un toque pase a ser un arrastre, lo que absorbe el temblor al apoyar la punta y evita que un toque ligero se convierta en un arrastre accidental. Arrástralo hasta Off para desactivarlo.
@@ -88,8 +90,6 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 ## Diagrama del lápiz
 
 Pulsa cualquier botón mientras la ventana está abierta para resaltar su posición; así puedes identificar qué botón físico corresponde a cada ranura de asignación. Haz clic en la punta, el borrador o un botón lateral del diagrama para grabar una nueva asignación.
-
-**Hover drag** – Mantén pulsado un botón con clic izquierdo, derecho o central mientras el lápiz flota para arrastrar sin tocar la superficie.
 
 ## Ratones
 

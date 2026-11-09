@@ -79,6 +79,8 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 **Oberflächenkontakt erforderlich** – Hake Rechtsklick, Mittelklick, Doppelklick oder Ansicht schwenken an, damit Seitenknöpfe mit dieser Aktion nur greifen, solange der Stift aufgesetzt ist. Nicht markierte Aktionen wirken schon beim Schweben.
 
+Hältst du eine Taste mit Links-, Rechts- oder Mittelklick gedrückt, während der Stift schwebt, ziehst du, ohne die Oberfläche zu berühren. Hakst du bei Oberflächenkontakt erforderlich Rechtsklick oder Mittelklick an, entfällt das für diese Tasten.
+
 **Aufhebehilfe** – Hält den Stiftklick nach dem Abheben der Spitze noch kurz offen, wenn du dich weiterhin schnell bewegst, damit schnelle Zeichenzüge nicht unbeabsichtigt unterbrochen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.
 
 **Ziehschwelle** – Verlangt, dass sich der Stift erst eine Mindeststrecke bewegt, bevor aus einem Tippen ein Ziehen wird. Das fängt Zittern beim Aufsetzen ab, damit leichte Tipper nicht versehentlich zu Drag-Aktionen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.
@@ -88,8 +90,6 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 ## Stiftdiagramm
 
 Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuheben; so erkennst du, welcher physische Knopf welchem Zuordnungsslot entspricht. Klicke im Diagramm auf die Spitze, den Radierer oder eine Barrel-Taste, um eine neue Zuordnung dafür aufzuzeichnen.
-
-**Hover drag** – Halte eine Taste mit Links-, Rechts- oder Mittelklick gedrückt, während der Stift schwebt, um zu ziehen, ohne die Oberfläche zu berühren.
 
 ## Mäuse
 

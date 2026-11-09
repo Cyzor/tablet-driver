@@ -79,6 +79,8 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 **Require Contact** – check Right Click, Middle Click, Double Click, or Pan View to make side buttons with that action engage only while the pen touches the surface. Unchecked actions work while hovering.
 
+Holding a button set to Left, Right, or Middle Click while the pen hovers drags without touching the surface. Checking Require Contact for Right Click or Middle Click turns this off for those buttons.
+
 **Tip-up Assist** – holds the pen click open briefly after the tip lifts, if you're still moving quickly, to prevent unintended stroke breaks during fast drawing. Drag to Off to disable.
 
 **Drag Threshold** – requires the pen to move a minimum distance before a tap becomes a drag, absorbing tremor at tip-down so light taps don't turn into accidental drags. Drag to Off to disable.
@@ -88,8 +90,6 @@ This setting controls how close two taps must be to count as a double-click. Inc
 ## Pen Diagram
 
 Press any button while the window is open to highlight its position; this helps identify which physical button maps to which assignment slot. Click the tip, the eraser, or a barrel button in the diagram to record a new assignment for it.
-
-**Hover drag** – Hold a button set to Left, Right, or Middle Click while the pen hovers to drag without touching the surface.
 
 ## Mice
 
