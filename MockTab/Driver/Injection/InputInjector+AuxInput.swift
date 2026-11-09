@@ -112,7 +112,8 @@ extension InputInjector {
                         at: cursorPos, snapshot: snap, settings: settings)
 
         // ── Touch ring ─────────────────────────────────────────────────────────
-        // 72 steps (0–71); 0x7F means no contact. Deltas wrap at 36.
+        // 72 steps (0–71); 0x7F means no contact. Deltas wrap at 36. The
+        // decoder scales rings with fewer steps to 72.
         let activeSlot: ControlSlot? = snap.rotary(.first).activeSlot
 
         // Zoom/rotate gesture on a touch ring: begins on contact, before this

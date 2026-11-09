@@ -20,7 +20,6 @@ struct TabletControlMapTests {
         0x03F5,  // PTK-470: registry says 5 keys, libwacom 4 and a dial toggle
         0x00C5,  // Cintiq 20WSX: registry says 10 keys, libwacom 14
         0x0325,  // Companion 2: registry says 4 keys, libwacom 11
-        0x034D, 0x0398, 0x034E, 0x0399, 0x03AA,  // MobileStudio Pro: the ring's four mode keys have no rows
     ]
 
     /// The rows the Buttons pane shows for a model's keys, rings, and dials,
@@ -88,6 +87,25 @@ struct TabletControlMapTests {
                     #expect((0..<2).contains(i), "\(spec.name)")
                 }
             }
+        }
+    }
+
+    @Test("MobileStudio Pro rocker keys pick ring modes by default")
+    func mobileStudioRocker() throws {
+        for (pid, keys) in [(0x034D, 6), (0x0398, 6), (0x034E, 8), (0x0399, 8), (0x03AA, 8)] {
+            let spec = try #require(WacomDeviceRegistry.spec(for: pid))
+            let defaults = TabletControlMap.modeKeyDefaults(productID: pid, spec: spec)
+            #expect(defaults == Dictionary(uniqueKeysWithValues: (0..<4).map {
+                (keys + $0, ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16($0)))
+            }), "\(spec.name)")
+        }
+    }
+
+    @Test("Other models get no mode-key defaults")
+    func noModeKeyDefaultsElsewhere() {
+        for spec in WacomDeviceRegistry.knownDevices where !(spec.hasDualRings && spec.format == .cintiqV1) {
+            guard ![0x034D, 0x0398, 0x034E, 0x0399, 0x03AA].contains(spec.productID) else { continue }
+            #expect(TabletControlMap.modeKeyDefaults(productID: spec.productID, spec: spec).isEmpty, "\(spec.name)")
         }
     }
 

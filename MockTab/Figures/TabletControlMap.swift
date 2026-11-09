@@ -212,6 +212,23 @@ struct TabletControlMap: Equatable {
         spec.ringSlotCount == 4 && [.intuos5, .intuosPro2].contains(family(for: spec))
     }
 
+    /// Default bindings for keys that each pick one ring mode, by ExpressKey
+    /// index: the MobileStudio Pro's rocker. The Cintiq 24HD's come from
+    /// `splitPad` instead.
+    static func modeKeyDefaults(productID: Int, spec: TabletSpec) -> [Int: ButtonBinding] {
+        guard let identity = TabletLayoutIdentity.all[productID],
+              let map = forDevice(productID: productID, spec: spec) else { return [:] }
+        var targets: [Character: ControlTarget] = [:]
+        for part in map.parts { targets.merge(part.keys) { first, _ in first } }
+        var defaults: [Int: ButtonBinding] = [:]
+        for (letter, change) in identity.modeSwitches {
+            guard let mode = change.mode, case let .ring(ring) = change.control,
+                  case let .expressKey(index)? = targets[letter] else { continue }
+            defaults[index] = ButtonBinding(kind: ring == 1 ? .ringSelectSlot : .ringSelectSlot2, keyCode: UInt16(mode))
+        }
+        return defaults
+    }
+
     /// Whether a model's own mode keys each pick a mode, as on the Cintiq
     /// 24HD and MobileStudio Pro, instead of one key cycling through them.
     static func modeKeysPickModes(productID: Int) -> Bool {

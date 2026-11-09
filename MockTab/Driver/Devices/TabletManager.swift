@@ -720,9 +720,11 @@ final class TabletManager: ObservableObject {
                 Task { @MainActor in self?.toggleSpanOnPenTablet(vendorID: accessoryVendor) }
             }
         }
+        let contextSpec = WacomDeviceRegistry.spec(for: context.productID)
         context.settings.applyExpressKeyDefaults(
             vendorID: context.vendorID,
-            splitPad: WacomDeviceRegistry.spec(for: context.productID)?.hasSplitPadLayout == true)
+            splitPad: contextSpec?.hasSplitPadLayout == true,
+            modeKeys: contextSpec.map { TabletControlMap.modeKeyDefaults(productID: context.productID, spec: $0) } ?? [:])
         refreshConnectedIDs(mostRecent: productID)
 
         context.settings.penDisplayLocator = { Self.penDisplayID(forProductID: productID) }
@@ -1486,9 +1488,11 @@ final class TabletManager: ObservableObject {
         } else if target.activeDriverRawProductID == rawPID {
             target.resyncActiveDriverDisplayState()
         }
+        let targetSpec = WacomDeviceRegistry.spec(for: target.productID)
         target.settings.applyExpressKeyDefaults(
             vendorID: target.vendorID,
-            splitPad: WacomDeviceRegistry.spec(for: target.productID)?.hasSplitPadLayout == true)
+            splitPad: targetSpec?.hasSplitPadLayout == true,
+            modeKeys: targetSpec.map { TabletControlMap.modeKeyDefaults(productID: target.productID, spec: $0) } ?? [:])
 
         if activeContext == nil || activeContext === source {
             activeContext = target

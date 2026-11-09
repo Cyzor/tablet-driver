@@ -302,7 +302,9 @@ struct ButtonsView: View {
         let toolDefaults: ButtonToolState = (.leftClick, .eraser, .rightClick, isMouse ? .rightClick : .middleClick)
         let vendorID = tabletManager.context(forKey: instanceKey)?.vendorID ?? 0x056A
         let settingsDefaults: ButtonSettingsState = (
-            TabletSettings.defaultExpressKeyBindings(vendorID: vendorID, splitPad: hasSplitPadLayout),
+            TabletSettings.defaultExpressKeyBindings(
+                vendorID: vendorID, splitPad: hasSplitPadLayout,
+                modeKeys: spec.map { TabletControlMap.modeKeyDefaults(productID: $0.productID, spec: $0) } ?? [:]),
             ButtonBinding(kind: .ringCycle), ButtonBinding(kind: .ringCycle2),
             ControlSlot.defaults, 0, 0, settings.rotaries.resetToDefaults(slots: settings.defaultRingSlots), false
         )

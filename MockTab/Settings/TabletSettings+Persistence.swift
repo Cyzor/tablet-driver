@@ -528,19 +528,22 @@ extension TabletSettings {
     // MARK: - First-run defaults
 
     /// Writes the default ExpressKey bindings if this device has none stored.
-    func applyExpressKeyDefaults(vendorID: Int = 0x056A, splitPad: Bool = false) {
+    func applyExpressKeyDefaults(vendorID: Int = 0x056A, splitPad: Bool = false, modeKeys: [Int: ButtonBinding] = [:]) {
         guard ud.string(forKey: devicePrefix + "expressKeyBindings") == nil else { return }
-        expressKeyBindings = Self.defaultExpressKeyBindings(vendorID: vendorID, splitPad: splitPad)
+        expressKeyBindings = Self.defaultExpressKeyBindings(vendorID: vendorID, splitPad: splitPad, modeKeys: modeKeys)
     }
 
     /// Default ExpressKey bindings, 16 entries; 8-key tablets use the first
     /// eight. Keys 1–4 hold ⌘ ⌥ ⌃ ⇧, and 9–12 repeat them for the right
     /// side of a two-sided pad. On the Cintiq 24HD (`splitPad`), each side's
     /// first three keys pick that ring's modes instead. A Quick Keys' index 8
-    /// is its mode button, so it stays unbound there.
+    /// is its mode button, so it stays unbound there. `modeKeys` replaces
+    /// keys that pick a ring mode, from `TabletControlMap.modeKeyDefaults`.
     ///
     /// Shared by first-run defaults and the Buttons pane's reset.
-    static func defaultExpressKeyBindings(vendorID: Int = 0x056A, splitPad: Bool = false) -> [ButtonBinding] {
+    static func defaultExpressKeyBindings(
+        vendorID: Int = 0x056A, splitPad: Bool = false, modeKeys: [Int: ButtonBinding] = [:]
+    ) -> [ButtonBinding] {
         if splitPad {
             // Cintiq 24HD: each side's first three keys pick that ring's modes.
             let left = (0..<3).map { ButtonBinding(kind: .ringSelectSlot, keyCode: UInt16($0)) }
@@ -548,7 +551,7 @@ extension TabletSettings {
             let rest = [ButtonBinding](repeating: .none, count: 5)
             return left + rest + right + rest
         }
-        return [
+        var bindings = [
             ButtonBinding(modifierOnly: .command),  // 0  left key 1 → ⌘
             ButtonBinding(modifierOnly: .option),  // 1  left key 2 → ⌥
             ButtonBinding(modifierOnly: .control),  // 2  left key 3 → ⌃
@@ -560,5 +563,7 @@ extension TabletSettings {
             ButtonBinding(modifierOnly: .shift),  // 11 right key 4 (mirror) → ⇧
             .none, .none, .none, .none,  // 12–15 right keys 5–8
         ]
+        for (index, binding) in modeKeys where bindings.indices.contains(index) { bindings[index] = binding }
+        return bindings
     }
 }
