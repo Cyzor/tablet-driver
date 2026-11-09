@@ -4,7 +4,7 @@
 
 // main.swift — Checks for what an item dragged onto a button row opens. The
 // payloads match what Keyboard Maestro 11 and DEVONthink 3 put on the drag
-// pasteboard. Run via tools/tests/open-drop-tests/run.sh.
+// pasteboard; DEVONthink's is refused. Run via tools/tests/open-drop-tests/run.sh.
 
 import AppKit
 
@@ -39,7 +39,6 @@ private let board = NSPasteboard(name: .init("open-drop-tests-\(getpid())"))
 }
 
 let macroID = "F2E047F7-2C14-4BAC-9161-7591E1EE9E31"
-let recordID = "5D014A74-FFBA-45E6-826F-99D74D35ECA0"
 
 // Keyboard Maestro: one macro runs by UUID; anything else isn't a macro.
 do {
@@ -50,18 +49,6 @@ do {
     expect(ButtonOpenAction.keyboardMaestroLink(fromMacroIDs: plist(["Some Macro"])) == nil,
            "A name isn't a macro ID")
     expect(ButtonOpenAction.keyboardMaestroLink(fromMacroIDs: Data("junk".utf8)) == nil, "Junk is refused")
-}
-
-// DEVONthink: a record opens by item link, groups included.
-do {
-    let group: [String: Any] = ["Name": "Movies", "Path": "", "URL": "x-devonthink-item://" + recordID, "UUID": recordID]
-    let record = ButtonOpenAction.devonthinkRecord(fromItemLinks: plist([group]))
-    expect(record?.url.absoluteString == "x-devonthink-item://" + recordID, "A group opens by item link")
-    expect(record?.name == "Movies", "It's named as in DEVONthink: \(String(describing: record?.name))")
-    expect(ButtonOpenAction.devonthinkRecord(fromItemLinks: plist([group, group])) == nil, "Several records are refused")
-    var web = group
-    web["URL"] = "https://example.com/paper.pdf"
-    expect(ButtonOpenAction.devonthinkRecord(fromItemLinks: plist([web])) == nil, "Only item links count")
 }
 
 // Dragged text: one word with a scheme, or a bare address.
@@ -141,6 +128,14 @@ MainActor.assumeIsolated {
                  [.fileURL: "file:///System/Applications/Chess.app/"]]) == nil,
            "Several items are refused")
     expect(!ButtonOpenAction.mightOpenTarget(on: board), "Several items don't light the field")
+
+    // DEVONthink: the legacy type goes on the pasteboard itself, as DEVONthink puts it.
+    board.declareTypes([.fileURL, .init("DTItemLinksPboardType")], owner: nil)
+    board.setString("file:///System/Applications/Calculator.app/", forType: .fileURL)
+    board.setData(Data("<plist/>".utf8), forType: .init("DTItemLinksPboardType"))
+    expect(ButtonOpenAction.isDEVONthinkDrag(board), "A DEVONthink drag is recognized")
+    expect(!ButtonOpenAction.mightOpenTarget(on: board), "A DEVONthink drag doesn't light the field")
+    expect(ButtonOpenAction.openTarget(on: board) == nil, "A DEVONthink record's file isn't taken")
 }
 
 if failures > 0 {

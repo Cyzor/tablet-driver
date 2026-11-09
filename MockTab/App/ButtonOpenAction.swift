@@ -78,47 +78,31 @@ enum ButtonOpenAction {
         return URL(string: "kmtrigger://macro=" + ids[0])
     }
 
-    /// The type a record dragged from DEVONthink carries: a property list
-    /// array with each record's item link and name. Its file URL points
-    /// inside the database, and groups have none.
-    nonisolated static let devonthinkItemLinksType = "DTItemLinksPboardType"
-
-    /// The one record a drag from DEVONthink carries, as its item link and
-    /// name. Read from the pasteboard itself, like a Keyboard Maestro macro;
-    /// only the pasteboard translates this legacy type name, not its items.
-    static func devonthinkRecord(on pasteboard: NSPasteboard) -> (url: URL, name: String)? {
-        guard pasteboard.pasteboardItems?.count == 1,
-            let data = pasteboard.data(forType: .init(devonthinkItemLinksType))
-        else { return nil }
-        return devonthinkRecord(fromItemLinks: data)
-    }
-
-    /// The item link and name of the one record in `data`. The link opens
-    /// the record in DEVONthink and survives a rename or move. Nil for
-    /// several records or anything unreadable.
-    nonisolated static func devonthinkRecord(fromItemLinks data: Data) -> (url: URL, name: String)? {
-        guard let records = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [[String: Any]],
-            records.count == 1, let link = records[0]["URL"] as? String,
-            link.hasPrefix("x-devonthink-item://"), let url = URL(string: link)
-        else { return nil }
-        return (url, records[0]["Name"] as? String ?? "")
+    /// The type a record dragged from DEVONthink carries. Its file URL
+    /// points inside the database, so the drag is refused; DEVONthink's Copy
+    /// Item Link and Edit URL bind a record instead. A legacy type name, so
+    /// only the pasteboard itself, not its items, recognizes it.
+    static func isDEVONthinkDrag(_ pasteboard: NSPasteboard) -> Bool {
+        pasteboard.availableType(from: [.init("DTItemLinksPboardType")]) != nil
     }
 
     /// Whether a drag might hold something `openTarget(on:)` takes, judged
     /// from its types alone: nothing is read while a drag only passes over.
     static func mightOpenTarget(on pasteboard: NSPasteboard) -> Bool {
-        guard pasteboard.pasteboardItems?.count == 1, let types = pasteboard.types else { return false }
+        guard pasteboard.pasteboardItems?.count == 1, let types = pasteboard.types,
+            !isDEVONthinkDrag(pasteboard)
+        else { return false }
         return !Set(types).isDisjoint(with: openTargetTypes)
     }
 
     /// What the one item on `pasteboard` would open, and its name: a Keyboard
-    /// Maestro macro, a DEVONthink record, an app, file, or folder, a link, or
-    /// text that reads as a link. Nil for anything else, several items, a
+    /// Maestro macro, an app, file, or folder, a link, or text that reads as
+    /// a link. Nil for anything else, several items, a DEVONthink record, a
     /// link longer than `maxLinkLength`, or one no app on this Mac opens.
     /// Reads only types already on the pasteboard, never a promised file.
     static func openTarget(on pasteboard: NSPasteboard) -> (url: URL, name: String)? {
-        guard pasteboard.pasteboardItems?.count == 1 else { return nil }
-        var found = keyboardMaestroMacro(on: pasteboard) ?? devonthinkRecord(on: pasteboard)
+        guard pasteboard.pasteboardItems?.count == 1, !isDEVONthinkDrag(pasteboard) else { return nil }
+        var found = keyboardMaestroMacro(on: pasteboard)
         if found == nil, let url = pasteboard.readObjects(forClasses: [NSURL.self])?.first as? URL {
             // A file's name comes from Finder, so it follows a rename.
             found = (url, url.isFileURL ? "" : linkName(on: pasteboard))
@@ -161,7 +145,7 @@ enum ButtonOpenAction {
 
     /// Types `openTarget(on:)` reads, for a drop target to register.
     static let openTargetTypes: [NSPasteboard.PasteboardType] = [
-        .fileURL, .URL, .string, .init(keyboardMaestroMacroIDsType), .init(devonthinkItemLinksType),
+        .fileURL, .URL, .string, .init(keyboardMaestroMacroIDsType),
     ]
 
     /// The name a dragged link carries, such as a message's subject or a
