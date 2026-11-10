@@ -437,8 +437,22 @@ final class InputInjector: @unchecked Sendable {
         case 0x00B8...0x00BD: return 6
         // Intuos3: 6 still flickers now and then.
         case 0x00B0...0x00B7: return 8
-        // Graphire 3 and 4, Bamboo Fun, and CTE-460/660.
-        case 0x0013...0x0018, 0x006A, 0x006B: return 5
+        // Intuos 1 and 2.
+        case 0x0020...0x0024, 0x0041...0x0047: return 6
+        // Cintiq 21UX, 20WSX, and 12WX: Intuos3's generation.
+        case 0x003F, 0x00C5, 0x00C6: return 8
+        // Later Cintiqs on the Intuos protocol: 21UX2, 22HD, 24HD, Cintiq 22,
+        // 27QHD, 13HD, and Companion 2.
+        case 0x0057, 0x0059, 0x005B, 0x005D, 0x005E, 0x00CC, 0x00F4, 0x00F6,
+            0x00F8...0x00FA, 0x0304, 0x0325, 0x0326, 0x032A...0x032C, 0x0333,
+            0x0335:
+            return 6
+        // PenPartner, Graphire, Volito, and Bamboo through the CTL-672,
+        // including Graphire 3 Wireless.
+        case 0x0000, 0x0004, 0x0010...0x0019, 0x0060...0x0065, 0x0069...0x006B,
+            0x0081, 0x00D0...0x00DF, 0x0300...0x0303, 0x030E, 0x0318, 0x0319,
+            0x0323, 0x037A, 0x037B:
+            return 5
         // Intuos Pro (2025): PTK-470/670/870 over USB and Bluetooth, and
         // their USB revisions. A hand-held tip flickers about 5 counts.
         case 0x03F5...0x03FA, 0x0401, 0x042D...0x042F: return 6
