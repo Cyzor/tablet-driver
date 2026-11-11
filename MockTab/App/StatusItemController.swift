@@ -136,6 +136,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updatesItem.toolTip = String(localized: "Opens the MockTab website in your browser.", comment: "Tooltip: Check for Updates menu item")
         menu.addItem(updatesItem)
 
+        menu.addItem(.separator())
+
         addItem(to: menu, title: String(localized: "Quit MockTab", comment: "Menu button: quit the application"),
                 action: #selector(quit))
     }
