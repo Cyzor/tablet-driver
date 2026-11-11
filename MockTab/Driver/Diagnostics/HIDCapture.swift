@@ -87,6 +87,9 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         /// touch or lift is a transition like pen proximity.
         var padContacts: [Bool]?
         var padMode: Int?
+        /// Finger tracking IDs on the touch surface, sorted, so each landing
+        /// and lift is a transition and a contact that never lifts shows.
+        var touchContactIDs: [Int]?
         var hasOneShotEvent: Bool  // toolEnter/battery/wireless/toolCompatibility/mouseButton/wheel present this report
         /// True when this sample has no decoder. Two undecoded samples must
         /// never compare equal — otherwise every all-nil signature would
@@ -98,6 +101,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             return lhs.inProximity == rhs.inProximity && lhs.eraser == rhs.eraser
                 && lhs.buttonsDown == rhs.buttonsDown && lhs.toolEnterSerial == rhs.toolEnterSerial
                 && lhs.padContacts == rhs.padContacts && lhs.padMode == rhs.padMode
+                && lhs.touchContactIDs == rhs.touchContactIDs
                 && lhs.hasOneShotEvent == rhs.hasOneShotEvent
         }
     }
@@ -452,7 +456,9 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             case .dial(let index, let delta):
                 return "wheel[\(index)]=\(delta)"
             case .touch(let frame):
-                return "touch contacts=\(frame.contacts.count)"
+                let contacts = frame.contacts.sorted { $0.id < $1.id }
+                    .map { " #\($0.id)(\($0.x),\($0.y))" }.joined()
+                return "touch contacts=\(frame.contacts.count)\(contacts)"
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: "; ")
@@ -497,8 +503,8 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 // twice a second; marking it as an event would defeat
                 // condensing and pad the capture with identical rows.
                 if event.kind != .remotePairing { sig.hasOneShotEvent = true }
-            case .touch:
-                break
+            case .touch(let frame):
+                sig.touchContactIDs = frame.contacts.map(\.id).sorted()
             }
         }
         return sig
@@ -564,6 +570,13 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         /// Non-pen content, so a decoded touch or pad run doesn't read as
         /// undecoded.
         private var touchContactRange: ClosedRange<Int>?
+        /// Where each finger went during the run, by tracking ID. A contact
+        /// whose ranges stay one point wide through other fingers' gestures
+        /// never moved.
+        private var touchRanges: [Int: (x: ClosedRange<Int>, y: ClosedRange<Int>)] = [:]
+        /// Byte offsets that changed in a run nothing was decoded from.
+        private var variedBytes: Set<Int> = []
+        private var firstBytes: [UInt8] = []
         /// Ring and strip positions in arrival order, keyed "ring1",
         /// "strip2", and so on, so the log shows which way a finger moved.
         private var padPaths: [String: PositionPath] = [:]
@@ -610,10 +623,16 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             if count == 1 { firstHex = sample.hex; firstDecoded = sample.decoded }
             lastHex = sample.hex
             guard let decoded = sample.decoded else { return }
+            if decoded.isEmpty { noteVariedBytes(sample.hex) }
             for result in decoded {
                 switch result {
                 case .touch(let frame):
                     touchContactRange = Self.extend(touchContactRange, with: frame.contacts.count)
+                    for contact in frame.contacts {
+                        let prior = touchRanges[contact.id]
+                        touchRanges[contact.id] = (
+                            Self.extend(prior?.x, with: contact.x), Self.extend(prior?.y, with: contact.y))
+                    }
                 case .pad(let a):
                     otherKinds.insert("buttons")
                     for (i, ring) in a.rings.enumerated() {
@@ -652,6 +671,17 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 lastTiltX = p.tiltX
                 lastTiltY = p.tiltY
             }
+        }
+
+        /// The hex text holds three characters per byte ("AB AB").
+        private mutating func noteVariedBytes(_ hex: String) {
+            let bytes = Array(hex.utf8)
+            if firstBytes.isEmpty {
+                firstBytes = bytes
+                return
+            }
+            guard bytes.count == firstBytes.count else { return }
+            for i in bytes.indices where bytes[i] != firstBytes[i] { variedBytes.insert(i / 3) }
         }
 
         private static func extend<T: Comparable>(_ range: ClosedRange<T>?, with value: T) -> ClosedRange<T> {
@@ -694,11 +724,19 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 fields.append("rot@hover[\(rendered.joined(separator: " "))]")
             }
             if let r = touchContactRange { fields.append("touch contacts:\(r.lowerBound)-\(r.upperBound)") }
+            fields += touchRanges.keys.sorted().map { id in
+                let r = touchRanges[id]!
+                return "#\(id) x:\(r.x.lowerBound)-\(r.x.upperBound) y:\(r.y.lowerBound)-\(r.y.upperBound)"
+            }
             fields += padPaths.keys.sorted().map { "\($0):\(padPaths[$0]!.rendered)" }
             fields += otherKinds.sorted().map { "\($0) unchanged" }
             // Undecoded samples never join a run (see `Signature.isUndecoded`),
             // so an empty field list here means decoded with nothing to range.
-            let fieldStr = fields.isEmpty ? "(decoded — no changing fields)" : fields.joined(separator: " ")
+            let varied = variedBytes.sorted().map(String.init).joined(separator: ", ")
+            let nothingDecoded = variedBytes.isEmpty
+                ? "(decoded — no changing fields)"
+                : "(no decoded fields; bytes \(varied) varied)"
+            let fieldStr = fields.isEmpty ? nothingDecoded : fields.joined(separator: " ")
             return
                 "[\(ts)] \(padded) ID=\(hexDigitID) len=\(lenRange)  ×\(count) steady-state  →  \(fieldStr)"
         }
@@ -780,6 +818,9 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
     struct Condenser {
         struct Key: Hashable { var tag: String; var reportID: UInt8 }
 
+        /// Shortest spacing that marks a report as status, not a stream.
+        static let statusReportGap: TimeInterval = 0.25
+
         private var lastSignature: [Key: Signature] = [:]
         private var lastRaw: [Key: (elapsed: TimeInterval, hex: String)] = [:]
         private var openRuns: [Key: RunAccumulator] = [:]
@@ -802,13 +843,23 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 // physical report reaching `record()` twice (seen on a
                 // multi-interface Xencelabs dongle even after tag
                 // disambiguation; cause unconfirmed). Drop the repeat.
-                if let prior = lastRaw[key], prior.elapsed == sample.elapsed, prior.hex == sample.hex {
+                let prior = lastRaw[key]
+                if let prior, prior.elapsed == sample.elapsed, prior.hex == sample.hex {
                     continue
                 }
                 lastRaw[key] = (sample.elapsed, sample.hex)
 
+                // A slow report nothing is decoded from is a status report,
+                // such as the Intuos Pro's with its touch switch. Its bytes
+                // are all the log has, so a change is a transition. Fast ones
+                // stay folded: an out-of-range pen changes bytes every report.
+                let statusChanged =
+                    sample.decoded?.isEmpty == true && prior.map {
+                        $0.hex != sample.hex && sample.elapsed - $0.elapsed >= Self.statusReportGap
+                    } == true
+
                 let isTransition =
-                    sample.signature.hasOneShotEvent
+                    sample.signature.hasOneShotEvent || statusChanged
                     || sample.signature != (lastSignature[key] ?? sample.signature)
                 lastSignature[key] = sample.signature
 
@@ -897,7 +948,8 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             Started    : \(startTime)
             Flushed to disk every \(Int(flushInterval))s; auto-stops after \(Int(maxCaptureDuration / 60)) minutes.
             Steady-state runs are collapsed to value ranges; proximity/button/
-            tool-identity transitions are kept verbatim — see a run line's own
+            tool-identity transitions, each finger landing or lifting, and
+            changes in slow status reports are kept verbatim — see a run line's own
             ×<count> steady-state marker to tell which is which. A single
             implausible jump inside an otherwise steady run also breaks it
             and appears as its own verbatim line, so a run's x/y/tilt range

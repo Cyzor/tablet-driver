@@ -441,12 +441,22 @@ func captureFindings(for result: CaptureResult) -> [CaptureFinding] {
     }
 
     // A setting that independently explains the symptom.
+    // The settings are read when the capture starts, so tracked frames mean
+    // touch came on later and the setting explains nothing.
     if result.touchSettings?.touchEnabled == false {
-        found.append(
-            CaptureFinding(
-                kind: "touchDisabledInSettings",
-                productID: pid,
-                detail: "Finger touch was switched off in MockTab's settings during this capture."))
+        if (result.touchPipeline?.framesTracked ?? 0) > 0 {
+            found.append(
+                CaptureFinding(
+                    kind: "touchSwitchedOnDuringCapture",
+                    productID: pid,
+                    detail: "Finger touch was off in MockTab's settings when this capture started and was switched on during it."))
+        } else {
+            found.append(
+                CaptureFinding(
+                    kind: "touchDisabledInSettings",
+                    productID: pid,
+                    detail: "Finger touch was switched off in MockTab's settings during this capture."))
+        }
     }
 
     // Relative mode integrates deltas, so sensor noise accumulates as cursor

@@ -561,6 +561,59 @@ do {
         "a long path must elide its middle: \(lines)")
 }
 
+do {
+    // Each finger landing or lifting stays verbatim, and a run shows where
+    // each contact went, so one that never moves or lifts is visible.
+    let touch = { (contacts: [(id: Int, x: Int, y: Int)]) -> [TabletEvent] in
+        [.touch(TouchFrame(contacts: contacts.map {
+            TouchContact(id: $0.id, x: $0.x, y: $0.y, contactArea: nil)
+        }))]
+    }
+    var frames: [[TabletEvent]] = []
+    for _ in 0..<10 { frames.append(touch([(1, 500, 300)])) }
+    for i in 0..<10 { frames.append(touch([(1, 500, 300), (2, 100 + i * 10, 200)])) }
+    for _ in 0..<10 { frames.append(touch([(1, 500, 300)])) }
+    frames.append(touch([]))
+    let samples = frames.enumerated().map { i, decoded in
+        HIDCapture.Sample(
+            elapsed: Double(i) * 0.01, tag: "Test Device", reportID: 0x21, length: 44,
+            hex: String(format: "21 %02X", i), decoded: decoded,
+            signature: HIDCapture.signature(for: decoded))
+    }
+    let lines = condenseAll(samples)
+    expect(
+        lines.contains { !$0.contains("steady-state") && $0.contains("touch contacts=2 #1(500,300) #2(100,200)") },
+        "a second finger landing must stay verbatim with both contacts: \(lines)")
+    expect(
+        lines.contains { !$0.contains("steady-state") && $0.contains("touch contacts=0") },
+        "the lift must stay verbatim: \(lines)")
+    expect(
+        lines.contains { $0.contains("steady-state") && $0.contains("#1 x:500-500 y:300-300 #2 x:110-190 y:200-200") },
+        "a run must show each contact's range: \(lines)")
+}
+
+do {
+    // A slow report nothing is decoded from keeps a byte change verbatim;
+    // a fast one folds and names the bytes that varied.
+    let status = { (elapsed: TimeInterval, hex: String) in
+        HIDCapture.Sample(
+            elapsed: elapsed, tag: "Test Device", reportID: 0x13, length: 3,
+            hex: hex, decoded: [], signature: HIDCapture.signature(for: []))
+    }
+    let slow = (0..<8).map { status(Double($0) * 2, $0 < 4 ? "13 E4 0E" : "13 E4 8E") }
+    let slowLines = condenseAll(slow)
+    expect(
+        slowLines.contains { !$0.contains("steady-state") && $0.contains("13 E4 8E") },
+        "a status change must stay verbatim: \(slowLines)")
+    expect(slowLines.count == 3, "one change makes a run, a line, and a run: \(slowLines)")
+
+    let fast = (0..<20).map { status(Double($0) * 0.005, String(format: "13 E4 %02X", $0)) }
+    let fastLines = condenseAll(fast)
+    expect(
+        fastLines.count == 1 && fastLines[0].contains("bytes 2 varied"),
+        "a fast stream must fold and name its varied bytes: \(fastLines)")
+}
+
 if failures > 0 {
     FileHandle.standardError.write(Data("hid-capture-condense-tests: \(failures)/\(checks) checks FAILED\n".utf8))
     exit(1)

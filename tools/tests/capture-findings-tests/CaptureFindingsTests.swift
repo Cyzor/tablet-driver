@@ -239,6 +239,19 @@ check(
         .contains { $0.kind == "touchDisabledInSettings" } == false,
     "touch switched on produces no setting finding")
 
+// The settings are read at the start, so tracked frames mean touch came on later.
+do {
+    var result = makeResult(toolCodes: ["0x0802"], touchEnabled: false)
+    var touch = CaptureTouchPipeline()
+    touch.framesDecoded = 12
+    touch.framesTracked = 12
+    result.touchPipeline = touch
+    let kinds = captureFindings(for: result).map(\.kind)
+    check(
+        kinds.contains("touchSwitchedOnDuringCapture") && !kinds.contains("touchDisabledInSettings"),
+        "touch switched on during the capture isn't reported as off")
+}
+
 // Relative mode turns the same harmless noise floor into visible cursor
 // jitter, and a capture reads identically either way without this.
 check(
