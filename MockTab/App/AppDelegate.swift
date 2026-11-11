@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import IOKit.hid
 import TabletKit
 
 @main
@@ -86,6 +87,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc
     private func appDidBecomeActive() {
         TabletManager.shared.appIsFrontmost = true
+        // Input Monitoring granted in System Settings since the last look:
+        // open the tablets now, whichever window is showing.
+        if IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted {
+            TabletManager.shared.reopenIfClosed()
+        }
     }
 
     @objc
