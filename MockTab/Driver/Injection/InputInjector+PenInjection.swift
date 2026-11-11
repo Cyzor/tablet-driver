@@ -785,7 +785,6 @@ extension InputInjector {
         // Don't post flagsChanged for physical modifiers here: it would show a
         // held key as stuck in Keyboard Viewer. moveSafeEventFlags already
         // carries the physical state on the last move.
-        lastLoggedManagedFlags = 0
 
         // Aux buttons have their own reports and outlive pen proximity. Keep
         // their press bindings and modifier contributions until the real up.

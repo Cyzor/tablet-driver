@@ -17,19 +17,11 @@ extension InputInjector {
     /// bits (⌘⌥⇧⌃) come from `tapLastPhysicalFlags`, since `hidSystemState` lags
     /// our own posts (OTD PR #4014). Other bits come from `hidSystemState`.
     var currentEventFlags: CGEventFlags {
-        let result = CGEventFlags(rawValue: ModifierMath.currentEventFlags(
+        CGEventFlags(rawValue: ModifierMath.currentEventFlags(
             systemFlags: CGEventSource.flagsState(.hidSystemState).rawValue,
             tapPhysicalManaged: tapLastPhysicalFlags,
             syntheticFlags: groundTruthSyntheticFlags.rawValue
                 | SharedAuxModifierState.shared.groundTruthFlags.rawValue))
-        let managedNow = result.rawValue & ModifierMath.managedMask
-        if managedNow != lastLoggedManagedFlags {
-            _ = groundTruthSyntheticFlags.rawValue & ModifierMath.managedMask
-            _ = lastLoggedManagedFlags
-            // modLog.info("flags: 0x\(String(prev, radix: 16), privacy: .public) → 0x\(String(managedNow, radix: 16), privacy: .public) [hid=0x\(String(physManaged, radix: 16), privacy: .public) synth=0x\(String(synth, radix: 16), privacy: .public)]")
-            lastLoggedManagedFlags = managedNow
-        }
-        return result
     }
 
     /// Modifier flags for move and drag events. Physical modifiers ride along
@@ -330,6 +322,7 @@ extension InputInjector {
         // session.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap = injector.flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: true) }
+            injector.reseedPhysicalFlagsAfterTapDisable(byTimeout: type == .tapDisabledByTimeout)
             return Unmanaged.passUnretained(event)
         }
         // Hardware keyboard events only (sourceStateID == hidSystemState). Ours
@@ -347,6 +340,22 @@ extension InputInjector {
         // (Cyzor/tablet-driver#18).
         injector.tapLastPhysicalFlagsAtNs = UInt64(event.timestamp)
         return Unmanaged.passUnretained(event)
+    }
+
+    /// A key pressed or released while the tap was off never reached the
+    /// cache. `hidSystemState` carries our own posts too, so take its managed
+    /// bits minus the ones MockTab holds.
+    func reseedPhysicalFlagsAfterTapDisable(byTimeout: Bool) {
+        let system = CGEventSource.flagsState(.hidSystemState).rawValue & ModifierMath.managedMask
+        let synthetic = (groundTruthSyntheticFlags.rawValue
+            | SharedAuxModifierState.shared.groundTruthFlags.rawValue) & ModifierMath.managedMask
+        let reseeded = system & ~synthetic
+        let before = tapLastPhysicalFlags
+        // Notice level, so a stuck modifier leaves a trail in the saved log.
+        modLog.notice("flagsChanged tap disabled by \(byTimeout ? "timeout" : "user input", privacy: .public); cache 0x\(String(before, radix: 16), privacy: .public) → 0x\(String(reseeded, radix: 16), privacy: .public)")
+        tapLastPhysicalFlags = reseeded
+        tapLastPhysicalFlagsAtNs =
+            UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
     }
 
     @MainActor

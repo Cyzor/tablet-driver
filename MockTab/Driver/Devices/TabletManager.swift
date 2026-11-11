@@ -681,15 +681,11 @@ final class TabletManager: ObservableObject {
         Self.offerForCapture(device, usagePage: probe.usagePage, on: context, delivers: delivers)
         hidDeviceMap[device] = context
         deviceRawProductID[device] = rawProductID
-        driver.open()
         if hadNoDriverYet {
-            // The first transport this context has seen wires the settings
-            // sinks, once: they target whichever slot wins, so a second
-            // subscription would send every write twice.
-            context.observeRingLED()
-            context.observeInjectionSnapshot()
-            // Read the key when pressed: a restored window's stub adopts
-            // its instance later. Buttons, since a key just brought it up.
+            // Set before the open, since the pen thread reads it from the
+            // first report on. Read the key when pressed: a restored window's
+            // stub adopts its instance later. Buttons, since a key just
+            // brought it up.
             context.injector.showSettingsHandler = { [weak context] in
                 Task { @MainActor in
                     guard let key = context?.instanceKey,
@@ -699,6 +695,14 @@ final class TabletManager: ObservableObject {
                     window.showTab(.buttons)
                 }
             }
+        }
+        driver.open()
+        if hadNoDriverYet {
+            // The first transport this context has seen wires the settings
+            // sinks, once: they target whichever slot wins, so a second
+            // subscription would send every write twice.
+            context.observeRingLED()
+            context.observeInjectionSnapshot()
             context.hasWiredDriverLifecycle = true
         } else if context.activeDriverRawProductID == rawProductID {
             // This transport just outranked the one already installed, and

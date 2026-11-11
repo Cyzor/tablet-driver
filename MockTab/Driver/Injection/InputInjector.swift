@@ -316,7 +316,7 @@ final class InputInjector: @unchecked Sendable {
             CFRunLoopRemoveSource(HIDThread.shared.runLoop, src, .commonModes)
             flagsChangedTapSource = nil
         }
-        if let tap = flagsChangedTap { CGEvent.tapEnable(tap: tap, enable: false) }
+        flagsChangedTap.map { CFMachPortInvalidate($0) }
         keyDownTapSource.map { CFRunLoopRemoveSource(HIDThread.shared.runLoop, $0, .commonModes) }
         keyDownTap.map { CFMachPortInvalidate($0) }
         watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -1165,9 +1165,6 @@ final class InputInjector: @unchecked Sendable {
         (.maskAlternate, 58),  // left ⌥
         (.maskControl,   59),  // left ⌃
     ]
-
-    /// Last managed-bit result returned by currentEventFlags — used to suppress duplicate log lines.
-    var lastLoggedManagedFlags: UInt64 = 0
 
     /// Private-state source. Our posts still write into hidSystemState, so the
     /// flags tap filters by sourceStateID. Created once: a new source per event

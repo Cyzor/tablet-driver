@@ -66,7 +66,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.removeAllItems()
 
         let pwc = SettingsWindowManager.shared
-        let tm = TabletManager.shared
         let settings = pwc.settings
 
         addItem(to: menu, title: String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"),
