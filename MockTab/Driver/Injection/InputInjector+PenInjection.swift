@@ -195,6 +195,7 @@ extension InputInjector {
             if point.inProximity {
                 postProximityEvent(entering: true, at: rawPoint, eraser: point.eraser)
                 TouchPipelineProbe.note { $0.penProximityEnters += 1 }
+                logModifierCacheMismatch()
                 activeToolIsEraser = point.eraser
                 lastEraserMode = point.eraser
                 smoother.smoothingStrength = tool.smoothingStrength

@@ -696,6 +696,21 @@ final class TabletManager: ObservableObject {
                 }
             }
         }
+        // Aux-only accessories (Quick Keys, ExpressKey Remote) move no
+        // pointer, so their display toggles steer the tablet driving the
+        // cursor. Also set before the open.
+        if driver.spec.maxX == 0 {
+            let accessoryVendor = context.vendorID
+            context.injector.displayToggleForwarder = { [weak self] in
+                Task { @MainActor in self?.toggleDisplayOnPenTablet(vendorID: accessoryVendor) }
+            }
+            context.injector.relativeModeToggleForwarder = { [weak self] in
+                Task { @MainActor in self?.toggleRelativeModeOnPenTablet(vendorID: accessoryVendor) }
+            }
+            context.injector.spanDisplaysForwarder = { [weak self] in
+                Task { @MainActor in self?.toggleSpanOnPenTablet(vendorID: accessoryVendor) }
+            }
+        }
         driver.open()
         if hadNoDriverYet {
             // The first transport this context has seen wires the settings
@@ -708,21 +723,6 @@ final class TabletManager: ObservableObject {
             // This transport just outranked the one already installed, and
             // missed the settings writes made while it wasn't driving.
             context.resyncActiveDriverDisplayState()
-        }
-        // Aux-only accessories (Quick Keys, ExpressKey Remote) move no
-        // pointer, so their display toggles steer the tablet driving the
-        // cursor.
-        if driver.spec.maxX == 0 {
-            let accessoryVendor = context.vendorID
-            context.injector.displayToggleForwarder = { [weak self] in
-                Task { @MainActor in self?.toggleDisplayOnPenTablet(vendorID: accessoryVendor) }
-            }
-            context.injector.relativeModeToggleForwarder = { [weak self] in
-                Task { @MainActor in self?.toggleRelativeModeOnPenTablet(vendorID: accessoryVendor) }
-            }
-            context.injector.spanDisplaysForwarder = { [weak self] in
-                Task { @MainActor in self?.toggleSpanOnPenTablet(vendorID: accessoryVendor) }
-            }
         }
         let contextSpec = WacomDeviceRegistry.spec(for: context.productID)
         context.settings.applyExpressKeyDefaults(

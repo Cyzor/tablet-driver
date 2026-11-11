@@ -358,6 +358,19 @@ extension InputInjector {
             UInt64(Double(mach_absolute_time()) * LatencyProbe.timebaseFactor)
     }
 
+    /// Called as the pen comes into range. A cache that disagrees with the
+    /// system here is how a stuck modifier would start, so leave a trail in
+    /// the saved log. Logs only: the system's state can lag MockTab's own posts.
+    func logModifierCacheMismatch() {
+        let system = CGEventSource.flagsState(.hidSystemState).rawValue
+        let synthetic = groundTruthSyntheticFlags.rawValue
+            | SharedAuxModifierState.shared.groundTruthFlags.rawValue
+        guard !ModifierMath.physicalCacheAgrees(
+            systemFlags: system, tapPhysicalManaged: tapLastPhysicalFlags, syntheticFlags: synthetic)
+        else { return }
+        modLog.notice("modifier cache 0x\(String(self.tapLastPhysicalFlags, radix: 16), privacy: .public) disagrees with system 0x\(String(system & ModifierMath.managedMask, radix: 16), privacy: .public) at proximity entry; held by MockTab 0x\(String(synthetic & ModifierMath.managedMask, radix: 16), privacy: .public)")
+    }
+
     @MainActor
     func installFlagsChangedTap() {
         // Listen-only tap at the session level for modifier changes. It never
