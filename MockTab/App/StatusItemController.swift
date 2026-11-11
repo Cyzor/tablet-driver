@@ -122,6 +122,20 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
+        // Same items as the main menu's, for people who hide the Dock icon.
+        let helpItem = NSMenuItem(
+            title: String(localized: "MockTab Help", comment: "Help menu: open help window"),
+            action: #selector(AppMenuController.showHelpFromMainMenu), keyEquivalent: "")
+        helpItem.target = AppMenuController.shared
+        menu.addItem(helpItem)
+
+        let updatesItem = NSMenuItem(
+            title: String(localized: "Check for Updates…", comment: "App menu: open the update page in the browser"),
+            action: #selector(AppMenuController.checkForUpdates), keyEquivalent: "")
+        updatesItem.target = AppMenuController.shared
+        updatesItem.toolTip = String(localized: "Opens the MockTab website in your browser.", comment: "Tooltip: Check for Updates menu item")
+        menu.addItem(updatesItem)
+
         addItem(to: menu, title: String(localized: "Quit MockTab", comment: "Menu button: quit the application"),
                 action: #selector(quit))
     }
