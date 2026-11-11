@@ -639,7 +639,7 @@ final class TabletManager: ObservableObject {
             rawProductID == productID
             ? "0x\(String(productID, radix:16))"
             : "0x\(String(rawProductID, radix:16)) → 0x\(String(productID, radix:16))"
-        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(probe.usagePage, radix:16), privacy: .public) usage=0x\(String(probe.usage, radix:16), privacy: .public) maxRptSize=\(probe.maxRptSize, privacy: .public) transport=\(probe.transport, privacy: .public) product=\"\(probe.productString, privacy: .public)\" serial=\(probe.rawSerialProbe ?? "—", privacy: .public)\(probe.isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(probe.locationID, radix:16), privacy: .public)")
+        logger.info("TabletManager: device pid=\(pidStr, privacy: .public) usagePage=0x\(String(probe.usagePage, radix:16), privacy: .public) usage=0x\(String(probe.usage, radix:16), privacy: .public) maxRptSize=\(probe.maxRptSize, privacy: .public) transport=\(probe.transport, privacy: .public) product=\"\(probe.productString, privacy: .public)\" serial=\(probe.rawSerialProbe ?? "—", privacy: .private(mask: .hash))\(probe.isBLE ? " (BT, untrusted)" : "") locationID=0x\(String(probe.locationID, radix:16), privacy: .public)")
 
         let context = joining ?? resolveContext(probe: probe, rawProductID: rawProductID, vendorID: vendorID)
         deviceContexts[context.instanceKey] = context
