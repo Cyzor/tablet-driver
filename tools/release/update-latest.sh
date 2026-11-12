@@ -11,10 +11,10 @@
 #   tools/release/update-latest.sh --dry-run v0.4.3
 #
 # Reads everything from GitHub, so local git state doesn't matter:
-#   release  — version from the tag, publish time, DMG link, notes from that
+#   release  — version from the tag, publish time, DMG link and sha256, notes from that
 #              version's CHANGELOG.md line (split at semicolons).
 #   snapshot — build stamp from the annotated snapshot tag's message (UTC,
-#              e.g. 20260927T1432Z, copied from the built app), DMG link,
+#              e.g. 20260927T1432Z, copied from the built app), DMG link and sha256,
 #              notes from the release body's "Notes:" line, else from
 #              CHANGELOG.md's Unreleased line.
 # Refuses drafts: the page must never link to a download that isn't public.
@@ -50,6 +50,16 @@ fi
 URL=$(jq -r '[.assets[] | select(.name | endswith(".dmg"))][0].url // empty' <<<"$INFO")
 [[ -n "$URL" ]] || { echo "error: $TAG has no DMG attached." >&2; exit 1; }
 
+# The site serves its own copy of an image only when the feed has its
+# checksum. GitHub records the digest at upload; an asset from before that
+# gets hashed here.
+SHA=$(jq -r '[.assets[] | select(.name | endswith(".dmg"))][0].digest // empty' <<<"$INFO")
+SHA=${SHA#sha256:}
+if [[ -z "$SHA" ]]; then
+    SHA=$(curl -fsSL --retry 3 "$URL" | shasum -a 256 | cut -d' ' -f1)
+fi
+[[ "$SHA" =~ ^[0-9a-f]{64}$ ]] || { echo "error: no usable sha256 for $TAG's DMG." >&2; exit 1; }
+
 if [[ "$TAG" == "snapshot" ]]; then
     # Lightweight tags have no message; the object type tells them apart.
     REF=$(gh api "repos/$REPO/git/ref/tags/snapshot")
@@ -71,13 +81,13 @@ if [[ "$TAG" == "snapshot" ]]; then
         NOTES=$(changelog_notes "- Unreleased —")
     fi
     ENTRY=$(jq -n --arg d "${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}Z" --arg u "$URL" \
-        --argjson n "$NOTES" '{snapshot: {date: $d, url: $u, notes: $n}}')
+        --arg s "$SHA" --argjson n "$NOTES" '{snapshot: {date: $d, url: $u, sha256: $s, notes: $n}}')
 else
     VERSION="${TAG#v}"
     PUBLISHED=$(jq -r .publishedAt <<<"$INFO")
     NOTES=$(changelog_notes "- [$TAG](")
     ENTRY=$(jq -n --arg v "$VERSION" --arg d "${PUBLISHED:0:16}Z" --arg u "$URL" \
-        --argjson n "$NOTES" '{release: {version: $v, date: $d, url: $u, notes: $n}}')
+        --arg s "$SHA" --argjson n "$NOTES" '{release: {version: $v, date: $d, url: $u, sha256: $s, notes: $n}}')
 fi
 
 if (( DRY_RUN )); then
