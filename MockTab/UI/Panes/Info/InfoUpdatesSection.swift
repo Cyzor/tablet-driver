@@ -98,18 +98,23 @@ struct InfoUpdatesSection: View {
             updateRow { EmptyView() } content: {
                 VStack(alignment: .leading, spacing: 10) {
                     updateNotes(offer.notes)
+                    // Default button trails, as in macOS dialogs.
                     HStack(spacing: 8) {
+                        Spacer(minLength: 0)
+                        Button(String(localized: "Skip for Now", comment: "Update button: hide the update until the next check")) {
+                            updates.skip()
+                        }
                         if updates.canInstallInPlace && offer.installable {
+                            Button(String(localized: "Install on Quit", comment: "Update button: get the update ready and install it when MockTab quits")) {
+                                updates.install(relaunch: false)
+                            }
+                            .help(String(localized: "Downloads and checks the update now, and installs it the next time MockTab quits.", comment: "Tooltip on Install on Quit"))
                             Button(String(localized: "Install and Relaunch", comment: "Update button: install now; MockTab quits and reopens")) {
                                 updates.install(relaunch: true)
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(captures.isActive)
                             .help(captures.isActive ? String(localized: "Available once MockTab finishes collecting device data.", comment: "Tooltip on Install and Relaunch or Relaunch Now while they are unavailable because a device data collection is running") : String(localized: "Downloads and checks the update, then quits MockTab, installs it, and opens it again. The pen pauses for about a second.", comment: "Tooltip on Install and Relaunch"))
-                            Button(String(localized: "Install on Quit", comment: "Update button: get the update ready and install it when MockTab quits")) {
-                                updates.install(relaunch: false)
-                            }
-                            .help(String(localized: "Downloads and checks the update now, and installs it the next time MockTab quits.", comment: "Tooltip on Install on Quit"))
                         } else {
                             Button(String(localized: "Open Download Page", comment: "Update button: get the update in the browser instead")) {
                                 updates.openDownload(offer)
@@ -117,9 +122,6 @@ struct InfoUpdatesSection: View {
                             .help(offer.installable
                                 ? String(localized: "MockTab can't replace itself in this folder.", comment: "Tooltip on Open Download Page when MockTab's folder isn't writable")
                                 : String(localized: "Install this one by hand. Later updates install here.", comment: "Tooltip on Open Download Page when the update needs a newer updater"))
-                        }
-                        Button(String(localized: "Skip for Now", comment: "Update button: hide the update until the next check")) {
-                            updates.skip()
                         }
                     }
                     if captures.isActive && updates.canInstallInPlace && offer.installable { captureNotice }
