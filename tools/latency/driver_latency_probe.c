@@ -112,7 +112,7 @@ static void report_cb(void *ctx, IOReturn result, void *sender,
    from. A filename or a remembered PID is not evidence: two tablets in one
    session, or a file passed along later, both lose that context. Printed in
    the same `[matched] <name>  vid=… pid=…` shape the other capture tools
-   use, which tools/capture/touch_speed_summarize.py already parses. */
+   use. */
 static void print_matched(IOHIDDeviceRef device, const char *name, const char *suffix)
 {
     long vid = 0, pid = 0;

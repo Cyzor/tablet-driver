@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // GET_REPORTs one or more feature report IDs from a HID device and prints
-// the bytes returned. Companion to hid_init_probe.c (which only SETs);
-// built to check whether the PTK-870's opaque feature reports 0x37/0x38/0x39
+// the bytes returned. Read-only; it never sends a SET_REPORT. Written
+// to check whether the PTK-870's opaque feature reports 0x37/0x38/0x39
 // carry per-pen identity that could be read on connect instead of
 // waiting on the BLE input-report tool-announcement frame. No SIP or
 // dtrace needed.
