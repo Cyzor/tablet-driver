@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AAU00001 /* MockTabUpdater in Embed Helper */ = {isa = PBXBuildFile; fileRef = ABU00099 /* MockTabUpdater */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		05A04B822FCA009F00D64F90 /* TabletKit in Frameworks */ = {isa = PBXBuildFile; productRef = 05A04B812FCA009F00D64F90 /* TabletKit */; };
 		05FE52D12F9E8D730084E37D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 05FE52D02F9E8D730084E37D /* AppIcon.icon */; };
 		AAT00010 /* TabletKit in Frameworks */ = {isa = PBXBuildFile; productRef = ADT00020 /* TabletKit */; };
+		AAU00001 /* MockTabUpdater in Embed Helper */ = {isa = PBXBuildFile; fileRef = ABU00099 /* MockTabUpdater */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,10 +38,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		ABU00099 /* MockTabUpdater */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MockTabUpdater; sourceTree = BUILT_PRODUCTS_DIR; };
 		05FE52D02F9E8D730084E37D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABT00099 /* MockTabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MockTabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		ABU00099 /* MockTabUpdater */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MockTabUpdater; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -528,8 +528,8 @@
 				CODE_SIGN_STYLE = Manual;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 3R62GZR6Q2;
 				ENABLE_HARDENED_RUNTIME = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.updater;
 				OTHER_CODE_SIGN_FLAGS = "-i $(PRODUCT_BUNDLE_IDENTIFIER)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.updater;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
@@ -545,8 +545,8 @@
 				CODE_SIGN_STYLE = Manual;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = 3R62GZR6Q2;
 				ENABLE_HARDENED_RUNTIME = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.updater;
 				OTHER_CODE_SIGN_FLAGS = "-i $(PRODUCT_BUNDLE_IDENTIFIER)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.updater;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
