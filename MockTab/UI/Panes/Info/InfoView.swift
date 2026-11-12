@@ -61,6 +61,8 @@ struct InfoView: View {
     /// Per-window, not a shared singleton — two tablet windows collecting
     /// data must not see each other's state.
     @StateObject private var captureEngine = CaptureEngine()
+    /// So another window's Updates section can bring this capture forward.
+    @State private var windowRef = WindowRef()
     /// Owns this window's claim on the process-wide raw-capture buffer, so
     /// both collectors start and stop as one run. Per-window for the same
     /// reason `captureEngine` is.
@@ -91,6 +93,11 @@ struct InfoView: View {
                     .keepsWindowWideEnough()
             } header: {
                 Text("Status").appFont(.headline)
+            }
+            Section {
+                InfoUpdatesSection()
+            } header: {
+                updatesHeader
             }
             Section {
                 LiveInputSectionContent(
@@ -126,6 +133,7 @@ struct InfoView: View {
             handleCollectionRequest()
         }
         .onReceive(collectionRequest.$target) { _ in DispatchQueue.main.async { handleCollectionRequest() } }
+        .background(WindowReader(ref: windowRef))
         .onDisappear {
             rawCaptureCountTimer?.invalidate()
             rawCaptureCountTimer = nil
@@ -164,7 +172,9 @@ struct InfoView: View {
             // — would otherwise leave it recording with no UI to stop it.
             // Tied to the sheet's own disappearance, which every route
             // reaches. Idempotent via `ownsRawCapture`.
+            .onAppear { CaptureActivity.shared.begin(captureEngine, in: windowRef) }
             .onDisappear {
+                CaptureActivity.shared.end(captureEngine)
                 // Same reasoning as `onDismiss`: reaching here still running
                 // means no package was built, so the recording is incomplete.
                 if rawCaptureRunning { discardRawCapture() }

@@ -23,7 +23,7 @@ struct AboutView: View {
     private var versionLabel: String {
         Bundle.main.isReleaseBuild
             ? String(localized: "Version \(version)", comment: "App version label in about view")
-            : String(localized: "Version \(version) snapshot", comment: "App version label in about view, for builds between releases")
+            : String(localized: "Version \(version) pre-release", comment: "App version label in about view, for builds between releases")
     }
 
     private var copyrightYears: String {

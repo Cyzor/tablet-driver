@@ -21,6 +21,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var contextCancellables = Set<AnyCancellable>()
     private var activeContextCancellable: AnyCancellable?
+    private var flagsTimer: Timer?
 
     func start() {
         let menu = NSMenu()
@@ -61,6 +62,27 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     // MARK: - Menu
+
+    /// Option turns Check for Updates into Check for Pre-release while the menu
+    /// is open. Menu tracking bypasses event monitors, so a timer in
+    /// .eventTracking mode polls the modifiers, as the app menu does.
+    func menuWillOpen(_ menu: NSMenu) {
+        AppMenuController.shared.updateCheckTitle(in: menu)
+        flagsTimer?.invalidate()
+        // Fires only on the main run loop; the status menu lives as long as
+        // the process.
+        nonisolated(unsafe) let menuRef = menu
+        let timer = Timer(timeInterval: 0.05, repeats: true) { _ in
+            MainActor.assumeIsolated { AppMenuController.shared.updateCheckTitle(in: menuRef) }
+        }
+        RunLoop.main.add(timer, forMode: .eventTracking)
+        flagsTimer = timer
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        flagsTimer?.invalidate()
+        flagsTimer = nil
+    }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()

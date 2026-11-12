@@ -7,12 +7,38 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AAU00001 /* MockTabUpdater in Embed Helper */ = {isa = PBXBuildFile; fileRef = ABU00099 /* MockTabUpdater */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		05A04B822FCA009F00D64F90 /* TabletKit in Frameworks */ = {isa = PBXBuildFile; productRef = 05A04B812FCA009F00D64F90 /* TabletKit */; };
 		05FE52D12F9E8D730084E37D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 05FE52D02F9E8D730084E37D /* AppIcon.icon */; };
 		AAT00010 /* TabletKit in Frameworks */ = {isa = PBXBuildFile; productRef = ADT00020 /* TabletKit */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		AIU00001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AF000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ADU00001;
+			remoteInfo = MockTabUpdater;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		ADU00030 /* Embed Helper */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Helpers;
+			dstSubfolderSpec = 1;
+			files = (
+				AAU00001 /* MockTabUpdater in Embed Helper */,
+			);
+			name = "Embed Helper";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		ABU00099 /* MockTabUpdater */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MockTabUpdater; sourceTree = BUILT_PRODUCTS_DIR; };
 		05FE52D02F9E8D730084E37D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		AB000099 /* MockTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MockTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABT00099 /* MockTabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MockTabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -59,6 +85,11 @@
 			path = MockTabTests;
 			sourceTree = "<group>";
 		};
+		AH000003 /* MockTabUpdater */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MockTabUpdater;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +117,7 @@
 			children = (
 				AB000099 /* MockTab.app */,
 				ABT00099 /* MockTabTests.xctest */,
+				ABU00099 /* MockTabUpdater */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +127,7 @@
 			children = (
 				AH000001 /* MockTab */,
 				AH000002 /* MockTabTests */,
+				AH000003 /* MockTabUpdater */,
 				AC000010 /* Products */,
 				05FE52D02F9E8D730084E37D /* AppIcon.icon */,
 			);
@@ -111,10 +144,12 @@
 				AD000010 /* Sources */,
 				AD000011 /* Frameworks */,
 				AD000012 /* Resources */,
+				ADU00030 /* Embed Helper */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AJU00001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AH000001 /* MockTab */,
@@ -145,6 +180,24 @@
 			productName = MockTabTests;
 			productReference = ABT00099 /* MockTabTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		ADU00001 /* MockTabUpdater */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AEU00010 /* Build configuration list for PBXNativeTarget "MockTabUpdater" */;
+			buildPhases = (
+				ADU00010 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AH000003 /* MockTabUpdater */,
+			);
+			name = MockTabUpdater;
+			productName = MockTabUpdater;
+			productReference = ABU00099 /* MockTabUpdater */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -182,6 +235,7 @@
 			targets = (
 				AD000001 /* MockTab */,
 				ADT00001 /* MockTabTests */,
+				ADU00001 /* MockTabUpdater */,
 			);
 		};
 /* End PBXProject section */
@@ -236,7 +290,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ADU00010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AJU00001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ADU00001 /* MockTabUpdater */;
+			targetProxy = AIU00001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		AE000002 /* Debug */ = {
@@ -450,6 +519,41 @@
 			};
 			name = Release;
 		};
+		AEU00012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_IDENTITY = "MockTab Dev";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 3R62GZR6Q2;
+				ENABLE_HARDENED_RUNTIME = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.updater;
+				OTHER_CODE_SIGN_FLAGS = "-i $(PRODUCT_BUNDLE_IDENTIFIER)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AEU00013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_IDENTITY = "MockTab Dev";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 3R62GZR6Q2;
+				ENABLE_HARDENED_RUNTIME = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cyzor.mocktab.updater;
+				OTHER_CODE_SIGN_FLAGS = "-i $(PRODUCT_BUNDLE_IDENTIFIER)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -476,6 +580,15 @@
 			buildConfigurations = (
 				AET00012 /* Debug */,
 				AET00013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AEU00010 /* Build configuration list for PBXNativeTarget "MockTabUpdater" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AEU00012 /* Debug */,
+				AEU00013 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

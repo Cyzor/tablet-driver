@@ -386,13 +386,21 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     // MARK: - Check for Updates
 
-    /// Opens the website's update page; the browser does the networking, so
-    /// MockTab itself stays network-free. The version rides in the fragment,
-    /// which browsers never send to the server.
+    /// Runs the bundled helper and shows the result in the Info pane; without
+    /// the helper, opens the website's update page.
+    /// With Option held, asks for a snapshot.
     @objc func checkForUpdates() {
-        var components = URLComponents(string: "https://mocktab.org/update.html")!
-        components.fragment = Bundle.main.versionLabel
-        if let url = components.url { NSWorkspace.shared.open(url) }
+        UpdateController.shared.checkFromMenu(snapshot: NSEvent.modifierFlags.contains(.option))
+    }
+
+    /// The update item's title for the modifiers held right now. Shared
+    /// with the menu bar item's menu.
+    func updateCheckTitle(in menu: NSMenu) {
+        guard let item = menu.items.first(where: { $0.action == #selector(checkForUpdates) }) else { return }
+        let title = NSEvent.modifierFlags.contains(.option) && UpdateController.shared.hasHelper
+            ? String(localized: "Check for Pre-release…", comment: "App menu while Option is held: check for a newer test build")
+            : String(localized: "Check for Updates…", comment: "App menu: open the update page in the browser")
+        if item.title != title { item.title = title }
     }
 
     // MARK: - Factory Reset (Option-key hidden item)
@@ -924,6 +932,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
     }
 
     private func updateFactoryResetVisibility(in menu: NSMenu) {
+        updateCheckTitle(in: menu)
         // Show exactly the variant whose non-Command modifier mask matches what is held.
         let relevantFlags = NSEvent.modifierFlags.intersection([.option, .shift])
         for resetItem in menu.items where resetItem.action == #selector(confirmFactoryReset) {

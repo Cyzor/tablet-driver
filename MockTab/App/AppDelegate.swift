@@ -56,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppMenuController.shared.setup(settings: settings)
         TabletManager.shared.start()
         AppWatcher.shared.start()
+        UpdateController.shared.start()
         // After the driver starts, so the pen works while windows build.
         DisplayInfo.prewarmThumbnails()
         InfoView.prewarmSystemQueries()
@@ -100,6 +101,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Install on Quit: the helper waits for this process to exit.
+        UpdateController.shared.installIfStaged()
         // Release every held button, key, and modifier, and tell apps the pen
         // left, before exit; Click Lock would otherwise leave the left button
         // down system-wide. The process ends when this returns, so wait for
