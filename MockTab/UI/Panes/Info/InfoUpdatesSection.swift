@@ -95,7 +95,8 @@ struct InfoUpdatesSection: View {
 
         switch updates.phase {
         case .available(let offer):
-            updateRow { EmptyView() } content: {
+            // Full width, like the diagnostics box.
+            Group {
                 VStack(alignment: .leading, spacing: 10) {
                     updateNotes(offer.notes)
                     // Default button trails, as in macOS dialogs.
@@ -128,7 +129,7 @@ struct InfoUpdatesSection: View {
                 }
             }
         case .updated(_, let notes) where !notes.isEmpty:
-            updateRow { EmptyView() } content: { updateNotes(notes) }
+            updateNotes(notes)
         default:
             EmptyView()
         }
@@ -182,15 +183,14 @@ struct InfoUpdatesSection: View {
         }
     }
 
+    /// One selectable text, so a copy comes out as a plain bulleted list.
     private func updateNotes(_ notes: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            ForEach(notes, id: \.self) { note in
-                Text(verbatim: "• \(note)")
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .appFont(.callout)
+        Text(verbatim: notes.map { "• \($0)" }.joined(separator: "\n"))
+            .appFont(.body)
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+            .textSelection(.enabled)
+            .textBox()
     }
 
     private struct UpdateAction {

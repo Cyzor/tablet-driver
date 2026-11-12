@@ -144,14 +144,7 @@ extension InfoView {
                 Text(diagnosticSnapshot)
                     .appFont(.monospaced)
                     .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-                    .background(Color(NSColor.textBackgroundColor))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(Color(NSColor.separatorColor), lineWidth: 1)
-                    )
+                    .textBox()
             }
         }
         .onChange(of: diagnosticsExpanded) { expanded in
