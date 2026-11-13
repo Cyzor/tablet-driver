@@ -62,15 +62,7 @@ extension TabletSettings {
         }
         ud.set(calibrationJSON, forKey: prefix + "calibrationJSON")
 
-        profile.overriddenKeys = [
-            "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
-            "proportionalMapping", "targetDisplayIndex", "targetDisplayUUID", "toggleDisplayIDs",
-            "smoothingStrength", "doubleClickDistance", "penButton1Binding", "penButton2Binding",
-            "expressKeyBindings", "bezelButtonBindings", "touchRingButtonBinding",
-            "touchRingButtonBinding2", "touchRingSlotsJSON",
-            "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2", "pressureCurve", "calibrationJSON",
-            "rotariesJSON",
-        ]
+        profile.overriddenKeys = Set(Self.profileSettingKeys)
 
         profiles.append(profile)
         saveProfileList()
@@ -194,8 +186,8 @@ extension TabletSettings {
         saveProfileList()
     }
 
-    /// Every UserDefaults key a profile can hold — shared by `deleteProfile`
-    /// (what to erase) and `deleteProfileRecordingUndo` (what to snapshot).
+    /// Every UserDefaults key a profile can hold: what saving records, what
+    /// deleting erases, and what undo snapshots.
     static let profileSettingKeys = [
         "activeAreaX", "activeAreaY", "activeAreaWidth", "activeAreaHeight",
         "proportionalMapping", "targetDisplayIndex", "targetDisplayUUID", "toggleDisplayIDs",
