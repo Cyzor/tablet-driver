@@ -5,7 +5,10 @@
 # release can be triggered as one action (from Xcode's "Release" aggregate target
 # or directly from the terminal).
 #
-# This script is the release path.
+# This script is the release path. With --snapshot it builds the rolling
+# pre-release instead: it force-moves the "snapshot" tag to HEAD and replaces
+# the one snapshot release, from any branch. SNAPSHOT_NOTES=<file>, relative
+# to the repo root, adds that file's text to the snapshot as a Notes line.
 #
 # Flow:
 #   1. Sanity: clean working tree, on main, gh installed and authenticated.
@@ -28,6 +31,9 @@
 
 set -euo pipefail
 
+SNAPSHOT=0
+[[ "${1:-}" == "--snapshot" ]] && SNAPSHOT=1
+
 # Xcode's Run Script phase strips PATH down to system minimums.
 # Restore homebrew so xcodebuild can find gh, xcrun finds notarytool, etc.
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
@@ -44,7 +50,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [[ "$BRANCH" != "main" ]]; then
+if (( ! SNAPSHOT )) && [[ "$BRANCH" != "main" ]]; then
     echo "error: not on main (currently on '$BRANCH'). Release tags only ship from main." >&2
     exit 1
 fi
@@ -57,6 +63,46 @@ fi
 if ! gh auth status >/dev/null 2>&1; then
     echo "error: gh CLI not authenticated (gh auth login)" >&2
     exit 1
+fi
+
+if (( SNAPSHOT )); then
+    SHA_SHORT=$(git rev-parse --short HEAD)
+    echo "==> Snapshotting MockTab ($SHA_SHORT)"
+    tools/release/release.sh --snapshot
+    DMG_PATH="dist/MockTab-snapshot.dmg"
+    [[ -f "$DMG_PATH" ]] || { echo "error: expected $DMG_PATH after tools/release/release.sh" >&2; exit 1; }
+
+    echo "==> Moving the snapshot tag to $SHA_SHORT"
+    git tag -f -a snapshot -m "$(cat dist/MockTab-snapshot.stamp)" HEAD
+    git push origin snapshot --force
+
+    echo "==> Replacing the snapshot pre-release (draft)"
+    BUILT_AT=$(date -u +'%Y-%m-%d %H:%M UTC')
+    if gh release view snapshot &>/dev/null; then
+        gh release delete snapshot --yes
+    fi
+    # update-latest.sh reads the Notes line back; without it, the website
+    # uses CHANGELOG.md's Unreleased line.
+    NOTES_FILE=${SNAPSHOT_NOTES:-}
+    NOTES_LINE=""
+    if [[ -n "$NOTES_FILE" && -s "$NOTES_FILE" ]]; then
+        NOTES_LINE="
+Notes: $(grep -v '^[[:space:]]*$' "$NOTES_FILE" | tr '\n' ' ' | sed -E 's/ +$//')"
+    fi
+    gh release create snapshot "$DMG_PATH" \
+        --title "MockTab snapshot" \
+        --prerelease \
+        --draft \
+        --notes "Rolling pre-release build of next, replaced on each snapshot run — not a numbered version.
+
+Commit: ${SHA_SHORT}
+Built: ${BUILT_AT}${NOTES_LINE}"
+
+    echo "==> Opening draft release"
+    gh release view snapshot --web
+    echo
+    echo "Done. Review the draft on GitHub and click Publish when ready."
+    exit 0
 fi
 
 # ─── 2. Resolve version and tag ───────────────────────────────────────────────

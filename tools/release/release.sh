@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MockTab release pipeline: archive → export → DMG → notarize → staple.
+# MockTab build pipeline: archive → export → DMG → notarize → staple.
 #
 # Prerequisites (one-time):
 #   1. Developer ID Application certificate installed in login keychain.
@@ -10,8 +10,11 @@
 #          --password <app-specific-password>
 #   3. Xcode build setting ENABLE_HARDENED_RUNTIME = YES on the MockTab target.
 #
-# Usage: tools/release/release.sh
+# Usage: tools/release/release.sh [--snapshot]
 #   Reads MARKETING_VERSION from the project; produces dist/MockTab-<ver>.dmg.
+#   --snapshot builds the rolling pre-release from the current commit instead:
+#   dist/MockTab-snapshot.dmg, plus dist/MockTab-snapshot.stamp, the app's UTC
+#   build stamp for the snapshot tag message.
 
 set -euo pipefail
 
@@ -35,34 +38,37 @@ fi
 DIST_DIR="dist"
 BUILD_DIR="$DIST_DIR/build"
 
-VERSION=$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
-    -showBuildSettings 2>/dev/null | awk '/ MARKETING_VERSION = /{print $3; exit}')
-if [[ -z "$VERSION" ]]; then
-    echo "error: could not read MARKETING_VERSION" >&2
-    exit 1
+if [[ "${1:-}" == "--snapshot" ]]; then
+    NAME="snapshot"
+    TITLE="MockTab snapshot ($(git rev-parse --short HEAD))"
+    RELEASE_SETTING=()
+else
+    NAME=$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
+        -showBuildSettings 2>/dev/null | awk '/ MARKETING_VERSION = /{print $3; exit}')
+    if [[ -z "$NAME" ]]; then
+        echo "error: could not read MARKETING_VERSION" >&2
+        exit 1
+    fi
+    TITLE="MockTab $NAME"
+    RELEASE_SETTING=(MOCKTAB_RELEASE=YES)
 fi
 
-ARCHIVE="$BUILD_DIR/MockTab-$VERSION.xcarchive"
-EXPORT_PATH="$BUILD_DIR/export-$VERSION"
-DMG_PATH="$DIST_DIR/MockTab-$VERSION.dmg"
+ARCHIVE="$BUILD_DIR/MockTab-$NAME.xcarchive"
+EXPORT_PATH="$BUILD_DIR/export-$NAME"
+DMG_PATH="$DIST_DIR/MockTab-$NAME.dmg"
+STAMP_PATH="$DIST_DIR/MockTab-snapshot.stamp"
 
-rm -rf "$BUILD_DIR" "$DMG_PATH"
+rm -rf "$BUILD_DIR" "$DMG_PATH" "$STAMP_PATH"
 mkdir -p "$BUILD_DIR"
 
-echo "==> Archiving $SCHEME $VERSION"
-if command -v xcbeautify >/dev/null 2>&1; then
-    xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
-        -archivePath "$ARCHIVE" \
-        -destination "generic/platform=macOS" \
-        MOCKTAB_RELEASE=YES \
-        archive | xcbeautify
-else
-    xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
-        -archivePath "$ARCHIVE" \
-        -destination "generic/platform=macOS" \
-        MOCKTAB_RELEASE=YES \
-        archive
-fi
+echo "==> Archiving $TITLE"
+BEAUTIFY=cat
+command -v xcbeautify >/dev/null 2>&1 && BEAUTIFY=xcbeautify
+xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
+    -archivePath "$ARCHIVE" \
+    -destination "generic/platform=macOS" \
+    ${RELEASE_SETTING[@]+"${RELEASE_SETTING[@]}"} \
+    archive | $BEAUTIFY
 
 echo "==> Exporting signed .app"
 xcodebuild -exportArchive \
@@ -79,12 +85,17 @@ fi
 tools/release/size-watch.sh "$APP_PATH"
 tools/release/arch-check.sh "$APP_PATH"
 
+# The update page matches a snapshot on this stamp.
+if [[ "$NAME" == "snapshot" ]]; then
+    /usr/libexec/PlistBuddy -c "Print :MockTabBuildStamp" "$APP_PATH/Contents/Info.plist" >"$STAMP_PATH"
+fi
+
 echo "==> Notarizing .app"
 # Notarize and staple the .app *before* packaging it. A ticket stapled to
 # the .app travels with it when users drag it out of the DMG, so first-launch
 # Gatekeeper checks succeed even offline. Stapling only the DMG would leave
 # the extracted .app dependent on an online check against Apple's CDN.
-APP_ZIP="$BUILD_DIR/MockTab-$VERSION.zip"
+APP_ZIP="$BUILD_DIR/MockTab-$NAME.zip"
 ditto -c -k --keepParent "$APP_PATH" "$APP_ZIP"
 xcrun notarytool submit "$APP_ZIP" \
     "${NOTARY_AUTH[@]}" \
@@ -96,7 +107,7 @@ echo "==> Building DMG"
 source tools/release/dmgbuild.sh
 "$DMGBUILD" -s tools/release/dmg_settings.py -D app="$APP_PATH" \
     -D background=tools/release/dmg_background.png \
-    "MockTab $VERSION" "$DMG_PATH"
+    "$TITLE" "$DMG_PATH"
 
 echo "==> Notarizing DMG"
 xcrun notarytool submit "$DMG_PATH" \
@@ -107,4 +118,3 @@ xcrun stapler validate "$DMG_PATH"
 
 echo
 echo "Done: $DMG_PATH"
-echo "Next: gh release create v$VERSION \"$DMG_PATH\" --notes-file notes.md"
