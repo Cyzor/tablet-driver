@@ -361,6 +361,10 @@ enum BackupFilePanel {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = ConfigurationExporter.suggestedFileBaseName
         panel.allowedContentTypes = [.json]
+        // Button assignments can hold file paths and links with tokens.
+        panel.message = String(
+            localized: "Saves everything, including serial numbers, app names, and button assignments.",
+            comment: "Save panel message for exporting a backup; it is complete, so sharing it shares these")
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             do { try data.write(to: url) } catch { NSAlert(error: error).runModal() }

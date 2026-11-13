@@ -318,6 +318,29 @@
         }
       }
     },
+    "Saves everything, including serial numbers, app names, and button assignments." : {
+      "comment" : "Save panel message for exporting a backup; it is complete, so sharing it shares these",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speichert alles, auch Seriennummern, App-Namen und Tastenbelegungen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda todo, incluidos números de serie, nombres de apps y asignaciones de botones."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "シリアル番号、App名、ボタン割り当てを含め、すべてを保存します。"
+          }
+        }
+      }
+    },
     "Verifying MockTab %@…" : {
       "comment" : "Updates section title while a download is verified",
       "localizations" : {
