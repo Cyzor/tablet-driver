@@ -81,6 +81,15 @@ final class UpdateController: ObservableObject {
     private static let installFailedKey = "_updateInstallFailed"
     private static let feed = "https://mocktab.org/latest.json"
 
+    /// The offer the menu bar icon points out, given the phase about to be
+    /// shown: from when it's found until it's installed or skipped.
+    func badgeOffer(for phase: Phase) -> Offer? {
+        switch phase {
+        case .available(let offer), .downloading(let offer, _), .verifying(let offer), .ready(let offer): offer
+        default: nil
+        }
+    }
+
     private var helper: Process?
     private var installOnQuit = false
     private var timer: Timer?

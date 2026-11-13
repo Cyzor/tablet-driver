@@ -249,6 +249,75 @@
         }
       }
     },
+    "MockTab %@ Is Available" : {
+      "comment" : "Status menu item: an update was found; opens the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ ist verfügbar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ está disponible"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ が利用可能です"
+          }
+        }
+      }
+    },
+    "MockTab %@ Is Ready" : {
+      "comment" : "Status menu item: a downloaded update waits to install; opens the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ ist bereit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ está listo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ の準備ができました"
+          }
+        }
+      }
+    },
+    "MockTab, update available" : {
+      "comment" : "VoiceOver label for the menu bar icon when an update is waiting",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab, Update verfügbar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab, actualización disponible"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab、アップデートあり"
+          }
+        }
+      }
+    },
     "Verifying MockTab %@…" : {
       "comment" : "Updates section title while a download is verified",
       "localizations" : {

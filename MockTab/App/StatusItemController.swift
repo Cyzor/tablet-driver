@@ -29,7 +29,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem.menu = menu
         updateIcon(pct: nil, charging: false)
         observeBattery()
+        UpdateController.shared.$phase
+            .sink { [weak self] phase in
+                self?.updateOffer = UpdateController.shared.badgeOffer(for: phase)
+                self?.refreshIcon()
+            }
+            .store(in: &contextCancellables)
     }
+
+    private var batteryLow: Int?
+    private var updateOffer: UpdateController.Offer?
 
     // MARK: - Icon
 
@@ -50,13 +59,24 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateIcon(pct: Int?, charging: Bool) {
+        batteryLow = pct.flatMap { $0 < 20 && !charging ? $0 : nil }
+        refreshIcon()
+    }
+
+    /// A low battery outranks an update.
+    private func refreshIcon() {
         guard let button = statusItem.button else { return }
-        if let pct, pct < 20, !charging {
-            button.image = NSImage(systemSymbolName: BatteryIndicator.symbolName(pct: pct, charging: false),
-                                    accessibilityDescription: nil)
+        if let batteryLow {
+            button.image = NSImage(systemSymbolName: BatteryIndicator.symbolName(pct: batteryLow, charging: false),
+                                   accessibilityDescription: nil)
         } else {
-            let image = NSImage(named: "MenuBarIcon")
+            let update = updateOffer != nil
+            let image = NSImage(named: update ? "MenuBarIconUpdate" : "MenuBarIcon")
             image?.isTemplate = true
+            if update {
+                image?.accessibilityDescription = String(localized: "MockTab, update available",
+                                                         comment: "VoiceOver label for the menu bar icon when an update is waiting")
+            }
             button.image = image
         }
     }
@@ -89,6 +109,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         let pwc = SettingsWindowManager.shared
         let settings = pwc.settings
+
+        if let offer = updateOffer {
+            let ready = UpdateController.shared.phase == .ready(offer)
+            addItem(to: menu,
+                    title: ready
+                        ? String(localized: "MockTab \(offer.display) Is Ready", comment: "Status menu item: a downloaded update waits to install; opens the Info tab")
+                        : String(localized: "MockTab \(offer.display) Is Available", comment: "Status menu item: an update was found; opens the Info tab"),
+                    action: #selector(showUpdate))
+            menu.addItem(.separator())
+        }
 
         addItem(to: menu, title: String(localized: "Tablet Area", comment: "Menu item: open Tablet Area tab"),
                 action: #selector(showTabletArea))
@@ -186,6 +216,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     // MARK: - Actions
+
+    @objc private func showUpdate() {
+        SettingsWindowManager.shared.show()
+        SettingsWindowManager.shared.showTab(.info)
+    }
 
     @objc private func showTabletArea() {
         SettingsWindowManager.shared.showTab(.tabletArea)
