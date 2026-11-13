@@ -192,7 +192,11 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
                 tag: tag, report: pointer, length: report.count, decoded: events, productID: spec.productID)
         }
         if events.isEmpty {
-            CaptureActivityProbe.noteUndecoded()
+            // Neither a report the decoder knows and ignores nor a stretch of
+            // silence (no report at all) is unreadable.
+            if report.count > 0, spec.format.reads(reportID: report.pointer[0]) != true {
+                CaptureActivityProbe.noteUndecoded()
+            }
         } else {
             CaptureActivityProbe.note(events)
             keyDisplayClock?.noteInput()
