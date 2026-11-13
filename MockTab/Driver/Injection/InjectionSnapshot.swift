@@ -93,9 +93,6 @@ struct InjectionSnapshot: Sendable, Equatable {
     /// `TouchStateTracker.process` as its `tapStabilizationPt:` argument. 0
     /// disables.
     var touchTapStabilizationPt: Double
-    /// From `TabletSettings.touchAbsoluteMode`. Passed to
-    /// `TouchStateTracker.process` as its `absoluteTouch:` argument.
-    var touchAbsoluteMode: Bool
     var tapToClick: Bool
     var twoFingerRightClick: Bool
     var threeFingerDrag: Bool
@@ -126,9 +123,6 @@ struct InjectionSnapshot: Sendable, Equatable {
         var penButton3Binding: ButtonBinding
         var penButton4Binding: ButtonBinding
         var penButton5Binding: ButtonBinding
-        var useRotationAsTilt: Bool
-        var rotationTiltOffsetDegrees: Double
-        var rotationTiltMagnitude: Double
     }
 
     /// Look up the calibration entry for a specific orientation and display UUID.
@@ -207,7 +201,6 @@ extension TabletSettings {
             touchSensitivity: touchSensitivity,
             touchOnsetDelay: touchOnsetDelayMs / 1000.0,
             touchTapStabilizationPt: touchTapStabilizationPt,
-            touchAbsoluteMode: Self.touchAbsoluteMode,
             tapToClick: tapToClick,
             twoFingerRightClick: twoFingerRightClick,
             threeFingerDrag: threeFingerDrag,
@@ -241,9 +234,6 @@ extension ToolSettings {
             penButton2Binding: penButton2Binding,
             penButton3Binding: penButton3Binding,
             penButton4Binding: penButton4Binding,
-            penButton5Binding: penButton5Binding,
-            useRotationAsTilt: useRotationAsTilt,
-            rotationTiltOffsetDegrees: rotationTiltOffsetDegrees,
-            rotationTiltMagnitude: rotationTiltMagnitude)
+            penButton5Binding: penButton5Binding)
     }
 }

@@ -115,16 +115,6 @@ final class ToolSettings: ObservableObject {
         didSet { persist("panScrollReverse", panScrollReverse) }
     }
 
-    /// Sends barrel rotation as synthetic tilt, suppressing real tilt. Obsolete
-    /// since Art Pens advertise rotation (Photoshop now reads it directly); kept
-    /// as a no-UI fallback, read from bare keys only so stale per-device values
-    /// from the old toggle stay inert:
-    /// `defaults write com.cyzor.mocktab useRotationAsTilt -bool true`.
-    private(set) var useRotationAsTilt = false
-    /// Degrees added to rotation before mapping (`rotationTiltOffsetDegrees`).
-    private(set) var rotationTiltOffsetDegrees = 0.0
-    /// Synthetic tilt vector length, 0.1–1.0 (`rotationTiltMagnitude`).
-    private(set) var rotationTiltMagnitude = 0.8
 
     @Published private var tipRaw: String = "" {
         didSet {
@@ -300,10 +290,6 @@ final class ToolSettings: ObservableObject {
         panScrollSpeed = loadDouble("panScrollSpeed", default: 1.0)
         panScrollMomentum = loadBool("panScrollMomentum", default: false)
         panScrollReverse = loadBool("panScrollReverse", default: false)
-        useRotationAsTilt = ud.bool(forKey: "useRotationAsTilt")
-        rotationTiltOffsetDegrees = ud.object(forKey: "rotationTiltOffsetDegrees") as? Double ?? 0.0
-        rotationTiltMagnitude = Swift.min(
-            1.0, Swift.max(0.1, ud.object(forKey: "rotationTiltMagnitude") as? Double ?? 0.8))
         tipRaw = loadString("tipBinding", default: "")
         eraserRaw = loadString("eraserBinding", default: "")
         pen1Raw = loadString("penButton1Binding", default: "")

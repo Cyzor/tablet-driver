@@ -782,8 +782,7 @@ struct TouchStateTracker {
     /// from relative (trackpad-style delta, the default, gated by
     /// `sensitivity`/the speed-gain curve) to absolute (the finger's own
     /// position on the touch surface warps the cursor 1:1, mirroring what
-    /// the tablet's active area does for the pen) — hidden `defaults`-only
-    /// knob, no UI; see `TabletSettings.touchAbsoluteMode`.
+    /// the tablet's active area does for the pen). Pen displays use it.
     mutating func process(
         contacts: [(id: Int, screen: CGPoint)],
         tapToClick: Bool,

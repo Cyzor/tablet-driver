@@ -136,7 +136,7 @@ extension InputInjector {
                     twoFingerRightClick: false,
                     threeFingerDrag: false,
                     rotate: snap.rotateEnabled,
-                    absoluteTouch: snap.touchAbsoluteMode || cachedTouchIsDirect,
+                    absoluteTouch: cachedTouchIsDirect,
                     onsetDelay: snap.touchOnsetDelay,
                     tapStabilizationPt: snap.touchTapStabilizationPt,
                     now: now)
@@ -366,7 +366,7 @@ extension InputInjector {
             rotate: snap.rotateEnabled,
             rawPositions: rawTouchPositionsMM,
             touchDiagonal: hypot(cachedTouchWidthMM, cachedTouchHeightMM),
-            absoluteTouch: snap.touchAbsoluteMode || cachedTouchIsDirect,
+            absoluteTouch: cachedTouchIsDirect,
             onsetDelay: snap.touchOnsetDelay,
             tapStabilizationPt: snap.touchTapStabilizationPt,
             now: now)
@@ -828,7 +828,7 @@ extension InputInjector {
     /// Absolute touch follows the pen's mapping; relative touch roams the
     /// whole desktop, like a trackpad.
     private func pinTouchPoint(_ p: CGPoint, snapshot: InjectionSnapshot) -> CGPoint {
-        snapshot.touchAbsoluteMode || cachedTouchIsDirect
+        cachedTouchIsDirect
             ? displayMapper.pinNearEdges(p, snapshot: snapshot)
             : displayMapper.pinNearDesktopEdges(p)
     }

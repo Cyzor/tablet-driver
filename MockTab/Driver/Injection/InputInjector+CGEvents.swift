@@ -451,43 +451,17 @@ extension InputInjector {
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 
-    /// Pen pose for stamping. The hidden `useRotationAsTilt` key sends rotation
-    /// as tilt: an obsolete Photoshop workaround.
+    /// Pen pose for stamping, turned to the tablet's orientation.
     func resolveEffectivePose(
         point: TabletPoint,
         snapshot: InjectionSnapshot
     ) -> (tiltX: Double, tiltY: Double, rotation: Double) {
-        let tool = snapshot.activeTool
-
         let turned = DisplayMapper.orientTilt(
             x: point.tiltX, y: point.tiltY, orientation: snapshot.tabletOrientation)
-        var tiltX = turned.x
         // One blanket flip, checked at the app with Rebelle's flat brush.
         // Decoders disagree on native sign, so correcting each first would
         // mean two guesses instead of one.
-        var tiltY = -turned.y
-        let rotation = point.rotation
-
-        if tool.useRotationAsTilt && point.rotation != 0.0 {
-            var degrees = point.rotation
-
-            if snapshot.invertRotation {
-                degrees = (360.0 - degrees).truncatingRemainder(dividingBy: 360.0)
-            }
-
-            degrees += tool.rotationTiltOffsetDegrees
-            // Rotation gives 0–360° but Photoshop's tilt range is only 0–180°.
-            // Double the rotation so a full barrel sweep covers the full tilt span.
-            let radians = degrees * 2.0 * .pi / 180.0
-            let magnitude = tool.rotationTiltMagnitude
-
-            // Overwrites the negation above deliberately: this synthetic vector
-            // is already tuned against Photoshop, so it needs no correction.
-            tiltX = magnitude * cos(radians)
-            tiltY = magnitude * sin(radians)
-        }
-
-        return (tiltX, tiltY, rotation)
+        return (turned.x, -turned.y, point.rotation)
     }
 
     /// Raw digitizer coordinates, which drawing apps read from every pen event.
