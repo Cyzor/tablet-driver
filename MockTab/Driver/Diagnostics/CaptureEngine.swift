@@ -919,19 +919,7 @@ final class CaptureEngine: ObservableObject {
         // candidate that resolved to the wrong (or no) device produces a
         // block of pure zeros/nils that would read as "signal is fine"
         // rather than "we have no data."
-        let captureBluetoothLink = bluetoothLink.flatMap { summary -> CaptureBluetoothLink? in
-            guard summary.sampleCount > 0 else { return nil }
-            return CaptureBluetoothLink(
-                sampleCount: summary.sampleCount,
-                disconnectedSampleCount: summary.disconnectedSampleCount,
-                addressLikelyWrong: summary.addressLikelyWrong,
-                rssiMin: summary.rssiMin,
-                rssiMax: summary.rssiMax,
-                rssiAvg: summary.rssiAvg,
-                rawRSSIMin: summary.rawRSSIMin,
-                rawRSSIMax: summary.rawRSSIMax,
-                rawRSSIAvg: summary.rawRSSIAvg)
-        }
+        let captureBluetoothLink = bluetoothLink.flatMap { $0.sampleCount > 0 ? $0 : nil }
 
         var result = CaptureResult(
             appVersion: Bundle.main.versionLabel,

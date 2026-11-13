@@ -25,17 +25,8 @@ import TabletKit
 /// tablet. A session where they disagree even once is flagged
 /// `addressLikelyWrong` in the summary instead of silently trusted.
 final class BluetoothLinkMonitor {
-    struct Summary {
-        let sampleCount: Int
-        let disconnectedSampleCount: Int
-        let addressLikelyWrong: Bool
-        let rssiMin: Int?
-        let rssiMax: Int?
-        let rssiAvg: Double?
-        let rawRSSIMin: Int?
-        let rawRSSIMax: Int?
-        let rawRSSIAvg: Double?
-    }
+    /// The capture file's block, filled in directly.
+    typealias Summary = CaptureBluetoothLink
 
     /// Sentinel both `rssi()` and `rawRSSI()` return for "value unavailable"
     /// (disconnected, or the module doesn't support raw RSSI) — not a real
