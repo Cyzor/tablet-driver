@@ -226,6 +226,52 @@
         }
       }
     },
+    "Downloading MockTab %@…" : {
+      "comment" : "Updates section title while an update downloads",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ wird geladen …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargando MockTab %@…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ をダウンロード中…"
+          }
+        }
+      }
+    },
+    "Verifying MockTab %@…" : {
+      "comment" : "Updates section title while a download is verified",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ wird überprüft …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificando MockTab %@…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ を検証中…"
+          }
+        }
+      }
+    },
     "—" : {
       "localizations" : {
         "de" : {
@@ -4238,29 +4284,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "アップデートを確認中…"
-          }
-        }
-      }
-    },
-    "Checking MockTab %@…" : {
-      "comment" : "Updates section title while a download is verified",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ wird geprüft …"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comprobando MockTab %@…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ を検証中…"
           }
         }
       }
@@ -9339,29 +9362,6 @@
         }
       }
     },
-    "Getting MockTab %@…" : {
-      "comment" : "Updates section title while an update downloads",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ wird geladen …"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Descargando MockTab %@…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ をダウンロード中…"
-          }
-        }
-      }
-    },
     "Global" : {
       "comment" : "App override bar chip — settings apply to all apps not specifically overridden",
       "localizations" : {
@@ -12028,29 +12028,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "画面エリアをタブレットと同じ形にし、できるだけ大きくします。タブレットの面積を無駄にしません。"
-          }
-        }
-      }
-    },
-    "Making sure it's genuine." : {
-      "comment" : "Updates section subtitle while a download is verified",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Echtheit wird geprüft."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comprobando que sea auténtica."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正規のものか確認しています。"
           }
         }
       }

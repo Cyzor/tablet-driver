@@ -250,15 +250,14 @@ struct InfoUpdatesSection: View {
                                     : String(localized: "You have \(version).", comment: "Updates section subtitle under an available update"))
         case .downloading(let offer, let percent):
             return UpdateStatus(symbol: "arrow.down.circle", tint: .accentColor,
-                                title: String(localized: "Getting MockTab \(offer.display)…", comment: "Updates section title while an update downloads"),
+                                title: String(localized: "Downloading MockTab \(offer.display)…", comment: "Updates section title while an update downloads"),
                                 progress: Double(percent) / 100,
                                 action: UpdateAction(label: String(localized: "Cancel", comment: "Button in the Updates section: stop the download"),
                                                      isCancel: true,
                                                      run: { updates.cancel() }))
         case .verifying(let offer):
             return UpdateStatus(busy: true,
-                                title: String(localized: "Checking MockTab \(offer.display)…", comment: "Updates section title while a download is verified"),
-                                subtitle: String(localized: "Making sure it's genuine.", comment: "Updates section subtitle while a download is verified"))
+                                title: String(localized: "Verifying MockTab \(offer.display)…", comment: "Updates section title while a download is verified"))
         case .ready(let offer):
             return UpdateStatus(symbol: "arrow.down.circle.fill", tint: .accentColor,
                                 title: String(localized: "MockTab \(offer.display) is ready", comment: "Updates section title when an update waits for quit"),
