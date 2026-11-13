@@ -138,7 +138,7 @@ CI runs all three.
 
 | To do this | Open this |
 |---|---|
-| Add a Wacom model in a known format | `WacomDeviceRegistry.swift` and [`Extending-Support.md`](TabletKit/Extending-Support.md) |
+| Add a Wacom model in a known format | `WacomDeviceRegistry+Devices.swift` and [`Extending-Support.md`](TabletKit/Extending-Support.md) |
 | Add a pen | `ToolCatalog.swift` |
 | Add another maker's tablet | `VendorDeviceRegistry.swift` |
 | Add a new report format | A decoder in `Decoders/`, plus a `ReportFormat` case and its line in `makeDecoder()` |
