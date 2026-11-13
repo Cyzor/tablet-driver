@@ -76,6 +76,10 @@ func parseLabel(_ label: String) -> Label? {
     return Label(version: version, stamp: parseISO(ns.substring(with: m.range(at: 2))))
 }
 
+func isVersion(_ s: String) -> Bool {
+    s.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil
+}
+
 func compareVersions(_ a: String, _ b: String) -> Int {
     let pa = a.split(separator: ".").map { Int($0) ?? 0 }
     let pb = b.split(separator: ".").map { Int($0) ?? 0 }
@@ -238,6 +242,8 @@ func check() {
           let snapDateS = snap["date"] as? String, let snapDate = parseISO(snapDateS),
           let snapURL = snap["url"] as? String
     else { fail(.feed, "feed malformed") }
+    // compareVersions reads three parts.
+    guard isVersion(relVersion) else { fail(.feed, "feed malformed") }
     guard trusted(relURL, allowLocal: local) != nil, trusted(snapURL, allowLocal: local) != nil
     else { fail(.feed, "feed points outside the project's releases") }
 
@@ -306,7 +312,7 @@ func bestBridge(_ value: Any?, running: Label, schema: Int, local: Bool) -> [Str
     var best: (version: String, offer: [String: Any])?
     for entry in value as? [[String: Any]] ?? [] {
         guard let version = entry["version"] as? String,
-              version.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil,
+              isVersion(version),
               let date = (entry["date"] as? String).flatMap(parseISO),
               let url = entry["url"] as? String, trusted(url, allowLocal: local) != nil,
               (entry["minimumUpdater"] as? Int ?? 0) <= updaterVersion,
