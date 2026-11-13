@@ -65,11 +65,7 @@ extension TabletSettings {
         invertRotation = loadBool("invertRotation", default: false)
         penDeadBand = Swift.max(-1, Swift.min(loadInt("penDeadBand", default: -1), 40))
         relativeCursorMovement = loadBool("relativeCursorMovement", default: false)
-        // Migrate the old on/off toggle: users who had it enabled keep the
-        // previous hardcoded 80 ms delay until they touch the new slider.
-        let legacyTipUpAssistOn = loadBool("tipUpAssist", default: false)
-        tipUpAssistDelay = loadDouble(
-            "tipUpAssistDelay", default: legacyTipUpAssistOn ? 80.0 : 0.0)
+        tipUpAssistDelay = loadDouble("tipUpAssistDelay", default: 0.0)
         dragThreshold = loadDouble("dragThreshold", default: TouchdownGuard.defaultRadius)
         requireContact = RequireContactActions(rawValue: loadInt("requireContact", default: 0))
         pressureSmoothingStrength = loadDouble("pressureSmoothingStrength", default: 0.0)

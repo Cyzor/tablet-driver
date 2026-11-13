@@ -23,22 +23,16 @@ struct CalibrationKey: Codable, Hashable, Equatable {
         self.displayUUID = displayUUID
     }
 
-    // MARK: Codable — reads both new (displayUUID) and legacy (displayID) JSON.
+    // MARK: Codable
 
     private enum CodingKeys: String, CodingKey {
-        case orientation, displayUUID, displayID
+        case orientation, displayUUID
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         orientation = try c.decode(Int.self, forKey: .orientation)
-        if let uuid = try c.decodeIfPresent(String.self, forKey: .displayUUID), !uuid.isEmpty {
-            displayUUID = uuid
-        } else if let legacyID = try c.decodeIfPresent(UInt32.self, forKey: .displayID) {
-            displayUUID = CalibrationKey.uuidString(for: legacyID)
-        } else {
-            displayUUID = ""
-        }
+        displayUUID = try c.decodeIfPresent(String.self, forKey: .displayUUID) ?? ""
     }
 
     func encode(to encoder: Encoder) throws {
