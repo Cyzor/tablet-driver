@@ -351,3 +351,32 @@ final class ConfigurationExporter {
         (v * 10000).rounded() / 10000
     }
 }
+
+/// The save and open panels for backup files, shared by the Profiles pane
+/// and the app menu.
+@MainActor
+enum BackupFilePanel {
+    static func save(_ data: Data) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = ConfigurationExporter.suggestedFileBaseName
+        panel.allowedContentTypes = [.json]
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            try? data.write(to: url)
+        }
+    }
+
+    static func open(_ handler: @escaping @MainActor (Data) -> Void) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.message = String(
+            localized: "Choose a MockTab backup file to import",
+            comment: "File picker message for importing backup")
+        panel.begin { response in
+            guard response == .OK, let url = panel.url,
+                  let data = try? Data(contentsOf: url) else { return }
+            handler(data)
+        }
+    }
+}

@@ -772,19 +772,9 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
 
     @objc private func menuImportConfiguration() {
         SettingsWindowManager.shared.showTab(.profiles)
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.json]
-        panel.allowsMultipleSelection = false
-        panel.message = String(
-            localized: "Choose a MockTab backup file to import",
-            comment: "File picker message for importing backup")
-        panel.begin { response in
-            guard response == .OK, let url = panel.url,
-                  let data = try? Data(contentsOf: url) else { return }
+        BackupFilePanel.open { data in
             NotificationCenter.default.post(
-                name: .mockTabImportData,
-                object: nil,
-                userInfo: ["data": data])
+                name: .mockTabImportData, object: nil, userInfo: ["data": data])
         }
     }
 
@@ -794,13 +784,7 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
             registry: DeviceRegistry.shared,
             tabletManager: TabletManager.shared)
         guard let data = exporter.export() else { return }
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = ConfigurationExporter.suggestedFileBaseName
-        panel.allowedContentTypes = [.json]
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            try? data.write(to: url)
-        }
+        BackupFilePanel.save(data)
     }
 
     @objc private func menuRevealSettingsFile() {

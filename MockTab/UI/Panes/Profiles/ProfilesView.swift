@@ -354,13 +354,7 @@ struct ProfilesView: View {
     private func saveExportToFile() {
         let exporter = ConfigurationExporter(registry: registry, tabletManager: tabletManager)
         guard let data = exporter.export() else { return }
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = ConfigurationExporter.suggestedFileBaseName
-        panel.allowedContentTypes = [.json]
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            try? data.write(to: url)
-        }
+        BackupFilePanel.save(data)
     }
 
     // MARK: - Import
@@ -380,18 +374,7 @@ struct ProfilesView: View {
     }
 
     private func openImportPanel() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.json]
-        panel.allowsMultipleSelection = false
-        panel.message = String(
-            localized: "Choose a MockTab backup file to import",
-            comment: "File picker message for importing backup")
-        panel.begin { response in
-            guard response == .OK, let url = panel.url,
-                let data = try? Data(contentsOf: url)
-            else { return }
-            self.handleImportData(data)
-        }
+        BackupFilePanel.open { handleImportData($0) }
     }
 
     // MARK: - Actions
