@@ -32,6 +32,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         UpdateController.shared.$phase
             .sink { [weak self] phase in
                 self?.updateOffer = UpdateController.shared.badgeOffer(for: phase)
+                DockIcon.updateWaiting = self?.updateOffer != nil
                 self?.refreshIcon()
             }
             .store(in: &contextCancellables)

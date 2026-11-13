@@ -10,6 +10,15 @@ import AppKit
 enum DockIcon {
     static let defaultsKey = "showInDock"
 
+    /// The badge says "!" for a low battery, which outranks "↓" for an
+    /// update. Neither asks for permission.
+    static var batteryLow = false { didSet { refreshBadge() } }
+    static var updateWaiting = false { didSet { refreshBadge() } }
+
+    private static func refreshBadge() {
+        NSApp.dockTile.badgeLabel = batteryLow ? "!" : updateWaiting ? "↓" : nil
+    }
+
     static func show() {
         UserDefaults.standard.set(true, forKey: defaultsKey)
         NSApp.setActivationPolicy(.regular)

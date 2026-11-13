@@ -1598,7 +1598,7 @@ final class TabletManager: ObservableObject {
             guard let pct = $0.batteryPercent else { return false }
             return pct < 20 && !$0.batteryCharging
         }
-        NSApp.dockTile.badgeLabel = anyLow ? "!" : nil
+        DockIcon.batteryLow = anyLow
     }
 }
 
