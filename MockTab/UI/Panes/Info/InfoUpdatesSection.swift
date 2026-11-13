@@ -19,7 +19,6 @@ struct InfoUpdatesSection: View {
     @ObservedObject private var captures = CaptureActivity.shared
     /// Option turns Check Now into Check for Pre-release.
     @State private var updateOptionDown = false
-    @State private var updateOptionMonitor: Any?
 
     var body: some View { updatesSection }
 
@@ -79,19 +78,7 @@ struct InfoUpdatesSection: View {
             }
         }
         .padding(.vertical, 2)
-        .onAppear {
-            updateOptionDown = NSEvent.modifierFlags.contains(.option)
-            guard updateOptionMonitor == nil else { return }
-            updateOptionMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
-                updateOptionDown = event.modifierFlags.contains(.option)
-                return event
-            }
-        }
-        .onDisappear {
-            if let updateOptionMonitor { NSEvent.removeMonitor(updateOptionMonitor) }
-            updateOptionMonitor = nil
-            updateOptionDown = false
-        }
+        .tracksOptionKey($updateOptionDown)
 
         switch updates.phase {
         case .available(let offer):

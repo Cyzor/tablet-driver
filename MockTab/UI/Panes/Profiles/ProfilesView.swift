@@ -455,7 +455,6 @@ private struct ProfileListView: View {
     /// Delete All. The menu doesn't change while open, so the item does what
     /// it shows.
     @State private var optionKeyDown = false
-    @State private var optionKeyMonitor: Any? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -474,28 +473,10 @@ private struct ProfileListView: View {
                 }
             }
         }
-        .onAppear {
-            if #available(macOS 15, *) { return }
-            optionKeyDown = NSEvent.modifierFlags.contains(.option)
-            guard optionKeyMonitor == nil else { return }
-            optionKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
-                optionKeyDown = event.modifierFlags.contains(.option)
-                return event
-            }
-        }
-        .onDisappear {
-            if let optionKeyMonitor { NSEvent.removeMonitor(optionKeyMonitor) }
-            optionKeyMonitor = nil
-            optionKeyDown = false
-        }
-        // An open menu, or another app, swallows Option's release, so look
-        // again once either hands the keyboard back.
-        .onReceive(NotificationCenter.default.publisher(for: NSMenu.didEndTrackingNotification)) { _ in
-            optionKeyDown = NSEvent.modifierFlags.contains(.option)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            optionKeyDown = NSEvent.modifierFlags.contains(.option)
-        }
+        .tracksOptionKey($optionKeyDown, watchKeys: {
+            if #available(macOS 15, *) { return false }
+            return true
+        }())
     }
 
     @ViewBuilder

@@ -143,7 +143,6 @@ struct AppOverrideBar: View {
     /// Remove All. Tracked via a local flagsChanged monitor that lives only
     /// while the banner is on screen.
     @State private var optionKeyDown = false
-    @State private var optionKeyMonitor: Any? = nil
     /// True after the first refresh fires. Prevents refreshRunningApps() from
     /// re-running on every pane switch (i.e., every time this bar re-appears
     /// because its tab became the selected one). Without this guard the @State
@@ -932,19 +931,7 @@ struct AppOverrideBar: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 5)
         .background(Color.accentColor.opacity(0.08))
-        .onAppear {
-            optionKeyDown = NSEvent.modifierFlags.contains(.option)
-            guard optionKeyMonitor == nil else { return }
-            optionKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
-                optionKeyDown = event.modifierFlags.contains(.option)
-                return event
-            }
-        }
-        .onDisappear {
-            if let optionKeyMonitor { NSEvent.removeMonitor(optionKeyMonitor) }
-            optionKeyMonitor = nil
-            optionKeyDown = false
-        }
+        .tracksOptionKey($optionKeyDown)
     }
 }
 
