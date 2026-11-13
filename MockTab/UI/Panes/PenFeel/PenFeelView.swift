@@ -522,7 +522,7 @@ private struct PressureCurveCanvas: View {
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
-            Canvas { ctx, _ in
+            CGCanvas { ctx, _ in
                 drawGrid(ctx: ctx, size: size)
                 drawThreshold(ctx: ctx, size: size)
                 drawCurve(ctx: ctx, size: size)
@@ -637,7 +637,7 @@ private struct PressureCurveCanvas: View {
 
     // MARK: - Drawing helpers
 
-    private func drawGrid(ctx: GraphicsContext, size: CGSize) {
+    private func drawGrid(ctx: CGCanvas.Context, size: CGSize) {
         var path = Path()
         for i in 1..<4 {
             let x = size.width * Double(i) / 4
@@ -668,7 +668,7 @@ private struct PressureCurveCanvas: View {
 
     /// Shades the dead zone — the same idea as Wacom's "click threshold"
     /// triangle marker on its pressure curve UI.
-    private func drawThreshold(ctx: GraphicsContext, size: CGSize) {
+    private func drawThreshold(ctx: CGCanvas.Context, size: CGSize) {
         guard tool.pressureThreshold > 0 else { return }
         let x = effectiveOnset * size.width
         let rect = CGRect(x: 0, y: 0, width: x, height: size.height)
@@ -679,7 +679,7 @@ private struct PressureCurveCanvas: View {
         ctx.stroke(line, with: .color(.secondary.opacity(0.5)), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
     }
 
-    private func drawCurve(ctx: GraphicsContext, size: CGSize) {
+    private func drawCurve(ctx: CGCanvas.Context, size: CGSize) {
         var path = Path()
         let curve = tool.pressureCurve
         // Mirrors ToolSettings.buildLUT: flat at zero through the dead zone,
@@ -698,7 +698,7 @@ private struct PressureCurveCanvas: View {
             path, with: .color(accent), style: StrokeStyle(lineWidth: 2, lineCap: .round))
     }
 
-    private func drawHandles(ctx: GraphicsContext, size: CGSize) {
+    private func drawHandles(ctx: CGCanvas.Context, size: CGSize) {
         let curve = tool.pressureCurve
         let p0 = toCanvas(x: 0, y: 0, size: size)
         let p1 = toCanvas(x: curve.p1.x, y: curve.p1.y, size: size)
