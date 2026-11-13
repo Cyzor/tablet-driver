@@ -26,6 +26,29 @@ struct CGCanvas: View {
     /// The subset of `GraphicsContext` the app's drawings use.
     struct Context {
         let cg: CGContext
+        var environment: Environment
+
+        struct Environment {
+            var colorScheme: ColorScheme
+            var displayScale: CGFloat
+        }
+
+        /// Applies to what's drawn next, as in `GraphicsContext`.
+        var blendMode: GraphicsContext.BlendMode = .normal {
+            didSet { cg.setBlendMode(Self.cgBlendMode(blendMode)) }
+        }
+
+        private static func cgBlendMode(_ mode: GraphicsContext.BlendMode) -> CGBlendMode {
+            switch mode {
+            case .destinationOut: .destinationOut
+            case .sourceAtop: .sourceAtop
+            case .destinationOver: .destinationOver
+            case .multiply: .multiply
+            case .clear: .clear
+            case .copy: .copy
+            default: .normal
+            }
+        }
 
         enum Shading {
             case color(Color)
@@ -37,10 +60,21 @@ struct CGCanvas: View {
             }
         }
 
-        func fill(_ path: Path, with shading: Shading) {
+        func fill(_ path: Path, with shading: Shading, style: FillStyle = FillStyle()) {
             cg.addPath(path.cgPath)
             cg.setFillColor(shading.cgColor)
-            cg.fillPath()
+            cg.fillPath(using: style.isEOFilled ? .evenOdd : .winding)
+        }
+
+        /// Draws into a layer that composites as one, so blend modes inside
+        /// it act on the layer alone.
+        func drawLayer(_ content: (inout Context) -> Void) {
+            cg.saveGState()
+            cg.beginTransparencyLayer(auxiliaryInfo: nil)
+            var layer = Context(cg: cg, environment: environment)
+            content(&layer)
+            cg.endTransparencyLayer()
+            cg.restoreGState()
         }
 
         func stroke(_ path: Path, with shading: Shading, lineWidth: CGFloat = 1) {
@@ -77,9 +111,18 @@ struct CGCanvas: View {
 
         override var isFlipped: Bool { true }
 
+        // A switch between light and dark, or to a screen of another
+        // scale, redraws.
+        override func viewDidChangeEffectiveAppearance() { needsDisplay = true }
+        override func viewDidChangeBackingProperties() { needsDisplay = true }
+
         override func draw(_ dirtyRect: NSRect) {
             guard let cg = NSGraphicsContext.current?.cgContext, let draw else { return }
-            var context = CGCanvas.Context(cg: cg)
+            let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            var context = CGCanvas.Context(
+                cg: cg,
+                environment: .init(colorScheme: dark ? .dark : .light,
+                                   displayScale: window?.backingScaleFactor ?? 2))
             draw(&context, bounds.size)
         }
     }

@@ -80,8 +80,10 @@ struct TouchRingDiagramView: View, Equatable {
     // swiftlint:enable line_length
 
     var body: some View {
+        // Read here so a window's active state redraws the drawing.
+        let _ = controlActiveState
         let _ = BodyCounter.note("TouchRingDiagram")
-        Canvas { context, size in
+        CGCanvas { context, size in
             // Square ring centered in available space, preserving aspect ratio.
             let scale = min(size.width, size.height) / Self.svgSize
             let drawn = Self.svgSize * scale

@@ -142,8 +142,10 @@ private struct PenDiagramCore: View, Equatable {
     }
 
     var body: some View {
+        // Read here so a window's active state redraws the drawing.
+        let _ = controlActiveState
         let _ = BodyCounter.note("PenDiagramCore")
-        Canvas { context, size in
+        CGCanvas { context, size in
             let t = Self.transform(for: size)
             func view(_ path: CGPath) -> Path { Path(path).applying(t) }
 
@@ -355,8 +357,10 @@ private struct MouseDiagramCore: View, Equatable {
     }
 
     var body: some View {
+        // Read here so a window's active state redraws the drawing.
+        let _ = controlActiveState
         let _ = BodyCounter.note("MouseDiagramCore")
-        Canvas { context, size in
+        CGCanvas { context, size in
             let t = Self.transform(for: size)
             // The pen diagram's fills, so the two read as one family.
             let isDark = context.environment.colorScheme == .dark

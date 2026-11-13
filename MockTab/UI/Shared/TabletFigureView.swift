@@ -55,7 +55,7 @@ struct TabletBezelView: View, Equatable {
     }
 
     var body: some View {
-        Canvas { context, size in
+        CGCanvas { context, size in
             let scale = max(context.environment.displayScale, 1)
             let d = figure.drawing(.backdrop, in: Self.bounds(size), scale: scale)
             TabletDiagramInk.draw(d, isPenDisplay: figure.isPenDisplay,
@@ -87,7 +87,9 @@ struct TabletGlyphView: View, Equatable {
     }
 
     var body: some View {
-        Canvas { context, size in
+        // Read here so a window's active state redraws the drawing.
+        let _ = controlActiveState
+        CGCanvas { context, size in
             let d = figure.drawing(.glyph, in: CGRect(origin: .zero, size: size), scale: context.environment.displayScale)
             let u = d.unit
             let radii = TabletFigureInk.Radii(body: 7 * u, opening: 4 * u, panel: 2 * u, key: u)
@@ -106,7 +108,7 @@ struct TabletIconView: View, Equatable {
     let figure: TabletFigure
 
     var body: some View {
-        Canvas { context, size in
+        CGCanvas { context, size in
             let d = figure.drawing(.icon, in: CGRect(origin: .zero, size: size), scale: context.environment.displayScale)
             let radii = TabletFigureInk.Radii(body: 3, opening: 2, panel: 0.5, key: 0)
             TabletFigureInk.draw(d, radii: radii, tint: nil, in: &context)
@@ -127,7 +129,7 @@ enum TabletFigureInk {
         var key: CGFloat
     }
 
-    static func draw(_ d: TabletFigure.Drawing, radii: Radii, tint: Color?, in context: inout GraphicsContext) {
+    static func draw(_ d: TabletFigure.Drawing, radii: Radii, tint: Color?, in context: inout CGCanvas.Context) {
         // The pen diagram's body fill, so the two read as one family.
         let ink = context.environment.colorScheme == .dark ? Color.primary.opacity(0.80) : Color.secondary
         context.drawLayer { layer in
@@ -214,7 +216,7 @@ enum TabletDiagramInk {
 
     static func draw(
         _ d: TabletFigure.Drawing, isPenDisplay: Bool, palette: Palette, lit: UInt64 = 0,
-        pressed: ControlTarget? = nil, scale: CGFloat, in context: inout GraphicsContext
+        pressed: ControlTarget? = nil, scale: CGFloat, in context: inout CGCanvas.Context
     ) {
         let u = unit(d, scale: scale)
         let line = u, gap = u, radius = palette.corner * u

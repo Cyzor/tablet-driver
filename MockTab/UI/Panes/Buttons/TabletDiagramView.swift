@@ -137,7 +137,7 @@ private struct TabletDiagramCore: View, Equatable {
 
     var body: some View {
         let _ = BodyCounter.note("TabletDiagramCore")
-        Canvas { context, size in
+        CGCanvas { context, size in
             let scale = max(context.environment.displayScale, 1)
             func pixels(_ points: CGFloat) -> CGFloat { max((points * scale).rounded(), 1) / scale }
             let d = figure.drawing(.bezel, in: Self.bounds(size), scale: scale)
