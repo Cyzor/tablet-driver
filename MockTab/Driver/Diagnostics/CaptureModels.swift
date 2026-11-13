@@ -121,15 +121,9 @@ struct CaptureResult: Codable {
     let mode: String  // always "discovery", which triage reads
     let duration: TimeInterval
     let deviceInfo: CaptureDeviceRecord
-    /// The **primary** interface's reports — the pen interface on a tablet
-    /// that has one (`captureVersion` 14+ selects it by descriptor contents,
-    /// so this holds even when the pen interface attached second or hid
-    /// behind a non-digitizer primary usage; see the version note above).
-    /// Duplicated from `interfaces[0]` rather than replaced by it so a reader
-    /// that predates `captureVersion` 7 (`TabletKit/tools/triage_discovery.py`
-    /// as shipped, and every capture file already submitted against it) still
-    /// finds the block it looks for, in the shape it expects. A few KB of
-    /// duplication buys that.
+    /// The primary interface's reports: the pen interface when there is one
+    /// (`captureVersion` 14+ picks it by descriptor contents). Triage reads
+    /// this block, so it repeats `interfaces[0]` when there are several.
     let reports: [String: CaptureReportSummary]
     /// Likewise the primary interface's descriptor.
     var hidReportDescriptor: LiveHIDDescriptorInspector.Parsed?
