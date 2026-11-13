@@ -240,11 +240,12 @@ struct ProfilesView: View {
                             .help("Restore settings from a previously saved JSON backup")
                     }
 
-                    if let err = importError {
-                        Text(err)
-                            .appFont(.settingsBadge)
-                            .foregroundStyle(.red)
-                    }
+                    // Space held even when empty, so an error doesn't move the
+                    // buttons.
+                    Text(importError ?? " ")
+                        .appFont(.settingsBadge)
+                        .foregroundStyle(.red)
+                        .accessibilityHidden(importError == nil)
                 }
             }
         }
