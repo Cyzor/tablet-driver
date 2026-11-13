@@ -5,8 +5,8 @@
 #
 # Feed and redirect cases use a fresh ad-hoc build of main.swift and need
 # nothing else. Staging cases need a notarized MockTab disk image; the ones
-# past the signature step need a build with the signed helper inside
-# (bundle-helper.sh). --live adds the cases that reach GitHub.
+# past the signature step need a build with the signed helper inside.
+# --live adds the cases that reach GitHub.
 #
 # The install case moves a stand-in app to the Trash.
 set -u
@@ -61,21 +61,21 @@ import json, sys
 T = sys.argv[1]
 P = "https://github.com/Cyzor/tablet-driver/releases/download/"
 H = "a" * 64
-def feed(name, drop=None, **over):
+def feed(name, omit=None, **over):
     f = {"schema": 1,
          "release": {"version": "0.6.1", "date": "2026-11-06T12:00Z", "url": P + "v0.6.1/MockTab-0.6.1.dmg", "sha256": H, "notes": ["r"]},
          "snapshot": {"date": "2026-11-11T10:00Z", "url": P + "snapshot/MockTab-snapshot.dmg", "sha256": H, "notes": ["s"]}}
     for k, v in over.items():
         if isinstance(v, dict) and k in f: f[k].update(v)
         else: f[k] = v
-    if drop: del f[drop[0]][drop[1]]
+    if omit: del f[omit[0]][omit[1]]
     json.dump(f, open(f"{T}/{name}.json", "w"))
 def bridge(v, d, **k):
     return dict({"version": v, "date": d, "url": P + f"v{v}/MockTab-{v}.dmg", "sha256": H, "notes": ["bridge " + v]}, **k)
 feed("base")
 feed("oldsnap", snapshot={"date": "2026-11-05T10:00Z"})
 feed("schema2", schema=2)
-feed("schema2nohash", schema=2, drop=("snapshot", "sha256"))
+feed("schema2nohash", schema=2, omit=("snapshot", "sha256"))
 feed("sys99", release={"minimumSystemVersion": "99.0"})
 feed("sys13", release={"minimumSystemVersion": "13.0"})
 feed("sysbad", release={"minimumSystemVersion": "fourteen"})
@@ -190,7 +190,7 @@ else
     stage() { # helper, dmg, running, expected, name
         expect "$5" "$4" "$($1 stage --running $3 --local-ok --dest $T/stage --url file://$2 | summary)"
     }
-    # Trust rule 8 comes before the signature checks, so the ad-hoc build shows it.
+    # The system check comes before the signature checks, so the ad-hoc build shows it.
     stage $H $T/sys99.dmg 0.0.1 "failed rejected it needs macOS 99.0 or later" "app that needs macOS 99.0"
     stage $H $T/intel.dmg 0.0.1 "failed rejected it isn't built for this Mac's processor" "app without this Mac's architecture"
     expect "nothing left in staging after a rejection" "gone" "$([[ -e $T/stage ]] && echo there || echo gone)"
@@ -246,7 +246,7 @@ EOF
         expect "partial download removed" "gone" "$([[ -e $T/orphan ]] && echo there || echo gone)"
         pkill -f $T/slow.py
 
-        # A real snapshot over a release of the same version (trust rule 4).
+        # A real snapshot over a release of the same version.
         # The helper reads the release's build stamp from the app around it,
         # so each case re-signs a copy of the signed build with other keys.
         if [[ ! -f $SNAPSHOT ]]; then
