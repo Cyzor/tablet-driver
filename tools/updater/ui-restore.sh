@@ -2,6 +2,9 @@
 # Ends the UI walkthrough and puts everything back.
 set -u
 HERE=${0:A:h}
+# Without a backup from ui-session.sh there is nothing to put back.
+[[ -s $HERE/out/.last-ui-backup && -d $(cat $HERE/out/.last-ui-backup)/ApplicationSupport ]] \
+    || { echo "No backup from ui-session.sh; nothing changed."; exit 1; }
 TEST=$HOME/Applications/MockTab-Update-Test
 for app in $(pgrep -lf "MockTab-Update-Test/MockTab.app/Contents/MacOS/MockTab" | awk '{print $1}'); do kill -TERM $app; done
 osascript -e "tell application \"$TEST/MockTab.app\" to quit" 2>/dev/null
