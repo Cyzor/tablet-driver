@@ -7,6 +7,9 @@ import SwiftUI
 /// Drawing in an AppKit view's `draw(_:)` needs none. Gestures and
 /// accessibility attach to a clear SwiftUI layer on top, as they would to a
 /// `Canvas`.
+///
+/// It redraws when the enclosing body runs again. State read only inside
+/// the drawing closure isn't tracked, so read it in the body too.
 struct CGCanvas: View {
     let draw: (inout Context, CGSize) -> Void
 

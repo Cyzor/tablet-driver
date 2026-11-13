@@ -517,11 +517,17 @@ private struct PressureCurveCanvas: View {
     @State private var draggingP1 = false
     @State private var draggingP2 = false
     @State private var pressureCurveSnapshot: BezierCurve = .linear
+    /// The curve while a handle is dragged; saved to the tool on release, so
+    /// other windows and the stored settings update once.
+    @State private var dragCurve: BezierCurve?
+    private var shownCurve: BezierCurve { dragCurve ?? tool.pressureCurve }
     @FocusState private var isFocused: Bool
 
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
+            // Read here so a drag redraws; the drawing closure alone isn't tracked.
+            let _ = shownCurve
             CGCanvas { ctx, _ in
                 drawGrid(ctx: ctx, size: size)
                 drawThreshold(ctx: ctx, size: size)
@@ -539,13 +545,15 @@ private struct PressureCurveCanvas: View {
                     }
                     .onEnded { _ in
                         // Register one undo entry for the entire drag
-                        if draggingP1 || draggingP2 {
+                        if draggingP1 || draggingP2, let dragCurve {
+                            tool.pressureCurve = dragCurve
                             tool.recordToggle(String(localized: "Pressure Curve"), from: self.pressureCurveSnapshot, to: tool.pressureCurve) {
                                 tool.pressureCurve = $0
                             }
                         }
                         draggingP1 = false
                         draggingP2 = false
+                        dragCurve = nil
                     }
             )
             .accessibilityRepresentation { accessibilityControls }
@@ -681,7 +689,7 @@ private struct PressureCurveCanvas: View {
 
     private func drawCurve(ctx: CGCanvas.Context, size: CGSize) {
         var path = Path()
-        let curve = tool.pressureCurve
+        let curve = shownCurve
         // Mirrors ToolSettings.buildLUT: flat at zero through the dead zone,
         // then the curve over the rescaled remainder. Drawing the bare Bézier
         // from the origin would show the tip responding inside a region where
@@ -699,7 +707,7 @@ private struct PressureCurveCanvas: View {
     }
 
     private func drawHandles(ctx: CGCanvas.Context, size: CGSize) {
-        let curve = tool.pressureCurve
+        let curve = shownCurve
         let p0 = toCanvas(x: 0, y: 0, size: size)
         let p1 = toCanvas(x: curve.p1.x, y: curve.p1.y, size: size)
         let p2 = toCanvas(x: curve.p2.x, y: curve.p2.y, size: size)
@@ -728,11 +736,11 @@ private struct PressureCurveCanvas: View {
         let pt = fromCanvas(drag.location, size: size)
 
         let p1Canvas = toCanvas(
-            x: tool.pressureCurve.p1.x,
-            y: tool.pressureCurve.p1.y, size: size)
+            x: shownCurve.p1.x,
+            y: shownCurve.p1.y, size: size)
         let p2Canvas = toCanvas(
-            x: tool.pressureCurve.p2.x,
-            y: tool.pressureCurve.p2.y, size: size)
+            x: shownCurve.p2.x,
+            y: shownCurve.p2.y, size: size)
 
         let hitRadius: Double = 16
         if !draggingP1 && !draggingP2 {
@@ -746,11 +754,15 @@ private struct PressureCurveCanvas: View {
         }
 
         let clamp01: (Double) -> Double = { Swift.min(Swift.max($0, 0), 1) }
+        var curve = shownCurve
         if draggingP1 {
-            tool.pressureCurve.p1 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
+            curve.p1 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
         } else if draggingP2 {
-            tool.pressureCurve.p2 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
+            curve.p2 = CGPoint(x: clamp01(pt.x), y: clamp01(pt.y))
+        } else {
+            return
         }
+        dragCurve = curve
     }
 
     // MARK: - Coordinate utilities
