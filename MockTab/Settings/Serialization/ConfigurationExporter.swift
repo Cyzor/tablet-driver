@@ -353,7 +353,8 @@ final class ConfigurationExporter {
 }
 
 /// The save and open panels for backup files, shared by the Profiles pane
-/// and the app menu.
+/// and the app menu. A file that can't be written or read gets the system's
+/// own explanation.
 @MainActor
 enum BackupFilePanel {
     static func save(_ data: Data) {
@@ -362,7 +363,7 @@ enum BackupFilePanel {
         panel.allowedContentTypes = [.json]
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            try? data.write(to: url)
+            do { try data.write(to: url) } catch { NSAlert(error: error).runModal() }
         }
     }
 
@@ -374,9 +375,8 @@ enum BackupFilePanel {
             localized: "Choose a MockTab backup file to import",
             comment: "File picker message for importing backup")
         panel.begin { response in
-            guard response == .OK, let url = panel.url,
-                  let data = try? Data(contentsOf: url) else { return }
-            handler(data)
+            guard response == .OK, let url = panel.url else { return }
+            do { handler(try Data(contentsOf: url)) } catch { NSAlert(error: error).runModal() }
         }
     }
 }
