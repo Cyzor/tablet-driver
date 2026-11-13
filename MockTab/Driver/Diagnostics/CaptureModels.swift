@@ -111,7 +111,9 @@ struct CaptureResult: Codable {
     ///   `appEnvironment.otherWacomApps`.
     /// - 31: `appSettings.penDeadBand`.
     /// - 32: `appEnvironment.macOSVersion` and `architecture`.
-    var captureVersion: Int = 32
+    /// - 33: the primary entry in `interfaces` leaves out `reports` and
+    ///   `hidReportDescriptor`; the top level holds them.
+    var captureVersion: Int = 33
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -330,8 +332,11 @@ func captureFindings(for result: CaptureResult) -> [CaptureFinding] {
                     .compactMap { $0 }
                     .joined(separator: "/")
                 switchedLabels[label] = iface.usagePage.map { switchedPages.contains($0) } ?? false
+                let primary = iface.isPrimary
                 return (
-                    iface.hidReportDescriptor, iface.reports, label.isEmpty ? nil : label,
+                    iface.hidReportDescriptor ?? (primary ? result.hidReportDescriptor : nil),
+                    iface.reports ?? (primary ? result.reports : [:]),
+                    label.isEmpty ? nil : label,
                     iface.productID ?? pid)
             }
         } ?? [(result.hidReportDescriptor, result.reports, nil, pid)]
@@ -1162,14 +1167,16 @@ struct CaptureInterface: Codable {
     /// can't say whether a silent interface is the display's or a dongle's.
     var productID: String?
     var deviceName: String?
-    /// True for the interface whose data is also duplicated at the top level
-    /// of `CaptureResult`. Exactly one interface has this.
+    /// True for the interface whose reports and descriptor sit at the top
+    /// level of `CaptureResult`. Exactly one interface has this.
     let isPrimary: Bool
     /// Reports recorded on this interface alone.
     let sampleCount: Int
-    let reports: [String: CaptureReportSummary]
+    /// Nil on the primary entry from `captureVersion` 33; read the top level.
+    var reports: [String: CaptureReportSummary]?
     /// This interface's own descriptor — the one every `descriptorReadable`
-    /// flag in `reports` above was judged against.
+    /// flag in `reports` above was judged against. Nil on the primary entry
+    /// from `captureVersion` 33.
     var hidReportDescriptor: LiveHIDDescriptorInspector.Parsed?
 }
 

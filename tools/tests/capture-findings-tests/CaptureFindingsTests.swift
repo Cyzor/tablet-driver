@@ -174,6 +174,28 @@ let deskFindings = captureFindings(for: desk).filter { $0.kind == "declaredRepor
 check(deskFindings.count == 1, "only the silent interface is reported")
 check(deskFindings.first?.productID == "0x0331", "a finding names the device it came from")
 
+// From captureVersion 33 the primary entry leaves its data to the top level.
+var lean = makeResult(declaredInput: ["0x01", "0x11"], observed: ["0x11"], toolCodes: ["0x0802"])
+lean.interfaces = [
+    CaptureInterface(
+        usagePage: "0x000D", usage: "0x0002", productID: "0x032B", deviceName: nil,
+        isPrimary: true, sampleCount: 1, reports: nil, hidReportDescriptor: nil),
+    CaptureInterface(
+        usagePage: "0xFF0C", usage: "0x0000", productID: "0x032B", deviceName: nil,
+        isPrimary: false, sampleCount: 1, reports: [:], hidReportDescriptor: nil),
+]
+let leanFindings = captureFindings(for: lean).filter { $0.kind == "declaredReportsNeverObserved" }
+check(leanFindings.count == 1, "a primary entry without data reads the top level")
+check(leanFindings.first?.detail.contains("0x01") == true, "the top level's missing report is found")
+if let data = try? JSONEncoder().encode(lean),
+   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+   let first = (json["interfaces"] as? [[String: Any]])?.first {
+    check(first["reports"] == nil && first["hidReportDescriptor"] == nil,
+          "the primary entry writes no reports or descriptor")
+} else {
+    check(false, "the lean capture encodes")
+}
+
 // A device that sent everything it declared has nothing to say.
 let complete = makeResult(
     declaredInput: ["0x01", "0x10"], observed: ["0x01", "0x10"], toolCodes: ["0x0802"])

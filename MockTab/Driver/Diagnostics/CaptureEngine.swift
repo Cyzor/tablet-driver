@@ -871,6 +871,13 @@ final class CaptureEngine: ObservableObject {
             interfaces.insert(interfaces.remove(at: idx), at: 0)
         }
 
+        // The primary's data goes only in the top-level block.
+        var listedInterfaces = interfaces
+        if listedInterfaces.first?.isPrimary == true {
+            listedInterfaces[0].reports = nil
+            listedInterfaces[0].hidReportDescriptor = nil
+        }
+
         // Identity still comes from the interface the driver reads pen reports
         // from: every interface reports the same VID/PID, but that one is the
         // one whose name the registry lookup was built around.
@@ -940,9 +947,9 @@ final class CaptureEngine: ObservableObject {
                 transport: deviceInfo.transport,
                 locationID: deviceInfo.locationID
             ),
-            reports: interfaces[0].reports,
+            reports: interfaces[0].reports ?? [:],
             hidReportDescriptor: interfaces[0].hidReportDescriptor,
-            interfaces: interfaces.count > 1 ? interfaces : nil,
+            interfaces: interfaces.count > 1 ? listedInterfaces : nil,
             // Automatic writes first, then this session's manual ones: they
             // happened earlier (at open) and are what explains a device in
             // reduced mode, so they shouldn't sit below a manual retry.
