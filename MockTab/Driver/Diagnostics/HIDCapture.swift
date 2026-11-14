@@ -72,6 +72,17 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         var signature: Signature
         /// App-side event text in place of a report, from `recordNote`.
         var note: String? = nil
+        /// What a report no decoder reads means, such as the touch switch.
+        var label: String? = nil
+    }
+
+    /// The Intuos Pro (2017) status report: byte 2, bit 7 is the touch
+    /// switch, set when touch is on. Confirmed on the PTH-860 over USB.
+    static func statusLabel(reportID: UInt8, bytes: [UInt8], productID: Int?) -> String? {
+        guard reportID == 0x13, bytes.count == 9, let productID,
+            WacomDeviceRegistry.spec(for: productID)?.format == .intuosV2
+        else { return nil }
+        return bytes[2] & 0x80 != 0 ? "touch switch on" : "touch switch off"
     }
 
     /// The fields that decide "same steady state" vs. "transition worth
@@ -352,6 +363,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
 
         let decodedSummary = decoded.flatMap(Self.summarize)
         let signature = Self.signature(for: decoded)
+        let label = Self.statusLabel(reportID: id0, bytes: bytes, productID: productID)
         // Byte 2 is the tip/barrel/eraser/in-range flags byte on every Wacom
         // vendor pen report family seen so far — cheap enough to grab
         // unconditionally, even when there's no decoder.
@@ -363,7 +375,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             $0.samples.append(
                 Sample(
                     elapsed: elapsed, tag: tagText, reportID: id0, length: length, hex: hex,
-                    decoded: decoded, signature: signature))
+                    decoded: decoded, signature: signature, label: label))
             $0.reportCount += 1
             $0.lastSample = LiveSample(
                 reportID: id0, lastByte2: byte2, inProximity: signature.inProximity)
@@ -529,6 +541,9 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         var maxLength = 0
         var firstHex: String = ""
         var firstDecoded: [TabletEvent]?
+        /// The same in every sample: a status report's bytes can't change
+        /// inside a run.
+        var label: String?
         var lastHex: String = ""
         var xRange: ClosedRange<Int>?
         var yRange: ClosedRange<Int>?
@@ -620,7 +635,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             count += 1
             minLength = min(minLength, sample.length)
             maxLength = max(maxLength, sample.length)
-            if count == 1 { firstHex = sample.hex; firstDecoded = sample.decoded }
+            if count == 1 { firstHex = sample.hex; firstDecoded = sample.decoded; label = sample.label }
             lastHex = sample.hex
             guard let decoded = sample.decoded else { return }
             if decoded.isEmpty { noteVariedBytes(sample.hex) }
@@ -697,7 +712,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             let padded = Self.pad(tag)
             if count == 1 {
                 return "[\(ts)] \(padded) ID=\(hexDigitID) len=\(String(format: "%-4d", minLength))  \(firstHex)"
-                    + (firstDecoded.flatMap(HIDCapture.summarize).map { "  → \($0)" } ?? "")
+                    + ((firstDecoded.flatMap(HIDCapture.summarize) ?? label).map { "  → \($0)" } ?? "")
             }
             let lenRange = minLength == maxLength ? "\(minLength)" : "\(minLength)-\(maxLength)"
             var fields: [String] = []
@@ -730,6 +745,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
             }
             fields += padPaths.keys.sorted().map { "\($0):\(padPaths[$0]!.rendered)" }
             fields += otherKinds.sorted().map { "\($0) unchanged" }
+            if let label { fields.append(label) }
             // Undecoded samples never join a run (see `Signature.isUndecoded`),
             // so an empty field list here means decoded with nothing to range.
             let varied = variedBytes.sorted().map(String.init).joined(separator: ", ")
@@ -785,7 +801,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
         let padded = RunAccumulator.pad(sample.tag)
         if let note = sample.note { return "[\(ts)] \(padded) \(note)" }
         let idHex = String(format: "%02X", sample.reportID)
-        let decodedSummary = sample.decoded.flatMap(summarize)
+        let decodedSummary = sample.decoded.flatMap(summarize) ?? sample.label
         return "[\(ts)] \(padded) ID=\(idHex) len=\(String(format: "%-4d", sample.length))  \(sample.hex)"
             + (decodedSummary.map { "  → \($0)" } ?? "")
     }
@@ -858,8 +874,12 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                         $0.hex != sample.hex && sample.elapsed - $0.elapsed >= Self.statusReportGap
                     } == true
 
+                // A touch stream starts with no fingers down, so its first
+                // report with one is a landing.
+                let firstLanding =
+                    lastSignature[key] == nil && sample.signature.touchContactIDs?.isEmpty == false
                 let isTransition =
-                    sample.signature.hasOneShotEvent || statusChanged
+                    sample.signature.hasOneShotEvent || statusChanged || firstLanding
                     || sample.signature != (lastSignature[key] ?? sample.signature)
                 lastSignature[key] = sample.signature
 

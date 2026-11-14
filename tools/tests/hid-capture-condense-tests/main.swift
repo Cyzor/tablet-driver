@@ -588,6 +588,9 @@ do {
         lines.contains { !$0.contains("steady-state") && $0.contains("touch contacts=0") },
         "the lift must stay verbatim: \(lines)")
     expect(
+        lines.first.map { !$0.contains("steady-state") && $0.contains("touch contacts=1 #1(500,300)") } == true,
+        "a finger already down when the stream starts is a landing: \(lines)")
+    expect(
         lines.contains { $0.contains("steady-state") && $0.contains("#1 x:500-500 y:300-300 #2 x:110-190 y:200-200") },
         "a run must show each contact's range: \(lines)")
 }
@@ -612,6 +615,41 @@ do {
     expect(
         fastLines.count == 1 && fastLines[0].contains("bytes 2 varied"),
         "a fast stream must fold and name its varied bytes: \(fastLines)")
+}
+
+do {
+    // The Intuos Pro (2017) status report names its touch switch.
+    let pth860 = 0x0358
+    expect(
+        HIDCapture.statusLabel(reportID: 0x13, bytes: [0x13, 0x64, 0x8E, 0, 0, 0, 0, 0, 0], productID: pth860)
+            == "touch switch on", "bit 7 of byte 2 set means touch on")
+    expect(
+        HIDCapture.statusLabel(reportID: 0x13, bytes: [0x13, 0x64, 0x0E, 0, 0, 0, 0, 0, 0], productID: pth860)
+            == "touch switch off", "bit 7 of byte 2 clear means touch off")
+    expect(
+        HIDCapture.statusLabel(reportID: 0x13, bytes: [0x13, 0x64, 0x8E, 0, 0, 0, 0, 0, 0], productID: 0x00B9) == nil,
+        "another family's 0x13 gets no label")
+    expect(
+        HIDCapture.statusLabel(reportID: 0x13, bytes: [0x13, 0x64, 0x8E], productID: pth860) == nil,
+        "a short report gets no label")
+
+    let status = { (elapsed: TimeInterval, hex: String, label: String) in
+        HIDCapture.Sample(
+            elapsed: elapsed, tag: "Test Device", reportID: 0x13, length: 9,
+            hex: hex, decoded: [], signature: HIDCapture.signature(for: []), label: label)
+    }
+    let samples = (0..<8).map {
+        $0 < 4
+            ? status(Double($0), "13 64 8E 00 00 00 00 00 00", "touch switch on")
+            : status(Double($0), "13 64 0E 00 00 00 00 00 00", "touch switch off")
+    }
+    let lines = condenseAll(samples)
+    expect(
+        lines.contains { $0.contains("steady-state") && $0.hasSuffix("touch switch on") },
+        "a run of status reports names the switch: \(lines)")
+    expect(
+        lines.contains { !$0.contains("steady-state") && $0.hasSuffix("13 64 0E 00 00 00 00 00 00  → touch switch off") },
+        "the flip names the switch: \(lines)")
 }
 
 if failures > 0 {
