@@ -1,4 +1,8 @@
 #!/bin/zsh
+# MockTab — native macOS driver for supported drawing tablets
+# SPDX-FileCopyrightText: 2026 MockTab contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 # Runs the helper's fixtures and prints pass or fail for each.
 #
 #   run-fixtures.sh [--live] [--signed <MockTab.app>] [--dmg <notarized dmg>] [--snapshot <notarized snapshot dmg>]

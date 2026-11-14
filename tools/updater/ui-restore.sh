@@ -1,4 +1,8 @@
 #!/bin/zsh
+# MockTab — native macOS driver for supported drawing tablets
+# SPDX-FileCopyrightText: 2026 MockTab contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 # Ends the UI walkthrough and puts everything back.
 set -u
 HERE=${0:A:h}

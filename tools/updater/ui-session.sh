@@ -1,4 +1,8 @@
 #!/bin/zsh
+# MockTab — native macOS driver for supported drawing tablets
+# SPDX-FileCopyrightText: 2026 MockTab contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 # Starts a UI walkthrough of the update row. Quit the Xcode Debug build first.
 set -eu
 HERE=${0:A:h}

@@ -1,3 +1,7 @@
+// MockTab — native macOS driver for supported drawing tablets
+// SPDX-FileCopyrightText: 2026 MockTab contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // MockTab's bundled updater. MockTab runs it from Contents/Helpers.
 //
 // Every command prints one JSON object per line on stdout. The last line is

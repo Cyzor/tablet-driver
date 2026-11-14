@@ -1,4 +1,8 @@
 #!/bin/zsh
+# MockTab — native macOS driver for supported drawing tablets
+# SPDX-FileCopyrightText: 2026 MockTab contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
 # Writes a simulated update feed and points MockTab at it.
 #
 #   make-feed.sh good       <dmg> [version]   real DMG, correct hash
