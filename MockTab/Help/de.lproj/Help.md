@@ -6,7 +6,7 @@ Ein Grafiktablett ist ein Eingabegerät mit Stift, das absolute Position, Druck,
 
 ## MockTab
 
-MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Grafiktabletts aus den Wacom-Familien Intuos, Cintiq, Bamboo und Intuos Pro sowie Xencelabs-Stifttabletts und Pen-Displays. Der Fokus liegt auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt.
+MockTab ist ein macOS-Treiber für Wacom- und Xencelabs-Grafiktabletts. Unterstützt werden USB- und Bluetooth-Grafiktabletts aus den Wacom-Familien Intuos, Intuos Pro, Cintiq, Bamboo und Graphire sowie einige Xencelabs-Modelle. Der Fokus liegt auf Hardware, die Wacoms eigener Treiber auf aktuellen macOS-Versionen nicht mehr unterstützt.
 
 ## MockTab entfernen
 
@@ -21,7 +21,7 @@ Beende MockTab und lege es in den Papierkorb. Um auch die Einstellungen zu entfe
 
 Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bildschirm abgebildet wird. Stifteingaben außerhalb dieses Rechtecks haben keine Wirkung.
 
-**Größe ändern** – Ziehe den Bereich oder seine Griffe; nahe der Form des Bildschirmbereichs rastet er ein (**⌘** verhindert das, **Shift** behält seine Form bei). Für eine genaue Größe klicke auf Breite oder Höhe darunter.
+**Größe ändern** – Ziehe den Bereich oder seine Griffe; nahe der Form des Bildschirmbereichs rastet er ein (**⌘** verhindert das, **⇧** behält seine Form bei). Für eine genaue Größe klicke auf Breite oder Höhe darunter.
 
 **Proportionale Projektion** – Hält das Verhältnis zwischen Grafiktablett und Bildschirm proportional, sodass der Cursor horizontal und vertikal gleich weit zurücklegt. Deaktiviere diese Option, wenn du das Mapping absichtlich strecken oder stauchen willst.
 
@@ -151,7 +151,7 @@ Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzli
 
 ## Gesten
 
-**Scrollen mit zwei Fingern** – Mit zwei Fingern in eine Richtung streichen. Apps behandeln dies in der Regel wie Scrollen mit einem Trackpad.
+**Zwei-Finger-Scrollen** – Mit zwei Fingern in eine Richtung streichen. Apps behandeln dies in der Regel wie Scrollen mit einem Trackpad.
 
 **Zum Zoomen zusammenziehen** – Zwei Finger spreizen oder zusammenziehen, um zu zoomen.
 
@@ -181,7 +181,7 @@ Die Anzeigezuordnung legt fest, welcher Bildschirm dem Grafiktablett zugeordnet 
 
 **Einzelnes Display** – Klicke im Diagramm auf ein Display, um den aktiven Bereich genau darauf abzubilden.
 
-**Display umschalten** – Weise die Aktion Display umschalten einer Express-Taste oder Barrel-Taste zu, um zwischen angeschlossenen Displays zu wechseln, ohne die Einstellungen zu öffnen.
+**Display umschalten** – Wechselt das Display per Taste. Mit ⌘-Klick auf Displays im Diagramm legst du fest, welche es durchläuft.
 
 **Auf Displays verteilen** – Drück eine Taste mit dieser Aktion, um den Stift auf die unter „Aktive Displays“ ausgewählten Displays zu verteilen, und drück sie erneut, um zur gewohnten Einstellung zurückzukehren. Ist keins ausgewählt, gilt es für alle Displays.
 
@@ -223,9 +223,9 @@ Klicke auf **Profil erstellen**, um die aktuellen Einstellungen als neues Profil
 
 Profile speichern ihre eigenen app-spezifischen Overrides. Wenn du das Profil wechselst, wechseln auch die Overrides, die zum aktiven Profil gehören.
 
-## Importieren / Exportieren
+## Sichern und Importieren
 
-Ziehe eine Profilkarte in den Finder, um sie als JSON-Datei zu exportieren. Ziehe eine JSON-Datei auf die Profilliste, um sie zu importieren. Exportierte Dateien eignen sich als Backup und zum Teilen von Profilen zwischen Rechnern.
+Ziehe die JSON-Kachel in den Finder, um alle Einstellungen zu sichern, auch Seriennummern und App-Namen. Ziehe eine Datei auf die Kachel, um sie zu importieren, und wähle die Grafiktabletts aus, die übernommen werden. Das Menü „Profile“ bietet dasselbe.
 
 [scratchpad]
 
@@ -248,6 +248,20 @@ Diese Ansicht hilft bei der Diagnose unerwarteten Verhaltens, zum Beispiel um zu
 ## Gerätedaten erfassen
 
 **Gerätedaten erfassen** zeichnet auf, was das Grafiktablett bei der Benutzung sendet. Das Ergebnis ist eine einzelne ZIP-Datei, die sich an eine GitHub-Anfrage anhängen oder per E-Mail senden lässt, um die Unterstützung für ein Gerät hinzuzufügen oder zu verbessern.
+
+## Updates
+
+**Jetzt suchen** fragt bei mocktab.org nach einer neueren Version, **Automatisch suchen** fragt wöchentlich. Sonst geht nichts online.
+
+Ein Kennzeichen am Menüleisten- und Dock-Symbol zeigt ein verfügbares Update an. **Beim Beenden installieren** installiert es, wenn MockTab beendet wird, **Installieren und neu starten** sofort.
+
+## Dock und Anmeldung
+
+**Dock-Symbol** – Blendet MockTab im Dock aus. Das Menüleistensymbol bleibt.
+
+**Bei Anmeldung starten** – Öffnet MockTab, wenn du dich anmeldest.
+
+**Erlauben…** öffnet die Systemeinstellungen für eine fehlende Berechtigung.
 
 [website]
 

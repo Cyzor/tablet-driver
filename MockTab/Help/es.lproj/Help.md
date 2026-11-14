@@ -6,7 +6,7 @@ Una tableta gráfica es un dispositivo de entrada con lápiz que informa la posi
 
 ## MockTab
 
-MockTab es un controlador para macOS de tabletas gráficas Wacom y Xencelabs. Es compatible con tabletas USB y Bluetooth de las familias Wacom Intuos, Cintiq, Bamboo e Intuos Pro, además de tabletas con lápiz y pen displays de Xencelabs. Se centra en hardware que el controlador oficial de Wacom ya no admite en las versiones modernas de macOS.
+MockTab es un controlador para macOS de tabletas gráficas Wacom y Xencelabs. Es compatible con tabletas USB y Bluetooth de las familias Wacom Intuos, Intuos Pro, Cintiq, Bamboo y Graphire, además de algunos modelos de Xencelabs. Se centra en hardware que el controlador oficial de Wacom ya no admite en las versiones modernas de macOS.
 
 ## Desinstalar MockTab
 
@@ -21,7 +21,7 @@ Sal de MockTab y muévelo a la Papelera. Para borrar también sus ajustes, abre 
 
 El área activa es la parte de la superficie de la tableta que se asigna a la pantalla. La entrada del lápiz fuera de este rectángulo no tiene efecto.
 
-**Redimensionar** – Arrastra el área o sus tiradores; cerca de la forma del área de pantalla se ajusta a ella (**⌘** lo evita, **Shift** conserva su forma). Haz clic en la anchura o la altura de abajo para escribir un tamaño exacto.
+**Redimensionar** – Arrastra el área o sus tiradores; cerca de la forma del área de pantalla se ajusta a ella (**⌘** lo evita, **⇧** conserva su forma). Haz clic en la anchura o la altura de abajo para escribir un tamaño exacto.
 
 **Asignación proporcional** – Mantiene proporcional la relación entre la tableta y la pantalla para que el cursor recorra distancias iguales en horizontal y vertical. Desactívalo si quieres estirar o comprimir el mapeo a propósito.
 
@@ -181,7 +181,7 @@ El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 
 **Una sola pantalla** – Haz clic en una pantalla del diagrama para asignar el área activa solo a esa pantalla.
 
-**Cambiar pantalla** – Asigna la acción Cambiar pantalla a una tecla express o a un botón lateral para recorrer las pantallas conectadas sin abrir los ajustes.
+**Cambiar pantalla** – Cambia de pantalla con un botón. Haz ⌘-clic en las pantallas del diagrama para elegir cuáles recorre.
 
 **Distribuir en pantallas** – Pulsa un botón con esta acción para distribuir el lápiz en las pantallas seleccionadas en Pantallas activas, y vuelve a pulsarlo para volver a tu ajuste habitual. Si no hay ninguna seleccionada, abarca todas las pantallas.
 
@@ -223,9 +223,9 @@ Haz clic en **Crear perfil** para guardar la configuración actual como un perfi
 
 Cada perfil guarda sus propios overrides por aplicación. Al cambiar de perfil, también cambian los overrides asociados al perfil activo.
 
-## Importar / exportar
+## Copia de seguridad e importación
 
-Arrastra una tarjeta de perfil al Finder para exportarla como archivo JSON. Arrastra un archivo JSON a la lista de perfiles para importarlo. Los archivos exportados sirven como copia de seguridad y también como forma de compartir perfiles entre equipos.
+Arrastra el recuadro JSON al Finder para guardar todos los ajustes, incluidos números de serie y nombres de apps. Arrastra un archivo al recuadro para importarlo y elige qué tabletas incorporar. El menú Perfiles hace lo mismo.
 
 [scratchpad]
 
@@ -248,6 +248,20 @@ Esta vista ayuda a diagnosticar comportamientos inesperados, por ejemplo para co
 ## Recopilar datos del dispositivo
 
 **Recopilar datos del dispositivo** graba lo que la tableta envía mientras la usas. El resultado es un único archivo ZIP que puedes adjuntar a una solicitud en GitHub o enviar por correo electrónico para añadir o mejorar la compatibilidad con un dispositivo.
+
+## Actualizaciones
+
+**Buscar ahora** pregunta a mocktab.org si hay una versión más reciente, y **Buscar automáticamente** lo hace cada semana. Nada más se conecta a internet.
+
+Una marca en los iconos de la barra de menús y del Dock indica que hay una actualización. **Instalar al salir** la instala cuando sales de MockTab, e **Instalar y reiniciar** la instala ahora.
+
+## Dock e inicio de sesión
+
+**Icono del Dock** – Oculta MockTab del Dock. El icono de la barra de menús se mantiene.
+
+**Iniciar al acceder** – Abre MockTab al iniciar sesión.
+
+**Conceder…** abre Ajustes del Sistema para un permiso que falta.
 
 [website]
 

@@ -6,11 +6,11 @@ A drawing tablet is an input device with a stylus that reports absolute position
 
 ## MockTab
 
-MockTab is a macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Cintiq, Bamboo, and Intuos Pro families, as well as Xencelabs pen tablets and pen displays. It focuses on hardware that Wacom's own driver no longer supports on modern macOS releases.
+MockTab is a macOS driver for Wacom and Xencelabs drawing tablets. It targets USB and Bluetooth tablets from the Wacom Intuos, Intuos Pro, Cintiq, Bamboo, and Graphire families, as well as some Xencelabs models. It focuses on hardware that Wacom's own driver no longer supports on modern macOS releases.
 
 ## Removing MockTab
 
-Quit MockTab and move it to the Trash. To remove its settings as well, open each item below in Finder with **Go to Folder** (⇧⌘G) and move it to the Trash:
+Quit MockTab and move it to the Trash. To remove its settings as well, open each item below in the Finder with **Go to Folder** (⇧⌘G) and move it to the Trash:
 
 - `~/Library/Preferences/com.cyzor.mocktab.plist` – settings  
 - `~/Library/Application Support/com.cyzor.mocktab` – earlier settings, saved each time a different version starts  
@@ -21,7 +21,7 @@ Quit MockTab and move it to the Trash. To remove its settings as well, open each
 
 The active area is the portion of the tablet surface that maps to the screen. Pen input outside this rectangle has no effect.
 
-**Resizing** – Drag the area or its handles; it snaps to the screen area's shape when close (hold **⌘** to skip, **Shift** to keep its shape). Click the width or height below to type an exact size.
+**Resizing** – Drag the area or its handles; it snaps to the screen area's shape when close (hold **⌘** to skip, **⇧** to keep its shape). Click the width or height below to type an exact size.
 
 **Proportional mapping** – Keeps the tablet-to-screen ratio proportional so the cursor travels equal distances horizontally and vertically. Disable this option to deliberately stretch or compress the mapping.
 
@@ -151,13 +151,13 @@ Tablets with a capacitive touch surface report finger contacts alongside pen inp
 
 ## Gestures
 
-**Two-finger scroll** – Swipe two fingers in one direction. Apps generally treat these as trackpad scrolling.
+**Two-Finger Scroll** – Swipe two fingers in one direction. Apps generally treat these as trackpad scrolling.
 
-**Pinch to zoom** – Spread or pinch two fingers to zoom.
+**Pinch to Zoom** – Spread or pinch two fingers to zoom.
 
 **Rotate** – Place two fingers well apart on the tablet and swivel them about their center. Scroll, pinch, and rotate read the same two-finger gesture in different ways.
 
-**Reverse direction** – On: content moves opposite to finger motion, like a conventional mouse wheel.
+**Reverse Direction** – On: content moves opposite to finger motion, like a conventional mouse wheel.
 
 **Momentum Scrolling** – Two-finger scroll coasts briefly after you lift your fingers, the same as trackpad inertia.
 
@@ -181,7 +181,7 @@ Display mapping determines which screen the tablet treats as active.
 
 **Single Display** – Click a display in the diagram to map the active area to just that display.
 
-**Toggle Display** – Assign the Toggle Display action to an express key or barrel button to cycle through connected displays without opening settings.
+**Toggle Display** – Switches displays from a button. ⌘-click displays in the diagram to choose which ones it cycles through.
 
 **Span Displays** – Press a button assigned to Span Displays to spread the pen across the displays selected under Active Displays, and press it again to return to your usual setting. With none selected, it spans every display.
 
@@ -223,9 +223,9 @@ Click **Create Profile** to capture the current settings. Double-click a profile
 
 Profiles store their own per-app overrides. Switching profiles also switches to the overrides associated with the active profile.
 
-## Import / Export
+## Backup and Import
 
-Drag a profile card to Finder to export it as a JSON file. Drag a JSON file onto the profile list to import it. Exported files work as backups and as a way to share profiles between machines.
+Drag the JSON tile to the Finder to save all settings, including serial numbers and app names. Drag a file onto the tile to import it and choose which tablets to bring in. The Profiles menu does the same.
 
 [scratchpad]
 
@@ -248,6 +248,20 @@ This view helps diagnose unexpected behavior, for example by confirming whether 
 ## Collect Device Data
 
 **Collect Device Data** records what the tablet sends while you use it. The result is a single zip file you can attach to a GitHub request or send by email, to add or improve support for a device.
+
+## Updates
+
+**Check Now** asks mocktab.org for a newer version, and **Check automatically** asks weekly. Nothing else goes online.
+
+A badge on the menu bar and Dock icons means an update is available. **Install on Quit** installs it when MockTab quits, and **Install and Relaunch** installs it now.
+
+## Dock and Login
+
+**Dock Icon** – Hides MockTab from the Dock. The menu bar icon stays.
+
+**Launch at Login** – Opens MockTab when you log in.
+
+**Grant…** opens System Settings for a missing permission.
 
 [website]
 
