@@ -42,11 +42,9 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// Speed multiplier applied to ring/strip delta before scroll/key dispatch.
     /// 1.0 = native one-line-per-detent; 0.25 = slowest; 3.0 = fastest.
     var speed: Double = 1.0
-    /// Custom dial-LED color for this mode slot (Xencelabs Quick Keys only;
-    /// ignored by Wacom hardware, whose LEDs are single-color). nil = the
-    /// factory per-mode palette. Raw sRGB bytes (no LED calibration — modes
-    /// stay tellable apart); the color panel's opacity is kept separately so
-    /// the picked hue round-trips intact.
+    /// Dial LED color for this mode (Xencelabs Quick Keys only; Wacom LEDs
+    /// are single-color). nil uses the factory palette. Raw sRGB bytes,
+    /// uncalibrated so modes stay distinct; brightness is kept in `a`.
     var ledColor: LEDColor?
 
     /// Fields a future app version added that this build doesn't know about.
@@ -103,31 +101,18 @@ struct ControlSlot: Codable, Equatable, Identifiable {
         try UnknownFieldsCodec.encodeUnknown(unknownFields, to: encoder)
     }
 
-    /// Clamps a candidate speed to `action.fixedSpeedCeiling`, if that
-    /// action has one — a no-op for `.scroll`/`.keyPress`/`.off`/`.skip`,
-    /// whose ceiling is UI-configurable (`maxSpeed`) rather than fixed.
-    /// Shared write-side guard used by every "set this slot's speed"
-    /// binding (`ButtonsView+Bindings.swift`'s slot0-3SpeedBinding,
-    /// `QuickKeysSectionView.slotSpeedBinding`), so a stored `speed` can
-    /// never exceed its action's actual range regardless of which binding
-    /// wrote it — see `Action.fixedSpeedCeiling`'s doc comment for the bug
-    /// this (and the matching read-side clamp in `slotSpeedBinding`) fixed.
+    /// Limits `speed` to the action's fixed ceiling, if it has one. Every
+    /// binding that writes a slot's speed goes through this, so a stored
+    /// speed never exceeds its action's range.
     static func clampedSpeed(_ speed: Double, for action: Action) -> Double {
         guard let ceiling = action.fixedSpeedCeiling else { return speed }
         return min(speed, ceiling)
     }
 
-    /// Sets `action`, resetting `speed` to that action's default if it
-    /// defines one (see `Action.defaultSpeedOnSwitch`) and the action is
-    /// actually changing. Also re-derives `label` from the new action —
-    /// there is no rename UI for a slot's label, so it must otherwise
-    /// forever show whatever action created the slot (e.g. a slot
-    /// factory-defaulted to "Scroll" would keep displaying and pushing
-    /// "Scroll" to the puck's OLED even after being reassigned to Zoom).
-    /// The single mutation point for every "change this slot's action"
-    /// call site — direct `slot.action = newValue` bypasses this and
-    /// risks carrying an out-of-range speed across action changes with
-    /// different ranges (e.g. Zoom's 0...8 into Rotate's 0...1), or a
+    /// Changes the action, resetting `speed` to the new action's default if
+    /// it has one, and the label to the action's name, since a slot has no
+    /// rename UI. Use this rather than setting `action` directly, which can
+    /// carry an out-of-range speed (Zoom's 0...8 into Rotate's 0...1) or a
     /// stale label.
     mutating func setAction(_ newAction: Action) {
         guard newAction != action || unrecognizedAction != nil else { return }
@@ -203,13 +188,12 @@ struct ControlSlot: Codable, Equatable, Identifiable {
     /// means reordering these cases doesn't affect persisted data.
     enum Action: String, Codable, CaseIterable {
         case scroll
-        /// Analog pinch-zoom, synthesized the same way a real trackpad pinch
-        /// is (`InputInjector.postTouchMagnify`) — smooth continuous zoom,
-        /// not the stepped ⌥/⌘+wheel fallback `.scroll` uses under a
-        /// modifier.
+        /// Analog pinch-zoom, posted like a trackpad pinch
+        /// (`InputInjector.postTouchMagnify`), not the stepped
+        /// modifier-plus-wheel zoom `.scroll` uses.
         case zoom
-        /// Analog rotate, synthesized like a real trackpad two-finger twist
-        /// (`InputInjector.postTouchRotate`). Same design doc as `.zoom`.
+        /// Analog rotate, posted like a trackpad twist
+        /// (`InputInjector.postTouchRotate`).
         case rotate
         case keyPress
         case off
@@ -265,20 +249,12 @@ struct ControlSlot: Codable, Equatable, Identifiable {
             }
         }
 
-        /// Speed to land on when a slot is freshly switched *to* this
-        /// action, for actions whose speed range isn't the shared
-        /// `.scroll`/`.keyPress` multiplier — without this, switching a
-        /// slot from Zoom (range 0...8) to Rotate (range 0...1) would carry
-        /// over an out-of-range `speed`, silently running rotate far past
-        /// its 1:1 ceiling. `nil` means "keep whatever speed was already
-        /// set" (the `.scroll`/`.keyPress` multiplier has no natural
-        /// ceiling to overflow).
+        /// The speed a slot gets when switched to this action, for actions
+        /// with their own range. Without it, Zoom's speed (0...8) would carry
+        /// into Rotate (0...1). `nil` keeps the current speed.
         ///
-        /// Both values are the *center* notch of their slider — half of
-        /// `fixedSpeedCeiling` — so a freshly switched slot starts at
-        /// "Medium" with the thumb dead center. Keep these two facts
-        /// together: "Medium is the default" and "Medium is centered" are
-        /// both true only while this stays at the midpoint.
+        /// Each value is half of `fixedSpeedCeiling`, so a switched slot
+        /// starts at Medium with the thumb centered. Keep it at the midpoint.
         var defaultSpeedOnSwitch: Double? {
             switch self {
             case .zoom: return 4.0
@@ -287,28 +263,13 @@ struct ControlSlot: Codable, Equatable, Identifiable {
             }
         }
 
-        /// Fixed speed-slider ceiling for actions whose range isn't the
-        /// shared, UI-configurable `maxSpeed` multiplier — `nil` for those
-        /// (`.scroll`/`.keyPress`/`.off`/`.skip`), which take their ceiling
-        /// from the caller instead (see `TouchRingModeList.speedRange(for:)`).
-        /// The single source of truth for both the UI slider's range
-        /// (`TouchRingModeList.speedRange(for:)` defers to this) and every
-        /// binding's stored-value clamp (`QuickKeysSectionView.
-        /// slotSpeedBinding`, `ButtonsView+Bindings.swift`'s slot0-3SpeedBinding),
-        /// so the slider's thumb and its speed label always agree.
+        /// The speed slider's ceiling for actions with a fixed range; `nil`
+        /// for those that use the shared `maxSpeed`. The slider's range and
+        /// every binding's clamp read this, so the thumb and its label agree.
         ///
-        /// `.zoom`: a shared 3x ceiling felt too low;
-        /// `dialGestureZoomScale` (InputInjector+CGEvents.swift) has no
-        /// physical 1:1 anchor to derive a ceiling from, so 8x is an
-        /// empirical choice matching what felt right, with headroom above it.
-        ///
-        /// `.rotate`: `dialGestureRotateScale` is calibrated so 1x already
-        /// means one full physical revolution of the capacitive ring = one
-        /// full 360° canvas rotation — the ceiling is *derived*, not
-        /// chosen, and identical across both ring-slot mechanisms (see that
-        /// constant's doc comment for why the mechanical dial's own,
-        /// different steps-per-revolution is handled by a device-specific
-        /// scale, not by raising this ceiling).
+        /// Zoom has no physical 1:1 to derive from, so 8 is chosen by feel,
+        /// with headroom. Rotate's 1 means one ring revolution turns the
+        /// canvas once, so its ceiling is derived, not chosen.
         var fixedSpeedCeiling: Double? {
             switch self {
             case .zoom: return 8.0
@@ -317,46 +278,18 @@ struct ControlSlot: Codable, Equatable, Identifiable {
             }
         }
 
-        /// Number of intervals on this action's speed slider — one fewer
-        /// than the notch count (4 intervals = 5 notches). `nil` means a
-        /// continuous slider (`.scroll`/`.keyPress`, whose speed is an
-        /// open-ended multiplier read out as a number).
+        /// Intervals on the speed slider (4 intervals = 5 notches); `nil`
+        /// for a continuous slider.
         ///
-        /// Four is not a tidiness choice, it's forced by two constraints:
+        /// Four is forced: Medium must sit at the center, which needs an even
+        /// count, and every notch needs one of five names (Off, Low, Medium,
+        /// High, Max), which the collapsed summary row also shows. Smoothness
+        /// comes from the hardware's per-tick resolution, not the number of
+        /// presets.
         ///
-        /// 1. **Medium must sit at the visual center.** A notch lands on
-        ///    the midpoint only when the interval count is *even*.
-        /// 2. **Every notch must have a name.** These sliders read out a
-        ///    qualitative label (Off/Low/Medium/High/Max) rather than a
-        ///    number, and that vocabulary is exactly five words — the same
-        ///    label also fills the collapsed mode-summary row, so it can
-        ///    never be blank. More notches than labels would force the
-        ///    readout to either repeat itself across adjacent notches
-        ///    (which is the off-center bug this replaced, restated) or go
-        ///    empty while the thumb visibly moves.
-        ///
-        /// Five labels + "even" ⇒ five notches. macOS's own sliders take
-        /// the other branch of this fork — many notches, no moving readout,
-        /// just end-caps ("Slow"…"Fast") — which isn't open to us while the
-        /// summary row needs a word.
-        ///
-        /// This costs nothing in feel: smoothness comes from the hardware's
-        /// per-tick resolution (`dialGestureRotateScale` et al.), not from
-        /// the number of speed presets. The capacitive ring's 72 ticks/rev
-        /// stay 5°/tick at full speed regardless of what's chosen here.
-        ///
-        /// **Deliberately `nil` for `.scroll`/`.keyPress`**, which keep a
-        /// numeric readout. Those sliders still get tick marks (see
-        /// `speedNotchStep`) — the visual treatment is shared; only the
-        /// readout differs. Named levels don't extend to them because their
-        /// number carries meaning a word would destroy: `speed` 1.0 is the
-        /// native one-line-per-detent mapping, so any even-interval scheme
-        /// over `maxSpeed`'s 0...3 either makes 1.0 unreachable (4 intervals
-        /// ⇒ 0.75 steps) or labels it "Low" (6 intervals) — presenting the
-        /// natural 1:1 default as the second-weakest setting. "2×" also
-        /// simply tells a user more than "High" when the quantity is a
-        /// multiplier they can reason about, which is not true of zoom's
-        /// scale factor.
+        /// Scroll and Key keep a numeric readout: 1.0 is the native one line
+        /// per detent, and no even split of 0...3 both reaches 1.0 and avoids
+        /// calling it "Low".
         var speedNotchIntervals: Int? {
             switch self {
             case .zoom, .rotate: return 4
@@ -364,22 +297,9 @@ struct ControlSlot: Codable, Equatable, Identifiable {
             }
         }
 
-        /// Distance between notches on this action's speed slider, for
-        /// `Slider(value:in:step:)`. Rotate lands on clean quarter-turns
-        /// (0.25 ⇒ 0/90/180/270/360° per ring revolution).
-        ///
-        /// `.scroll`/`.keyPress` return a flat 0.25 rather than dividing a
-        /// ceiling: their range is the caller's `maxSpeed`, and 0.25 is the
-        /// step their binding already snapped to invisibly — surfacing it as
-        /// real tick marks makes the existing resolution legible and matches
-        /// `PenFeelView`'s Pan Speed slider, which ships the same
-        /// `0.25...3.0` range and 0.25 step. Every action returning a step
-        /// means one `Slider(…step:)` branch serves them all.
-        ///
-        /// Note these two keep a *numeric* readout while `.zoom`/`.rotate`
-        /// read out named levels — see `speedNotchIntervals` on why the
-        /// named scheme can't extend here (it would land "Low" on 1.0×, the
-        /// native one-line-per-detent mapping).
+        /// Distance between notches, for `Slider(value:in:step:)`. Rotate
+        /// lands on quarter turns. Scroll and Key use 0.25, the step their
+        /// binding already snapped to, matching the Pan Speed slider.
         var speedNotchStep: Double? {
             switch self {
             case .scroll, .keyPress, .off, .skip:
