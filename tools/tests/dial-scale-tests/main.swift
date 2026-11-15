@@ -11,23 +11,11 @@
 
 import Foundation
 
-var failures = 0
-
 private func expect(
     _ actual: Double, _ expected: Double, _ label: String,
     tolerance: Double = 1e-9, line: UInt = #line
 ) {
-    if abs(actual - expected) > tolerance {
-        print("FAIL line \(line): \(label) — expected \(expected), got \(actual)")
-        failures += 1
-    }
-}
-
-private func expectTrue(_ cond: Bool, _ label: String, line: UInt = #line) {
-    if !cond {
-        print("FAIL line \(line): \(label)")
-        failures += 1
-    }
+    expectClose(actual, expected, tolerance, label, line: line)
 }
 
 // MARK: - The values under test
@@ -73,11 +61,11 @@ private func testOneRevolutionIsOneFullTurn() {
 private func testWacomDialNoLongerUsesTheXencelabsScale() {
     let wrong = rotateScaleMechanical(steps: xencelabsDialStepsPerRevolution)
     let right = rotateScaleMechanical(steps: wacomDialStepsPerRevolution)
-    expectTrue(wrong != right, "Wacom and Xencelabs dial scales must differ")
+    expect(wrong != right, "Wacom and Xencelabs dial scales must differ")
 
     let overshoot = wacomDialStepsPerRevolution * wrong
-    expectTrue(overshoot > 2.0 * Double.pi * 1.8,
-               "the old shared scale should overshoot a turn by ~1.85x")
+    expect(overshoot > 2.0 * Double.pi * 1.8,
+           "the old shared scale should overshoot a turn by ~1.85x")
     expect(wacomDialStepsPerRevolution * right, 2.0 * Double.pi,
            "corrected Wacom dial revolution")
 }
@@ -112,8 +100,8 @@ private func testZoomPerRevolutionIsComparableAcrossMechanisms() {
         let dial = zoomPerRevolution(
             steps: steps, scale: zoomScaleMechanical(steps: steps), speed: maxSpeed)
         let ratio = dial / ring
-        expectTrue(ratio > 0.85 && ratio < 1.15,
-                   "\(name) dial zoom/revolution within 15% of the ring "
+        expect(ratio > 0.85 && ratio < 1.15,
+               "\(name) dial zoom/revolution within 15% of the ring "
                        + "(got \(String(format: "%.2f", ratio))x)")
     }
 }
@@ -127,8 +115,8 @@ private func testUncorrectedZoomWouldFallShort() {
         steps: ringStepsPerRevolution, scale: dialGestureZoomScale, speed: maxSpeed)
     let uncorrected = zoomPerRevolution(
         steps: wacomDialStepsPerRevolution, scale: dialGestureZoomScale, speed: maxSpeed)
-    expectTrue(uncorrected < ring * 0.5,
-               "uncorrected zoom should fall well short of the ring")
+    expect(uncorrected < ring * 0.5,
+           "uncorrected zoom should fall well short of the ring")
 }
 
 // MARK: - Run
@@ -139,9 +127,4 @@ testPerStepAngles()
 testZoomPerRevolutionIsComparableAcrossMechanisms()
 testUncorrectedZoomWouldFallShort()
 
-if failures == 0 {
-    print("dial-scale-tests: all checks passed")
-} else {
-    print("dial-scale-tests: \(failures) failure(s)")
-    exit(1)
-}
+finish()

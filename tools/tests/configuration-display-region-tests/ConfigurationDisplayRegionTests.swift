@@ -13,23 +13,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool,
-    _ message: @autoclosure () -> String,
-    file: StaticString = #file,
-    line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(
-        Data("FAIL (\(file):\(line)): \(message())\n".utf8)
-    )
-}
-
 /// Old backup files (exported before tablet-driver#15) have no "displayRegion"
 /// key at all in their "settings" dict — decodeDeviceSettings must leave the
 /// four displayRegion* values unset in that case, so TabletSettings.reloadAll()'s
@@ -150,11 +133,6 @@ enum ConfigurationDisplayRegionTestRunner {
         testDecodeDisplaySpanDict()
         testDecodeDisplayToggleUnaffectedBySpanAddition()
 
-        if failures == 0 {
-            print("ok — \(checks) checks passed")
-            exit(0)
-        }
-        FileHandle.standardError.write(Data("\(failures) of \(checks) checks failed\n".utf8))
-        exit(1)
+        finish()
     }
 }

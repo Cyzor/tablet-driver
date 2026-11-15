@@ -9,7 +9,9 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 
 KIT="$(tabletkit_dir)"
 # Unoptimized, as run.sh builds the tool, so runtime checks catch the same faults.
-swift_test wacom-settings-tests --no-opt -I "$KIT" -L "$KIT" -lTabletKit \
+# Its checks take their assertion function as a parameter, so it keeps its own
+# instead of Check.swift.
+swift_test wacom-settings-tests --no-opt --no-check -I "$KIT" -L "$KIT" -lTabletKit \
     "$ROOT/tools/wacom-settings/WacomPrefs.swift" \
     "$ROOT/tools/wacom-settings/WacomCodes.swift" \
     "$ROOT/tools/wacom-settings/KeyboardLayout.swift" \

@@ -27,16 +27,6 @@ func tabletOnly(_ sessions: [Interface]) -> [Interface] {
     return sessions.filter { tabletVendors.contains($0.vendorID) }
 }
 
-var checks = 0
-var failures = 0
-func expect(_ condition: Bool, _ message: String) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL: \(message)\n".utf8))
-    }
-}
-
 let wacomPen = Interface(vendorID: 0x056A, label: "PTK-870 pen")
 let wacomVendorIface = Interface(vendorID: 0x056A, label: "PTK-870 vendor")
 let appleTrackpad = Interface(vendorID: 0x004C, label: "GlossyFrostyTrackpad")
@@ -88,9 +78,5 @@ do {
     expect(tabletOnly([]).isEmpty, "an empty session stays empty")
 }
 
-if failures > 0 {
-    FileHandle.standardError.write(
-        Data("capture-vendor-scope-tests: \(failures)/\(checks) checks FAILED\n".utf8))
-    exit(1)
-}
+finish()
 print("ok — \(checks) checks passed")

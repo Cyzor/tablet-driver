@@ -7,5 +7,5 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/../lib.sh"
 
-swift_test unknown-wacom-fallback-tests --kit -package-name TabletKit "$DIR/main.swift"
+swift_test unknown-wacom-fallback-tests --kit --no-check -package-name TabletKit "$DIR/main.swift"
 "$TEST_BIN" "$@"

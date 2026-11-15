@@ -14,17 +14,6 @@
 
 import Foundation
 
-var failures = 0
-var checks = 0
-
-func check(_ condition: Bool, _ label: String) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL: \(label)\n".utf8))
-    }
-}
-
 // MARK: - Fixtures
 
 func makeResult(
@@ -88,12 +77,12 @@ do {
     decoder.dateDecodingStrategy = .iso8601
     let data = try! encoder.encode(result)
     let back = try? decoder.decode(CaptureResult.self, from: data)
-    check(back?.initReads?.first?.reply == "0202", "initReads round-trips")
+    expect(back?.initReads?.first?.reply == "0202", "initReads round-trips")
     var json = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
     json["initReads"] = nil
     let older = try? decoder.decode(
         CaptureResult.self, from: try! JSONSerialization.data(withJSONObject: json))
-    check(older != nil && older?.initReads == nil, "a file without initReads still decodes")
+    expect(older != nil && older?.initReads == nil, "a file without initReads still decodes")
 }
 
 // MARK: Hardware survey wiring
@@ -105,16 +94,16 @@ func usb(_ pid: String) -> CaptureUSBDevice {
         reason: "tablet", drivers: [])
 }
 let touchOnly = surveyFindings(CaptureHardwareSurvey(displays: [], usbDevices: [usb("0x03B3")]))
-check(
+expect(
     touchOnly.first { $0.kind == "companionNotOnUSB" }?.detail.contains("pen interface 0x03B2") == true,
     "a touch sensor without its pen interface is flagged")
 let penOnly = surveyFindings(CaptureHardwareSurvey(displays: [], usbDevices: [usb("0x03B2")]))
-check(
+expect(
     penOnly.first { $0.kind == "companionNotOnUSB" }?.detail.contains("touch sensor 0x03B3") == true,
     "a pen interface without its touch sensor is flagged")
 let both = surveyFindings(
     CaptureHardwareSurvey(displays: [], usbDevices: [usb("0x03B2"), usb("0x03B3")]))
-check(!both.contains { $0.kind == "companionNotOnUSB" }, "a complete pair is not flagged")
+expect(!both.contains { $0.kind == "companionNotOnUSB" }, "a complete pair is not flagged")
 
 func wacomDisplay(provider: String?, hdmi: Bool?) -> CaptureDisplay {
     var d = CaptureDisplay(
@@ -131,10 +120,10 @@ let paths: [(CaptureDisplay, String)] = [
 for (display, expected) in paths {
     let detail = surveyFindings(CaptureHardwareSurvey(displays: [display], usbDevices: []))
         .first { $0.kind == "wacomDisplayVideoPath" }?.detail ?? ""
-    check(detail.contains(expected), "video path reads as \(expected)")
+    expect(detail.contains(expected), "video path reads as \(expected)")
 }
 let other = CaptureDisplay(name: "LG", vendorID: "0x1E6D", productID: "0x0001", ddc: "answered")
-check(
+expect(
     surveyFindings(CaptureHardwareSurvey(displays: [other], usbDevices: [])).isEmpty,
     "non-Wacom displays get no video-path finding")
 
@@ -145,14 +134,14 @@ let partial = makeResult(
     declaredInput: ["0x01", "0x10", "0x11", "0x63", "0xAC"], observed: ["0x11"])
 let partialFindings = captureFindings(for: partial)
 let missingFinding = partialFindings.first { $0.kind == "declaredReportsNeverObserved" }
-check(missingFinding != nil, "reports declared but never observed are reported")
-check(
+expect(missingFinding != nil, "reports declared but never observed are reported")
+expect(
     missingFinding?.detail.contains("0x01, 0x10, 0x63, 0xAC") == true,
     "every missing report is listed, in ascending order")
-check(
+expect(
     missingFinding?.detail.contains("0x11") == false,
     "the report that did arrive is not listed as missing")
-check(missingFinding?.productID == "0x032B", "finding is attributed to its device")
+expect(missingFinding?.productID == "0x032B", "finding is attributed to its device")
 
 // A whole-desk capture: a silent interface on the remote's receiver must be
 // attributed to the receiver, not to the primary tablet.
@@ -171,8 +160,8 @@ desk.interfaces = [
                 reportID: 0x11, direction: .input, fields: [])])),
 ]
 let deskFindings = captureFindings(for: desk).filter { $0.kind == "declaredReportsNeverObserved" }
-check(deskFindings.count == 1, "only the silent interface is reported")
-check(deskFindings.first?.productID == "0x0331", "a finding names the device it came from")
+expect(deskFindings.count == 1, "only the silent interface is reported")
+expect(deskFindings.first?.productID == "0x0331", "a finding names the device it came from")
 
 // From captureVersion 33 the primary entry leaves its data to the top level.
 var lean = makeResult(declaredInput: ["0x01", "0x11"], observed: ["0x11"], toolCodes: ["0x0802"])
@@ -185,21 +174,21 @@ lean.interfaces = [
         isPrimary: false, sampleCount: 1, reports: [:], hidReportDescriptor: nil),
 ]
 let leanFindings = captureFindings(for: lean).filter { $0.kind == "declaredReportsNeverObserved" }
-check(leanFindings.count == 1, "a primary entry without data reads the top level")
-check(leanFindings.first?.detail.contains("0x01") == true, "the top level's missing report is found")
+expect(leanFindings.count == 1, "a primary entry without data reads the top level")
+expect(leanFindings.first?.detail.contains("0x01") == true, "the top level's missing report is found")
 if let data = try? JSONEncoder().encode(lean),
    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
    let first = (json["interfaces"] as? [[String: Any]])?.first {
-    check(first["reports"] == nil && first["hidReportDescriptor"] == nil,
-          "the primary entry writes no reports or descriptor")
+    expect(first["reports"] == nil && first["hidReportDescriptor"] == nil,
+           "the primary entry writes no reports or descriptor")
 } else {
-    check(false, "the lean capture encodes")
+    expect(false, "the lean capture encodes")
 }
 
 // A device that sent everything it declared has nothing to say.
 let complete = makeResult(
     declaredInput: ["0x01", "0x10"], observed: ["0x01", "0x10"], toolCodes: ["0x0802"])
-check(
+expect(
     captureFindings(for: complete).isEmpty,
     "a capture with nothing notable produces no findings")
 
@@ -207,24 +196,24 @@ check(
 let single = makeResult(declaredInput: ["0x01", "0x10"], observed: ["0x10"])
 let singleDetail = captureFindings(for: single)
     .first { $0.kind == "declaredReportsNeverObserved" }?.detail ?? ""
-check(singleDetail.contains("Declared input report 0x01"), "one missing report reads singular")
-check(!singleDetail.contains("reports"), "one missing report doesn't say 'reports'")
+expect(singleDetail.contains("Declared input report 0x01"), "one missing report reads singular")
+expect(!singleDetail.contains("reports"), "one missing report doesn't say 'reports'")
 
 // A device with no readable descriptor can't have this finding claimed about
 // it: absence of a declaration is not evidence a report didn't arrive.
 var noDescriptor = makeResult(observed: ["0x11"], toolCodes: ["0x0802"])
 noDescriptor.hidReportDescriptor = nil
-check(
+expect(
     !captureFindings(for: noDescriptor).contains { $0.kind == "declaredReportsNeverObserved" },
     "no descriptor means no declared-report finding")
 
 // MARK: - Proximity and settings
 
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: []))
         .contains { $0.kind == "noToolCodeObserved" },
     "an empty tool-code list reports no pen proximity")
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: ["0x0802"]))
         .contains { $0.kind == "noToolCodeObserved" } == false,
     "an observed tool code suppresses the proximity finding")
@@ -233,30 +222,30 @@ check(
 // untried. A working capture was told its pen had never been seen.
 let noToolCodeProtocol = makeResult(toolCodes: [], penActivity: true)
 let noToolCodeFound = captureFindings(for: noToolCodeProtocol)
-check(
+expect(
     !noToolCodeFound.contains { $0.kind == "subsystemsNotExercised" },
     "decoded pen frames mean the pen is not reported as unexercised")
 let noToolCodeDetail = noToolCodeFound
     .first { $0.kind == "noToolCodeObserved" }?.detail ?? ""
-check(
+expect(
     noToolCodeDetail.contains("reports no tool identity"),
     "the tool-code finding attributes the gap to the protocol")
-check(
+expect(
     !noToolCodeDetail.contains("never detected"),
     "the tool-code finding never claims an undetected pen when frames decoded")
 
 // Without pen activity the original wording stands — an untouched pen really
 // is untried, which is the issue #14 case the findings exist for.
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: [], penActivity: false))
         .contains { $0.kind == "subsystemsNotExercised" },
     "no pen activity still reports the pen as unexercised")
 
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: false))
         .contains { $0.kind == "touchDisabledInSettings" },
     "touch switched off in settings is reported")
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: ["0x0802"], touchEnabled: true))
         .contains { $0.kind == "touchDisabledInSettings" } == false,
     "touch switched on produces no setting finding")
@@ -269,22 +258,22 @@ do {
     touch.framesTracked = 12
     result.touchPipeline = touch
     let kinds = captureFindings(for: result).map(\.kind)
-    check(
+    expect(
         kinds.contains("touchSwitchedOnDuringCapture") && !kinds.contains("touchDisabledInSettings"),
         "touch switched on during the capture isn't reported as off")
 }
 
 // Relative mode turns the same harmless noise floor into visible cursor
 // jitter, and a capture reads identically either way without this.
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: true))
         .contains { $0.kind == "relativeModeActive" },
     "relative mode is surfaced as an explanation for jitter")
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: ["0x0802"], relativeMode: false))
         .contains { $0.kind == "relativeModeActive" } == false,
     "absolute mode produces no relative-mode finding")
-check(
+expect(
     captureFindings(for: makeResult(toolCodes: ["0x0802"]))
         .contains { $0.kind == "relativeModeActive" } == false,
     "a capture with no app settings makes no claim about mode")
@@ -294,9 +283,9 @@ check(
 // The DTH-2700's Pro Pen folds to 0x1E02; once cataloged it must not be flagged.
 do {
     let known = captureFindings(for: makeResult(toolCodes: ["0x1E02", "0x1E0A"], penActivity: true))
-    check(!known.contains { $0.kind == "toolCodeNotInCatalog" }, "cataloged Pro Pen is not flagged")
+    expect(!known.contains { $0.kind == "toolCodeNotInCatalog" }, "cataloged Pro Pen is not flagged")
     let unknown = captureFindings(for: makeResult(toolCodes: ["0x7F02"], penActivity: true))
-    check(
+    expect(
         unknown.contains { $0.kind == "toolCodeNotInCatalog" && $0.detail.contains("0x7F02") },
         "uncataloged tool code is flagged")
 }
@@ -318,27 +307,27 @@ do {
         "touchReportsNoContactSize", "touchScreenNotMatched", "multipleUnitsOfModel",
         "permissionsMissing", "appTranslocated",
     ] {
-        check(kinds.contains(kind), "\(kind) is surfaced")
+        expect(kinds.contains(kind), "\(kind) is surfaced")
     }
-    check(!kinds.contains("collectedFromOtherWindow"), "own window is not flagged")
-    check(!kinds.contains("otherMockTabRunning"), "unrecorded copies aren't flagged")
+    expect(!kinds.contains("collectedFromOtherWindow"), "own window is not flagged")
+    expect(!kinds.contains("otherMockTabRunning"), "unrecorded copies aren't flagged")
     result.appEnvironment?.otherMockTabCopies = 0
     result.appEnvironment?.competingDrivers = []
     let quiet = Set(captureFindings(for: result).map(\.kind))
-    check(
+    expect(
         !quiet.contains("otherMockTabRunning") && !quiet.contains("competingDriverRunning"),
         "no other copies or drivers, no finding")
     result.appEnvironment?.otherMockTabCopies = 1
     result.appEnvironment?.competingDrivers = ["Wacom Tablet Driver"]
     let busy = captureFindings(for: result)
-    check(
+    expect(
         busy.contains { $0.kind == "otherMockTabRunning" && $0.detail.hasPrefix("Another copy") },
         "another running copy is flagged")
-    check(
+    expect(
         busy.contains { $0.kind == "competingDriverRunning" && $0.detail.contains("Wacom Tablet Driver") },
         "a competing driver is flagged")
     result.settingsIdentity?.windowProductID = "0x0357"
-    check(
+    expect(
         captureFindings(for: result).contains {
             $0.kind == "collectedFromOtherWindow" && $0.detail.contains("0x0357")
         },
@@ -349,22 +338,22 @@ do {
     var touch = CaptureTouchPipeline()
     touch.noteFrameContacts(2, withSize: 0)
     touch.noteFrameContacts(14, withSize: 0)
-    check(touch.contactsPerFrame == [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1], "contact counts bucket, capped at 10")
+    expect(touch.contactsPerFrame == [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1], "contact counts bucket, capped at 10")
     touch.noteContactSpacing(mm: 8)
     touch.noteContactSpacing(mm: 25)
     touch.noteContactSpacing(mm: 90)
-    check(touch.closestContactSpacingMM == [1, 0, 1, 0, 1], "contact spacing buckets by mm")
-    check(touch.minContactSpacingMM == 8, "closest spacing kept")
+    expect(touch.closestContactSpacingMM == [1, 0, 1, 0, 1], "contact spacing buckets by mm")
+    expect(touch.minContactSpacingMM == 8, "closest spacing kept")
 }
 
 do {
     var touch = CaptureTouchPipeline()
-    check(touch.palmNeighborSpacingMM == nil, "no palm figures until a palm is seen")
+    expect(touch.palmNeighborSpacingMM == nil, "no palm figures until a palm is seen")
     touch.notePalmNeighbor(mm: 3, size: 2)
     touch.notePalmNeighbor(mm: 22, size: nil)
     touch.notePalmNeighbor(mm: 400, size: 9)
-    check(touch.palmNeighborSpacingMM == [1, 0, 0, 1, 0, 1], "palm neighbors bucket by mm")
-    check(touch.palmNeighborSize == [0, 0, 1, 0, 0, 1], "sizes bucket, capped at 5, unsized skipped")
+    expect(touch.palmNeighborSpacingMM == [1, 0, 0, 1, 0, 1], "palm neighbors bucket by mm")
+    expect(touch.palmNeighborSize == [0, 0, 1, 0, 0, 1], "sizes bucket, capped at 5, unsized skipped")
 }
 
 do {
@@ -381,7 +370,7 @@ do {
     ]
     let detail = captureFindings(for: result)
         .first { $0.kind == "declaredReportsNeverObserved" }?.detail ?? ""
-    check(detail.contains("mode switch succeeded"), "silence after a mode switch is explained")
+    expect(detail.contains("mode switch succeeded"), "silence after a mode switch is explained")
 }
 
 do {
@@ -392,9 +381,9 @@ do {
     result.touchPipeline = touch
     let detail = captureFindings(for: result)
         .first { $0.kind == "subsystemsNotExercised" }?.detail ?? ""
-    check(!detail.contains("finger touch"), "decoded touch counts as exercised")
+    expect(!detail.contains("finger touch"), "decoded touch counts as exercised")
     let grip = captureFindings(for: makeResult(productID: "0x0361", toolCodes: ["0x0802"], penActivity: true))
-    check(!grip.contains { $0.kind == "toolCodeNotInCatalog" }, "Grip Pen is cataloged for PTH-860")
+    expect(!grip.contains { $0.kind == "toolCodeNotInCatalog" }, "Grip Pen is cataloged for PTH-860")
 }
 
 // MARK: - Real submitted captures
@@ -416,10 +405,10 @@ if let files = try? FileManager.default.contentsOfDirectory(atPath: fixtureDir.p
         let found = captureFindings(for: result)
         // Every capture in this set observed exactly one of its declared
         // input reports — that is the whole point of the case.
-        check(
+        expect(
             found.contains { $0.kind == "declaredReportsNeverObserved" },
             "\(name): silent declared reports are surfaced")
-        check(
+        expect(
             found.contains { $0.kind == "noToolCodeObserved" },
             "\(name): no pen ever entered proximity in this set")
     }
@@ -437,12 +426,6 @@ if let files = try? FileManager.default.contentsOfDirectory(atPath: fixtureDir.p
 enum CaptureFindingsTestRunner {
     static func main() {
         runChecks()
-        if failures == 0 {
-            print("ok — \(checks) checks passed")
-            exit(0)
-        } else {
-            FileHandle.standardError.write(Data("\(failures) of \(checks) checks failed\n".utf8))
-            exit(1)
-        }
+        finish()
     }
 }

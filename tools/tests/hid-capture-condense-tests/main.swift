@@ -14,23 +14,6 @@
 import Foundation
 import TabletKit
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool,
-    _ message: @autoclosure () -> String,
-    file: StaticString = #file,
-    line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(
-        Data("FAIL (\(file):\(line)): \(message())\n".utf8)
-    )
-}
-
 // MARK: - Sample builders
 
 private func penPoint(
@@ -652,9 +635,4 @@ do {
         "the flip names the switch: \(lines)")
 }
 
-if failures > 0 {
-    FileHandle.standardError.write(Data("hid-capture-condense-tests: \(failures)/\(checks) checks FAILED\n".utf8))
-    exit(1)
-} else {
-    print("ok — \(checks) checks passed")
-}
+finish()

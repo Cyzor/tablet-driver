@@ -10,24 +10,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expectEqual<T: Equatable>(
-    _ actual: T,
-    _ expected: T,
-    _ message: @autoclosure () -> String,
-    file: StaticString = #file,
-    line: UInt = #line
-) {
-    checks += 1
-    guard actual != expected else { return }
-    failures += 1
-    FileHandle.standardError.write(
-        Data("FAIL (\(file):\(line)): \(message()) — got \(actual), expected \(expected)\n".utf8)
-    )
-}
-
 private func contacts(distance: Double) -> [(id: Int, screen: CGPoint)] {
     [(id: 1, screen: CGPoint(x: -distance / 2, y: 0)),
      (id: 2, screen: CGPoint(x: distance / 2, y: 0))]
@@ -1745,7 +1727,6 @@ private func testSteadyPinchWithWobbleNeverJoinsRotate() {
     }
 }
 
-
 /// The join bar must not climb with the gesture's own duration. A twist added
 /// to a pinch that has already been running a long time has to join on about
 /// the same amount of turn as one added right after commit — that's the whole
@@ -2041,11 +2022,6 @@ enum TouchStateTrackerTestRunner {
         checks += 1
         if !runGoldens(directory: CommandLine.arguments[1]) { failures += 1 }
 
-        if failures == 0 {
-            print("ok — \(checks) checks passed")
-            exit(0)
-        }
-        FileHandle.standardError.write(Data("\(failures) of \(checks) checks failed\n".utf8))
-        exit(1)
+        finish()
     }
 }

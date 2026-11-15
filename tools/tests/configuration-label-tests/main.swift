@@ -10,19 +10,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-}
-
 private func deviceValues(_ s: [String: Any]) -> [String: Any] {
     var values: [String: Any] = [:]
     ConfigurationImporter.decodeDeviceSettings(s, into: &values)
@@ -121,9 +108,4 @@ testEnglishLabelsStillImport()
 testStoredSettingsLabels()
 testExpressKeyMachineValues()
 
-if failures == 0 {
-    print("configuration-label-tests: \(checks) checks passed")
-    exit(0)
-}
-FileHandle.standardError.write(Data("configuration-label-tests: \(failures) of \(checks) checks failed\n".utf8))
-exit(1)
+finish()

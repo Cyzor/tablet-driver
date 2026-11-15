@@ -15,32 +15,6 @@ import CoreGraphics
 import Foundation
 import TabletKit
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool,
-    _ message: @autoclosure () -> String,
-    file: StaticString = #file,
-    line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(
-        Data("FAIL (\(file):\(line)): \(message())\n".utf8)
-    )
-}
-
-private func expectClose(
-    _ a: Double, _ b: Double, _ tol: Double = 1e-9,
-    _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    expect(abs(a - b) <= tol, "\(message()) — got \(a), expected \(b) (±\(tol))",
-           file: file, line: line)
-}
-
 // MARK: - applyDisplayRegion
 
 /// Default region fields (0,0,1,1) must be a no-op, so every build predating
@@ -281,11 +255,6 @@ enum DisplayRegionTestRunner {
         testEdgePinningFollowsEachDisplay()
         testSpecificDisplayResolution()
 
-        if failures == 0 {
-            print("ok — \(checks) checks passed")
-            exit(0)
-        }
-        FileHandle.standardError.write(Data("\(failures) of \(checks) checks failed\n".utf8))
-        exit(1)
+        finish()
     }
 }

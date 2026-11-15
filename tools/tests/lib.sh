@@ -20,20 +20,23 @@ tabletkit_dir() {
     sh "$TESTS/build-tabletkit.sh"
 }
 
-# swift_test NAME [--kit] [--no-opt] SWIFTC_ARGS...
+# swift_test NAME [--kit] [--no-opt] [--no-check] SWIFTC_ARGS...
 # Compiles the sources into $WORK/NAME and sets TEST_BIN to it. Builds with -O,
-# the way the app ships.
+# the way the app ships, and adds Check.swift, the shared assertion helpers.
 #   --kit       link TabletKit
 #   --no-opt    build without -O
+#   --no-check  leave out Check.swift
 swift_test() {
     name="$1"
     shift
     opt="-O"
     kit=""
+    check="$TESTS/Check.swift"
     while :; do
         case "$1" in
             --kit) kit=1 ;;
             --no-opt) opt="" ;;
+            --no-check) check="" ;;
             *) break ;;
         esac
         shift
@@ -41,8 +44,8 @@ swift_test() {
     TEST_BIN="$WORK/$name"
     if [ -n "$kit" ]; then
         KIT="$(tabletkit_dir)"
-        swiftc $opt -I "$KIT" "$@" "$KIT/libTabletKit.a" -o "$TEST_BIN"
+        swiftc $opt -I "$KIT" ${check:+"$check"} "$@" "$KIT/libTabletKit.a" -o "$TEST_BIN"
     else
-        swiftc $opt "$@" -o "$TEST_BIN"
+        swiftc $opt ${check:+"$check"} "$@" -o "$TEST_BIN"
     fi
 }

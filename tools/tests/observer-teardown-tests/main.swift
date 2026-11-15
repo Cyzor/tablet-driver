@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jay Petronis (Cyzor)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// ObserverTeardownTests.swift — Standalone checks for the reconnect
+// main.swift — Standalone checks for the reconnect
 // subscription-accumulation rule `DeviceContext.teardownDriverLifecycleObservers()`
 // enforces.
 //
@@ -20,23 +20,6 @@ import Combine
 import Foundation
 
 // MARK: - Tiny assertion harness
-
-private var failures = 0
-private var checks = 0
-
-private func expect(_ condition: Bool, _ message: @autoclosure () -> String,
-                    file: StaticString = #file, line: UInt = #line) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-    }
-}
-
-private func expectEqual<T: Equatable>(_ a: T, _ b: T, _ message: @autoclosure () -> String,
-                                       file: StaticString = #file, line: UInt = #line) {
-    expect(a == b, "\(message()) — got \(a), expected \(b)", file: file, line: line)
-}
 
 // MARK: - Model of the DeviceContext lifecycle under test
 //
@@ -162,10 +145,4 @@ do {
 
 // MARK: - Summary
 
-if failures == 0 {
-    print("observer-teardown-tests: \(checks) checks passed")
-    exit(0)
-} else {
-    FileHandle.standardError.write(Data("observer-teardown-tests: \(failures)/\(checks) failed\n".utf8))
-    exit(1)
-}
+finish()

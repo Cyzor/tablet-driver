@@ -11,25 +11,6 @@ import Foundation
 
 // MARK: - Tiny assertion harness
 
-private var failures = 0
-private var checks = 0
-
-private func expect(_ condition: Bool, _ message: @autoclosure () -> String,
-                    file: StaticString = #file, line: UInt = #line) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-    }
-}
-
-private func expectClose(_ a: Double, _ b: Double, _ tol: Double = 1e-9,
-                         _ message: @autoclosure () -> String,
-                         file: StaticString = #file, line: UInt = #line) {
-    expect(abs(a - b) <= tol, "\(message()) — got \(a), expected \(b) (±\(tol))",
-           file: file, line: line)
-}
-
 private func sample(_ tx: Double, _ ty: Double, _ ox: Double, _ oy: Double) -> CalibrationSample {
     CalibrationSample(targetX: tx, targetY: ty, observedX: ox, observedY: oy)
 }
@@ -148,12 +129,6 @@ enum CalibrationTestRunner {
         testShearLeavesResidual()
         testSavedHomographyApplies()
 
-        if failures == 0 {
-            print("ok — \(checks) checks passed")
-            exit(0)
-        } else {
-            FileHandle.standardError.write(Data("\(failures) of \(checks) checks failed\n".utf8))
-            exit(1)
-        }
+        finish()
     }
 }

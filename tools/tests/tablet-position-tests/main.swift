@@ -13,16 +13,6 @@ import CoreGraphics
 import Foundation
 import TabletKit
 
-private var failures = 0
-private var checks = 0
-
-private func expect(_ condition: Bool, _ message: @autoclosure () -> String, line: UInt = #line) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (line \(line)): \(message())\n".utf8))
-}
-
 private func hex(_ id: Int) -> String { String(format: "%04X", id) }
 
 private func describe(_ t: ControlTarget) -> String {
@@ -290,5 +280,4 @@ do {
 }
 
 print("tablet-position-tests: \(models) models line up in every orientation (\(readOutOfOrder) read out of numbering order)")
-print("tablet-position-tests: \(checks - failures) of \(checks) checks passed")
-exit(failures == 0 ? 0 : 1)
+finish()

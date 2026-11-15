@@ -33,20 +33,6 @@ import Foundation
 
 // MARK: - Tiny assertion harness
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-    }
-}
-
 // MARK: - BezierCurve round-trip
 
 do {
@@ -234,10 +220,4 @@ do {
 
 // MARK: - Summary
 
-if failures == 0 {
-    print("PrefsResilienceTests: \(checks) checks passed")
-    exit(0)
-} else {
-    print("PrefsResilienceTests: \(failures)/\(checks) checks FAILED")
-    exit(1)
-}
+finish()

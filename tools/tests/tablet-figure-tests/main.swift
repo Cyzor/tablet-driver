@@ -12,16 +12,6 @@
 import CoreGraphics
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(_ condition: Bool, _ message: @autoclosure () -> String, line: UInt = #line) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (line \(line)): \(message())\n".utf8))
-}
-
 private func near(_ a: Double, _ b: Double, _ tolerance: Double = 1e-9) -> Bool { abs(a - b) <= tolerance }
 
 private typealias Part = TabletFigure.Part
@@ -571,8 +561,5 @@ testPlainFigure()
 testIcon()
 testGoldenDrawings(directory: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : ".")
 
-if failures > 0 {
-    print("tablet-figure-tests: \(failures) of \(checks) checks failed")
-    exit(1)
-}
+finish()
 print("tablet-figure-tests: all \(checks) checks passed")

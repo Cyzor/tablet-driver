@@ -8,19 +8,6 @@
 
 import AppKit
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-}
-
 private func plist(_ value: Any) -> Data {
     try! PropertyListSerialization.data(fromPropertyList: value, format: .xml, options: 0)
 }
@@ -138,8 +125,5 @@ MainActor.assumeIsolated {
     expect(ButtonOpenAction.openTarget(on: board) == nil, "A DEVONthink record's file isn't taken")
 }
 
-if failures > 0 {
-    print("open-drop-tests: \(checks - failures)/\(checks) checks passed")
-    exit(1)
-}
+finish()
 print("All \(checks) open-drop checks passed.")

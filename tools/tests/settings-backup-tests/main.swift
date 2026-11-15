@@ -9,20 +9,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-    }
-}
-
 let domain = "com.cyzor.mocktab.settings-backup-tests"
 let defaults = UserDefaults(suiteName: domain)!
 defaults.removePersistentDomain(forName: domain)
@@ -95,10 +81,4 @@ expect(!kept.contains("mocktab-settings-0.5.2.plist"), "Oldest backup is pruned"
 defaults.removePersistentDomain(forName: domain)
 try? FileManager.default.removeItem(at: dir)
 
-if failures == 0 {
-    print("SettingsBackupTests: \(checks) checks passed")
-    exit(0)
-} else {
-    print("SettingsBackupTests: \(failures)/\(checks) checks FAILED")
-    exit(1)
-}
+finish()

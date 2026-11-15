@@ -9,15 +9,6 @@ import Carbon
 import CoreGraphics
 import Foundation
 
-var failures = 0
-
-func check(_ condition: Bool, _ message: String) {
-    if !condition {
-        print("FAIL: \(message)")
-        failures += 1
-    }
-}
-
 // MARK: - ButtonBinding: encoded/decode round-trip for every representative kind
 
 let sampleBindings: [ButtonBinding] = [
@@ -41,13 +32,13 @@ let sampleBindings: [ButtonBinding] = [
     ButtonBinding(opening: URL(string: "kmtrigger://macro=Radial%20Menu&value=pen")!),
 ]
 
-check(ButtonBinding.charLabel(keyCode: 80, modifiers: []) == "F19", "F19 should have its label")
+expect(ButtonBinding.charLabel(keyCode: 80, modifiers: []) == "F19", "F19 should have its label")
 
 for binding in sampleBindings {
     let encoded = binding.encoded
-    check(!encoded.isEmpty, "encoded() produced an empty string for \(binding)")
+    expect(!encoded.isEmpty, "encoded() produced an empty string for \(binding)")
     let decoded = ButtonBinding.decode(encoded)
-    check(decoded == binding, "round-trip mismatch: \(binding) -> \(encoded) -> \(String(describing: decoded))")
+    expect(decoded == binding, "round-trip mismatch: \(binding) -> \(encoded) -> \(String(describing: decoded))")
 }
 
 // MARK: - Only Open writes a target, so older saved values encode as before
@@ -56,37 +47,37 @@ let preTargetEncoding = #"{"kind":"keyCombo","keyCode":6,"modifierFlags":1048576
 func jsonObject(_ s: String?) -> NSDictionary? {
     s.flatMap { $0.data(using: .utf8) }.flatMap { try? JSONSerialization.jsonObject(with: $0) as? NSDictionary }
 }
-check(
+expect(
     jsonObject(ButtonBinding.decode(preTargetEncoding)?.encoded) == jsonObject(preTargetEncoding),
     "a binding with no target should re-encode with the same fields")
-check(
+expect(
     ButtonBinding(kind: .showSettings).encoded.contains("target") == false,
     "a binding with no target shouldn't write one")
 let openLink = ButtonBinding(opening: URL(string: "btt://trigger_named/?trigger_name=Ring")!)
-check(
+expect(
     openLink.openURL?.absoluteString == "btt://trigger_named/?trigger_name=Ring",
     "an Open binding should keep its link verbatim")
 let macroLink = ButtonBinding(
     opening: URL(string: "kmtrigger://macro=99FA2E4B-8F93-40CB-8A4C-BCC95C49EF07")!,
     named: "BBEdit Go to Named Symbol")
-check(ButtonBinding.decode(macroLink.encoded) == macroLink, "a named Open binding should round-trip")
-check(
+expect(ButtonBinding.decode(macroLink.encoded) == macroLink, "a named Open binding should round-trip")
+expect(
     macroLink.displayLabel == "Open BBEdit Go to Named Symbol",
     "a named Open binding should show its name, not the link: \(macroLink.displayLabel)")
-check(
+expect(
     ButtonBinding(kind: .keyCombo, keyCode: 6).openURL == nil,
     "only Open bindings have a URL")
-check(
+expect(
     ButtonBinding(opening: URL(fileURLWithPath: "/nonexistent/Nothing.app")).openTargetExists == false,
     "a missing file target should read as missing")
 
 // MARK: - Retired Middle Click + Tip loads as Middle Click
 
 let legacyMiddleWithTip = #"{"kind":"middleClickWithTip","keyCode":0,"modifierFlags":0,"keyLabel":""}"#
-check(
+expect(
     ButtonBinding.decode(legacyMiddleWithTip) == .middleClick,
     "a saved middleClickWithTip binding should load as .middleClick")
-check(
+expect(
     ButtonBinding.fromDisplayLabel("Middle Click + Tip") == .middleClick,
     "an exported \"Middle Click + Tip\" label should import as .middleClick")
 
@@ -99,12 +90,12 @@ func decodePenButtonKeyBranch(key: String?, label: String) -> ButtonBinding {
 }
 
 let germanLabelForRightClick = "Rechtsklick"  // not decodable by fromDisplayLabel (English-only)
-check(
+expect(
     ButtonBinding.fromDisplayLabel(germanLabelForRightClick) == .none,
     "sanity check failed: fromDisplayLabel unexpectedly decoded a German label — the bug this test guards against may already be fixed differently"
 )
 let resolvedViaKey = decodePenButtonKeyBranch(key: ButtonBinding.rightClick.encoded, label: germanLabelForRightClick)
-check(
+expect(
     resolvedViaKey == .rightClick,
     "key-preferred decode failed: expected .rightClick from the key field despite a German label, got \(resolvedViaKey)"
 )
@@ -119,33 +110,33 @@ for stored in [futureAction, garbled] {
     let key = ButtonBinding.exportedKey(stored: stored, effective: .rightClick)
     let imported = ButtonBinding.importedValue(key: key, label: "Right Click")
     // An unknown kind decodes unequal to a real None; a garbled one not at all.
-    check(
+    expect(
         imported != nil && imported.flatMap(ButtonBinding.decode) != ButtonBinding.none,
         "an unreadable action should not import as None: \(stored)")
 }
 let futureKey = ButtonBinding.exportedKey(stored: futureAction, effective: .rightClick)
-check(
+expect(
     ButtonBinding.decode(futureKey)?.unrecognizedKindName == "futureAction",
     "an unknown action should export with its kind")
-check(
+expect(
     ButtonBinding.importedValue(key: futureKey, label: "Right Click")
         .flatMap(ButtonBinding.decode)?.unrecognizedKindName == "futureAction",
     "an unknown action should import with its kind")
-check(
+expect(
     ButtonBinding.exportedKey(stored: garbled, effective: .rightClick) == garbled
         && ButtonBinding.importedValue(key: garbled, label: nil) == garbled,
     "an action that doesn't decode should export and import verbatim")
-check(
+expect(
     ButtonBinding.importedValue(key: nil, label: futureAction) == futureAction,
     "an older export's raw action in the label's place should import verbatim")
-check(
+expect(
     ButtonBinding.decode(ButtonBinding.exportedKey(stored: "", effective: .rightClick)) == .rightClick,
     "nothing stored should export the action in effect")
-check(
+expect(
     ButtonBinding.importedValue(key: nil, label: nil) == nil
         && ButtonBinding.importedValue(key: "", label: "") == nil,
     "a file without the action should import nothing")
-check(
+expect(
     ButtonBinding.importedValue(key: ButtonBinding.none.encoded, label: "None")
         .flatMap(ButtonBinding.decode) == ButtonBinding.none,
     "a saved None should still import as None")
@@ -154,9 +145,9 @@ check(
 
 for mode in TouchRingMode.allCases {
     let decoded = TouchRingMode(rawValue: mode.rawValue)
-    check(decoded == mode, "TouchRingMode rawValue round-trip failed for \(mode)")
+    expect(decoded == mode, "TouchRingMode rawValue round-trip failed for \(mode)")
 }
-check(TouchRingMode(rawValue: "Scrollen") == nil, "sanity check: a German label should not parse as a TouchRingMode rawValue")
+expect(TouchRingMode(rawValue: "Scrollen") == nil, "sanity check: a German label should not parse as a TouchRingMode rawValue")
 
 // MARK: - Key labels: macOS's convention on any keyboard layout
 
@@ -171,26 +162,21 @@ if let us = layout("US"), let german = layout("German"), let dvorak = layout("DV
     func label(_ code: UInt16, _ mods: NSEvent.ModifierFlags, _ data: Data) -> String {
         ButtonBinding.charLabel(keyCode: code, modifiers: mods, layout: data)
     }
-    check(label(6, .option, us) == "Z" && label(20, .shift, us) == "3" && label(8, .command, us) == "C",
-          "U.S. labels name the key, as macOS menus do: ⌥Z, ⇧3, ⌘C")
-    check(label(8, .command, dvorak) == "C" && label(8, [], dvorak) == "J",
-          "Dvorak – QWERTY ⌘ labels the character ⌘ types")
-    check(label(23, .option, german) == "5" && label(16, .command, german) == "Z",
-          "German labels: ⌥5 for [, and z where U.S. has y")
-    check(label(10, [], german) == "^" && label(27, [], german) == "ß", "A dead key and ß keep their characters")
+    expect(label(6, .option, us) == "Z" && label(20, .shift, us) == "3" && label(8, .command, us) == "C",
+           "U.S. labels name the key, as macOS menus do: ⌥Z, ⇧3, ⌘C")
+    expect(label(8, .command, dvorak) == "C" && label(8, [], dvorak) == "J",
+           "Dvorak – QWERTY ⌘ labels the character ⌘ types")
+    expect(label(23, .option, german) == "5" && label(16, .command, german) == "Z",
+           "German labels: ⌥5 for [, and z where U.S. has y")
+    expect(label(10, [], german) == "^" && label(27, [], german) == "ß", "A dead key and ß keep their characters")
     let imported = ButtonBinding(kind: .keyCombo, keyCode: 6, modifierFlags: CGEventFlags.maskAlternate.rawValue, keyLabel: "Z")
-    check(ButtonBinding.fromDisplayLabel("⌥Z", layout: us) == imported, "⌥Z imports")
-    check(ButtonBinding.fromDisplayLabel("⌥Ω", layout: us) == imported, "An older file's ⌥Ω imports as ⌥Z")
-    check(ButtonBinding.fromDisplayLabel("⇧#", layout: us).keyCode == 20
-          && ButtonBinding.fromDisplayLabel("⇧3", layout: us).keyCode == 20, "⇧3 imports from either label")
-    check(ButtonBinding.fromDisplayLabel("⌘Z", layout: dvorak).keyCode == 6, "⌘Z on Dvorak – QWERTY ⌘ is QWERTY's Z key")
+    expect(ButtonBinding.fromDisplayLabel("⌥Z", layout: us) == imported, "⌥Z imports")
+    expect(ButtonBinding.fromDisplayLabel("⌥Ω", layout: us) == imported, "An older file's ⌥Ω imports as ⌥Z")
+    expect(ButtonBinding.fromDisplayLabel("⇧#", layout: us).keyCode == 20
+           && ButtonBinding.fromDisplayLabel("⇧3", layout: us).keyCode == 20, "⇧3 imports from either label")
+    expect(ButtonBinding.fromDisplayLabel("⌘Z", layout: dvorak).keyCode == 6, "⌘Z on Dvorak – QWERTY ⌘ is QWERTY's Z key")
 } else {
-    check(false, "U.S., German, and Dvorak – QWERTY ⌘ layouts installed")
+    expect(false, "U.S., German, and Dvorak – QWERTY ⌘ layouts installed")
 }
 
-if failures == 0 {
-    print("All configuration-locale checks passed.")
-} else {
-    print("\(failures) check(s) failed.")
-    exit(1)
-}
+finish()

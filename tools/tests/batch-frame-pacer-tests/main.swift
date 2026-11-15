@@ -10,17 +10,6 @@
 import Foundation
 import TabletKit
 
-var checks = 0
-var failures = 0
-
-func expect(_ condition: Bool, _ message: @autoclosure () -> String, line: Int = #line) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL (line \(line)): \(message())\n".utf8))
-    }
-}
-
 func now() -> TimeInterval { ProcessInfo.processInfo.systemUptime }
 
 /// Frame IDs ride in `timestampNs`; the frames themselves are empty touch sets.
@@ -180,6 +169,4 @@ do {
     usleep(150_000)
     expect(log.ids.isEmpty, "A released pacer's timer is gone: \(log.ids)")
 }
-
-print("batch-frame-pacer-tests: \(checks - failures)/\(checks) checks passed")
-exit(failures == 0 ? 0 : 1)
+finish()

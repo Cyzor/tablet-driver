@@ -7,19 +7,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-}
-
 /// Stands in for the pane's spoken sizes, which pull in SwiftUI.
 enum AreaSpokenSize {
     case millimeters(CGSize)
@@ -54,9 +41,4 @@ expect(lengths.fraction(fromTyped: "-5 mm", horizontal: true) == nil, "negative 
 let unknown = AreaLengths(surfaceMM: nil)
 expect(near(unknown.fraction(fromTyped: "40 mm", horizontal: true), 0.4), "an unknown surface reads units as percent")
 
-if failures == 0 {
-    print("area-lengths-tests: \(checks) checks passed")
-    exit(0)
-}
-FileHandle.standardError.write(Data("area-lengths-tests: \(failures) of \(checks) checks failed\n".utf8))
-exit(1)
+finish()

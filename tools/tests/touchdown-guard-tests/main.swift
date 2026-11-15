@@ -7,19 +7,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-}
-
 private let guardOn = TouchdownGuard(radius: 5)
 
 // Within both limits: held.
@@ -40,9 +27,4 @@ expect(TouchdownGuard.defaultRadius == 5, "Drag Threshold defaults to 5 pt")
 expect(!TouchdownGuard(radius: 0).holds(elapsed: 0, travel: 0), "radius 0 never holds")
 expect(!TouchdownGuard(radius: -1).holds(elapsed: 0, travel: 0), "a negative radius never holds")
 
-if failures == 0 {
-    print("touchdown-guard-tests: \(checks) checks passed")
-    exit(0)
-}
-FileHandle.standardError.write(Data("touchdown-guard-tests: \(failures) of \(checks) checks failed\n".utf8))
-exit(1)
+finish()

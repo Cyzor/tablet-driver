@@ -20,23 +20,6 @@ import TabletKit
 
 // MARK: - Tiny assertion harness
 
-private var failures = 0
-private var checks = 0
-
-private func expect(_ condition: Bool, _ message: @autoclosure () -> String,
-                    file: StaticString = #file, line: UInt = #line) {
-    checks += 1
-    if !condition {
-        failures += 1
-        FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-    }
-}
-
-private func expectEqual<T: Equatable>(_ a: T, _ b: T, _ message: @autoclosure () -> String,
-                                       file: StaticString = #file, line: UInt = #line) {
-    expect(a == b, "\(message()) — got \(a), expected \(b)", file: file, line: line)
-}
-
 /// Fresh scratch defaults per test, wiped before use.
 private func scratchDefaults(_ name: String) -> UserDefaults {
     let suite = "com.cyzor.mocktab.instance-identity-tests.\(name)"
@@ -158,12 +141,6 @@ enum InstanceIdentityTestRunner {
         testClaimsArePerModel()
         testNormalization()
 
-        if failures == 0 {
-            print("ok — \(checks) checks passed")
-            exit(0)
-        } else {
-            FileHandle.standardError.write(Data("\(failures) of \(checks) checks failed\n".utf8))
-            exit(1)
-        }
+        finish()
     }
 }

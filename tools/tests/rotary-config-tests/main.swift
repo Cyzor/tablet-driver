@@ -10,24 +10,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expectEqual<T: Equatable>(
-    _ actual: T,
-    _ expected: T,
-    _ message: @autoclosure () -> String,
-    file: StaticString = #file,
-    line: UInt = #line
-) {
-    checks += 1
-    guard actual != expected else { return }
-    failures += 1
-    FileHandle.standardError.write(
-        Data("FAIL (\(file):\(line)): \(message()) — got \(actual), expected \(expected)\n".utf8)
-    )
-}
-
 private func slots(_ actions: [ControlSlot.Action]) -> [ControlSlot] {
     actions.map { ControlSlot(label: "", action: $0) }
 }
@@ -304,9 +286,6 @@ private func testCapabilityFlagIsAbsentFromEncodedForm() {
     }
 }
 
-
-
-
 // MARK: - Run
 
 testCyclingSkipsSkippedSlots()
@@ -332,10 +311,4 @@ testCyclingOnMirroredHardwareMovesTheSharedControl()
 testRotarySetRoundTrips()
 testCapabilityFlagIsAbsentFromEncodedForm()
 
-if failures == 0 {
-    print("rotary-config-tests: \(checks) checks passed")
-    exit(0)
-} else {
-    FileHandle.standardError.write(Data("rotary-config-tests: \(failures) of \(checks) checks failed\n".utf8))
-    exit(1)
-}
+finish()

@@ -10,19 +10,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-}
-
 private func slots(_ actions: [ControlSlot.Action]) -> [ControlSlot] {
     actions.map { ControlSlot(label: "", action: $0) }
 }
@@ -94,7 +81,7 @@ private func testDeviceSettingsCarrySecondDial() {
     expect(decodedRotaries(values)?.controls.count == 2, "device-level rotaries import")
     // Compared decoded: encoded key order isn't stable between encodings.
     expect((values["touchRingButtonBinding2"] as? String).flatMap(ButtonBinding.decode)
-               == ButtonBinding(kind: .ringCycle2),
+           == ButtonBinding(kind: .ringCycle2),
            "second toggle key imports")
     expect(values["reverseRingDirection"] as? Bool == true, "direction imports")
     expect(values["touchRingActiveSlotIndex2"] as? Int == 1, "second active index imports")
@@ -107,9 +94,4 @@ testMalformedRejected()
 testOldFileLeavesDialsUnset()
 testDeviceSettingsCarrySecondDial()
 
-if failures == 0 {
-    print("configuration-rotary-tests: \(checks) checks passed")
-    exit(0)
-}
-FileHandle.standardError.write(Data("configuration-rotary-tests: \(failures) of \(checks) checks failed\n".utf8))
-exit(1)
+finish()

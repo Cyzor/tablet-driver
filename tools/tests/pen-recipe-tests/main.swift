@@ -10,16 +10,6 @@
 import CoreGraphics
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(_ condition: Bool, _ message: @autoclosure () -> String, line: UInt = #line) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (line \(line)): \(message())\n".utf8))
-}
-
 private func near(_ a: Double, _ b: Double, _ tolerance: Double = 0.6) -> Bool { abs(a - b) <= tolerance }
 
 // MARK: - Artwork
@@ -141,8 +131,5 @@ private func testVariants() {
 testArtwork()
 testVariants()
 
-if failures > 0 {
-    print("pen-recipe-tests: \(failures) of \(checks) checks failed")
-    exit(1)
-}
+finish()
 print("pen-recipe-tests: all \(checks) checks passed")

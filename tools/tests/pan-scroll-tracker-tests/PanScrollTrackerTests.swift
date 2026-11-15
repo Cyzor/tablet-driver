@@ -12,23 +12,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool,
-    _ message: @autoclosure () -> String,
-    file: StaticString = #file,
-    line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(
-        Data("FAIL (\(file):\(line)): \(message())\n".utf8)
-    )
-}
-
 private let frameDt = 0.005
 
 /// Drive a straight vertical flick: `frames` frames of `perFrame` points each.
@@ -401,11 +384,6 @@ enum PanScrollTrackerTestRunner {
         testDeliberateBrakeStillSuppressesMomentum()
         testOversizedBackdateIsClamped()
 
-        if failures == 0 {
-            print("ok — \(checks) checks passed")
-            exit(0)
-        }
-        FileHandle.standardError.write(Data("\(failures) of \(checks) checks failed\n".utf8))
-        exit(1)
+        finish()
     }
 }

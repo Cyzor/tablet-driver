@@ -7,5 +7,5 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/../lib.sh"
 
-swift_test observer-teardown-tests "$DIR/ObserverTeardownTests.swift"
+swift_test observer-teardown-tests "$DIR/main.swift"
 "$TEST_BIN"

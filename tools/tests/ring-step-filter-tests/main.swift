@@ -7,19 +7,6 @@
 
 import Foundation
 
-private var failures = 0
-private var checks = 0
-
-private func expect(
-    _ condition: Bool, _ message: @autoclosure () -> String,
-    file: StaticString = #file, line: UInt = #line
-) {
-    checks += 1
-    guard !condition else { return }
-    failures += 1
-    FileHandle.standardError.write(Data("FAIL (\(file):\(line)): \(message())\n".utf8))
-}
-
 /// Ring positions through the filter the way the injector feeds it, with
 /// 72 positions and wraparound; returns the steps it applied.
 private func applied(_ positions: [Int]) -> [Int] {
@@ -65,9 +52,4 @@ expect(!filter.accepts(-3), "a reversal waits")
 filter.reset()
 expect(filter.accepts(-3), "after a lift, either direction counts at once")
 
-if failures == 0 {
-    print("ring-step-filter-tests: \(checks) checks passed")
-    exit(0)
-}
-FileHandle.standardError.write(Data("ring-step-filter-tests: \(failures) of \(checks) checks failed\n".utf8))
-exit(1)
+finish()
