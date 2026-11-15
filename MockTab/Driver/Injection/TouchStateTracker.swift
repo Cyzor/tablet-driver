@@ -495,7 +495,7 @@ struct TouchStateTracker {
     /// many seconds of it. Otherwise the fingers rested (a brake), and release
     /// velocity is suppressed even if a fast sample remains in the window.
     static let momentumRecencyWindow: TimeInterval = 0.05
-    /// Grace period after a committed `.pan` drops from two contacts to one,
+    /// Grace period after a committed `.pan` goes from two contacts to one,
     /// before the gesture winds down. A brief one-contact frame is normal
     /// mid-scroll (palm filtering churns the set, or a finger lifts for a
     /// moment). A `.pan` kept alive on one finger would scroll on every later
@@ -917,7 +917,7 @@ struct TouchStateTracker {
                 scrollDroppedToOneContactAt = 0
             } else {
                 if scrollDroppedToOneContactAt == 0 {
-                    // First frame of the drop: `recentVelocities` is still
+                    // First frame with one contact: `recentVelocities` is still
                     // fresh. Snapshot the velocity and the gaps now; the
                     // wind-down is too late. `dt` is this frame's spacing,
                     // since `lastFrameTime` already holds `now`.
@@ -930,7 +930,7 @@ struct TouchStateTracker {
                 }
                 if now - scrollDroppedToOneContactAt >= Self.scrollSingleContactGrace {
                     let priorPhase = lastScrollPhase
-                    // Release values come from the drop snapshot (see
+                    // Release values come from the one-contact snapshot (see
                     // `scrollVelocityAtDrop`).
                     releaseVelocity = scrollVelocityAtDrop
                     releaseSuppressedByRecency = suppressedByRecencyAtDrop
@@ -1335,8 +1335,8 @@ struct TouchStateTracker {
         threeFingerTapMiss = threeFingerDrag && maxContactsThisSequence >= 3
             && priorMode != .drag ? (threeFingerMissReason ?? "other") : nil
         if scrollDroppedToOneContactAt != 0 {
-            // The drop already snapshotted everything while samples were
-            // fresh. Recomputing here would lose it: the grace-window frames
+            // The first one-contact frame already snapshotted everything while
+            // samples were fresh. Recomputing here would lose it: the grace-window frames
             // skipped velocity sampling, so `recentVelocities` is empty.
             releaseVelocity = scrollVelocityAtDrop
             releaseSuppressedByRecency = suppressedByRecencyAtDrop
@@ -1669,7 +1669,7 @@ struct TouchStateTracker {
     /// Release kinematics for a scroll gesture ending now: the flick velocity
     /// that seeds the coast, whether the recency gate suppressed it, and the
     /// frame and motion gaps for diagnostics. All three release sites call it
-    /// (full lift, the 2→1 drop, and the wind-down snapshot), so the
+    /// (full lift, the 2→1 change, and the wind-down snapshot), so the
     /// brake-versus-delivery-gap logic lives in one place.
     ///
     /// The plain recency gate (no motion within `momentumRecencyWindow` means a
@@ -1684,7 +1684,7 @@ struct TouchStateTracker {
     /// (the roughly 1 Hz Bluetooth housekeeping event, or idle between
     /// gestures) takes the normal path, where `frameGap` reads -1.
     /// - Parameter frameGapOverride: the true spacing from the previous frame,
-    ///   for the 2→1 drop, which has already set `lastFrameTime` to `now`.
+    ///   for the 2→1 change, which has already set `lastFrameTime` to `now`.
     ///   Other callers omit it.
     private func releaseKinematics(
         now: TimeInterval, frameGapOverride: TimeInterval? = nil
