@@ -7,29 +7,22 @@ import CoreGraphics
 import os
 import TabletKit
 
-// Capacitive finger-touch injection. The per-sequence touch state it reads (`touchTracker`, `cachedTouch*`,
-// `penProximityExitTime`) lives on the main class body — Swift class
-// extensions can't hold stored properties — and stays HIDThread-confined
-// exactly as documented there.
+// Capacitive finger-touch injection. The touch state it reads (`touchTracker`,
+// `cachedTouch*`, `penProximityExitTime`) lives on the main class body, since
+// extensions can't hold stored properties, and stays HIDThread-confined.
 extension InputInjector {
 
-    /// Inject a touch contact frame.
+    /// Injects a touch contact frame.
     ///
-    /// Behavior:
-    ///   • `touchEnabled == false` → no-op.
-    ///   • Pen confirmed busy (`touchPenConfirmedBusy` — in proximity past
-    ///     `touchBusyHoldOff`, or already down), or lifted within
-    ///     `touchArbitrationGrace` → drop the frame (and reset tracker so a
-    ///     stale gesture mid-touch doesn't persist when the pen interrupts).
-    ///   • Otherwise project each contact through the user's touch-area
-    ///     mapping into screen-space, hand to `TouchStateTracker`, and
-    ///     translate its `Intent` into CGEvents:
-    ///       - `.pointerMove`      → `mouseMoved`
-    ///       - `.scrollDelta`      → smooth scroll-wheel event with phase
-    ///       - `.twoFingerGesture` → synthesized magnify and/or rotate
-    ///                               gesture(s) with phase, independently —
-    ///                               both may post in the same frame
-    ///       - `.tapClick`         → left-click at the current cursor position
+    /// - With touch off, it does nothing.
+    /// - With the pen confirmed busy (`touchPenConfirmedBusy`) or lifted within
+    ///   `touchArbitrationGrace`, it skips the frame and winds down the tracker,
+    ///   so a stale gesture doesn't survive the pen's arrival.
+    /// - Otherwise it projects each contact through the touch-area mapping to
+    ///   screen space, hands the set to `TouchStateTracker`, and turns its
+    ///   `Intent` into CGEvents: `mouseMoved`, scroll-wheel events with phase,
+    ///   magnify and rotate gestures (both can post in one frame), and a left
+    ///   click at the cursor for a tap.
     func injectTouch(contacts: [TouchContact], settings: TabletSettings?) {
         ThreadContract.expectPenThread()
         rearmWatchdog()
@@ -43,26 +36,22 @@ extension InputInjector {
             return
         }
 
-        // Cache touch coordinate maximums per device.  Without this, the
-        // registry lookup (linear scan over ~80 specs) ran on every HID
-        // frame — at 100 Hz with a palm on the tablet, that alone was a
-        // measurable CPU contributor.  (Before the arbitration gate because
-        // palm classification needs the maximums.)
+        // Cache the touch coordinate maximums per device. The registry lookup
+        // is a linear scan, and at 100 Hz with a palm on the tablet it was a
+        // measurable CPU cost. This runs before the arbitration gate because
+        // palm classification needs the maximums.
         //
-        // A wireless-dongle-bound device's own PID has no touch-area data in
-        // the registry (touchMaxX/Y default to 0) — the paired tablet's does.
-        // Without preferring snap.pairedProductID here, cachedTouchMaxX/Y
-        // silently fell back to `Swift.max(1, 0) == 1`, so every real touch
-        // coordinate scaled against a denominator of 1 instead of the real
-        // sensor range — collapsing all input toward one corner of the
-        // active area.
+        // A dongle-bound device's own PID has no touch-area data in the
+        // registry; the paired tablet's does. Without preferring
+        // `pairedProductID`, the maximums fell back to 1 and every touch
+        // coordinate collapsed toward one corner of the active area.
         let effectiveTouchPID = snap.pairedProductID != 0 ? snap.pairedProductID : deviceProductID
         if cachedTouchSpecPID != effectiveTouchPID {
             let spec = WacomDeviceRegistry.spec(for: effectiveTouchPID)
-            // No registry range: use what the sensor's descriptor declares
-            // rather than collapsing every contact into one corner. The
-            // registry still wins where set, since fixed-format decoders on
-            // verified tablets don't read the descriptor's coordinate space.
+            // With no registry range, use the sensor descriptor's, so contacts
+            // don't collapse into one corner. The registry wins where set,
+            // since fixed-format decoders on verified tablets don't read the
+            // descriptor's coordinate space.
             let described = DescribedTouchRanges.range(forProductID: effectiveTouchPID)
             if let described, (spec?.touchMaxX ?? 0) == 0 {
                 cachedTouchMaxX = Swift.max(1, described.x)
@@ -71,8 +60,8 @@ extension InputInjector {
                 cachedTouchMaxX = Swift.max(1, spec?.touchMaxX ?? 1)
                 cachedTouchMaxY = Swift.max(1, spec?.touchMaxY ?? 1)
             }
-            // Falls back to the raw maximums (no correction) when the spec
-            // has no physical size — see `cachedTouchWidthMM`'s doc comment.
+            // With no physical size, fall back to the raw maximums, which
+            // applies no correction (see `cachedTouchWidthMM`).
             cachedTouchWidthMM = spec?.activeWidthMM ?? Double(cachedTouchMaxX)
             cachedTouchHeightMM = spec?.activeHeightMM ?? Double(cachedTouchMaxY)
             cachedTouchIsDirect = spec?.isPenDisplay ?? false
@@ -81,18 +70,15 @@ extension InputInjector {
             cachedTouchSpecPID = effectiveTouchPID
         }
 
-        // Pen arbitration: pen takes priority.  Drop frames and reset tracker
-        // so a half-formed gesture doesn't resume after the pen lifts.
-        // Touch during pen use isn't offered: the firmware streams it, but
-        // palm rejection wasn't reliable enough to ship.
+        // Pen arbitration: the pen wins. Skip frames and wind down the tracker
+        // so a half-formed gesture doesn't resume after the pen lifts. Touch
+        // during pen use isn't offered: the firmware streams it, but palm
+        // rejection wasn't reliable enough to ship.
         let now = ProcessInfo.processInfo.systemUptime
-        // `staleBusy` is much narrower than that prototype: it only lets
-        // touch through once a busy pen has sat with no tip contact at all
-        // for `staleBusyTimeout`, which is specifically the "ambiguous
-        // Bluetooth proximity, pen not actually being used" case documented
-        // at `touchPenBusyConfirmedAt`'s declaration — not concurrent
-        // touch-while-drawing, which is still excluded by `touchPenConfirmedBusy`
-        // continuing to gate every tip-down.
+        // `staleBusy` lets touch through only once a busy pen has sat with no
+        // tip contact for `staleBusyTimeout`: the ambiguous Bluetooth
+        // proximity case (see `staleBusyTimeout`), not touch while drawing,
+        // which `touchPenConfirmedBusy` still blocks at every tip contact.
         let staleBusy = touchPenConfirmedBusy
             && !touchPenBusyHadTipSinceConfirmed
             && now - touchPenBusyConfirmedAt >= Self.staleBusyTimeout
@@ -107,25 +93,18 @@ extension InputInjector {
             touchPenHeldIDs.formUnion(contacts.map(\.id))
             touchSequenceTainted = !contacts.isEmpty
             touchOwnedPointerPosition = nil
-            // Wind down whenever a gesture is live, regardless of whether this
-            // particular frame carried contacts. The empty-contacts frame *is*
-            // the lift signal, and gating the wind-down behind
-            // `!contacts.isEmpty` meant a lift that landed inside a pen-busy
-            // window never closed the gesture — `TouchStateTracker` stayed in
-            // `.scroll`/`.pan`, and every later touch kept scrolling. Gate on
-            // `mode != .idle` (not an unconditional call) so the tracker isn't
-            // driven — and `recentVelocities` isn't scanned — on every hover
-            // frame while nothing is in progress.
+            // Wind down whenever a gesture is live, even on a frame with no
+            // contacts. That empty frame is the lift signal; gating on
+            // `!contacts.isEmpty` meant a lift inside a pen-busy window never
+            // closed the gesture, and every later touch kept scrolling. Gating
+            // on `mode != .idle` keeps hover frames from driving the tracker.
             if touchTracker.mode != .idle {
-                // A bare reset() discards state without telling the app a
-                // gesture in progress ever ended — the app's own recognizer
-                // (e.g. Krita's pinch/rotate handler) is left waiting for a
-                // phase-ended event that will now never come, so it reads as
-                // permanently "stuck engaged" and rejects the next gesture.
-                // Wind down through the same path a real all-fingers-lifted
-                // frame would take, so any open magnify/rotate/scroll phase
-                // closes properly before the state is dropped.
-                // The pen arriving ends the touch; it never clicks.
+                // A bare `reset()` never tells the app the gesture ended, so its
+                // own recognizer (Krita's pinch and rotate handler, say) waits
+                // for a phase-ended event, reads as stuck engaged, and rejects
+                // the next gesture. Wind down through the same path as a real
+                // lift, so every open phase closes. The pen arriving ends the
+                // touch; it never clicks.
                 let windDown = touchTracker.process(
                     contacts: [],
                     tapToClick: false,
@@ -148,11 +127,10 @@ extension InputInjector {
 
         TouchPipelineProbe.note { $0.noteTouchNotPenBusy() }
 
-        // Palm classification must happen before projection and gesture
-        // tracking. On the IntuosV2 touch family it preserves a simultaneous
-        // normal finger while dropping only the palm-sized contact; other
-        // tablets pass through unchanged until they have their own
-        // calibrated thresholds.
+        // Palm classification runs before projection and gesture tracking. On
+        // the IntuosV2 touch family it keeps a simultaneous finger and rejects
+        // only the palm-sized contact; other tablets pass through until they
+        // have calibrated thresholds.
         let filtered = touchPalmRejector.filter(
             contacts: contacts.map {
                 (id: $0.id, major: $0.contactArea, minor: $0.contactMinor)
@@ -175,13 +153,12 @@ extension InputInjector {
             let dropped = contacts.count - filteredContacts.count
             TouchPipelineProbe.note { $0.contactsPalmRejected += dropped }
         }
-        // A frame that had ≥2 contacts but leaves palm filtering with <2 can no
-        // longer start or sustain a two-finger gesture — palm rejection just
-        // cost a potential pinch/scroll/rotate. Counted once per *entry* into
-        // that condition, not per frame: a resting palm alongside one finger
-        // holds it at report rate, and hundreds of frames for one event would
-        // swamp the signal. `contactsPalmRejected` alone can't tell a gesture
-        // loss from correctly dropping a lone palm; this can.
+        // A frame with two or more contacts that leaves palm filtering with
+        // fewer can no longer start or sustain a two-finger gesture. Count
+        // each entry into that state once, not every frame: a resting palm
+        // beside one finger holds it at report rate and would swamp the
+        // signal. `contactsPalmRejected` alone can't tell a lost gesture from a
+        // correctly rejected lone palm.
         let brokeTwoFingerNow = contacts.count >= 2 && filteredContacts.count < 2
         if brokeTwoFingerNow, !palmRejectionBrokeTwoFingerActive {
             TouchPipelineProbe.note { $0.palmRejectionBrokeTwoFingerFrames += 1 }
@@ -201,13 +178,11 @@ extension InputInjector {
                 "touch palm filter: rejected=id:major/minor[\(rejected, privacy: .public)], accepted=id:major/minor[\(accepted, privacy: .public)]")
         }
 
-        // Rotate the touch-area crop and the sensor maxima into oriented
-        // space once per frame — `snap.touchAreaX/Y/Width/Height` are stored
-        // raw (unlike pen's already-oriented activeAreaX/Y/Width/Height), so
-        // the crop rect itself needs the same rotation each contact point
-        // gets below. The maxima swap depends only on frame-constant inputs
-        // (cachedTouchMaxX/Y, orientation), so it's hoisted out of the loop
-        // rather than recomputed via `DisplayMapper.orient` per contact.
+        // Rotate the touch-area crop and the sensor maxima into oriented space
+        // once per frame. `snap.touchArea*` is stored raw, unlike the pen's
+        // oriented `activeArea*`, so the crop needs the rotation each contact
+        // gets below. The maxima swap depends only on frame-constant inputs, so
+        // it sits outside the loop.
         let orientation = snap.tabletOrientation
         // A pen display's touch covers its own screen whole, or the finger
         // and cursor part ways.
@@ -220,10 +195,9 @@ extension InputInjector {
         let effMaxX: Double = orientation.swapsAxes ? Double(cachedTouchMaxY) : Double(cachedTouchMaxX)
         let effMaxY: Double = orientation.swapsAxes ? Double(cachedTouchMaxX) : Double(cachedTouchMaxY)
 
-        // Resolve display bounds — touch shares the pen's target display,
-        // fit to the physical aspect of the touch area as the tablet is
-        // turned, so shapes traced on the pad aren't stretched by the
-        // display's own ratio.
+        // Touch shares the pen's target display, fit to the touch area's
+        // physical aspect as the tablet is turned, so shapes traced on the pad
+        // aren't stretched by the display's ratio.
         let displayBounds = cachedTouchIsDirect
             ? touchPanelBounds(snap: snap)
             : DisplayMapper.aspectFitRect(
@@ -232,10 +206,9 @@ extension InputInjector {
                     widthMM: cachedTouchWidthMM, heightMM: cachedTouchHeightMM,
                     crop: orientedArea, orientation: orientation))
 
-        // Project each contact to screen-space using the touch-area mapping.
-        // Contacts whose raw position falls outside the crop rect return nil
-        // and are dropped entirely (no clamping to the rect edge — that would
-        // leave the deadzone partially responsive).
+        // Project each contact to screen space with the touch-area mapping.
+        // Contacts outside the crop rect return nil and don't count; clamping
+        // them to the edge would leave the dead zone partly responsive.
         var projected: [(id: Int, screen: CGPoint)] = []
         projected.reserveCapacity(filteredContacts.count)
         for c in filteredContacts {
@@ -270,13 +243,12 @@ extension InputInjector {
             }
         }
 
-        // Diagnostic: a committed pan scroll running on fewer than two contacts
-        // is the "stuck scroll" signature — see
-        // `CaptureTouchPipeline.scrollSingleContactFrames`. Sampled here, from
-        // the injector, so `TouchStateTracker` keeps taking no dependency on the
-        // probe. `now` is the same clock the tracker sees, so a
-        // sub-millisecond gap between touch frames — the batched-Bluetooth
-        // burst that corrupts the release-velocity estimate — is visible too.
+        // Diagnostic: a committed pan scroll on fewer than two contacts is the
+        // stuck-scroll signature (see
+        // `CaptureTouchPipeline.scrollSingleContactFrames`). Sampling it here
+        // keeps `TouchStateTracker` free of the probe. `now` is the tracker's
+        // clock, so a sub-millisecond gap between frames, the batched Bluetooth
+        // burst that corrupts release velocity, shows up too.
         if touchTracker.mode == .scroll, touchTracker.committedToPan,
             !touchTracker.isHoldingWoundDownScroll
         {
@@ -291,34 +263,28 @@ extension InputInjector {
         }
         lastTouchFrameTime = now
 
-        // A real trackpad stops a coasting flick the instant two fingers land
-        // on the surface — before any gesture is even recognized, like
-        // grabbing a spinning wheel. Gating the cancel behind the tracker's
-        // resolved intent (as happens naturally below) instead requires
-        // motion past the pinch/pan discrimination threshold first, which
-        // reads as needing a "nudge" to arrest the coast. Cancel on the raw
-        // idle-to-two-contacts transition instead. Requires *two* fingers,
-        // not one — an ordinary single-finger pointer move shouldn't stop a
-        // coast the user never touched.
+        // A real trackpad stops a coasting flick the instant two fingers land,
+        // like grabbing a spinning wheel, before any gesture is recognized.
+        // Waiting for the tracker's intent would need motion past the
+        // pinch/pan threshold first, which feels like a nudge to stop the coast.
+        // So cancel on the raw idle-to-two-contacts transition. It takes two
+        // fingers, so an ordinary single-finger move doesn't stop a coast the
+        // user never touched.
         //
-        // `.pending` counts as well as `.idle`: process()'s idle branch returns
-        // early on the first contact of any sequence, so `.idle` -> `.pending`
-        // always burns a frame and `.idle` only still holds here when both
-        // fingers landed in the very same HID frame. A landing split across two
-        // frames — the common case at report rate, and guaranteed whenever palm
-        // filtering drops a contact on the first one — would otherwise never
-        // arrest the coast at all. MomentumTail.stop() no-ops when no tail is
-        // in flight, so testing both modes is free.
+        // `.pending` counts as well as `.idle`: `process()` returns early on a
+        // sequence's first contact, so `.idle` still holds here only when both
+        // fingers landed in one HID frame. A landing split across two frames,
+        // the common case and a certainty when palm filtering rejects the
+        // first contact, would never arrest the coast. `stop()` does nothing
+        // without a tail, so testing both modes costs nothing.
         if projected.count >= 2, touchTracker.mode == .idle || touchTracker.mode == .pending {
             touchMomentumTail.stop()
         }
 
-        // Diagnostic: tally how this two-or-more-finger sequence resolves,
-        // once per sequence rather than per frame — see
-        // `CaptureTouchPipeline.twoFingerResolved*`. A lift with no prior
-        // commit closes out a sequence that saw 2+ fingers but never
-        // resolved to any gesture; the commit side is tallied in the intent
-        // switch below.
+        // Diagnostic: tally how each sequence with two or more fingers resolves
+        // (see `CaptureTouchPipeline.twoFingerResolved*`). A lift with no prior
+        // commit closes a sequence that never resolved to any gesture; the
+        // intent switch below tallies the commits.
         if projected.isEmpty {
             if touchSequenceSawTwoFingers, !touchSequenceCommitted {
                 TouchPipelineProbe.note { $0.twoFingerResolvedNone += 1 }
@@ -329,21 +295,17 @@ extension InputInjector {
             touchSequenceSawRotate = false
             touchSequenceBothCounted = false
             touchOwnedPointerPosition = nil
-            // Fingers lifted: other devices may move the pointer next.
+            // Fingers lifted, so other devices may move the pointer next.
             lastDeltaOrigin = nil
         } else if projected.count >= 2 {
             touchSequenceSawTwoFingers = true
         }
 
-        // Only built when Rotate is on — the raw-position dictionary would
-        // otherwise allocate on every frame for no reason. Converted to
-        // millimeters, not left in raw device units: the touch coordinate
-        // space is anisotropic (e.g. the PTH-850 is ~12.6 units/mm in X vs
-        // ~20.2 in Y), so a raw-unit separation gate would read a 45°
-        // physical finger pair as a different angle and a horizontally-held
-        // span as narrower than a vertically-held one of the same physical
-        // size. mm is the only unit where "how far apart are the fingers,
-        // physically" means the same thing regardless of axis.
+        // Built only when a gesture needs it, to avoid a per-frame allocation.
+        // Millimeters, not raw device units: the touch space is anisotropic
+        // (the PTH-850 has about 12.6 units/mm in X and 20.2 in Y), so raw
+        // units would skew the angle of a 45° finger pair and make a horizontal
+        // span read narrower than a vertical one of the same size.
         var rawTouchPositionsMM: [Int: CGPoint] = [:]
         if snap.rotateEnabled || snap.twoFingerRightClick || snap.threeFingerDrag {
             rawTouchPositionsMM.reserveCapacity(filteredContacts.count)
@@ -387,18 +349,9 @@ extension InputInjector {
         }
     }
 
-    /// Record that a pinch or rotate component opened its envelope this frame.
-    ///
-    /// Two things fall out of this that a per-frame "both present" test can't
-    /// see, now that a component can join partway through a sequence:
-    /// `twoFingerResolvedBoth` (this sequence ended up running both at once —
-    /// the thing `twoFingerResolvedPinch`/`Rotate` genuinely cannot
-    /// distinguish from two separate single-component sequences), and
-    /// `twoFingerLateJoins` (a `.began` arriving on a sequence that had
-    /// already committed — i.e. the late-join path firing at all).
     /// The pen display's own screen, whatever the pen is mapped to. Falls back
-    /// to the whole screen under the pen's mapping when no Wacom panel matches
-    /// by name (non-Wacom pen displays, or two identical Cintiqs).
+    /// to the screen under the pen's mapping when no Wacom panel matches by
+    /// name (non-Wacom pen displays, or two identical Cintiqs).
     private func touchPanelBounds(snap: InjectionSnapshot) -> CGRect {
         if touchPanelNeedsResolve {
             touchPanelNeedsResolve = false
@@ -415,6 +368,12 @@ extension InputInjector {
         return CGDisplayBounds(id)
     }
 
+    /// Records that a pinch or rotate component opened its envelope this frame.
+    /// A component can join partway through a sequence, which a per-frame
+    /// "both present" test can't see. This feeds `twoFingerResolvedBoth` (the
+    /// sequence ran both at once, which the single-component counters can't
+    /// tell from two separate sequences) and `twoFingerLateJoins` (a `.began`
+    /// arriving after the sequence had committed).
     func noteGestureComponentBegan(pinch: Bool) {
         if touchSequenceCommitted {
             TouchPipelineProbe.note { $0.twoFingerLateJoins += 1 }
@@ -427,15 +386,13 @@ extension InputInjector {
         }
     }
 
-    /// Fold this frame's `touchTracker.mode` into the onset-window lifecycle
-    /// counters. `.idle` → `.pending` is a new sequence (one onset window); if
-    /// the previous sequence tore down less than `reArmWindow` ago it's one
-    /// interrupted drag re-paying the delay, which the onset-delay change
-    /// shortened but did not remove. Also tracks the running single-contact
-    /// pointer-drag duration for `longestSingleContactDragMs`. Must be called
-    /// on every `injectTouch` frame that advanced the tracker, the pen-busy
-    /// wind-down included, so a teardown there isn't mistaken for a re-arm on
-    /// the next real touch.
+    /// Folds this frame's `touchTracker.mode` into the onset-window counters.
+    /// `.idle` → `.pending` starts a new sequence and its onset window. If the
+    /// last sequence tore down less than `reArmWindow` ago, it's one
+    /// interrupted drag paying the delay again. Also tracks the running
+    /// single-contact drag duration for `longestSingleContactDragMs`. Call it on
+    /// every `injectTouch` frame that advanced the tracker, the pen-busy
+    /// wind-down included, so a teardown there isn't mistaken for a re-arm.
     func noteOnsetLifecycle(now: TimeInterval) {
         let mode = touchTracker.mode
         defer { prevTouchMode = mode }
@@ -464,18 +421,15 @@ extension InputInjector {
         }
     }
 
-    /// Translates a resolved `Intent` into CGEvents. Shared by the normal
-    /// per-frame path above and by `injectTouch`'s pen-arbitration branch,
-    /// which feeds it a synthetic all-fingers-lifted wind-down intent so an
-    /// open gesture phase always closes instead of vanishing mid-stream.
+    /// Translates a resolved `Intent` into CGEvents. The per-frame path and
+    /// `injectTouch`'s pen-arbitration branch share it; the branch feeds it a
+    /// synthetic lift intent, so an open gesture phase always closes.
     private func handleTouchIntent(
         _ intent: TouchStateTracker.Intent,
         snap: InjectionSnapshot, settings: TabletSettings?
     ) {
-        // Counted per resolved intent, not per posted CGEvent: a gesture
-        // that reaches here and commits to a mode is working as far as this
-        // diagnostic is concerned, and the post helpers below have their
-        // own failure paths.
+        // The diagnostics count resolved intents, not posted CGEvents; the
+        // post helpers below have their own failure paths.
         if touchSequenceTainted {
             switch intent {
             case .tapClick, .secondaryClick, .pointerMove, .pointerWarp:
@@ -514,21 +468,20 @@ extension InputInjector {
             if phase == .began {
                 touchSequenceCommitted = true
                 TouchPipelineProbe.note { $0.twoFingerResolvedPan += 1 }
-                // A fresh two-finger scroll halts any coasting tail from the
-                // previous gesture, same as touching a real trackpad mid-momentum.
+                // A fresh two-finger scroll halts the previous gesture's coast,
+                // as touching a real trackpad mid-momentum does.
                 touchMomentumTail.cancel()
             }
             postTouchScroll(dx: dx, dy: dy, phase: phase)
             if phase == .ended, snap.twoFingerScrollMomentum {
                 let raw = touchTracker.releaseVelocity
                 let rawMag = hypot(raw.dx, raw.dy)
-                // Clamp the seed here, not in `MomentumTail` — that type is
-                // shared with `panMomentumTail`, whose feel is separately
-                // tuned. A constant-deceleration tail travels v²/(2·decel), so
-                // capping the magnitude caps the coast distance: 6000 pts/s ⇒
-                // ~3000 pts. Above that is a corrupted sample from a Bluetooth
-                // burst (see `TouchStateTracker.minVelocityDt`), not a real
-                // flick, and it reads as an occasional runaway coast.
+                // Clamp the seed here, not in `MomentumTail`, which
+                // `panMomentumTail` shares and tunes separately. A tail travels
+                // v²/(2·decel), so capping speed caps distance: 6000 pts/s is
+                // about 3000 pts. Anything faster is a corrupted Bluetooth burst
+                // sample (see `TouchStateTracker.minVelocityDt`) and reads as an
+                // occasional runaway coast.
                 let v: CGVector
                 if rawMag > Self.touchMomentumMaxSeedVelocity {
                     let s = Self.touchMomentumMaxSeedVelocity / rawMag
@@ -538,8 +491,8 @@ extension InputInjector {
                 }
                 let suppressedByRecency = touchTracker.releaseSuppressedByRecency
                 touchMomentumTail.start(velocity: v)
-                // `start()` calls `cancel()` first, so a post-call `isRunning`
-                // means specifically "this release started a tail".
+                // `start()` cancels first, so `isRunning` afterward means this
+                // release started a tail.
                 let started = touchMomentumTail.isRunning
                 let frameGap = touchTracker.releaseFrameGap
                 let motionGap = touchTracker.releaseMotionGap
@@ -560,11 +513,10 @@ extension InputInjector {
                magnify?.phase == .began || rotateGesture?.phase == .began {
                 TouchPipelineProbe.note { $0.palmSequenceGestures = ($0.palmSequenceGestures ?? 0) + 1 }
             }
-            // Independent components, either or both present this frame —
-            // a real trackpad can magnify and rotate at once (see
-            // `TouchStateTracker.TwoFingerKind`'s doc comment), so this
-            // posts up to two separate CGEvents in the same HID frame,
-            // exactly as a real trackpad driver would.
+            // Either or both components can be present, since a real trackpad
+            // can magnify and rotate at once (see
+            // `TouchStateTracker.TwoFingerKind`), so this posts up to two
+            // CGEvents in one frame.
             if let magnify {
                 TouchPipelineProbe.note { $0.zooms += 1 }
                 if magnify.phase == .began {
@@ -607,15 +559,15 @@ extension InputInjector {
     }
 
     /// Relative motion accumulates on an owned float position, never on a
-    /// per-frame OS readback: at ~100 Hz the readback races WindowServer's
-    /// async commit of the previous post, so consecutive frames add their
-    /// deltas to the same stale base and only the last one lands — slow
-    /// sweeps fall short of the screen edge (issue #13). Same defect and
-    /// same fix as `DisplayMapper.ownedRelativePosition` for pen relative
-    /// mode. Seeded from the OS once per sequence and cleared wherever
-    /// something else moves the cursor: sequence end, pen priority, an
-    /// absolute warp, a tap. Pinned here as well as in the warp so the owned
-    /// copy can't run off-screen and then need "catching up" on reversal.
+    /// per-frame OS readback. At about 100 Hz the readback races WindowServer's
+    /// commit of the previous post, so consecutive frames add their deltas to
+    /// the same stale base and only the last lands, and slow sweeps fall short
+    /// of the screen edge (issue #13). `DisplayMapper.ownedRelativePosition`
+    /// does the same for pen relative mode. The first move of a sequence seeds
+    /// it from the OS, and anything else that moves the cursor clears it: a
+    /// sequence end, pen priority, an absolute warp, or a tap. Pinning here as
+    /// well keeps the owned copy from running off-screen and needing to catch
+    /// up on reversal.
     private func postTouchPointerMove(dx: Double, dy: Double) {
         let base = touchOwnedPointerPosition ?? currentCursorPosition()
         var target = CGPoint(x: base.x + dx, y: base.y + dy)
@@ -626,12 +578,11 @@ extension InputInjector {
         postTouchPointerWarp(to: target)
     }
 
-    /// Shared by both touch pointer intents: `.pointerMove` (relative mode)
-    /// resolves its delta into an absolute target and calls through here;
-    /// `.pointerWarp` (absolute mode) already has one from
-    /// `TouchStateTracker.screenPoint`. Edge-pinning runs either way — a
-    /// no-op if the target's already in bounds, protective if a mapping
-    /// edge case put it just outside.
+    /// Both touch pointer intents end here. `.pointerMove` (relative) resolves
+    /// its delta to an absolute target first; `.pointerWarp` (absolute) already
+    /// has one from `TouchStateTracker.screenPoint`. Edge pinning runs either
+    /// way: it changes nothing in bounds and protects against a mapping edge
+    /// case just outside.
     private func postTouchPointerWarp(to point: CGPoint) {
         var target = point
         if let snap = injectionSnapshot {
@@ -648,25 +599,22 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Always phased, as Pan View's `postPanScroll` is, whatever the Momentum
-    /// setting, which only adds the coast: phase-free events stay with the
-    /// last view that scrolled until a pause, so a scroll couldn't turn from
-    /// a column to Finder's browser.
+    /// Always phased, like Pan View's `postPanScroll`, whatever the Momentum
+    /// setting, which only adds the coast. Phase-free events stay with the last
+    /// view that scrolled until a pause, so a scroll couldn't move from a
+    /// column to the Finder's browser.
     private func postTouchScroll(dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase) {
-        // Read once and reuse below — the wheel event and its companion
-        // gesture event describe the same instant, so a second WindowServer
-        // round-trip a few microseconds later gains nothing.
+        // Read once: the wheel event and its companion gesture event describe
+        // the same instant.
         let loc = currentCursorPosition()
-        // A real trackpad driver posts a gesture-scroll companion event
-        // alongside the wheel event; apps that build their own gesture-scroll
-        // physics (rather than relying on NSScrollView's free coast) key off
-        // this stream instead of — or in addition to — the wheel event. Posted
-        // first to avoid a stutter seen the other way round, though a real
-        // trackpad posts the wheel event first.
+        // A real trackpad posts a gesture-scroll companion alongside the wheel
+        // event, and apps with their own gesture-scroll physics key off it
+        // instead of, or besides, the wheel event. It posts first here because
+        // the other order stuttered, though a real trackpad posts the wheel
+        // first.
         postTouchScrollGesture(dx: dx, dy: dy, phase: phase, location: loc)
-        // .pixel units + the scroll-phase field is what makes apps treat the
-        // stream as a trackpad scroll (smooth, with rubber-banding) rather
-        // than a discrete wheel-tick scroll.
+        // Pixel units plus the phase field make apps treat the stream as a
+        // trackpad scroll (smooth, with rubber-banding), not discrete wheel ticks.
         guard let e = CGEvent(
             scrollWheelEvent2Source: sessionSource,
             units: .pixel,
@@ -683,13 +631,10 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Companion to `postTouchScroll` — same synthesized-gesture technique as
-    /// `postTouchMagnify` (`nsEventTypeGesture`/`fieldIOHIDEventSubtype`/
-    /// `fieldGesturePhase`, all reused from there), but subtype
-    /// `kIOHIDEventTypeScroll` instead of zoom, carrying the gesture delta
-    /// directly rather than a magnification factor. Not sent during the
-    /// momentum tail — a real trackpad's momentum stream is wheel-event only,
-    /// this event only accompanies a live, phase-bracketed gesture.
+    /// Companion to `postTouchScroll`. It uses `postTouchMagnify`'s technique
+    /// with the scroll subtype, carrying the gesture delta directly. The
+    /// momentum tail doesn't send it: a real trackpad's momentum stream is
+    /// wheel events only, and this accompanies a live, phased gesture.
     private func postTouchScrollGesture(
         dx: Double, dy: Double, phase: TouchStateTracker.ScrollPhase, location: CGPoint
     ) {
@@ -703,31 +648,16 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Pinch-zoom: a real synthesized magnify gesture, phase-bracketed like
-    /// `postTouchScroll`. A ⌘+wheel stand-in and, after that failed hardware
-    /// testing, a ⌘+Keypad-Plus/Minus keystroke stand-in were both tried and
-    /// hardware-verified working (see git history) before this — the
-    /// keystroke form reached Preview, Safari, and Chromium/Firefox browsers,
-    /// but only as discrete menu-command steps, and every mechanism was
-    /// believed to require a private, Apple-only entitlement for anything
-    /// smoother, matching a previously closed investigation into synthesizing
-    /// native gestures.
-    ///
-    /// That turned out to be wrong. The technique below needs no entitlement
-    /// at all — a CGEvent's *real* type (`.type`, not a field) set to 29
-    /// (`NSEventTypeGesture`) plus a few undocumented-but-public integer/
-    /// double fields is enough for the OS to treat it exactly like a genuine
-    /// trackpad pinch. Traced independently on hardware to confirm it wasn't
-    /// a fluke; the same technique (undocumented CGEvent fields, no private
-    /// API) is used in production by the open-source Mac Mouse Fix project
-    /// (github.com/noah-nuebling/mac-mouse-fix, Helper/Core/Touch/
-    /// TouchSimulator.m), which traces it further back to CalfTrail Touch /
-    /// SensibleSideButtons reverse-engineering work. Reimplemented
-    /// independently here, not copied — MMF ships under a source-available,
-    /// non-GPL license.
-    /// Not `private`: ring/dial `.zoom` slot actions (`postRingGesture`,
-    /// +CGEvents.swift) call this too — same event technique, different
-    /// envelope source.
+    /// Pinch-zoom: a synthesized magnify gesture, phased like `postTouchScroll`.
+    /// It needs no entitlement. Setting a CGEvent's real type (`.type`, not a
+    /// field) to 29 (`NSEventTypeGesture`) plus a few undocumented but public
+    /// integer and double fields makes the OS treat it as a genuine trackpad
+    /// pinch. The open-source Mac Mouse Fix project uses the same technique
+    /// (`TouchSimulator.m`), which traces back to CalfTrail Touch and
+    /// SensibleSideButtons. This is an independent reimplementation, not a
+    /// copy: Mac Mouse Fix ships under a source-available, non-GPL license.
+    /// Not `private`: ring and dial `.zoom` actions (`postRingGesture` in
+    /// +CGEvents.swift) call it too, with a different envelope source.
     func postTouchMagnify(magnification: Double, phase: TouchStateTracker.ScrollPhase) {
         guard let e = CGEvent(source: nil) else { return }
         e.type = Self.nsEventTypeGesture
@@ -738,21 +668,16 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Rotate: a synthesized rotation gesture, phase-bracketed like
-    /// `postTouchMagnify`. Same technique and provenance (see that
-    /// function's doc comment); subtype and rotation field sourced from Mac
-    /// Mouse Fix's `postRotationEventWithRotation:phase:` (`TouchSimulator.m`).
+    /// Rotate: a synthesized rotation gesture, phased like `postTouchMagnify`,
+    /// with the same technique and provenance. The subtype and rotation field
+    /// come from Mac Mouse Fix's `postRotationEventWithRotation:phase:`.
     ///
-    /// Unit: `TouchStateTracker` hands this function radians (natural for
-    /// its internal `atan2` math); converted here to degrees on the
-    /// assumption the field expects what `NSEvent.rotation` — the public API
-    /// apps actually read a real trackpad rotation through — documents.
-    /// Rotation feels right in use, so the scale is at least roughly
-    /// correct, but nothing documents the field's unit; the magnitude hasn't
-    /// been measured.
-    /// Not `private`: ring/dial `.rotate` slot actions (`postRingGesture`,
-    /// +CGEvents.swift) call this too — same event technique, different
-    /// envelope source.
+    /// `TouchStateTracker` passes radians; this converts to degrees, assuming
+    /// the field takes what `NSEvent.rotation` documents. Rotation feels right
+    /// in use, so the scale is roughly correct, but nothing documents the
+    /// field's unit and the magnitude is unmeasured.
+    /// Not `private`: ring and dial `.rotate` actions (`postRingGesture` in
+    /// +CGEvents.swift) call it too, with a different envelope source.
     func postTouchRotate(rotation: Double, phase: TouchStateTracker.ScrollPhase) {
         guard let e = CGEvent(source: nil) else { return }
         e.type = Self.nsEventTypeGesture
@@ -763,19 +688,17 @@ extension InputInjector {
         finalizeAndPost(e)
     }
 
-    /// Upper bound on the touch momentum-tail seed velocity (points/second).
-    /// A constant-deceleration tail travels v²/(2·`MomentumTail.deceleration`),
-    /// so this caps the coast at ~3000 points — a hard flick, but not the
-    /// screen-clearing runaway a burst-corrupted sample would produce. Applied
-    /// at this call site rather than inside `MomentumTail` because that type is
-    /// shared with the separately-tuned `panMomentumTail`.
+    /// Upper bound on the touch momentum seed velocity (points/second). A tail
+    /// travels v²/(2·`MomentumTail.deceleration`), so this caps the coast near
+    /// 3000 points: a hard flick, not the screen-clearing runaway a corrupted
+    /// burst sample would produce. It applies here, not in `MomentumTail`,
+    /// which `panMomentumTail` shares and tunes separately.
     static let touchMomentumMaxSeedVelocity: Double = 6000
 
-    /// Undocumented CGEvent type/field numbers for gesture synthesis —
-    /// see `postTouchMagnify`'s doc comment for provenance and license note.
-    /// `fieldGestureDeltaX/Y` and `iohidEventTypeScroll` are the scroll-
-    /// subtype siblings of the zoom fields below, sourced from the same
-    /// technique's use in Mac Mouse Fix's `GestureScrollSimulator.m`.
+    /// Undocumented CGEvent type and field numbers for gesture synthesis (see
+    /// `postTouchMagnify` for provenance and the license note). The scroll
+    /// subtype's `fieldGestureDeltaX/Y` and `iohidEventTypeScroll` come from
+    /// Mac Mouse Fix's `GestureScrollSimulator.m`.
     private static let nsEventTypeGesture = CGEventType(rawValue: 29)!
     private static let fieldIOHIDEventSubtype = CGEventField(rawValue: 110)!
     private static let fieldMagnification = CGEventField(rawValue: 113)!
