@@ -8,14 +8,11 @@ import TabletKit
 
 /// Rejects palm-sized capacitive contacts before they reach gesture tracking.
 ///
-/// The IntuosV2 touch family (PTH-660 and PTH-860 — the latter's touch
-/// maxima are the registry's own basis for the former's estimated ones, and
-/// both share the same 0x21 report layout) reports the contact major and
-/// minor axes for every touch slot. The units are device-specific, so this
-/// filter is deliberately limited to that calibrated family rather than
-/// applying an unsafe global threshold. A rejected slot stays rejected until
-/// it lifts: a palm shrinks through finger sizes as it peels away, and
-/// letting it back in then clicked wherever the palm left.
+/// The PTH-660 and PTH-860 report contact major and minor axes for every
+/// touch slot. The units differ per device, so the filter covers only that
+/// calibrated family instead of applying a global threshold. A rejected slot
+/// stays rejected until it lifts: a palm shrinks through finger sizes as it
+/// peels away, and letting it back in clicked wherever the palm left.
 struct TouchPalmRejector {
 
     struct Result {
@@ -24,15 +21,13 @@ struct TouchPalmRejector {
         let newlyAcceptedIDs: [Int]
     }
 
-    /// PTH-660 and PTH-860 USB and Bluetooth Classic PIDs. Injection normally
-    /// sees the canonical USB PID, but accepting both keeps the filter
-    /// correct before canonicalization and in isolated tests.
+    /// PTH-660 and PTH-860 USB and Bluetooth Classic PIDs. Injection sees the
+    /// canonical USB PID; the Bluetooth ones keep isolated tests correct.
     private static let calibratedProductIDs: Set<Int> = [0x0357, 0x0360, 0x0358, 0x0361]
 
-    /// Live PTH-660 capture: a palm begins at Width/Height 6/7, while the
-    /// finger-sized fragments alongside it remain 1–4. The descriptor's
-    /// logical maxima (41 × 31) are not physical millimeters, so a threshold
-    /// inferred from those maxima was invalid; use both observed raw axes.
+    /// A palm starts at raw width/height 6/7; finger-sized fragments beside it
+    /// stay at 1–4. The descriptor's logical maxima aren't millimeters, so the
+    /// threshold comes from observed raw axes.
     private static let rejectAxisAtOrAbove = 5
 
     private var rejectedIDs: Set<Int> = []
@@ -46,8 +41,8 @@ struct TouchPalmRejector {
     }
 
 
-    /// `keep` are fingers already committed to a drag; pressing harder
-    /// flattens them to palm size, and rejecting one mid-drag dropped it.
+    /// `keep` holds fingers already committed to a drag. Pressing harder
+    /// flattens them to palm size, and rejecting one mid-drag lost the drag.
     mutating func filter(
         contacts: [(id: Int, major: Int?, minor: Int?)],
         productID: Int,
@@ -90,17 +85,14 @@ struct TouchPalmRejector {
     }
 }
 
-/// Translates a per-frame set of capacitive contacts into a single sticky-mode
-/// gesture intent (pointer drag vs. two-finger scroll vs. tap-click).
+/// Translates a per-frame set of capacitive contacts into one sticky-mode
+/// gesture intent (pointer, two-finger scroll, tap-click, or drag).
 ///
-/// "Sticky mode" means once a touch sequence picks a mode at second-finger-down,
-/// it stays in that mode until *all* fingers lift. Switching modes whenever a
-/// finger lands or lifts feels twitchy, so this tracker chooses once and
-/// commits.
+/// Once a touch sequence picks a mode, it stays there until every finger
+/// lifts; switching whenever a finger lands or lifts feels twitchy.
 ///
-/// Owned by `InputInjector`.  All state is mutable; the injector is the only
-/// caller and is single-threaded for touch (HIDThread).  Reads no global state
-/// — everything it needs is passed via `process(...)` so tests can drive it.
+/// `InputInjector` owns it and calls it on the HID thread. It reads no global
+/// state; `process(...)` receives everything, so tests can drive it.
 struct TouchStateTracker {
 
     enum Mode {
@@ -111,26 +103,17 @@ struct TouchStateTracker {
         case drag           // three fingers landed together: left button held, follows one finger
     }
 
-    /// Sticky two-finger sub-mode once significant motion is seen. `.pan` vs
-    /// `.gesture` is chosen once per sequence and doesn't change once
-    /// committed.
+    /// Sticky two-finger sub-mode, chosen once per sequence when significant
+    /// motion appears.
     ///
-    /// Within `.gesture`, which of pinch/rotate are in play
-    /// (`pinchInGesture`/`rotateInGesture`) is *not* frozen at commit: a
-    /// component that wasn't qualified there can join later in the same
-    /// sequence, so a pinch that grows a twist becomes a concurrent
-    /// pinch+rotate instead of resolving pinch-only. The evidence for the
-    /// second gesture almost never arrives in the same frame as the first;
-    /// see the late-join block in `process`.
-    /// Joining is one-way: a component that has begun is never dropped
-    /// mid-sequence, because retracting it means posting an `.ended` that
-    /// apps read as the gesture finishing.
+    /// Within `.gesture`, pinch and rotate can both run. A component that
+    /// didn't qualify at commit may join later (see the late-join block in
+    /// `process`), because evidence for the second gesture rarely arrives in
+    /// the same frame as the first. Joining is one-way: ending a component
+    /// mid-sequence posts an `.ended` that apps read as the gesture finishing.
     ///
-    /// `.pan` is still exclusive with `.gesture`: translating the centroid
-    /// (pan) is a fundamentally different action from the fingers moving
-    /// relative to *each other* in place (pinch/rotate), and a real trackpad
-    /// treats them exclusively too. Pinch and rotate are not exclusive with
-    /// each other — see `pinchInGesture`/`rotateInGesture`.
+    /// `.pan` excludes `.gesture`, as on a real trackpad: moving the centroid
+    /// differs from the fingers moving relative to each other.
     enum TwoFingerKind {
         case undecided
         case pan
@@ -139,68 +122,50 @@ struct TouchStateTracker {
 
     enum Intent: Equatable {
         case none
-        /// Move the cursor by (dx, dy) screen points, optionally posting a click
-        /// at the move's destination when the gesture finishes as a tap.
+        /// Move the cursor by (dx, dy) screen points.
         case pointerMove(dx: Double, dy: Double)
-        /// Absolute-mode counterpart to `pointerMove`: warp the cursor
-        /// directly to this screen point (already touch-area→display
-        /// mapped) rather than moving it by a delta. Only emitted when
-        /// `absoluteTouch` is true — see `process(...)`'s doc comment.
+        /// Absolute-mode counterpart to `pointerMove`: warp the cursor to this
+        /// screen point (already mapped from the touch area). Only emitted when
+        /// `absoluteTouch` is true.
         case pointerWarp(to: CGPoint)
-        /// Tap-to-click: a touch sequence that began and ended on roughly the
-        /// same point within `tapMaxDuration`.  Posted as a single left click.
+        /// Tap-to-click: the sequence began and ended on roughly the same point
+        /// within `tapMaxDuration`. Posts one left click.
         case tapClick
         /// Two fingers landed together, stayed put, and lifted within
-        /// `twoFingerTapMaxDuration`. Posted as a single right click.
+        /// `twoFingerTapMaxDuration`. Posts one right click.
         case secondaryClick
-        /// Three-finger drag: press the left button, at this point when the
+        /// Three-finger drag: press the left button at this point when the
         /// cursor follows the finger, else where the cursor is. Released when
         /// every finger lifts.
         case dragDown(at: CGPoint?)
         case dragMove(dx: Double, dy: Double)
         case dragWarp(to: CGPoint)
         case dragUp
-        /// Two-finger scroll delta in screen points + the scroll phase
-        /// (CG `kCGScrollWheelEventScrollPhase` values: 1=Began, 2=Changed,
-        /// 4=Ended).  Sign convention follows the natural-scrolling setting.
+        /// Two-finger scroll delta in screen points with its scroll phase
+        /// (CG values 1 began, 2 changed, 4 ended). The sign follows the
+        /// natural-scrolling setting.
         case scrollDelta(dx: Double, dy: Double, phase: ScrollPhase)
-        /// Pinch-zoom and/or two-finger rotate, independently — a real
-        /// trackpad can magnify and rotate at once (see `TwoFingerKind`'s
-        /// doc comment), so this carries one optional, independently
-        /// phase-bracketed component per gesture rather than forcing a
-        /// choice between them. `nil` means that gesture isn't part of this
-        /// touch's committed set at all (see `pinchInGesture`/
-        /// `rotateInGesture`) *or* it is, but has nothing new to report this
-        /// frame (its own `.changed` phase carries no zero-delta frames,
-        /// same as the exclusive design this replaced) — the receiving
-        /// phase field on the non-nil side is what actually opens/closes
-        /// each stream; a still-active component simply isn't present in a
-        /// zero-delta frame.
+        /// Pinch-zoom and two-finger rotate, each with its own phase. A real
+        /// trackpad can magnify and rotate at once, so each component is
+        /// optional. `nil` means the gesture isn't part of this touch, or has
+        /// nothing new this frame; `.changed` never carries a zero delta.
         ///
-        /// `magnify.magnification` is the exact relative growth of
-        /// inter-finger distance this frame — (newDistance / oldDistance) - 1
-        /// — which is what a real trackpad's magnify gesture reports, and
-        /// what makes per-frame deltas compound to the correct total scale
-        /// factor (Π(1 + dᵢ) telescopes to distance_final / distance_initial).
-        /// Fingers spreading → positive.
+        /// `magnify.value` is the relative growth of finger distance this frame,
+        /// newDistance / oldDistance - 1, as a real trackpad reports it.
+        /// Per-frame deltas then compound to the correct total scale. Spreading
+        /// is positive.
         ///
-        /// `rotate.rotation` is this frame's change in the pair's angle, in
-        /// radians, sign-corrected to match the actual direction of finger
-        /// twist as the user perceives it on screen. Raw `atan2` reads
-        /// backwards here: screen coordinates are y-down, which flips its
-        /// usual y-up handedness.
-        /// Left in radians deliberately: the CGEvent field's actual expected
-        /// unit is unverified (see `postTouchRotate`'s doc comment), so any
-        /// unit conversion belongs at the posting layer, not baked into this
-        /// tracker's internal math.
+        /// `rotate.value` is this frame's change in pair angle, in radians,
+        /// negated from raw `atan2` because screen coordinates are y-down. It
+        /// stays in radians because the CGEvent field's unit is unverified
+        /// (see `postTouchRotate`); conversion belongs at the posting layer.
         case twoFingerGesture(magnify: GestureDelta?, rotate: GestureDelta?)
     }
 
-    /// A pinch or rotate component's per-frame value and phase — same shape
-    /// for both, disambiguated by which `twoFingerGesture` argument label
-    /// it's under (`value` is a magnification for `magnify`, radians for
-    /// `rotate`). A plain tuple can't be used here: enum associated values
-    /// need a nominal `Equatable` type to synthesize `Intent`'s conformance.
+    /// One pinch or rotate component's value and phase. `value` is a
+    /// magnification for `magnify` and radians for `rotate`. A tuple can't
+    /// carry this, because `Intent`'s synthesized `Equatable` needs a nominal
+    /// `Equatable` type.
     struct GestureDelta: Equatable {
         let value: Double
         let phase: ScrollPhase
@@ -217,257 +182,204 @@ struct TouchStateTracker {
     private(set) var mode: Mode = .idle
 
     /// Last screen-space position per contact id, for the per-frame delta.
-    /// In `.scroll` mode the contacts' centroid drives the delta, and spread
-    /// and rotate are ignored.
     private var lastPositions: [Int: CGPoint] = [:]
 
     /// Smoothed screen-space speed (points/sec) for `.pointer` mode, feeding
-    /// `TouchStateTracker.pointerGain`. A single frame's `delta/dt` is too
-    /// noisy to drive a gain curve directly — at slow sweep speeds a finger
-    /// can advance ~1 device unit per frame, so instantaneous velocity flaps
-    /// between 0 and 1 unit/frame's worth of speed. This exponential moving
-    /// average smooths that out while still tracking real speed changes
-    /// within a couple of frames. `-1` means "no history": set on lift
-    /// (`reset()`) and after a stale gap (`pointerVelocityStaleGap`), it
-    /// tells the next sample to seed directly from its own instant speed
-    /// rather than EMA-ing up from 0 — the latter would damp the first
-    /// couple of frames after every pause, however fast the actual resumed
-    /// motion is.
+    /// `pointerGain`. One frame's `delta/dt` is too noisy for a gain curve: at
+    /// slow speeds a finger advances about one device unit per frame, so the
+    /// instant speed flaps between 0 and a unit's worth. An exponential moving
+    /// average smooths that and still follows real changes within a couple of
+    /// frames. `-1` means no history (set on lift and after
+    /// `pointerVelocityStaleGap`); the next sample then seeds from its own
+    /// speed, so the first frames after a pause don't damp fast motion.
     private var pointerSpeed: Double = -1
 
-    /// In `absoluteTouch` mode, the contact id that started this `.pointer`
-    /// sequence — deliberately re-read as `contacts.first` only when this is
-    /// nil, not every frame. Relative mode tolerates `.first` changing
-    /// mid-sequence because a new id's first delta is defined as zero (see
-    /// `lastPositions[first.id] ?? first.screen`); absolute mode has no
-    /// delta to zero out, so if a second finger landed and briefly sorted
-    /// ahead of the driving one, re-deriving "the" contact from `.first`
-    /// would warp the cursor straight to it. Reset alongside `tapAnchor` and
-    /// `lastPositions` in `reset()`; irrelevant (never set) when
-    /// `absoluteTouch` is false.
+    /// In `absoluteTouch` mode, the contact that started this `.pointer`
+    /// sequence. It is read from `contacts.first` only while nil. Relative mode
+    /// tolerates `.first` changing because a new id's first delta is zero;
+    /// absolute mode has no delta to zero, so a second finger sorting ahead of
+    /// the driving one would warp the cursor to it. Never set in relative mode.
     private var absolutePrimaryContactID: Int?
-    /// Last screen position this sequence has already warped the cursor to
-    /// in `absoluteTouch` mode — a still finger must not re-warp every
-    /// frame (that's ~100 identical `.mouseMoved` CGEvents/sec, the same
-    /// class of waste the scroll case's dead-frame skip exists to avoid).
-    /// Warping once per sequence regardless of motion is still needed for
-    /// the tap-position fix, so this tracks "have we ever warped" and "to
-    /// where", not just a this-frame delta. `nil` means no warp has been
-    /// emitted yet this sequence — the case that must always warp, even
-    /// with zero motion, so `.tapClick`'s "click at current cursor
-    /// position" lands correctly.
+    /// Last screen position the cursor was warped to this sequence in
+    /// `absoluteTouch` mode. A still finger doesn't re-warp every frame, but
+    /// the first frame always warps, even with zero motion, so `.tapClick`
+    /// lands at the right spot. `nil` means no warp yet.
     private var absoluteLastWarpedTo: CGPoint?
-    /// When the last `.pointer` sample arrived, for staleness detection
-    /// and computing `dt` for the `pointerSpeed` EMA.
+    /// When the last `.pointer` sample arrived, for staleness and the `dt` of
+    /// the `pointerSpeed` average.
     private var lastPointerSampleTime: TimeInterval = 0
 
-    /// First-frame screen position for tap-to-click detection.  Only the
-    /// primary contact (id of the first finger down) is tracked.
+    /// First-frame screen position for tap detection. Only the primary contact
+    /// (the first finger down) counts.
     private var tapAnchor: CGPoint?
     private var tapStart: TimeInterval = 0
-    /// Largest distance the primary contact has moved from `tapAnchor` during
-    /// this sequence; if it exceeds `tapMaxDistance` a tap is no longer
-    /// possible (sequence has become a drag).
+    /// Largest distance the primary contact has moved from `tapAnchor`. Past
+    /// `tapMaxDistance`, the sequence can no longer be a tap.
     private var tapMaxDelta: Double = 0
 
-    /// Last-emitted scroll phase for `.pan`, used to ensure we emit a single
-    /// `.ended` when the last contact lifts. Pinch/rotate track their own
-    /// phases separately — see `pinchPhase`/`rotatePhase`.
+    /// Last scroll phase emitted for `.pan`, so exactly one `.ended` goes out
+    /// when the last contact lifts. Pinch and rotate keep their own phases.
     private var lastScrollPhase: ScrollPhase = .ended
 
-    /// Motion held before a committed pan's `.began`. AppKit gives a gesture
-    /// to the nested scroll view matching the `.began` delta's dominant axis,
-    /// judged on whole points, so `.began` waits until an axis reaches 1 pt
-    /// and carries it all. A zero-delta `.began` reads as vertical and
-    /// strands horizontal scrolls (Finder column view).
+    /// Motion held before a committed pan's `.began`. AppKit gives a gesture to
+    /// the nested scroll view matching the `.began` delta's dominant axis,
+    /// judged on whole points, so `.began` waits until an axis reaches 1 pt and
+    /// carries it all. A zero-delta `.began` reads as vertical and strands
+    /// horizontal scrolls (the Finder's column view).
     private var pendingBeganDx = 0.0
     private var pendingBeganDy = 0.0
 
-    /// When a committed `.pan` scroll first dropped below two contacts, or 0
-    /// while two are present. Drives `scrollSingleContactGrace`.
+    /// When a committed `.pan` first fell below two contacts, or 0 while two
+    /// are present. Drives `scrollSingleContactGrace`.
     private var scrollDroppedToOneContactAt: TimeInterval = 0
-    /// The flick velocity captured at the instant a `.pan` first dropped to one
-    /// contact — i.e. from the last frame both fingers were down and their
-    /// samples were still fresh. The wind-down that fires `scrollSingleContactGrace`
-    /// later can't recompute this: by then every sample is older than
-    /// `peakVelocityWindow`, so a recompute always yields zero and the flick
-    /// never coasts. `.zero` when the drop was a deliberate brake (no recent
-    /// motion) — same rule as the all-fingers-lifted path.
+    /// Flick velocity captured when a `.pan` first fell to one contact, while
+    /// the samples are still fresh. The later wind-down can't recompute it:
+    /// every sample is older than `peakVelocityWindow` by then, so the flick
+    /// would never coast. `.zero` for a deliberate brake, as on full lift.
     private var scrollVelocityAtDrop: CGVector = .zero
-    /// Diagnostic snapshots taken alongside `scrollVelocityAtDrop`, for the
-    /// same reason: the `contacts.isEmpty` release path and the wind-down both
-    /// fire too late to measure these meaningfully. `suppressedByRecencyAtDrop`
-    /// feeds `releaseSuppressedByRecency`; the two gaps feed `releaseFrameGap`/
+    /// Diagnostic snapshots taken with `scrollVelocityAtDrop` for the same
+    /// reason. They feed `releaseSuppressedByRecency`, `releaseFrameGap`, and
     /// `releaseMotionGap`.
     private var suppressedByRecencyAtDrop = false
     private var frameGapAtDrop: TimeInterval = -1
     private var motionGapAtDrop: TimeInterval = -1
-    /// Set once a `.scroll` sequence has been wound down early (see
-    /// `scrollSingleContactGrace`) but not every finger has lifted yet.
-    /// While true, `process` emits nothing for any non-empty frame whose
-    /// contacts overlap the wound-down gesture's — the gesture is finished;
-    /// its remaining finger(s) must not resurrect it. Cleared by the real
-    /// `reset()` on all-fingers-lifted, by an entirely new contact set
-    /// (`scrollWoundDownExpiresAt`'s frame), or by a timed backstop, so a
-    /// never-arriving empty frame can't latch touch off.
+    /// Set once a `.scroll` sequence has wound down early (see
+    /// `scrollSingleContactGrace`) while fingers remain. `process` then emits
+    /// nothing for frames overlapping that gesture's contacts, so leftover
+    /// fingers can't revive it. Cleared on full lift, on an entirely new
+    /// contact set, or by the timed backstop.
     private var scrollWoundDown = false
-    /// Timed backstop for `scrollWoundDown`: if no clean exit has cleared
-    /// it by this time, clear it anyway. Guards against an all-fingers-lifted
-    /// frame that never arrives (the exact failure this whole change targets)
-    /// latching touch permanently.
+    /// Backstop for `scrollWoundDown`: clears it at this time, so a lift frame
+    /// that never arrives can't latch touch off.
     private var scrollWoundDownExpiresAt: TimeInterval = 0
 
-    /// Sticky pan vs gesture (pinch and/or rotate) once motion crosses
-    /// `twoFingerDecideDistance`.
+    /// Sticky pan vs gesture once motion crosses `twoFingerDecideDistance`.
     private var twoFingerKind: TwoFingerKind = .undecided
 
-    /// Dominant-axis lock for a committed `.pan`, so drift along the other
-    /// axis doesn't scroll an app that moves both ways, or read as a swipe in
-    /// Firefox. `nil` = undecided; set only once
-    /// `twoFingerKind == .pan`. A diagonal drag never crosses
-    /// `scrollAxisLockRatio` and stays free (`scrollAxisResolved` true,
-    /// `scrollAxisLock` nil).
+    /// Dominant-axis lock for a committed `.pan`, so drift on the other axis
+    /// doesn't scroll an app that moves both ways or read as a swipe in
+    /// Firefox. `nil` while undecided. A diagonal drag never reaches
+    /// `scrollAxisLockRatio` and stays free (`scrollAxisResolved` true, lock
+    /// nil).
     private enum ScrollAxis { case vertical, horizontal }
     private var scrollAxisLock: ScrollAxis?
-    /// True once the lock decision has been made — committed to an axis, or
-    /// deliberately abandoned for a diagonal drag. Stops the pre-lock
-    /// accumulators from being re-evaluated every frame for the rest of the
-    /// gesture.
+    /// True once the lock decision is made, either way. Stops the pre-lock
+    /// accumulators from running for the rest of the gesture.
     private var scrollAxisResolved = false
-    /// Pre-lock unsigned centroid travel per axis, summed until their total
-    /// reaches `scrollAxisLockWindow`.
+    /// Unsigned centroid travel per axis before the lock, summed until the
+    /// total reaches `scrollAxisLockWindow`.
     private var scrollPreLockAccumX = 0.0
     private var scrollPreLockAccumY = 0.0
 
-    /// As in `PanScrollTracker`: AppKit keeps a gesture on the view its
-    /// `.began` picked, so a scroll that settles along the other axis (a
-    /// vertical start turning sideways in Finder's column view) ends and
-    /// begins again, with a fresh lock. The axis the `.began` carried, and the raw travel since
-    /// the last check.
+    /// As in `PanScrollTracker`: AppKit keeps a gesture on the view its `.began`
+    /// picked, so a scroll that settles along the other axis (a vertical start
+    /// turning sideways in the Finder's column view) ends and begins again with
+    /// a fresh lock. These hold the axis the `.began` carried and the raw
+    /// travel since the last check.
     private var scrollLatchedAxis: ScrollAxis?
     private var scrollStretchX = 0.0
     private var scrollStretchY = 0.0
-    /// After a restart, `.began` waits for the fresh lock decision, so it
-    /// carries a clear direction rather than the first point of travel.
+    /// After a restart, `.began` waits for the fresh lock so it carries a clear
+    /// direction instead of the first point of travel.
     private var scrollRestarted = false
 
-    /// Whether the live two-finger sequence has committed to pan (scroll), for
-    /// the injector's stuck-scroll diagnostic only — keeps the probe out of
-    /// this type. Meaningless outside `.scroll` mode.
+    /// Whether the live two-finger sequence committed to pan. Only the
+    /// injector's stuck-scroll diagnostic reads it, and only in `.scroll` mode.
     var committedToPan: Bool { twoFingerKind == .pan }
 
-    /// Set true by exactly the `process()` call that wound a `.pan` down early
-    /// (`scrollSingleContactGrace`), for the injector's `scrollWindDowns`
-    /// counter. Read-and-clear: the injector zeroes it after each frame.
+    /// True for the one `process()` call that wound a `.pan` down early, for
+    /// the injector's `scrollWindDowns` counter. The injector clears it after
+    /// each frame.
     var scrollWoundDownThisFrame = false
 
-    /// Whether a wound-down `.pan` is currently in its post-wind-down hold
-    /// (gesture finished, its finger(s) still lingering). Mode stays `.scroll`
-    /// through the hold, so the injector's stuck-scroll diagnostic must skip
-    /// these frames — they're the fix *working*, not the bug.
+    /// Whether a wound-down `.pan` is in its hold, with the gesture finished
+    /// and its fingers still down. Mode stays `.scroll` through the hold, so
+    /// the injector's stuck-scroll diagnostic skips these frames.
     var isHoldingWoundDownScroll: Bool { scrollWoundDown }
-    /// Whether pinch/rotate are part of the current `.gesture` sequence's
-    /// committed set — fixed at the commit decision, not re-evaluated per
-    /// frame (see `TwoFingerKind`'s doc comment). Meaningless while
-    /// `twoFingerKind != .gesture`.
+    /// Whether pinch and rotate are part of the current `.gesture`. Later
+    /// frames can add a component (see `TwoFingerKind`) but never remove one.
     private var pinchInGesture = false
     private var rotateInGesture = false
-    /// Independent phase envelopes for the pinch and rotate components of a
-    /// `.gesture` sequence — each opens with its own `.began` when that
-    /// component is included at commit, and closes with its own `.ended` at
-    /// teardown, regardless of what the other component is doing.
+    /// Independent phase envelopes for pinch and rotate. Each opens with its
+    /// own `.began` when included and closes with its own `.ended` at teardown.
     private var pinchPhase: ScrollPhase = .ended
     private var rotatePhase: ScrollPhase = .ended
-    /// Last inter-finger distance in screen points (pinch tracking).
+    /// Last inter-finger distance in screen points.
     private var lastPinchDistance: Double = 0
-    /// Centroid / distance at the start of an undecided two-finger sequence.
-    /// Decision uses cumulative motion from these anchors, not per-frame deltas
-    /// (slow pans never exceed the threshold in a single high-rate frame).
+    /// Centroid and distance at the start of an undecided two-finger sequence.
+    /// The decision uses cumulative motion from these anchors, because a slow
+    /// pan never exceeds the threshold in one high-rate frame.
     private var undecidedOriginCentroid: CGPoint = .zero
     private var undecidedOriginDistance: Double = 0
 
-    /// Whether the current two-finger sequence's contacts started far enough
-    /// apart, relative to the touch surface, for rotate to even be a
-    /// candidate. Computed once at escalation (see `process`) from raw
-    /// device-unit positions, not screen points — screen-space separation
-    /// for the same physical finger span changes with the user's touch-area
-    /// crop and display size, which a fixed threshold must not be sensitive
-    /// to. `false` whenever rotate is disabled, so it costs nothing when off.
+    /// Whether the two fingers landed far enough apart, relative to the touch
+    /// surface, for rotate to be a candidate. Computed once at escalation from
+    /// raw device units: screen-space separation for the same finger span
+    /// varies with the touch-area crop and display size. `false` when rotate
+    /// is off.
     private var rotateEligible: Bool = false
-    /// When the current two-finger sequence entered `.undecided` — the dwell
-    /// clock for rotate-eligible sequences (see `rotateMinDwell`'s doc
-    /// comment). Unused, and not meaningfully read, when rotate is off.
+    /// When the sequence entered `.undecided`; the dwell clock for
+    /// rotate-eligible sequences (see `rotateMinDwell`).
     private var undecidedStartTime: TimeInterval = 0
-    /// Last frame's angle (radians, `atan2`) of the id-sorted two-contact
-    /// pair. Doubles as the undecided sequence's origin angle (set once at
-    /// escalation) and the per-frame delta baseline once committed.
+    /// Angle (radians, `atan2`) of the id-sorted two-contact pair last frame.
+    /// It serves as the origin angle while undecided and as the delta baseline
+    /// once committed.
     private var lastPairAngle: Double = 0
-    /// Cumulative wrapped angle change (radians) since an undecided
-    /// sequence's origin — the rotate analog of `undecidedOriginCentroid`/
-    /// `undecidedOriginDistance`. Summed per-frame rather than taken as
-    /// `newAngle - originAngle` so a rotation exceeding π during the decide
-    /// window still accumulates correctly instead of wrapping back on itself.
+    /// Cumulative wrapped angle change since the undecided origin, the rotate
+    /// analog of `undecidedOriginCentroid`. Summing per frame lets a rotation
+    /// past π during the decide window accumulate instead of wrapping back.
     private var undecidedCumulativeAngle: Double = 0
     /// Per-frame gesture signal over the last `lateJoinWindow`, for the
-    /// late-join test only. Kept as a trailing window rather than a running
-    /// total so the bar a joining component has to clear stays constant
-    /// instead of climbing with the gesture's own duration.
+    /// late-join test. A trailing window keeps the bar a joining component
+    /// must clear constant, instead of climbing with gesture duration.
     private var recentGestureDeltas:
         [(time: TimeInterval, scale: Double, tangential: Double, translation: Double)] = []
 
-    /// Recent per-frame instantaneous velocities (points/second), each frame's
-    /// raw `delta/dt` with a timestamp — the momentum-tail seed. An EMA was
-    /// tried first and rejected: at `velocityAlpha = 0.20` it takes several
-    /// frames to converge, and a real flick is often over in less time than
-    /// that, so the EMA reports well under the finger's actual peak speed —
-    /// exactly the "momentum falls short of a real trackpad" complaint. Using
-    /// the fastest sample within a short recent window instead captures the
-    /// peak even from a very brief flick, matching `PanScrollTracker`'s
-    /// equivalent. Pruned to `peakVelocityWindow` each frame; tiny array,
-    /// never holds more than a handful of samples at touch report rates.
+    /// Recent per-frame velocities (points/second), each the raw `delta/dt`
+    /// with a timestamp. They seed the momentum tail. The fastest sample in a
+    /// short window beats a moving average, which converges too slowly for a
+    /// brief flick and reports well under its peak (momentum fell short of a
+    /// real trackpad). Matches `PanScrollTracker`. Pruned to
+    /// `peakVelocityWindow` each frame.
     private var recentVelocities: [(time: TimeInterval, v: CGVector)] = []
     private var lastFrameTime: TimeInterval = 0
-    /// Time of the last frame with nonzero motion. A real trackpad detects a
-    /// deliberate brake — holding fingers still before lifting — and starts
-    /// no momentum even if a fast sample is still sitting in `recentVelocities`
-    /// from just before the brake. Gating release on *recent* motion instead
-    /// of trusting the peak-velocity window alone catches that directly.
+    /// Time of the last frame with motion. A real trackpad starts no momentum
+    /// after a deliberate brake, when the fingers rest before lifting. Gating
+    /// release on recent motion catches that even when a fast sample still sits
+    /// in `recentVelocities`.
     private var lastMotionTime: TimeInterval = 0
-    /// Captured at scroll-gesture end; read by the posting layer to start a
-    /// momentum decay tail. Unused while the gesture is still active.
+    /// Captured when the scroll gesture ends; the posting layer starts the
+    /// momentum tail from it.
     private(set) var releaseVelocity: CGVector = .zero
-    /// Diagnostic only: when the most recent release produced a zero
-    /// `releaseVelocity`, which leg zeroed it — `true` if a fast sample was
-    /// present but the recency gate (a deliberate brake, or a batched-delivery
-    /// gap that looks like one) rejected it, `false` if the peak-velocity
-    /// window was simply empty. Meaningless when `releaseVelocity` is nonzero.
+    /// Diagnostic: when the last release produced zero `releaseVelocity`,
+    /// `true` means the recency gate rejected a fast sample (a brake, or a
+    /// batched-delivery gap that looks like one) and `false` means the
+    /// peak-velocity window was empty.
     private(set) var releaseSuppressedByRecency = false
-    /// Diagnostic only: at the most recent release, how long since the last
-    /// `.scroll` frame of any kind (`releaseFrameGap`) and since the last one
-    /// that actually moved (`releaseMotionGap`). Both large ⇒ frames stopped
-    /// arriving (a delivery gap — bug B). Only the motion gap large ⇒ frames
-    /// kept coming but stationary (a genuine brake). Set on every scroll
-    /// release; -1 before the first.
+    /// Diagnostic: at the last release, the time since the last `.scroll`
+    /// frame (`releaseFrameGap`) and since the last one that moved
+    /// (`releaseMotionGap`). Both large means frames stopped arriving. Only
+    /// the motion gap large means the fingers rested. -1 before the first
+    /// release.
     private(set) var releaseFrameGap: TimeInterval = -1
     private(set) var releaseMotionGap: TimeInterval = -1
 
-    /// Both fingers of the current two-finger sequence landed inside the
-    /// onset window, and far enough apart to be fingertips, not a palm's
-    /// patchy outline. Gates `.secondaryClick`.
+    /// Both fingers landed inside the onset window and far enough apart to be
+    /// fingertips, not a palm's patchy outline. Gates `.secondaryClick`.
     private var twoFingerTapEligible = false
 
-    /// Most contacts seen this sequence, and whether a third finger came
-    /// too late or too close to start a drag. For the miss diagnostic.
+    /// Most contacts seen this sequence, and why a third finger failed to start
+    /// a drag (too late or too close). For the miss diagnostic.
     private var maxContactsThisSequence = 0
     private var threeFingerMissReason: String?
-    /// Diagnostic: why the last touch with three or more fingers didn't
-    /// drag, set at its lift. Nil when it dragged or had fewer fingers.
+    /// Diagnostic: why the last touch with three or more fingers didn't drag,
+    /// set at lift. Nil when it dragged or had fewer fingers.
     private(set) var threeFingerTapMiss: String?
     /// Fingers that started the current drag. The palm filter leaves them be.
     private(set) var dragFingerIDs: Set<Int> = []
     private var dragPrimaryID: Int?
-    /// Relative drag follows the fingers' centroid, re-anchored whenever
-    /// the set of fingers changes so a lift or landing doesn't jump.
+    /// Relative drag follows the fingers' centroid, re-anchored whenever the
+    /// finger set changes so a lift or landing doesn't jump.
     private var dragCentroid: CGPoint?
     private var dragCentroidIDs: Set<Int> = []
 
@@ -478,119 +390,94 @@ struct TouchStateTracker {
     /// Maximum tap duration (seconds); longer touches become drags or scrolls.
     static let tapMaxDuration: TimeInterval = 0.30
     /// Onset delay: a touch sequence emits nothing until it has been down this
-    /// long.  Two jobs: (1) a palm landing just before the pen tips down does so
-    /// within this window, so the injector resets the tracker before the palm
-    /// has moved the cursor; (2) a second finger landing within the window
-    /// starts a scroll directly, without the first finger having dragged the
-    /// cursor in the meantime.  Same trick trackpads use; the cost is pointer
-    /// motion starting this late.
+    /// long. It does two jobs, as on trackpads, at the cost of delaying pointer
+    /// motion by this much:
+    /// 1. A palm landing just before the pen tips down lands inside the window,
+    ///    so the injector resets the tracker before the palm moves the cursor.
+    /// 2. A second finger landing inside the window starts a scroll directly,
+    ///    without the first finger dragging the cursor first.
     ///
-    /// A two-finger gesture from rest lands its fingers 1–3 frames
-    /// (~10–30 ms) apart, so 40 ms covers job (2) with margin; reasoned, not
-    /// measured. Job (1) only covers palm-before-tip-down: a *hovering* pen
-    /// takes `touchBusyHoldOff` (150 ms) to confirm busy, and tip-down
-    /// bypasses that hold-off.  What the window guards is a palm *drifting* the cursor before
-    /// tip-down — not an irreversible action (a palm can't tap: drift exceeds
-    /// `tapMaxDistance`; can't scroll: needs two contacts), and pen absolute
-    /// positioning corrects the cursor on its next report.  Overridable per
-    /// device via the `touchOnsetDelayMs` defaults key; the value reaches
-    /// `process` through `InjectionSnapshot`.
+    /// Two fingers from rest land 1–3 frames (about 10–30 ms) apart, so 40 ms
+    /// covers job 2 with margin (reasoned, not measured). Job 1 covers only a
+    /// palm before tip-down: a hovering pen takes `touchBusyHoldOff` (150 ms)
+    /// to confirm busy, and tip-down bypasses that. The risk is a drifting
+    /// palm, which is harmless: it can't tap (drift exceeds `tapMaxDistance`)
+    /// or scroll (needs two contacts), and the pen's next report corrects the
+    /// cursor. `touchOnsetDelayMs` overrides it per device through
+    /// `InjectionSnapshot`.
     ///
-    /// Setting it to 0 does not make the first frame move the cursor: the
-    /// `.idle` frame returns `.none`, and the frame that clears the delay
-    /// re-anchors `lastPositions` and also returns `.none`, so first motion is
-    /// the third frame (~20 ms at container rate) and the first ~2 frames of
-    /// travel are discarded, not replayed.  0 shrinks the dead span to that
-    /// floor; it does not remove it.
+    /// At 0 the first frame still doesn't move the cursor: the `.idle` frame
+    /// and the frame that clears the delay both return `.none`, so motion
+    /// starts on the third frame (about 20 ms) and the first two frames of
+    /// travel are discarded.
     static let onsetDelay: TimeInterval = 0.04
 
-    /// Screen points a single-finger touch may drift before it starts moving
-    /// the cursor: absorbs lift-off skitter on a tap and the first point or
-    /// two of a slow drag from rest, below where response feels sticky. Fed
-    /// from `TabletSettings.touchTapStabilizationPt`; this static is what the
-    /// test harness and direct callers see. Relative mode only — see `process`.
+    /// Screen points a single-finger touch may drift before it moves the
+    /// cursor. It absorbs lift-off skitter on a tap and the first point or two
+    /// of a slow drag from rest, below where response feels sticky. Relative
+    /// mode only. `TabletSettings.touchTapStabilizationPt` feeds it; this
+    /// static serves tests and direct callers.
     static let tapStabilizationPt: Double = 1.5
 
-    /// Motion (screen points) needed to commit pan vs pinch for a sequence.
-    /// Slightly above finger-jitter so a sliding pan doesn't decide on noise.
+    /// Motion (screen points) needed to commit pan vs pinch. Slightly above
+    /// finger jitter, so a sliding pan doesn't decide on noise.
     static let twoFingerDecideDistance: Double = 6.0
-    /// Pinch/rotate qualify only when their own signal clearly exceeds
-    /// centroid translation. Equal/noisy signal vs pan → stay pan (scroll)
-    /// when pan is even available, `.none` otherwise (see `process`'s
-    /// `twoFingerScroll` guard). This is the bar that protects "pan wins on
-    /// ambiguity"; it does not compare pinch and rotate against each other —
-    /// see `pinchNoiseFloor`/`rotateNoiseFloor` for that.
+    /// Pinch and rotate qualify only when their signal clearly exceeds
+    /// centroid translation. Otherwise pan wins when it's available (see the
+    /// `twoFingerScroll` guard in `process`) and the result is `.none` when
+    /// not. This bar protects "pan wins on ambiguity"; it doesn't compare
+    /// pinch against rotate (see the noise floors).
     static let pinchDominanceRatio: Double = 1.75
-    /// Absolute floor (screen points, same unit as `twoFingerDecideDistance`)
-    /// each of pinch and rotate must independently clear before qualifying,
-    /// on top of beating pan by `pinchDominanceRatio`. Rotate's floor is
-    /// deliberately the stricter of the two: a document that tilts during a
-    /// clean zoom is a worse experience than a zoom that doesn't quite add
-    /// rotation. Not hardware-tuned — chosen at `twoFingerDecideDistance`
-    /// (the existing "not noise" bar) for pinch, 1.5× that for rotate;
-    /// revisit once this can be measured directly. On its own this floor
-    /// only screens out small-in-absolute-terms jitter; see
-    /// `companionSuppressionRatio` for the case both floors clear but one
-    /// signal is still negligible next to the other.
+    /// Absolute floor (screen points) each of pinch and rotate must clear on
+    /// top of beating pan by `pinchDominanceRatio`. It screens out jitter that
+    /// is small in absolute terms. Rotate's is stricter: a document tilting
+    /// during a clean zoom is worse than a zoom that misses a little rotation.
+    /// Not hardware-tuned: pinch uses `twoFingerDecideDistance`, rotate 1.5
+    /// times that.
     static let pinchNoiseFloor: Double = twoFingerDecideDistance
     static let rotateNoiseFloor: Double = twoFingerDecideDistance * 1.5
-    /// When both pinch and rotate independently clear their own floor, the
-    /// smaller of the two is still suppressed as the larger one's incidental
-    /// companion (jitter/drift, not a second real gesture) unless it reaches
-    /// at least this fraction of the larger one's magnitude — verified
-    /// against a real-capture example (a pinch with genuine incidental
-    /// twist wobble: scale change 30, tangential motion 11, ratio 0.37 —
-    /// below this threshold, so rotate is correctly suppressed there).
-    /// Comparable signals (near this ratio or above) both survive, which is
-    /// what makes true concurrent pinch+rotate possible: a near-tie (e.g.
-    /// tangential 25 vs scale 26) clears suppression on both sides.
+    /// When pinch and rotate both clear their floors, the smaller one counts
+    /// as the larger one's incidental companion and is suppressed unless it
+    /// reaches this fraction of the larger one's magnitude. A real pinch with
+    /// twist wobble (scale 30, tangential 11, ratio 0.37) suppresses rotate.
+    /// Comparable signals both survive, which allows true concurrent
+    /// pinch+rotate: tangential 25 against scale 26 clears both sides.
     static let companionSuppressionRatio: Double = 0.5
     /// How far back to look for the fastest recent sample when seeding
-    /// momentum release velocity — matches `PanScrollTracker.peakVelocityWindow`.
+    /// momentum; matches `PanScrollTracker.peakVelocityWindow`.
     static let peakVelocityWindow: TimeInterval = 0.06
-    /// Minimum frame spacing for a `delta/dt` sample to be trusted as a real
-    /// velocity — see the `.scroll` case. Below the device's true touch cadence,
-    /// above a Bluetooth burst's inter-frame gap.
+    /// Minimum frame spacing for a `delta/dt` sample to count as a real
+    /// velocity (see the `.scroll` case). It sits below the device's touch
+    /// cadence and above a Bluetooth burst's inter-frame gap.
     static let minVelocityDt: TimeInterval = 0.002
-    /// EMA time-constant for `pointerSpeed`: smaller = smoother/slower to
-    /// react, larger = snappier/noisier. 0.5 means each new sample pulls the
-    /// smoothed speed roughly a third of the way to the instantaneous value
-    /// at the device's native ~100Hz report rate — enough to kill the
-    /// 1-unit/frame quantization noise seen in slow-sweep captures without
-    /// perceptibly lagging a real speed change.
+    /// Smoothing factor for `pointerSpeed`: smaller is smoother and slower to
+    /// react. At 0.5, each sample at the native ~100 Hz rate pulls the speed
+    /// roughly a third of the way to the instant value. That removes the
+    /// one-unit-per-frame quantization noise of slow sweeps without visible lag.
     static let pointerSpeedEmaFactor: Double = 0.5
     /// A gap this long since the last `.pointer` sample means the finger was
-    /// effectively still or freshly landed; the smoothed speed is stale and
-    /// must not carry forward into a new motion.
+    /// still or just landed. The smoothed speed is stale and mustn't carry into
+    /// new motion.
     static let pointerVelocityStaleGap: TimeInterval = 0.1
-    /// Screen points/sec below which `pointerGain` treats motion as
-    /// fine-placement speed (gain floor) — and above which it treats motion
-    /// as a fast reposition (gain ceiling). Chosen so an ordinary, unhurried
-    /// sweep across a typical display falls in the flat midrange between
-    /// them, matching the existing "1.00x = one sweep, one crossing" mental
-    /// model for normal-speed use; only the slow and fast tails are reshaped.
+    /// Speeds (screen points/sec) below and above which `pointerGain` uses its
+    /// floor and ceiling. An unhurried sweep across a typical display falls in
+    /// the flat midrange, which keeps "1.00x = one sweep, one crossing" true
+    /// for normal use; only the slow and fast tails change.
     static let pointerGainLowSpeed: Double = 30
     static let pointerGainHighSpeed: Double = 900
-    /// Gain multiplier applied at/below `pointerGainLowSpeed` and at/above
-    /// `pointerGainHighSpeed`, on top of the user's `sensitivity`. Mirrors
-    /// libinput's adaptive-profile bounds (deceleration floor, acceleration
-    /// ceiling), not copied verbatim — retuned much closer to 1.0 on the low
-    /// end than libinput's mouse curve. Unlike a mouse, the whole touch
-    /// surface maps to the whole screen (see the Cursor Speed caption): a
-    /// floor as low as libinput's would mean a deliberate, unhurried sweep
-    /// can no longer reach the far edge at 1.00x, recreating the exact
-    /// "sweep doesn't cross the screen" complaint this feature exists
-    /// alongside, not to reintroduce. The floor only bites at genuine
-    /// micro-adjustment speeds now, below `pointerGainLowSpeed`.
+    /// Gain multiplier at or below `pointerGainLowSpeed` and at or above
+    /// `pointerGainHighSpeed`, on top of the user's `sensitivity`. The bounds
+    /// follow libinput's adaptive profile but sit much closer to 1.0 at the
+    /// low end. The whole touch surface maps to the whole screen, so a floor as
+    /// low as libinput's would keep an unhurried sweep from reaching the far
+    /// edge at 1.00x. The floor now only bites at micro-adjustment speeds.
     static let pointerGainFloor: Double = 0.85
     static let pointerGainCeiling: Double = 1.6
 
-    /// Speed-dependent gain multiplier for `.pointer` mode, on a 0..1..∞
-    /// scale where 1.0 is the flat, un-accelerated multiplier this replaces.
-    /// Flat (1.0) between the two thresholds, linearly interpolated to
-    /// `pointerGainFloor`/`pointerGainCeiling` outside them. `speed` is the
-    /// smoothed screen-points/sec value from `pointerSpeed`, already past
-    /// the EMA — this function itself is a pure lookup with no state.
+    /// Speed-dependent gain for `.pointer` mode, where 1.0 is flat. Flat
+    /// between the two thresholds, interpolated linearly to the floor and
+    /// ceiling outside them. `speed` is the smoothed `pointerSpeed`; the
+    /// function keeps no state.
     static func pointerGain(forSpeed speed: Double) -> Double {
         if speed <= pointerGainLowSpeed {
             let t = pointerGainLowSpeed > 0 ? speed / pointerGainLowSpeed : 1
@@ -604,68 +491,56 @@ struct TouchStateTracker {
         }
         return 1
     }
-    /// A lift is only treated as a flick-release if motion happened within
-    /// this many seconds of it — otherwise the fingers were held still
-    /// (braking) and release velocity is suppressed regardless of any fast
-    /// sample still sitting in the peak-velocity window.
+    /// A lift counts as a flick release only if motion happened within this
+    /// many seconds of it. Otherwise the fingers rested (a brake), and release
+    /// velocity is suppressed even if a fast sample remains in the window.
     static let momentumRecencyWindow: TimeInterval = 0.05
-    /// Grace period after a committed `.pan` scroll drops from two contacts to
-    /// one before the gesture is wound down. A brief 1-contact frame is normal
-    /// mid-scroll — palm filtering churns the set, or one finger momentarily
-    /// lifts — and the `.scroll` case tolerates it (see `lastPinchDistance`
-    /// hold). But a `.pan` gesture kept alive on a *single* finger keeps
-    /// emitting `scrollDelta` from that finger's own motion indefinitely: the
-    /// user lifts one finger, keeps the other down, and every subsequent
-    /// move — even an unrelated single-finger touch later — still scrolls the
-    /// view. Once one finger has been gone this long the gesture is over;
-    /// close it out and hold wound-down until all fingers actually lift.
+    /// Grace period after a committed `.pan` drops from two contacts to one,
+    /// before the gesture winds down. A brief one-contact frame is normal
+    /// mid-scroll (palm filtering churns the set, or a finger lifts for a
+    /// moment). A `.pan` kept alive on one finger would scroll on every later
+    /// move, even in an unrelated single-finger touch. After this long, the
+    /// gesture is over: close it out and hold wound down until all fingers lift.
     static let scrollSingleContactGrace: TimeInterval = 0.1
-    /// Cumulative unsigned centroid travel (screen points) a committed `.pan`
-    /// considers before deciding a dominant axis. Every event emitted before
-    /// the lock commits still carries the off-axis component, so keep the
-    /// unlocked prefix as small as still lets a genuine diagonal register.
+    /// Unsigned centroid travel (screen points) a committed `.pan` accumulates
+    /// before deciding a dominant axis. Events before the lock still carry the
+    /// off-axis component, so the window stays as small as still lets a real
+    /// diagonal register.
     static let scrollAxisLockWindow: Double = 8.0
-    /// Dominant-axis-to-other-axis ratio to commit the lock (~2:1 ≈ within
-    /// 25° of true horizontal/vertical). Below it on both legs the gesture is
-    /// genuinely diagonal — give up on locking and stay omnidirectional for
-    /// the rest of the gesture.
+    /// Dominant-to-other axis ratio that commits the lock (2:1 is within about
+    /// 25° of true horizontal or vertical). Below it on both legs, the gesture
+    /// is diagonal and stays omnidirectional.
     static let scrollAxisLockRatio: Double = 2.0
     /// Raw travel (screen points) of each stretch checked for settling along
-    /// the other axis; as `PanScrollTracker.axisTurnStretch`.
+    /// the other axis; matches `PanScrollTracker.axisTurnStretch`.
     static let scrollTurnStretch: Double = 24.0
-    /// Timed backstop clearing `scrollWoundDown` even if an
-    /// all-fingers-lifted frame never arrives. Generous — a real gesture is
-    /// long over well before this — but bounded, so a dropped lift frame can
-    /// never latch touch permanently off.
+    /// Backstop that clears `scrollWoundDown` when no lift frame arrives. A
+    /// real gesture is long over by then, and the bound keeps a lost lift frame
+    /// from latching touch off.
     static let scrollWoundDownBackstop: TimeInterval = 2.0
-    /// Above this, a release "gap" is the idle between two separate gestures
-    /// (the ending frame arriving with the next touch), not a within-gesture
-    /// stall — the release-gap diagnostics record -1 instead.
+    /// Above this, a release gap is the idle between two gestures (the ending
+    /// frame arriving with the next touch), not a stall. The diagnostics
+    /// record -1.
     static let releaseGapPlausibleMax: TimeInterval = 1.0
-    /// How close `frameGap` and `motionGap` must be, at a scroll release, to
-    /// call it a delivery gap (frames stopped arriving) rather than a
-    /// deliberate brake (frames kept coming, finger held still). On a healthy
-    /// USB release the two differ by ~10 ms of ordinary jitter (measured:
-    /// 0.0101 vs 0.0200); a Bluetooth delivery stall makes them identical to
-    /// the digit. 30 ms clears the jitter and still separates every observed
-    /// stall. See `releaseKinematics`.
+    /// How close `frameGap` and `motionGap` must be at a scroll release to call
+    /// it a delivery gap (frames stopped) instead of a brake (frames kept
+    /// coming, finger still). A healthy USB release differs by about 10 ms of
+    /// jitter; a Bluetooth stall makes them identical. 30 ms clears the jitter
+    /// and still separates every observed stall. See `releaseKinematics`.
     static let deliveryGapBrakeSlack: TimeInterval = 0.030
-    /// Maximum hold duration for a two-finger contact to still count as a
-    /// tap rather than a rest. Deliberately does *not* need a
-    /// separate max-deviation check: a still-`.undecided` teardown already
-    /// guarantees both total centroid translation and total inter-finger
-    /// distance change stayed under `twoFingerDecideDistance` — that's the
-    /// same guard that keeps `.undecided` from ever committing to pan or
-    /// pinch in the first place. See the `.undecided` branch in `process`.
+    /// Maximum hold for a two-finger contact to count as a tap rather than a
+    /// rest. It needs no deviation check: a teardown still `.undecided` already
+    /// guarantees centroid travel and distance change stayed under
+    /// `twoFingerDecideDistance`. See the `.undecided` branch in `process`.
     static let twoFingerTapMaxDuration: TimeInterval = 0.30
-    /// How far apart two fingers may land and still right-click. Separate
-    /// from the onset delay, which users shorten: Bluetooth delivers touch
-    /// every 20–50 ms, so fingers landing together still arrive a frame apart.
+    /// How far apart two fingers may land and still right-click. Separate from
+    /// the onset delay, which users shorten: Bluetooth delivers touch every
+    /// 20–50 ms, so fingers landing together still arrive a frame apart.
     static let twoFingerLandWindow: TimeInterval = 0.06
-    /// Minimum center-to-center spacing (millimeters) for a two-finger tap
-    /// to right-click. Two fingertips side by side sit about 15 mm apart;
-    /// a palm's stray contacts can land a fraction of a millimeter apart.
-    /// Reasoned, not measured.
+    /// Minimum center-to-center spacing (millimeters) for a two-finger tap to
+    /// right-click. Fingertips side by side sit about 15 mm apart; a palm's
+    /// stray contacts can land a fraction of a millimeter apart. Reasoned, not
+    /// measured.
     static let secondaryClickMinSpacingMM: Double = 10.0
     /// Three fingers landing within this long of the first count as landing
     /// together. Longer than the onset window, since three fingers spread
@@ -674,66 +549,44 @@ struct TouchStateTracker {
     /// Three fingertips bunch closer than two: a PTH-660 capture put most
     /// three-finger frames' closest pair 5–10 mm apart.
     static let threeFingerMinSpacingMM: Double = 5.0
-    /// Minimum finger separation, as a fraction of the touch surface's
-    /// physical diagonal (millimeters — see `process`'s `rawPositions` doc
-    /// comment for why raw device units would distort this), for rotate to
-    /// be eligible at all. Below this, two fingers close together sweeping
-    /// together reads as pan (the common case) — only wide-apart swiveling
-    /// should ever be considered rotate. Sanity-checked but not hardware-
-    /// verified: on the PTH-850 (325×203mm active area, ~383mm diagonal), a
-    /// ~90mm thumb-index span is ≈23% of the diagonal; this threshold is
-    /// set conservatively below that estimate to allow smaller spans and
-    /// other tablet sizes, but needs checking against a second,
-    /// differently-sized tablet before being trusted, and against real
-    /// hands before being final.
+    /// Minimum finger separation, as a fraction of the touch surface's physical
+    /// diagonal, for rotate to be eligible. Millimeters, because raw device
+    /// units distort it (see `rawPositions` in `process`). Two close fingers
+    /// sweeping together read as pan; only wide-apart swiveling should read as
+    /// rotate. On the PTH-850 (about 383 mm diagonal), a 90 mm thumb-index span
+    /// is about 23%, so 0.15 sits below it to allow smaller spans and tablets.
+    /// Unverified on hands or a second tablet size.
     static let rotateMinSeparationFraction: Double = 0.15
-    /// Minimum time a rotate-eligible two-finger sequence must sit undecided
-    /// before *rotate specifically* is allowed to win the three-way decision.
-    /// `decide` (6.0 points) is a tiny amount of physical motion — roughly
-    /// half a millimeter of centroid drift at typical touch-surface-to-
-    /// display scaling — so on the very first frame or two after two fingers
-    /// land, landing noise alone can already exceed it in whichever
-    /// direction the fingers happened to settle, so the fix belongs at the
-    /// timing layer. Pan and pinch are not
-    /// held back by this — only rotate-eligible sequences wait, and only
-    /// rotate's own win condition is gated by it; obviously large, fast
-    /// motion still bypasses the wait via `rotateDwellBypassDistance`, so a
-    /// genuine fast pan/pinch on a wide-enough pair isn't stuck waiting on a
-    /// clock it has no use for. Not independently hardware-tuned — chosen at
-    /// the low end of a plausible "hold for a moment" range; revisit once
-    /// this can be measured directly.
+    /// Minimum time a rotate-eligible sequence must sit undecided before rotate
+    /// can win the decision. The 6 pt decide distance is about half a millimeter
+    /// of centroid drift, so landing noise alone can exceed it in the first
+    /// frame or two. Pan and pinch aren't held back, and fast, large motion
+    /// bypasses the wait via `rotateDwellBypassDistance`. Not hardware-tuned;
+    /// chosen at the low end of a plausible hold.
     static let rotateMinDwell: TimeInterval = 0.07
-    /// Translation or scale change (screen points, same unit as `decide`)
-    /// large enough to bypass `rotateMinDwell` entirely — an obviously fast
-    /// pan or pinch shouldn't wait on a timer meant to disambiguate a
-    /// *slow*, deliberate twist onset. Set to 2× `twoFingerDecideDistance`.
+    /// Translation or scale change (screen points) large enough to bypass
+    /// `rotateMinDwell`. An obviously fast pan or pinch shouldn't wait on a
+    /// timer meant for slow twist onsets. Twice `twoFingerDecideDistance`.
     static let rotateDwellBypassDistance: Double = 12.0
     /// Trailing window the late-join test sums its evidence over (see the
-    /// late-join block in `process`).  Long enough to accumulate a deliberate
-    /// motion at report rate (~25 frames at 100 Hz, comparable to what a
-    /// commit sees), short enough that the bar doesn't drift upward as the
-    /// gesture runs.  Not hardware-tuned — reasoned from the commit path's own
-    /// timescale; revisit against a v12 capture's `twoFingerLateJoins`.
+    /// late-join block in `process`). Long enough to accumulate a deliberate
+    /// motion at report rate (about 25 frames at 100 Hz, comparable to a
+    /// commit), short enough that the bar doesn't climb as the gesture runs.
+    /// Not hardware-tuned.
     static let lateJoinWindow: TimeInterval = 0.25
 
     // MARK: - Process
 
-    /// Project an absolute touch position (device units) into screen-space
-    /// using the touch-area crop and the supplied display rect.  Touch uses
-    /// its own area mapping — independent from the pen's — and ignores
-    /// calibration.  Orientation is applied by the caller
-    /// (`InputInjector+Touch.swift`), which rotates the position and the
-    /// crop rect into oriented space via `DisplayMapper.orient`/
-    /// `orientedCropRect` before calling this function — this function
-    /// itself has no orientation awareness and expects already-oriented
-    /// inputs. Takes bare `x`/`y`/`maxX`/`maxY` rather than a `TouchContact`
-    /// since it only ever needs the position, not contact-area/id.
+    /// Projects an absolute touch position (device units) to screen space using
+    /// the touch-area crop and the display rect. Touch uses its own area
+    /// mapping, independent of the pen's, and ignores calibration. The caller
+    /// (`InputInjector+Touch.swift`) applies orientation first, so inputs
+    /// arrive already oriented. It takes bare coordinates because it needs no
+    /// contact id or area.
     ///
-    /// Returns `nil` for positions falling outside the crop rectangle.
-    /// Clamping out-of-bounds positions to the rect edge would make the
-    /// "deadzone" outside the crop still partially responsive: a finger
-    /// touching outside one axis would pin the cursor to that axis's edge
-    /// while the other axis still tracked normally.
+    /// Returns `nil` outside the crop rectangle. Clamping would leave the
+    /// dead zone partly responsive: a finger outside on one axis would pin the
+    /// cursor to that edge while the other axis still tracked.
     static func screenPoint(
         x: Double, y: Double, maxX: Double, maxY: Double,
         areaX: Double, areaY: Double,
@@ -742,17 +595,15 @@ struct TouchStateTracker {
     ) -> CGPoint? {
         let mx = Swift.max(maxX, 1)
         let my = Swift.max(maxY, 1)
-        // Clamped, because a coordinate past the ceiling means the registry's
-        // ceiling is too low, not that the finger left the surface — and the
-        // crop test below would read the difference as "outside the crop" and
-        // drop the contact, killing touch along that edge. Clamping keeps
-        // crop semantics intact (a partial crop still rejects the region it
-        // excludes) while making a low ceiling cost a thin dead band instead.
+        // Clamp: a coordinate past the ceiling means the registry's ceiling is
+        // low, not that the finger left the surface. Without it, the crop test
+        // below would reject the contact and kill touch along that edge. A
+        // partial crop still rejects the region it excludes.
         let rx = Swift.min(Swift.max(x / mx, 0), 1)
         let ry = Swift.min(Swift.max(y / my, 0), 1)
         let w = Swift.max(areaWidth, 0.001)
         let h = Swift.max(areaHeight, 0.001)
-        // Reject contacts outside the crop rect entirely.
+        // Contacts outside the crop rect don't count.
         guard rx >= areaX, rx <= areaX + w,
               ry >= areaY, ry <= areaY + h
         else { return nil }
@@ -763,26 +614,21 @@ struct TouchStateTracker {
             y: displayBounds.minY + ny * displayBounds.height)
     }
 
-    /// Given a set of contacts already projected to screen-space, choose or
-    /// continue a gesture mode and return the intent to execute.
+    /// Chooses or continues a gesture mode for contacts already projected to
+    /// screen space, and returns the intent to execute.
     ///
-    /// `tapToClick` and `twoFingerScroll` gate the optional behaviors;
-    /// `reverseScrollDirection` flips the sign of the scroll delta.
-    /// `sensitivity` multiplies pointer-mode movement (1.0 = identity).
-    /// `pinchZoom` enables sticky pinch → synthesized magnify-gesture zoom (vs pan scroll).
-    /// `rotate` enables sticky rotate (vs pan/pinch), gated additionally by
-    /// `rotateEligible` (see that field). `rawPositions` are unprojected
-    /// contact positions keyed by contact id, in physical millimeters (not
-    /// device units, not screen points) — the separation gate is a physical
-    /// finger-span threshold, and only mm keeps it consistent across a
-    /// touch surface's X/Y axes, which are not equally scaled — only
-    /// consulted when `rotate` is true, so callers not using rotate may
-    /// pass `[:]`. `touchDiagonal` is the touch surface's diagonal in the
-    /// same unit (millimeters). `absoluteTouch` switches `.pointer` mode
-    /// from relative (trackpad-style delta, the default, gated by
-    /// `sensitivity`/the speed-gain curve) to absolute (the finger's own
-    /// position on the touch surface warps the cursor 1:1, mirroring what
-    /// the tablet's active area does for the pen). Pen displays use it.
+    /// `tapToClick`, `twoFingerScroll`, `pinchZoom`, and `rotate` gate the
+    /// optional behaviors (`rotate` also needs `rotateEligible`).
+    /// `reverseScrollDirection` flips the scroll sign. `sensitivity` scales
+    /// pointer movement (1.0 is identity). `rawPositions` maps contact ids to
+    /// unprojected positions in physical millimeters. A physical finger-span
+    /// gate needs them in millimeters, since the touch surface's X and Y axes
+    /// scale differently. Only `rotate` reads them, so other callers can pass
+    /// `[:]`. `touchDiagonal` is the surface diagonal in millimeters.
+    /// `absoluteTouch` switches `.pointer` mode from relative (trackpad-style
+    /// deltas, with `sensitivity` and the speed-gain curve) to absolute, where
+    /// the finger's position on the surface warps the cursor 1:1, as the active
+    /// area does for the pen. Pen displays use it.
     mutating func process(
         contacts: [(id: Int, screen: CGPoint)],
         tapToClick: Bool,
@@ -801,26 +647,21 @@ struct TouchStateTracker {
         now: TimeInterval
     ) -> Intent {
 
-        // Per-frame diagnostic flag — set only by the wind-down return below.
+        // Set only by the wind-down return below.
         scrollWoundDownThisFrame = false
 
-        // A scroll wound down early (one finger lifted, the other lingered —
-        // see `scrollSingleContactGrace`). The phase envelope and
-        // `releaseVelocity` were already handled at wind-down. Emit nothing
-        // while the wound-down gesture's own finger(s) linger, but clear the
-        // hold — never latch it — on any of: all fingers lifted (the real
-        // teardown), a contact set that no longer overlaps the wound-down
-        // gesture (these are new fingers, a fresh sequence), or the timed
-        // backstop. The overlap and backstop escapes exist precisely because
-        // "the all-lifted frame never arrives" is the failure this change
-        // targets — it must not become a way to wedge touch off entirely.
+        // A scroll wound down early (see `scrollSingleContactGrace`) already
+        // closed its phase and set `releaseVelocity`. Emit nothing while its
+        // fingers linger, and clear the hold on any of: all fingers lifted, a
+        // contact set that no longer overlaps the gesture (a fresh sequence),
+        // or the timed backstop. The last two keep a lift frame that never
+        // arrives from wedging touch off.
         if scrollWoundDown {
             if let held = processWoundDownHold(contacts: contacts, now: now) { return held }
         }
 
-        // All fingers lifted — wrap up any in-progress gesture.  A sequence
-        // that never outlived the onset delay can still be a tap (a tap is by
-        // definition shorter than most onset windows).
+        // All fingers lifted: wrap up any gesture. A sequence that never
+        // outlived the onset delay can still be a tap.
         if contacts.isEmpty {
             return processAllLifted(
                 tapToClick: tapToClick,
@@ -830,12 +671,9 @@ struct TouchStateTracker {
             )
         }
 
-        // First contact — hold in pending until the onset delay elapses, so
-        // the opening frames of a sequence (where a palm smush or the second
-        // scroll finger is still arriving) never move anything.
         maxContactsThisSequence = Swift.max(maxContactsThisSequence, contacts.count)
-        // Three fingers landing together start a drag, as long as no scroll,
-        // zoom, or rotate has begun. The first finger leads.
+        // Three fingers landing together start a drag unless a scroll, zoom, or
+        // rotate has begun. The first finger leads.
         if let press = startThreeFingerDrag(
             contacts: contacts,
             threeFingerDrag: threeFingerDrag,
@@ -845,19 +683,17 @@ struct TouchStateTracker {
         ) {
             return press
         }
+        // The first contact waits in pending for the onset delay, so a palm
+        // smush or an arriving second finger never moves anything.
         if mode == .idle, let first = contacts.first {
             return beginSequence(first: first, absoluteTouch: absoluteTouch, now: now)
         }
 
-        // Escalate to scroll once two contacts are present, if enabled.
-        // From pending this means the fingers landed together (the normal
-        // two-finger gesture) — the scroll starts with zero cursor drift.
-        // Scroll, pinch, and rotate are alternate resolutions of the same
-        // two-contact gesture, not scroll plus two features layered on top
-        // of it — so escalation itself must not require `twoFingerScroll`
-        // specifically. Any one of the three being enabled is enough to
-        // start tracking; which one(s) can actually win is decided per-frame
-        // below via each flag independently.
+        // Escalate to scroll once two contacts are present. From pending, the
+        // fingers landed together and the scroll starts with no cursor drift.
+        // Scroll, pinch, and rotate are alternate readings of one two-contact
+        // gesture, so any one flag enables tracking; each frame decides which
+        // can win.
         if let escalated = escalateToTwoFingers(
             contacts: contacts,
             twoFingerScroll: twoFingerScroll,
@@ -953,20 +789,16 @@ struct TouchStateTracker {
         tapStabilizationPt: Double,
         now: TimeInterval
     ) -> Intent {
-        // Track motion for tap detection. Relative mode emits nothing
-        // here and anchors at commit instead, so motion accumulated
-        // during the window is discarded rather than replayed as a
-        // cursor jump — there's no equivalent hazard in absolute mode
-        // (a warp is never a "jump" relative to prior motion, it's just
-        // where the finger is), and skipping the warp here would leave
-        // the cursor stale for a tap that lifts before onset ever
-        // elapses (see `Intent.pointerWarp`'s doc comment).
+        // Track motion for tap detection. Relative mode emits nothing here and
+        // anchors at commit, so motion during the window is discarded instead
+        // of replayed as a jump. Absolute mode has no such hazard, and skipping
+        // the warp would leave the cursor stale for a tap that lifts before the
+        // onset delay.
         //
-        // Tap stabilization extends that hold from a time bound to
-        // time-and-distance: a barely-moving finger stays pinned past
-        // `onsetDelay` until it clears `tapStabilizationPt`. `lastPositions`
-        // is rewritten every frame below, so the release delta is still
-        // one frame's worth of motion — no catch-up jump.
+        // Tap stabilization extends the hold from time to time and distance:
+        // a barely moving finger stays pinned past `onsetDelay` until it clears
+        // `tapStabilizationPt`. `lastPositions` is rewritten every frame, so
+        // the release delta stays one frame's worth, with no catch-up jump.
         if let first = contacts.first {
             if let anchor = tapAnchor {
                 tapMaxDelta = Swift.max(tapMaxDelta, hypot(
@@ -974,9 +806,8 @@ struct TouchStateTracker {
             }
             lastPositions = [first.id: first.screen]
             if absoluteTouch {
-                // Absolute mode holds on time only — no drift to suppress
-                // (every frame warps to the finger), and skipping the warp
-                // would break `absoluteLastWarpedTo`'s warp-once invariant.
+                // Absolute mode holds on time only. Every frame warps to the
+                // finger, so there's no drift to suppress.
                 if absolutePrimaryContactID == nil {
                     absolutePrimaryContactID = first.id
                 }
@@ -990,9 +821,8 @@ struct TouchStateTracker {
                 return .none
             }
         }
-        // Relative mode: commit once onset has elapsed and the finger has
-        // cleared the stabilization tolerance (`tapMaxDelta` is this
-        // frame's, updated just above; `> 0` guard = feature off / no-op).
+        // Relative mode commits once the onset delay passes and the finger
+        // clears the stabilization tolerance. A tolerance of 0 turns it off.
         let heldForStabilization =
             tapStabilizationPt > 0 && tapMaxDelta < tapStabilizationPt
         if now - tapStart >= onsetDelay, !heldForStabilization {
@@ -1003,10 +833,8 @@ struct TouchStateTracker {
 
     /// One frame of absolute-mode pointing: warp to the sequence's primary contact.
     private mutating func processAbsolutePointer(contacts: [(id: Int, screen: CGPoint)]) -> Intent {
-        // Pin to the contact that started this sequence rather than
-        // re-reading `contacts.first` every frame — see
-        // `absolutePrimaryContactID`'s doc comment for why relative
-        // mode's own "just take .first" approach would misbehave here.
+        // Pin to the contact that started the sequence (see
+        // `absolutePrimaryContactID`).
         let primaryID = absolutePrimaryContactID ?? contacts.first?.id
         absolutePrimaryContactID = primaryID
         guard let primaryID, let primary = contacts.first(where: { $0.id == primaryID })
@@ -1016,15 +844,9 @@ struct TouchStateTracker {
             tapMaxDelta = Swift.max(tapMaxDelta, hypot(
                 primary.screen.x - anchor.x, primary.screen.y - anchor.y))
         }
-        // Skip a repeat warp to the same position — a still finger
-        // would otherwise post ~100 identical .mouseMoved CGEvents/sec,
-        // the same waste the scroll case's dead-frame skip above exists
-        // to avoid. `absoluteLastWarpedTo` still gets set on the first
-        // frame regardless of motion (from the .idle/.pending
-        // transitions above), which is what makes a motionless
-        // tap-to-click resolve at the right position — this guard only
-        // suppresses *repeats* of a warp already emitted, never the
-        // first one.
+        // Skip a repeat warp to the same spot, or a still finger would post
+        // about 100 identical moves per second. The first frame always warps
+        // (set in pending), so a motionless tap still clicks in the right place.
         if absoluteLastWarpedTo == primary.screen { return .none }
         absoluteLastWarpedTo = primary.screen
         return .pointerWarp(to: primary.screen)
@@ -1065,17 +887,15 @@ struct TouchStateTracker {
     ) -> Intent {
         let dt = now - lastFrameTime
         lastFrameTime = now
-        // Centroid delta over the contacts present in both this frame and
-        // the last.  Contacts with new ids (finger lifted and re-landed,
-        // or upstream palm filtering churned the set) are seeded for the
-        // next frame instead of stalling the gesture, so losing both
-        // original ids doesn't stop the scroll.
+        // Centroid delta over contacts present in this frame and the last. New
+        // ids (a finger lifted and re-landed, or palm filtering churned the
+        // set) seed the next frame instead of stalling the gesture.
         let current = Array(contacts.prefix(2))
         let tracked = current.filter { lastPositions[$0.id] != nil }
         let oldCentroid = centroid(of: tracked.compactMap { lastPositions[$0.id] })
         let newCentroid = centroid(of: tracked.map { $0.screen })
-        // Hold last distance when a finger lifts mid-gesture (1-contact
-        // frames). distance(between:) would be 0 and invent a huge scaleDelta.
+        // Hold the last distance when a finger lifts mid-gesture; zero would
+        // invent a huge scale delta.
         let newDistance = current.count >= 2
             ? Self.distance(between: current)
             : lastPinchDistance
@@ -1086,28 +906,21 @@ struct TouchStateTracker {
             uniquingKeysWith: { first, _ in first })
         lastPinchDistance = newDistance
 
-        // A committed pan that has dropped to a single contact for longer
-        // than the grace window is finished — the user lifted one finger
-        // and kept the other down. Without this it would keep emitting
-        // `scrollDelta` from the lone finger's motion until every finger
-        // lifted, so a later unrelated single-finger touch keeps scrolling
-        // the view (`scrollWoundDown` blocks that resurrection). Capture
-        // the flick velocity now, from the window when both fingers were
-        // still moving, then close the phase envelope. Pinch/rotate are
-        // excluded: `newDistance` collapses to nonsense on one contact, so
-        // a 1-contact frame there is already ignored above.
+        // A committed pan down to one contact for longer than the grace window
+        // is finished: the user lifted one finger and kept the other down.
+        // Otherwise the lone finger would keep scrolling until every finger
+        // lifted (`scrollWoundDown` blocks that). Capture the flick velocity
+        // from when both fingers were moving, then close the phase. Pinch and
+        // rotate skip this, since one-contact frames are already ignored above.
         if twoFingerKind == .pan {
             if current.count >= 2 {
                 scrollDroppedToOneContactAt = 0
             } else {
                 if scrollDroppedToOneContactAt == 0 {
-                    // First frame of the drop — both fingers were still
-                    // down last frame, so `recentVelocities` is fresh
-                    // right now. Snapshot the flick velocity *and* the
-                    // frame/motion gaps here; the wind-down below fires too
-                    // late for any of it to be recomputed meaningfully.
-                    // `dt` is this frame's real spacing (`lastFrameTime`
-                    // was reassigned to `now` earlier this frame).
+                    // First frame of the drop: `recentVelocities` is still
+                    // fresh. Snapshot the velocity and the gaps now; the
+                    // wind-down is too late. `dt` is this frame's spacing,
+                    // since `lastFrameTime` already holds `now`.
                     scrollDroppedToOneContactAt = now
                     let k = releaseKinematics(now: now, frameGapOverride: dt)
                     scrollVelocityAtDrop = k.velocity
@@ -1117,9 +930,8 @@ struct TouchStateTracker {
                 }
                 if now - scrollDroppedToOneContactAt >= Self.scrollSingleContactGrace {
                     let priorPhase = lastScrollPhase
-                    // All release diagnostics come from the drop-site
-                    // snapshot — this frame is far too late to measure any
-                    // of them (see `scrollVelocityAtDrop`).
+                    // Release values come from the drop snapshot (see
+                    // `scrollVelocityAtDrop`).
                     releaseVelocity = scrollVelocityAtDrop
                     releaseSuppressedByRecency = suppressedByRecencyAtDrop
                     releaseFrameGap = frameGapAtDrop
@@ -1131,11 +943,9 @@ struct TouchStateTracker {
                         ? .scrollDelta(dx: 0, dy: 0, phase: .ended)
                         : .none
                 }
-                // Inside the grace window: emit nothing rather than the
-                // lone finger's delta, so the symptom doesn't just shrink
-                // to the grace duration. `lastPositions`/`lastPinchDistance`
-                // were re-seeded above, so a returning second finger picks
-                // the pan back up cleanly.
+                // Inside the grace window, emit nothing instead of the lone
+                // finger's delta. A returning second finger resumes the pan
+                // cleanly, since the positions were re-seeded above.
                 return .none
             }
         }
@@ -1144,11 +954,10 @@ struct TouchStateTracker {
         let dx = newCentroid.x - oldCentroid.x
         let dy = newCentroid.y - oldCentroid.y
 
-        // Not just `pinchZoom || rotate`: an .undecided sequence reaches
-        // here whenever any non-pan candidate was in play at escalation
-        // (see `anyTwoFingerGesture`), and an already-committed .pinch/
-        // .rotate sequence must keep being tracked here even if its flag
-        // were somehow toggled off mid-gesture.
+        // Not just `pinchZoom || rotate`: an undecided sequence arrives here
+        // whenever a non-pan candidate was in play at escalation (see
+        // `anyTwoFingerGesture`), and a committed gesture keeps tracking even
+        // if its flag turns off mid-gesture.
         if twoFingerKind != .pan {
             if twoFingerKind == .undecided {
                 return decideTwoFingerKind(
@@ -1196,26 +1005,20 @@ struct TouchStateTracker {
         rotate: Bool,
         now: TimeInterval
     ) -> Intent {
-        // A 1-contact frame collapses the centroid onto that single
-        // finger, roughly half the finger separation away from the
-        // two-finger anchor — enough to clear the decide threshold
-        // on its own and commit a phantom pan. Wait for two contacts.
+        // One contact collapses the centroid onto that finger, about half the
+        // finger separation from the anchor. That alone clears the decide
+        // threshold and commits a phantom pan, so wait for two contacts.
         guard current.count >= 2 else { return .none }
-        // Cumulative motion since two-finger sequence start — not
-        // per-frame deltas, which stay tiny at high report rates.
+        // Cumulative motion since the sequence start, because per-frame deltas
+        // stay tiny at high report rates.
         let totalTranslation = hypot(
             newCentroid.x - undecidedOriginCentroid.x,
             newCentroid.y - undecidedOriginCentroid.y)
         let totalScaleChange = abs(newDistance - undecidedOriginDistance)
 
-        // Tangential motion: angle change converted into the same
-        // unit (screen points) as the other two candidates, so it
-        // can share `twoFingerDecideDistance`/`pinchDominanceRatio`
-        // without a second, unrelated tunable. `rotateEligible`
-        // was decided once at escalation from raw device-unit
-        // separation — when it's false (or rotate is off), this
-        // stays exactly 0 and the block below behaves identically
-        // to the pinch-only two-way decision it replaced.
+        // Tangential motion is the angle change in screen points, the unit of
+        // the other two candidates, so it shares `twoFingerDecideDistance` and
+        // `pinchDominanceRatio`. It stays 0 when rotate is off or ineligible.
         var totalTangentialMotion = 0.0
         if rotate, rotateEligible {
             let sortedPair = current.sorted { $0.id < $1.id }
@@ -1226,35 +1029,19 @@ struct TouchStateTracker {
         }
 
         let decide = Self.twoFingerDecideDistance
-        // Tangential motion's own leg uses `rotateNoiseFloor`
-        // (9.0), not `decide` (6.0): rotate's actual
-        // qualification bar below is the higher floor, so
-        // ending the "still just landing noise" wait at the
-        // lower `decide` opened a dead zone — tangential motion
-        // between 6 and 9 stopped the wait but couldn't yet
-        // qualify, and neither pinch nor pan had cleared their
-        // own bars either, so the sequence fell through to the
-        // "neither qualified" pan default below regardless.
-        // That default only makes sense once every live
-        // candidate has had a real chance to clear its own bar;
-        // otherwise real rotate gestures lose to a premature pan
-        // commit before tangential motion reaches 9.
+        // Tangential motion waits on `rotateNoiseFloor` (9), not `decide` (6),
+        // because that is rotate's real bar. Stopping the wait at 6 would let
+        // the "neither qualified" pan default below fire before rotate could
+        // qualify at 9, so real rotates would lose to a premature pan.
         if totalScaleChange < decide, totalTranslation < decide,
             totalTangentialMotion < Self.rotateNoiseFloor
         {
             return .none
         }
-        // Dwell: a rotate-eligible sequence gets a brief grace
-        // period before rotate can win, because `decide` is tiny
-        // enough (see `rotateMinDwell`'s doc comment) that
-        // landing noise alone often clears it within the first
-        // frame or two — deciding this early is a coin flip, not
-        // a discrimination. Obviously large, fast motion bypasses
-        // the wait so a real pan/pinch on a wide-enough pair
-        // isn't held up by a clock meant for a slow twist onset.
-        // Pan and pinch are otherwise untouched by this: when
-        // rotate is off or the pair isn't eligible, this block
-        // never runs.
+        // Dwell: a rotate-eligible sequence waits briefly before rotate can
+        // win, because landing noise often clears `decide` in the first frame
+        // or two (see `rotateMinDwell`). Large, fast motion bypasses the wait.
+        // The block never runs when rotate is off or ineligible.
         if rotate, rotateEligible,
             now - undecidedStartTime < Self.rotateMinDwell,
             totalTranslation < Self.rotateDwellBypassDistance,
@@ -1276,11 +1063,8 @@ struct TouchStateTracker {
                 magnify: pinchQualifies ? GestureDelta(value: 0, phase: .began) : nil,
                 rotate: rotateQualifies ? GestureDelta(value: 0, phase: .began) : nil)
         }
-        // Neither qualified. Pan isn't a candidate at all when
-        // twoFingerScroll is off — stay undecided (rather than
-        // lock in a fallback that will never be emitted) so a
-        // clearer pinch/rotate signal later in the same sequence
-        // can still win.
+        // Neither qualified. With `twoFingerScroll` off, pan isn't a candidate:
+        // stay undecided so a clearer pinch or rotate can still win later.
         guard twoFingerScroll else { return .none }
         twoFingerKind = .pan
         pendingBeganDx = 0
@@ -1290,17 +1074,16 @@ struct TouchStateTracker {
 
     /// Which of pinch and rotate the accumulated motion supports.
     ///
-    /// Each is tested on its own: it must beat pan's translation by
-    /// `pinchDominanceRatio` (pan wins on ambiguity, including the
-    /// anchored-finger arc, a known limitation) and clear its own noise
-    /// floor. There's no exclusive bar between them, since a trackpad can
-    /// magnify and rotate at once (see `TwoFingerKind`).
+    /// Each component must beat pan's translation by `pinchDominanceRatio`
+    /// (pan wins on ambiguity, including a finger anchored while the other
+    /// arcs, a known limitation) and clear its own noise floor. Neither
+    /// excludes the other, since a trackpad can magnify and rotate at once.
     ///
-    /// Independent floors alone would let a real pinch's angle jitter, or a
-    /// real twist's separation drift, ride along as a second gesture. So when
-    /// both qualify, the one below `companionSuppressionRatio` of the other
-    /// drops out. Comparable signals both survive: tangential 25 against
-    /// scale 26 fires both.
+    /// Independent floors alone would let a pinch's angle jitter, or a twist's
+    /// separation drift, ride along as a second gesture. So when both qualify,
+    /// the one below `companionSuppressionRatio` of the other falls out.
+    /// Comparable signals both survive: tangential 25 against scale 26 fires
+    /// both.
     private static func qualifyingComponents(
         translation: Double, scale: Double, tangential: Double,
         pinchZoom: Bool, rotate: Bool
@@ -1333,17 +1116,11 @@ struct TouchStateTracker {
         rotate: Bool,
         now: TimeInterval
     ) -> Intent {
-        // Angle tracking runs for the whole sequence, not just while
-        // rotate is an active component: the late-join window below
-        // needs a per-frame angle delta even while rotate is
-        // dormant, and a gap in `lastPairAngle` would make the
-        // first delta after a join one large jump.
-        //
-        // Hold the last angle on a 1-contact frame instead of
-        // computing — same treatment `lastPinchDistance` gets
-        // above, for the same reason (a lone survivor's angle
-        // relative to nothing is meaningless and would invent a
-        // huge delta).
+        // Angle tracking runs the whole sequence, not only while rotate is
+        // active. The late-join test needs a per-frame angle delta while rotate
+        // is dormant, and a gap in `lastPairAngle` would make the first delta
+        // after a join one large jump. One-contact frames hold the last angle,
+        // as `lastPinchDistance` does, since a lone finger has no angle.
         var frameAngleDelta = 0.0
         if rotate, rotateEligible {
             let sortedPair = current.count >= 2 ? current.sorted { $0.id < $1.id } : current
@@ -1352,33 +1129,19 @@ struct TouchStateTracker {
             lastPairAngle = newAngle
         }
 
-        // Late join. The commit above picks the components from one
-        // frame's evidence; a hand that starts as a clean zoom and
-        // then adds a twist (or the reverse) produced that evidence
-        // *later*, and freezing the set at commit meant the second
-        // gesture could never arrive — the sequence had to be lifted
-        // and restarted. A trackpad has no such commit: it derives
-        // magnification and rotation independently every frame. This
-        // re-runs the qualification for whichever component isn't in
-        // play yet, so the second gesture joins when its evidence
-        // arrives.
+        // Late join. The commit picks components from one frame's evidence,
+        // but a zoom that later adds a twist (or the reverse) produces that
+        // evidence afterward. A trackpad derives both every frame, so this
+        // re-runs qualification for the component not yet in play.
         //
-        // Measured over a trailing window, *not* cumulative since
-        // the sequence origin the commit uses. Since-origin totals
-        // make the join bar climb with the gesture's own length:
-        // `companionSuppressionRatio` asks the newcomer to reach
-        // half of a scale change that has been growing the whole
-        // time, so a twist that joins after ~20° a moment after
-        // commit would need ~46° once the zoom had been running.
-        // A window keeps the bar constant, and "how
-        // hard am I twisting *now*" is the question this is actually
-        // asking.
+        // It measures over a trailing window, not since the origin. Since-origin
+        // totals make the bar climb with gesture length: a twist that needs
+        // 20° soon after commit would need 46° once the zoom had been running.
+        // The window asks how hard the user twists now.
         //
-        // Latch-on only: a component that has begun is never removed
-        // mid-sequence. Removal would mean posting an `.ended` and
-        // then a fresh `.began` if it came back, and apps read that
-        // envelope churn as separate gestures. Growth is safe;
-        // retraction isn't.
+        // Latch-on only: a begun component never ends mid-sequence, because
+        // apps read an `.ended` followed by a fresh `.began` as separate
+        // gestures.
         if current.count >= 2 {
             recentGestureDeltas.append((
                 time: now,
@@ -1393,12 +1156,10 @@ struct TouchStateTracker {
             let totalTangentialMotion = (rotate && rotateEligible)
                 ? recentGestureDeltas.reduce(0) { $0 + $1.tangential }
                 : 0
-            // The same test as at commit. Its companion suppression is
-            // what keeps this from firing on drift: over a long pinch
-            // the incidental angle wobble does eventually clear
-            // `rotateNoiseFloor` in absolute terms, but it stays far
-            // below `companionSuppressionRatio` of the scale change
-            // unless the user is really twisting.
+            // The same test as at commit. Companion suppression keeps drift
+            // from firing it: over a long pinch, incidental angle wobble can
+            // clear `rotateNoiseFloor` but stays far below
+            // `companionSuppressionRatio` of the scale change.
             let (pinchQualifies, rotateQualifies) = Self.qualifyingComponents(
                 translation: totalTranslation, scale: totalScaleChange,
                 tangential: totalTangentialMotion,
@@ -1408,26 +1169,20 @@ struct TouchStateTracker {
             if joinPinch || joinRotate {
                 if joinPinch { pinchInGesture = true; pinchPhase = .began }
                 if joinRotate { rotateInGesture = true; rotatePhase = .began }
-                // Open the new envelope with a zero delta and skip
-                // the already-active component's delta for this one
-                // frame, exactly as the commit path does. One frame
-                // at report rate is imperceptible; mixing a `.began`
-                // and a `.changed` for different components in one
-                // return is not worth the extra state.
+                // Open the new envelope with a zero delta and skip the active
+                // component's delta this frame, as the commit path does. One
+                // frame is imperceptible, and mixing `.began` with `.changed`
+                // in one return needs extra state.
                 return .twoFingerGesture(
                     magnify: joinPinch ? GestureDelta(value: 0, phase: .began) : nil,
                     rotate: joinRotate ? GestureDelta(value: 0, phase: .began) : nil)
             }
         }
 
-        // Each active component reports its own per-frame delta,
-        // independently of the other.
+        // Each active component reports its own per-frame delta.
         var magnify: GestureDelta?
         if pinchInGesture, scaleDelta != 0, oldDistance > 0 {
-            // Exact relative growth this frame — see the
-            // `twoFingerGesture` doc comment for why this is the
-            // correct (not approximate) per-frame value for a
-            // multiplicative magnify stream.
+            // Exact relative growth (see `twoFingerGesture`).
             pinchPhase = .changed
             magnify = GestureDelta(value: scaleDelta / oldDistance, phase: .changed)
         }
@@ -1436,15 +1191,9 @@ struct TouchStateTracker {
             let delta = frameAngleDelta
             if delta != 0 {
                 rotatePhase = .changed
-                // Negated: the raw atan2 delta reads backwards from
-                // the actual finger twist. `atan2`'s "positive is counter-
-                // clockwise" convention holds in math coordinates
-                // (y-up); screen coordinates here are y-down,
-                // which flips the handedness. Internal tracking
-                // (`lastPairAngle`, `undecidedCumulativeAngle`)
-                // stays in the raw, unflipped convention — only
-                // the emitted intent is corrected, right at the
-                // boundary.
+                // Negated: `atan2` counts counterclockwise as positive in
+                // y-up coordinates, and screen coordinates are y-down. Internal
+                // tracking stays raw; only the emitted intent flips.
                 rotateComponent = GestureDelta(value: -delta, phase: .changed)
             }
         }
@@ -1485,14 +1234,10 @@ struct TouchStateTracker {
             }
         }
 
-        // Dominant-axis lock (see `scrollAxisLock`). Only a committed
-        // `.pan` reaches here with `twoFingerKind == .pan` — pinch/rotate/
-        // undecided all returned above. `lockedDx`/`lockedDy` carry the
-        // axis-suppressed delta forward; `dx`/`dy` stay raw for velocity
-        // seeding and brake detection, which must track the real finger
-        // (not the locked axis) so momentum coasts the way the hand
-        // flicked if `twoFingerScrollMomentum` is ever back on — matching
-        // `PanScrollTracker`, which likewise seeds from unlocked travel.
+        // Dominant-axis lock (see `scrollAxisLock`). `lockedDx` and `lockedDy`
+        // carry the axis-suppressed delta; `dx` and `dy` stay raw for velocity
+        // seeding and brake detection, so momentum follows the real flick, as
+        // in `PanScrollTracker`.
         var lockedDx = dx
         var lockedDy = dy
         if twoFingerKind == .pan {
@@ -1502,17 +1247,11 @@ struct TouchStateTracker {
                 case .horizontal: lockedDy = 0
                 }
             } else if !scrollAxisResolved && tracked.count >= 2 {
-                // Only feed the lock decision from genuine two-finger
-                // centroid deltas. A frame with one new id (`current.count
-                // == 2` but `tracked.count == 1` — finger re-landed, or
-                // palm filtering churned the set) yields only that single
-                // finger's own motion here, not a centroid translation.
-                // Defensive, not a known failure: `oldCentroid` and
-                // `newCentroid` are both taken over `tracked`, so such a
-                // frame doesn't inject a jump — but it also isn't the
-                // signal this accumulator is meant to measure, so skip it.
-                // `lastPositions` was re-seeded for the new id above; the
-                // next full two-contact frame resumes the decision.
+                // Feed the lock only from genuine two-finger centroid deltas. A
+                // frame with one new id (a finger re-landed, or palm filtering
+                // churned the set) carries one finger's motion, not a centroid
+                // translation. This is defensive, not a known failure; the next
+                // full two-contact frame resumes the decision.
                 scrollPreLockAccumX += abs(dx)
                 scrollPreLockAccumY += abs(dy)
                 if scrollPreLockAccumX + scrollPreLockAccumY >= Self.scrollAxisLockWindow {
@@ -1524,30 +1263,25 @@ struct TouchStateTracker {
                         scrollAxisLock = .vertical
                         lockedDx = 0
                     }
-                    // Neither axis dominates — a genuinely diagonal
-                    // two-finger drag. Give up on locking for the rest of
-                    // this gesture and stay omnidirectional.
+                    // Neither axis dominates, so the drag is diagonal: stay
+                    // omnidirectional for the rest of the gesture.
                     scrollAxisResolved = true
                 }
             }
         }
 
-        // Default (reverseScrollDirection=false): content follows finger.
-        // Reversed: classic scroll-wheel semantics, content moves opposite.
+        // Content follows the finger by default; reversed, it moves opposite,
+        // as a classic scroll wheel does.
         let sign = reverseScrollDirection ? -1.0 : 1.0
         let outDx = sign * lockedDx
         let outDy = sign * lockedDy
-        // Only sample velocity from frames spaced at least `minVelocityDt`
-        // apart. A Bluetooth batch delivered in a burst puts several frames
-        // microseconds apart (see `BatchFramePacer` / `subMillisecondDtFrames`);
-        // `delta / dt` on one of those is a velocity 10–100× the real finger
-        // speed, and `peak` below is a max, so it latches onto exactly that
-        // sample and seeds a runaway coast. The device's true touch cadence
-        // is ~5.6ms on BT (a ~22.5ms batch carrying ~4 touch frames), so
-        // 2ms is comfortably below real spacing and above burst spacing.
-        // `lastMotionTime` still updates from burst frames (it gates on
-        // delta, not dt), so brake detection is unaffected. Both use the
-        // raw pre-lock centroid delta, not the axis-locked one.
+        // Sample velocity only from frames at least `minVelocityDt` apart. A
+        // Bluetooth batch puts several frames microseconds apart (see
+        // `BatchFramePacer`), so `delta / dt` there runs 10–100 times the real
+        // speed, and the peak would latch onto it and seed a runaway coast.
+        // The real touch cadence on Bluetooth is about 5.6 ms. `lastMotionTime`
+        // still updates from burst frames, so brake detection is unaffected.
+        // Both use the raw centroid delta, not the axis-locked one.
         if dt >= Self.minVelocityDt {
             recentVelocities.append((time: now, v: CGVector(dx: sign * dx / dt, dy: sign * dy / dt)))
             recentVelocities.removeAll { now - $0.time > Self.peakVelocityWindow }
@@ -1555,10 +1289,9 @@ struct TouchStateTracker {
         if dx != 0 || dy != 0 {
             lastMotionTime = now
         }
-        // Skip dead frames: a stationary palm with two contacts down would
-        // otherwise post 100 no-op scroll events per second. After an axis
-        // lock this also skips a frame of pure off-axis wobble (its on-axis
-        // component zeroed), which has nothing to post.
+        // Skip dead frames, or a stationary two-contact palm would post 100
+        // no-op scrolls per second. After an axis lock, a frame of pure
+        // off-axis wobble also has nothing to post.
         if outDx == 0 && outDy == 0 { return .none }
         if lastScrollPhase == .ended {
             // Nothing posted yet: open with `.began` carrying the motion.
@@ -1593,10 +1326,8 @@ struct TouchStateTracker {
         let tap = tapToClick && (priorMode == .pointer || priorMode == .pending)
             && now - tapStart <= Self.tapMaxDuration
             && tapMaxDelta < Self.tapMaxDistance
-        // Captured before `reset()` clears `tapStart` — the deviation
-        // half of "was this a tap" is implicit: still being `.undecided`
-        // at teardown already proves motion stayed under
-        // `twoFingerDecideDistance` (see the tunable's doc comment).
+        // Computed before `reset()` clears `tapStart`. Still being `.undecided`
+        // at teardown proves motion stayed under `twoFingerDecideDistance`.
         let secondaryTap = twoFingerRightClick && twoFingerTapEligible
             && maxContactsThisSequence == 2
             && priorMode == .scroll && priorKind == .undecided
@@ -1604,11 +1335,9 @@ struct TouchStateTracker {
         threeFingerTapMiss = threeFingerDrag && maxContactsThisSequence >= 3
             && priorMode != .drag ? (threeFingerMissReason ?? "other") : nil
         if scrollDroppedToOneContactAt != 0 {
-            // The gesture already dropped to one contact and everything was
-            // snapshotted then, while samples were fresh. Recomputing here
-            // loses it: the grace-window frames returned `.none` before the
-            // velocity-sampling line, so `recentVelocities` has nothing
-            // inside `peakVelocityWindow` and the gaps would read ~0.
+            // The drop already snapshotted everything while samples were
+            // fresh. Recomputing here would lose it: the grace-window frames
+            // skipped velocity sampling, so `recentVelocities` is empty.
             releaseVelocity = scrollVelocityAtDrop
             releaseSuppressedByRecency = suppressedByRecencyAtDrop
             releaseFrameGap = frameGapAtDrop
@@ -1627,12 +1356,9 @@ struct TouchStateTracker {
         reset()
         if priorMode == .drag { return .dragUp }
         switch priorMode {
-        // Must precede the generic pan-ended case below: pinch/rotate
-        // also leave `lastScrollPhase` untouched (they track their own
-        // phases), so without this case an open pinch/rotate envelope
-        // would never close. Pinch and rotate close independently —
-        // either, both, or (if the sequence never actually committed to
-        // either) neither may be open here.
+        // Must precede the pan-ended case: pinch and rotate leave
+        // `lastScrollPhase` alone, so only this case closes their envelopes.
+        // They close independently; either, both, or neither may be open.
         case .scroll where priorPinchPhase != .ended || priorRotatePhase != .ended:
             return .twoFingerGesture(
                 magnify: priorPinchPhase != .ended ? GestureDelta(value: 0, phase: .ended) : nil,
@@ -1660,10 +1386,8 @@ struct TouchStateTracker {
         tapStart = now
         tapMaxDelta = 0
         if absoluteTouch {
-            // Warp immediately on contact-down — see the `.pending`
-            // case below and `Intent.pointerWarp`'s doc comment for why
-            // absolute mode can't wait for `.pointer` mode the way
-            // relative mode does.
+            // Warp on contact-down; absolute mode can't wait for `.pointer`
+            // the way relative mode does (see `processPending`).
             absolutePrimaryContactID = first.id
             absoluteLastWarpedTo = first.screen
             return .pointerWarp(to: first.screen)
@@ -1682,9 +1406,8 @@ struct TouchStateTracker {
             return Intent.none
         }
         if !overlapsOldContacts {
-            // Entirely new fingers — a genuinely fresh sequence. Full
-            // reset so this frame starts from idle (onset delay, tap
-            // clock, the lot).
+            // Entirely new fingers start a fresh sequence from idle, with a
+            // new onset delay and tap clock.
             scrollWoundDown = false
             scrollWoundDownExpiresAt = 0
             lastPositions.removeAll(keepingCapacity: true)
@@ -1695,14 +1418,12 @@ struct TouchStateTracker {
             lastScrollPhase = .ended
             // Fall through.
         } else if now >= scrollWoundDownExpiresAt {
-            // Backstop: the wound-down gesture's own finger(s) are still
-            // down after the whole backstop window — an all-lifted frame
-            // was apparently lost. Release the hold, but resume as a plain
-            // pointer, not a fresh `.pending`: seeding a new `tapStart`
-            // here would make this lingering finger tap-eligible, so a
-            // pan → lift-one → rest → lift would fire a phantom click.
-            // Leaving `tapStart` stale means the isEmpty branch's
-            // `now - tapStart <= tapMaxDuration` fails and no tap can.
+            // Backstop: the gesture's fingers are still down after the whole
+            // window, so a lift frame was likely lost. Release the hold and
+            // resume as a plain pointer, not a fresh `.pending`. A new
+            // `tapStart` would make the lingering finger tap-eligible, and
+            // pan, lift one, rest, lift would fire a phantom click. The stale
+            // `tapStart` fails the duration check and blocks any tap.
             scrollWoundDown = false
             scrollWoundDownExpiresAt = 0
             scrollDroppedToOneContactAt = 0
@@ -1714,12 +1435,9 @@ struct TouchStateTracker {
             lastPositions = Dictionary(
                 contacts.prefix(1).map { ($0.id, $0.screen) },
                 uniquingKeysWith: { first, _ in first })
-            // A two-finger sequence never ran absolute-mode's own
-            // primary-pinning — clear both so `.pointer where
-            // absoluteTouch` re-derives cleanly from this frame's
-            // contact rather than chasing a stale id from before the
-            // scroll started (or warping again to a position it
-            // never actually warped to yet this sequence).
+            // The two-finger sequence never pinned an absolute primary. Clear
+            // both so absolute pointing re-derives from this frame's contact
+            // instead of chasing a stale id.
             absolutePrimaryContactID = nil
             absoluteLastWarpedTo = nil
             return Intent.none
@@ -1811,11 +1529,8 @@ struct TouchStateTracker {
                 lastPinchDistance = Self.distance(between: pair)
                 undecidedOriginCentroid = centroid(of: pair.map(\.screen))
                 undecidedOriginDistance = lastPinchDistance
-                // Separation gate (see `rotateMinSeparationFraction`'s doc
-                // comment): millimeter positions, computed once here, not
-                // re-evaluated per frame — a rotate gesture's finger
-                // separation is expected to stay roughly constant while the
-                // angle changes.
+                // Separation gate (see `rotateMinSeparationFraction`), computed
+                // once: a rotating pair's separation stays roughly constant.
                 rotateEligible = false
                 if rotate, touchDiagonal > 0,
                    let posA = rawPositions[pair[0].id], let posB = rawPositions[pair[1].id]
@@ -1829,22 +1544,21 @@ struct TouchStateTracker {
                 recentVelocities.removeAll()
                 lastFrameTime = now
                 lastMotionTime = 0
-                // Defer Began until pan/pinch/rotate commits when
-                // discrimination is on — leave lastScrollPhase .ended so a
-                // lift before commit does not emit a stray scroll Ended.
+                // With discrimination on, `.began` waits for the commit.
+                // `lastScrollPhase` stays `.ended`, so a lift before commit
+                // emits no stray scroll end.
                 if twoFingerKind == .undecided {
                     return Intent.none
                 }
-                // Only reachable with twoFingerScroll on and every other
-                // two-finger action off — the one case where pan is decided
-                // immediately rather than discriminated. `.began` waits for
-                // motion (see `pendingBeganDx`).
+                // Reached only with `twoFingerScroll` on and every other
+                // two-finger action off, where pan is decided at once. `.began`
+                // waits for motion (see `pendingBeganDx`).
                 pendingBeganDx = 0
                 pendingBeganDy = 0
                 return Intent.none
             } else if mode == .pointer {
-                // No two-finger gesture enabled at all: ignore the second
-                // contact, keep pointer-tracking the first.
+                // No two-finger gesture is on: ignore the second contact and
+                // keep tracking the first.
                 if let first = contacts.first, lastPositions[first.id] == nil {
                     lastPositions[first.id] = first.screen
                 }
@@ -1853,11 +1567,9 @@ struct TouchStateTracker {
         return nil
     }
 
-    /// Clears the committed-`.pan` dominant-axis lock and its pre-lock
-    /// accumulators. Called from `reset()` and from both wound-down re-entry
-    /// paths that drop `twoFingerKind` back to `.undecided` — the lock is
-    /// only read while `twoFingerKind == .pan`, so a stale value is inert,
-    /// but clearing it keeps that invariant from being a load-bearing
+    /// Clears the dominant-axis lock and its pre-lock accumulators. `reset()`
+    /// and both wound-down re-entry paths call it. Only `.pan` reads the lock,
+    /// so a stale value is inert, but clearing it keeps that from being an
     /// accident.
     private mutating func resetScrollAxisLock() {
         scrollAxisLock = nil
@@ -1870,11 +1582,6 @@ struct TouchStateTracker {
         scrollRestarted = false
     }
 
-    /// Clears all sequence state back to `.idle`. Called internally on
-    /// all-fingers-lifted and on the non-overlapping-contacts wound-down
-    /// escape; the injector no longer calls this directly — pen arbitration
-    /// now feeds `process(contacts: [])` so an open gesture phase closes
-    /// through the normal wind-down path instead of vanishing.
     /// Sensitivity times the speed-scaled gain, from a smoothed speed over
     /// successive samples. Shared by pointer motion and relative drags.
     private mutating func adaptivePointerGain(
@@ -1883,16 +1590,11 @@ struct TouchStateTracker {
         let dt = lastPointerSampleTime == 0 ? 0 : now - lastPointerSampleTime
         var gain = sensitivity
         if lastPointerSampleTime == 0 || dt > Self.pointerVelocityStaleGap {
-            // No usable prior sample — either the first frame of a new
-            // sequence, or one after a pause long enough that the old
-            // smoothed speed no longer describes anything real. Apply
-            // flat gain for this one frame rather than assuming slow;
-            // `pointerSpeed = -1` marks "no history" so the next frame
-            // seeds directly from its own instant speed instead of
-            // EMA-ing up from 0, which would otherwise damp the first
-            // couple of frames after every pause — the same felt
-            // "hesitation" this feature exists to get away from, not
-            // reintroduce elsewhere.
+            // No usable prior sample: a new sequence, or a pause long enough
+            // that the old speed means nothing. Apply flat gain this frame.
+            // `-1` marks no history, so the next frame seeds from its own
+            // speed; averaging up from 0 would damp the first frames after
+            // every pause and feel like hesitation.
             pointerSpeed = -1
         } else if dt >= Self.minVelocityDt {
             let instant = hypot(rawDx, rawDy) / dt
@@ -1907,6 +1609,9 @@ struct TouchStateTracker {
         return gain
     }
 
+    /// Clears all sequence state back to `.idle`. Called on full lift and on
+    /// the non-overlapping wound-down escape. Pen arbitration feeds
+    /// `process(contacts: [])` instead, so an open phase closes normally.
     mutating func reset() {
         mode = .idle
         twoFingerTapEligible = false
@@ -1961,32 +1666,26 @@ struct TouchStateTracker {
         return CGPoint(x: sx, y: sy)
     }
 
-    /// The release kinematics for a scroll gesture ending *now*: the flick
-    /// velocity to seed a coast with, whether the recency gate suppressed it,
-    /// and the frame/motion gaps for diagnostics.
+    /// Release kinematics for a scroll gesture ending now: the flick velocity
+    /// that seeds the coast, whether the recency gate suppressed it, and the
+    /// frame and motion gaps for diagnostics. All three release sites call it
+    /// (full lift, the 2→1 drop, and the wind-down snapshot), so the
+    /// brake-versus-delivery-gap logic lives in one place.
     ///
-    /// Called from all three scroll-release sites (all-fingers-lifted, the
-    /// 2→1 contact drop, and the wind-down snapshot) so the brake-vs-delivery-
-    /// gap logic lives in one place.
-    ///
-    /// The plain recency gate — "no motion within `momentumRecencyWindow`
-    /// ⇒ deliberate brake ⇒ no coast" — is right when frames kept arriving
-    /// and the finger held still. It is *wrong* when frames simply stopped
-    /// arriving: a Bluetooth touch stream stalls 100–500 ms mid-flick
-    /// (measured), the finger was
-    /// still moving fast the whole time, and the user lifts expecting a
-    /// coast. The two cases are told apart by the gaps: a brake keeps
-    /// `frameGap` small while `motionGap` grows; a delivery stall grows both
-    /// together. When they track (within `deliveryGapBrakeSlack`) and the gap
-    /// is a plausible within-gesture stall (≤ `releaseGapPlausibleMax`), widen
-    /// the velocity window and skip the recency gate so the last good
-    /// pre-stall sample seeds the coast. A too-long gap (≥ 1 s — the ~1 Hz
-    /// Bluetooth housekeeping event, or true inter-gesture idle) is left to
-    /// the normal path: `frameGap` reads -1 there and `deliveryGap` is false.
+    /// The plain recency gate (no motion within `momentumRecencyWindow` means a
+    /// deliberate brake and no coast) is right when frames kept arriving and
+    /// the finger held still. It is wrong when frames stopped arriving: a
+    /// Bluetooth touch stream stalls 100–500 ms mid-flick, the finger keeps
+    /// moving fast, and the user expects a coast. The gaps tell them apart. A
+    /// brake keeps `frameGap` small while `motionGap` grows; a stall grows both
+    /// together. When they track within `deliveryGapBrakeSlack` and the gap is
+    /// a plausible stall (up to `releaseGapPlausibleMax`), the gate is skipped
+    /// so the last good sample before the stall seeds the coast. A longer gap
+    /// (the roughly 1 Hz Bluetooth housekeeping event, or idle between
+    /// gestures) takes the normal path, where `frameGap` reads -1.
     /// - Parameter frameGapOverride: the true spacing from the previous frame,
-    ///   for the 2→1-drop caller which has already reassigned `lastFrameTime`
-    ///   to `now` before reaching here (so `now - lastFrameTime` would read
-    ///   ~0). Every other caller omits it.
+    ///   for the 2→1 drop, which has already set `lastFrameTime` to `now`.
+    ///   Other callers omit it.
     private func releaseKinematics(
         now: TimeInterval, frameGapOverride: TimeInterval? = nil
     ) -> (velocity: CGVector, suppressedByRecency: Bool,
@@ -2002,19 +1701,13 @@ struct TouchStateTracker {
 
         let seed: CGVector
         if deliveryGap {
-            // On a delivery stall the surviving samples are all from the
-            // ≤`peakVelocityWindow` slice right before reports stopped —
-            // pruning ran on the last frame that arrived, and the stall
-            // delivered no more. Taking the *fastest* of that slice is the
-            // wrong question: on a short flick it lands on a mid-stroke peak
-            // and the coast overshoots. What the coast wants is how fast the
-            // finger was moving when the stream cut out — the newest non-zero
-            // sample. (A long steady flick's newest and fastest samples are
-            // the same plateau value, so this only changes short flicks.)
-            // The `+ frameGap` on the filter is a safety margin: normally the
-            // array already excludes anything older, but if a caller reaches
-            // here with samples that outlived a prune, don't silently drop
-            // the very sample we're after.
+            // On a stall, the surviving samples are the `peakVelocityWindow`
+            // slice before reports stopped. The fastest of them is the wrong
+            // pick: on a short flick it lands on a mid-stroke peak and the
+            // coast overshoots. The coast wants the speed when the stream cut
+            // out, which is the newest non-zero sample. (On a long steady
+            // flick the two match.) The `+ frameGap` margin keeps the filter
+            // from losing that sample if it outlived a prune.
             seed = recentVelocities
                 .filter {
                     now - $0.time <= Self.peakVelocityWindow + frameGap
@@ -2023,8 +1716,8 @@ struct TouchStateTracker {
                 .last?.v ?? .zero
         } else {
             // Normal release: a brief flick's fastest sample may not be its
-            // last, so take the peak over the recency window (matches
-            // `PanScrollTracker`).
+            // last, so take the peak over the window, as `PanScrollTracker`
+            // does.
             seed = recentVelocities
                 .filter { now - $0.time <= Self.peakVelocityWindow }
                 .max { hypot($0.v.dx, $0.v.dy) < hypot($1.v.dx, $1.v.dy) }?.v ?? .zero
@@ -2046,11 +1739,9 @@ struct TouchStateTracker {
     }
 
     /// Angle of the vector from the first contact to the second, in radians.
-    /// Distance is symmetric under swapping the pair, so `distance(between:)`
-    /// is safe doing it by array position — angle is not: swap the pair and
-    /// the result flips by π. Callers must sort by contact id first so a
-    /// frame-to-frame reordering upstream (palm filtering, re-landed fingers)
-    /// can't be mistaken for a half-turn.
+    /// Swapping the pair flips the result by π, unlike distance, so callers sort
+    /// by contact id first. Otherwise a reordering from palm filtering or
+    /// re-landed fingers reads as a half-turn.
     private static func angle(between sortedContacts: [(id: Int, screen: CGPoint)]) -> Double {
         guard sortedContacts.count >= 2 else { return 0 }
         let a = sortedContacts[0].screen
@@ -2059,8 +1750,8 @@ struct TouchStateTracker {
     }
 
     /// Shortest signed angular difference from `old` to `new`, wrapped into
-    /// (-π, π]. Plain subtraction breaks at the seam — two contacts slowly
-    /// rotating past ±π would otherwise report a spurious near-2π jump.
+    /// (-π, π]. Plain subtraction breaks at the seam: a slow rotation past ±π
+    /// would report a spurious near-2π jump.
     private static func wrappedDelta(from old: Double, to new: Double) -> Double {
         var delta = new - old
         while delta > .pi { delta -= 2 * .pi }
