@@ -23,35 +23,35 @@ The active area is the portion of the tablet surface that maps to the screen. Pe
 
 **Resizing** – Drag the area or its handles; it snaps to the screen area's shape when close (hold **⌘** to skip, **⇧** to keep its shape). Click the width or height below to type an exact size.
 
-**Proportional mapping** – Keeps the tablet-to-screen ratio proportional so the cursor travels equal distances horizontally and vertically. Disable this option to deliberately stretch or compress the mapping.
+**Proportional mapping** – Keeps horizontal and vertical cursor travel equal. Turn it off to stretch or compress the mapping.
 
-**Reset to Full Area** – Restores the active area to the entire tablet surface. This action supports undo (⌘Z).
+**Reset to Full Area** – Restores the full tablet surface. ⌘Z undoes it.
 
 ## Orientation
 
-Choose the orientation whose picture matches how the tablet sits on your desk. In the Tablet Area pane, ⌘⌥1 through ⌘⌥4 choose them in order. The pen, touch, and tilt follow the choice, and the Buttons pane draws the tablet as it sits.
+Choose the orientation that matches the tablet's current position (⌘⌥1 through ⌘⌥4 in the Tablet Area pane). Pen, touch, and tilt follow the choice, and the Buttons pane draws the tablet to match.
 
-Turning the tablet moves each assignment to the key now in its place, so every place keeps its action, in every profile and app override. Undo restores the orientation and the assignments together.
+Turning the tablet moves each assignment to the key now in its place, in every profile and app override. Undo reverses both together.
 
-**Turn Assignments Around** – Right-click the tablet drawing in the Buttons pane to move each assignment to the key in the opposite place without changing the orientation. Choose it again to put everything back.
+**Turn Assignments Around** – Right-click the tablet drawing in the Buttons pane to swap each assignment to the opposite key without changing the orientation. Choose it again to restore them.
 
 ## Calibration (Pen Displays)
 
-The **Calibrate…** button opens a full-screen overlay where crosshair targets appear for tapping with the pen tip. This process corrects the parallax gap between the pen tip and the on-screen cursor that the display glass introduces.
+**Calibrate…** opens a full-screen overlay with crosshairs to tap with the pen tip. It corrects the parallax gap the display glass puts between the pen tip and the cursor.
 
-After calibration, **Pointer Offset** adjusts any small constant offset that remains, for example when parallax shifts slightly at different viewing angles.
+**Pointer Offset** adjusts any small offset that remains, such as parallax that shifts with viewing angle.
 
 [penFeel]
 
 ## Pressure Curve
 
-The pressure curve controls how pen pressure maps to output pressure. A concave curve (pulled up) makes light strokes register heavier; a convex curve (pushed down) requires more force for the same effect.
+The curve maps pen pressure to output pressure. Pulling it up makes light strokes register heavier; pushing it down takes more force for the same effect.
 
-**Presets** – Linear, Soft, and Firm. Choosing a preset sets the curve; adjusting a curve point switches to a custom shape automatically.
+**Presets** – Linear, Soft, and Firm. Adjusting a curve point switches to a custom shape.
 
 ## Pressure Smoothing
 
-Dampens pressure noise near the low end of the sensor's range, which otherwise shows up as uneven line width on slow, light strokes. Firm pressure is left alone.
+Dampens pressure noise near the low end, which shows up as uneven line width on slow, light strokes. Firm pressure is unaffected.
 
 ## Steadiness
 
@@ -59,13 +59,13 @@ Reduces cursor wobble from hand tremor. Higher values smooth more aggressively b
 
 ## Double-Click Distance
 
-This setting controls how close two taps must be to count as a double-click. Increase the value if double-clicks fail to register; decrease it if accidental double-clicks occur during normal drawing. At Off, the second tap must land about where the first did.
+Sets how close two taps must be to count as a double-click. Raise it if double-clicks fail; lower it if drawing triggers accidental ones. At Off, the second tap must land about where the first did.
 
 ## Movement
 
 **Invert Rotation Direction** – Reverses the twist direction of a pen that rotates, such as the Art Pen. Turn it on per app for apps that read rotation backwards, such as Krita.
 
-**Relative Cursor Movement** – switches from absolute mode (each point on the tablet maps to a fixed point on screen, like a stylus) to relative mode (the cursor moves by the distance you move the pen, like a mouse).
+**Relative Cursor Movement** – switches from absolute mode (each tablet point maps to a fixed screen point) to relative mode (the cursor moves by the distance the pen travels, like a mouse).
 
 ## Pan View
 
@@ -81,9 +81,9 @@ This setting controls how close two taps must be to count as a double-click. Inc
 
 Holding a button set to Left, Right, or Middle Click while the pen hovers drags without touching the surface. Checking Require Contact for Right Click or Middle Click turns this off for those buttons.
 
-**Tip-up Assist** – holds the pen click open briefly after the tip lifts, if you're still moving quickly, to prevent unintended stroke breaks during fast drawing. Drag to Off to disable.
+**Tip-up Assist** – holds the click briefly after the tip lifts while the pen is still moving fast, preventing stroke breaks in quick drawing. Drag to Off to disable.
 
-**Drag Threshold** – requires the pen to move a minimum distance before a tap becomes a drag, absorbing tremor at tip-down so light taps don't turn into accidental drags. Drag to Off to disable.
+**Drag Threshold** – requires a minimum pen movement before a tap becomes a drag, so tremor at tip-down doesn't turn light taps into drags. Drag to Off to disable.
 
 [buttons]
 
@@ -121,7 +121,7 @@ Rings, dials, and touch strips each have their own modes. Click a mode, or its w
 
 ## Key Displays
 
-An Intuos4 with key displays shows each key's action beside it while connected by USB. The displays dim after 5 minutes without input and turn off after 10. Any pen or key input wakes them.
+An Intuos4 with key displays shows each key's action beside it over USB, and the displays dim when idle.
 
 ## Lighting
 

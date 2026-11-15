@@ -23,35 +23,35 @@ El área activa es la parte de la superficie de la tableta que se asigna a la pa
 
 **Redimensionar** – Arrastra el área o sus tiradores; cerca de la forma del área de pantalla se ajusta a ella (**⌘** lo evita, **⇧** conserva su forma). Haz clic en la anchura o la altura de abajo para escribir un tamaño exacto.
 
-**Asignación proporcional** – Mantiene proporcional la relación entre la tableta y la pantalla para que el cursor recorra distancias iguales en horizontal y vertical. Desactívalo si quieres estirar o comprimir el mapeo a propósito.
+**Asignación proporcional** – Mantiene iguales los recorridos del cursor en horizontal y vertical. Desactívala para estirar o comprimir el mapeo.
 
-**Restablecer a área completa** – Restablece el área activa a toda la superficie de la tableta. Esta acción se puede deshacer con ⌘Z.
+**Restablecer a área completa** – Restaura toda la superficie de la tableta. ⌘Z lo deshace.
 
 ## Orientación
 
-Elige la orientación cuya imagen coincida con cómo está la tableta en tu mesa. En el panel Área de tableta, ⌘⌥1 a ⌘⌥4 las eligen por orden. El lápiz, el toque y la inclinación siguen la elección, y el panel Botones dibuja la tableta tal como está.
+Elige la orientación que coincida con la posición actual de la tableta (⌘⌥1 a ⌘⌥4 en el panel Área de tableta). El lápiz, el toque y la inclinación siguen la elección, y el panel Botones dibuja la tableta en consecuencia.
 
-Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, así que cada lugar conserva su acción, en todos los perfiles y overrides por app. Deshacer restaura a la vez la orientación y las asignaciones.
+Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, en todos los perfiles y overrides por app. Deshacer revierte ambas cosas a la vez.
 
-**Invertir asignaciones** – Haz clic derecho en el dibujo de la tableta del panel Botones para pasar cada asignación a la tecla del lugar opuesto sin cambiar la orientación. Elígelo de nuevo para dejarlo todo como estaba.
+**Invertir asignaciones** – Haz clic derecho en el dibujo de la tableta del panel Botones para pasar cada asignación a la tecla opuesta sin cambiar la orientación. Elígelo de nuevo para dejarlo como estaba.
 
 ## Calibración (pen displays)
 
-El botón **Calibrar…** abre una superposición a pantalla completa con cruces para tocar con la punta del lápiz. Este proceso corrige la separación por paralaje entre la punta del lápiz y el cursor en pantalla que introduce el cristal.
+**Calibrar…** abre una superposición a pantalla completa con cruces para tocar con la punta del lápiz. Corrige la separación por paralaje que el cristal introduce entre la punta y el cursor.
 
-Después de calibrar, **Desplazamiento del puntero** permite ajustar cualquier pequeño desplazamiento constante que quede, por ejemplo si la paralaje cambia un poco según el ángulo de visión.
+**Desplazamiento del puntero** ajusta cualquier pequeño desplazamiento que quede, por ejemplo si la paralaje cambia con el ángulo de visión.
 
 [penFeel]
 
 ## Curva de presión
 
-La curva de presión controla cómo se traduce la presión del lápiz en presión de salida. Una curva cóncava (tirada hacia arriba) hace que los trazos suaves se registren con más fuerza; una curva convexa (tirada hacia abajo) exige más presión para conseguir el mismo efecto.
+La curva traduce la presión del lápiz en presión de salida. Tirada hacia arriba, los trazos suaves se registran con más fuerza; hacia abajo, exige más presión para el mismo efecto.
 
-**Preajustes** – Lineal, Suave y Firme. Al elegir un preajuste se establece la curva; al mover un punto de la curva, cambia automáticamente a una forma personalizada.
+**Preajustes** – Lineal, Suave y Firme. Al mover un punto de la curva, cambia a una forma personalizada.
 
 ## Suavizado de presión
 
-Atenúa el ruido de presión en la parte baja del rango del sensor, que de otro modo aparece como un grosor de línea irregular en trazos lentos y suaves. La presión firme no se altera.
+Atenúa el ruido de presión en la parte baja del rango, que aparece como un grosor de línea irregular en trazos lentos y suaves. La presión firme no se altera.
 
 ## Estabilización
 
@@ -59,13 +59,13 @@ Reduce el temblor del cursor causado por el pulso de la mano. Los valores más a
 
 ## Distancia de doble clic
 
-Este ajuste controla lo cerca que deben estar dos toques para contar como doble clic. Auméntalo si los dobles clics no se registran; bájalo si se producen dobles clics accidentales al dibujar con normalidad. En Desactivado, el segundo toque debe caer más o menos donde cayó el primero.
+Controla lo cerca que deben estar dos toques para contar como doble clic. Auméntalo si los dobles clics no se registran; bájalo si aparecen accidentales al dibujar. En Desactivado, el segundo toque debe caer más o menos donde cayó el primero.
 
 ## Movimiento
 
 **Invertir dirección de rotación** – Invierte el sentido de giro de un lápiz que gira, como el Art Pen. Actívalo por app en las apps que leen la rotación al revés, como Krita.
 
-**Movimiento relativo del cursor** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla, como con un lápiz) al modo relativo (el cursor se mueve según la distancia que desplazas el lápiz, como con un ratón).
+**Movimiento relativo del cursor** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla) al modo relativo (el cursor se mueve según la distancia que recorre el lápiz, como con un ratón).
 
 ## Desplazar vista
 
@@ -81,9 +81,9 @@ Este ajuste controla lo cerca que deben estar dos toques para contar como doble 
 
 Si mantienes pulsado un botón con clic izquierdo, derecho o central mientras el lápiz flota, arrastras sin tocar la superficie. Al marcar Clic derecho o Clic central en Requerir contacto, esto se desactiva para esos botones.
 
-**Asistencia de levantamiento** – Mantiene el clic del lápiz activo durante un instante después de levantar la punta, si todavía te estás moviendo rápido, para evitar cortes involuntarios del trazo al dibujar deprisa. Arrástralo hasta Off para desactivarlo.
+**Asistencia de levantamiento** – Mantiene el clic un instante después de levantar la punta mientras el lápiz sigue moviéndose rápido, para que los trazos rápidos no se corten. Arrástralo hasta Off para desactivarlo.
 
-**Umbral de arrastre** – Exige que el lápiz recorra una distancia mínima antes de que un toque pase a ser un arrastre, lo que absorbe el temblor al apoyar la punta y evita que un toque ligero se convierta en un arrastre accidental. Arrástralo hasta Off para desactivarlo.
+**Umbral de arrastre** – Exige una distancia mínima antes de que un toque pase a ser un arrastre, para que el temblor al apoyar la punta no convierta un toque ligero en arrastre. Arrástralo hasta Off para desactivarlo.
 
 [buttons]
 
@@ -121,7 +121,7 @@ Los anillos, diales y tiras táctiles tienen cada uno sus propios modos. Haz cli
 
 ## Pantallas de teclas
 
-Una Intuos4 con pantallas de teclas muestra la acción de cada tecla a su lado mientras está conectada por USB. Las pantallas se atenúan tras 5 minutos sin actividad y se apagan a los 10. Cualquier uso del lápiz o de una tecla las reactiva.
+Una Intuos4 con pantallas de teclas muestra por USB la acción de cada tecla a su lado, y las pantallas se atenúan cuando no hay actividad.
 
 ## Iluminación
 

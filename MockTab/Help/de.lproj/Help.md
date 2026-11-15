@@ -23,35 +23,35 @@ Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bilds
 
 **Größe ändern** – Ziehe den Bereich oder seine Griffe; nahe der Form des Bildschirmbereichs rastet er ein (**⌘** verhindert das, **⇧** behält seine Form bei). Für eine genaue Größe klicke auf Breite oder Höhe darunter.
 
-**Proportionale Projektion** – Hält das Verhältnis zwischen Grafiktablett und Bildschirm proportional, sodass der Cursor horizontal und vertikal gleich weit zurücklegt. Deaktiviere diese Option, wenn du das Mapping absichtlich strecken oder stauchen willst.
+**Proportionale Projektion** – Hält die Cursorwege horizontal und vertikal gleich lang. Schalte sie aus, um die Abbildung zu strecken oder zu stauchen.
 
-**Auf Vollbereich zurücksetzen** – Stellt den aktiven Bereich auf die gesamte Grafiktablett-Oberfläche zurück. Diese Aktion lässt sich mit ⌘Z rückgängig machen.
+**Auf Vollbereich zurücksetzen** – Stellt die gesamte Grafiktablett-Oberfläche wieder her. ⌘Z macht es rückgängig.
 
 ## Ausrichtung
 
-Wähle die Ausrichtung, deren Bild zeigt, wie das Grafiktablett auf deinem Tisch liegt. Im Grafiktablett-Bereich wählen ⌘⌥1 bis ⌘⌥4 sie der Reihe nach. Stift, Berührung und Neigung folgen der Wahl, und der Tasten-Bereich zeigt das Grafiktablett so, wie es liegt.
+Wähle die Ausrichtung, die zur aktuellen Lage des Grafiktabletts passt (⌘⌥1 bis ⌘⌥4 im Grafiktablett-Bereich). Stift, Berührung und Neigung folgen der Wahl, und der Tasten-Bereich zeichnet das Grafiktablett entsprechend.
 
-Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt. So behält jede Stelle ihre Aktion, in jedem Profil und jedem App-Override. Rückgängig stellt Ausrichtung und Belegungen gemeinsam wieder her.
+Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt, in jedem Profil und jedem App-Override. Mit Rückgängig stellst du beides gemeinsam wieder her.
 
-**Belegung umdrehen** – Klicke mit der rechten Maustaste auf das Grafiktablett im Tasten-Bereich, um jede Belegung auf die gegenüberliegende Taste zu verschieben, ohne die Ausrichtung zu ändern. Ein zweites Mal stellt alles wieder her.
+**Belegung umdrehen** – Klicke mit der rechten Maustaste auf das Grafiktablett im Tasten-Bereich, um jede Belegung auf die gegenüberliegende Taste zu tauschen, ohne die Ausrichtung zu ändern. Ein zweites Mal stellt alles wieder her.
 
 ## Kalibrierung (Pen-Displays)
 
-Die Schaltfläche **Kalibrieren…** öffnet ein Vollbild-Overlay mit Fadenkreuzen, die du mit der Stiftspitze antippst. Dieser Vorgang korrigiert den Parallaxenversatz zwischen Stiftspitze und Bildschirmcursor, der durch das Displayglas entsteht.
+**Kalibrieren…** öffnet ein Vollbild-Overlay mit Fadenkreuzen, die du mit der Stiftspitze antippst. Es korrigiert den Parallaxenversatz zwischen Stiftspitze und Cursor, den das Displayglas verursacht.
 
-Nach der Kalibrierung kannst du mit **Zeiger-Versatz** einen kleinen konstanten Versatz nachjustieren, zum Beispiel wenn sich die Parallaxe je nach Blickwinkel leicht verändert.
+Mit **Zeiger-Versatz** justierst du einen verbleibenden kleinen Versatz nach, etwa wenn sich die Parallaxe mit dem Blickwinkel verschiebt.
 
 [penFeel]
 
 ## Druckkurve
 
-Die Druckkurve steuert, wie Stiftdruck auf Ausgabedruck abgebildet wird. Eine konkave Kurve (nach oben gezogen) lässt leichte Striche kräftiger wirken; eine konvexe Kurve (nach unten gedrückt) verlangt mehr Kraft für denselben Effekt.
+Die Kurve bildet Stiftdruck auf Ausgabedruck ab. Nach oben gezogen, wirken leichte Striche kräftiger; nach unten gedrückt, braucht derselbe Effekt mehr Kraft.
 
-**Voreinstellungen** – Linear, Weich und Fest. Wenn du eine Voreinstellung auswählst, wird die Kurve gesetzt; sobald du einen Kurvenpunkt verschiebst, wechselt sie automatisch zu einer benutzerdefinierten Form.
+**Voreinstellungen** – Linear, Weich und Fest. Verschiebst du einen Kurvenpunkt, wechselt die Kurve zu einer benutzerdefinierten Form.
 
 ## Druckglättung
 
-Dämpft Druckrauschen im unteren Bereich des Sensorbereichs, das sich sonst bei langsamen, leichten Strichen als ungleichmäßige Linienbreite zeigt. Kräftiger Druck bleibt unverändert.
+Dämpft Druckrauschen im unteren Bereich, das sich bei langsamen, leichten Strichen als ungleichmäßige Linienbreite zeigt. Kräftiger Druck bleibt unverändert.
 
 ## Stabilisierung
 
@@ -59,13 +59,13 @@ Reduziert Cursorzittern durch Handunruhe. Höhere Werte glätten stärker, erhö
 
 ## Doppelklick-Abstand
 
-Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müssen, um als Doppelklick zu zählen. Erhöhe den Wert, wenn Doppelklicks nicht erkannt werden; senke ihn, wenn beim normalen Zeichnen versehentlich Doppelklicks entstehen. Bei „Aus“ muss der zweite Tipp etwa dort landen, wo der erste lag.
+Legt fest, wie nah zwei Tipper beieinanderliegen müssen, um als Doppelklick zu zählen. Erhöhe den Wert, wenn Doppelklicks nicht erkannt werden; senke ihn, wenn beim Zeichnen versehentlich welche entstehen. Bei „Aus“ muss der zweite Tipp etwa dort landen, wo der erste lag.
 
 ## Bewegung
 
 **Drehrichtung umkehren** – Kehrt die Drehrichtung eines drehbaren Stifts um, etwa des Art Pen. Aktiviere das pro App für Anwendungen, die die Drehung verkehrt lesen, zum Beispiel Krita.
 
-**Relative Cursorbewegung** – Wechselt vom absoluten Modus (jeder Punkt auf dem Grafiktablett entspricht einem festen Punkt auf dem Bildschirm, wie bei einem Stift) in den relativen Modus (der Cursor bewegt sich um die Strecke, die du den Stift bewegst, wie bei einer Maus).
+**Relative Cursorbewegung** – Wechselt vom absoluten Modus (jeder Punkt auf dem Grafiktablett entspricht einem festen Punkt auf dem Bildschirm) in den relativen Modus (der Cursor bewegt sich um die Strecke des Stifts, wie bei einer Maus).
 
 ## Ansicht schwenken
 
@@ -81,9 +81,9 @@ Diese Einstellung legt fest, wie nah zwei Tippbewegungen beieinanderliegen müss
 
 Hältst du eine Taste mit Links-, Rechts- oder Mittelklick gedrückt, während der Stift schwebt, ziehst du, ohne die Oberfläche zu berühren. Hakst du bei Oberflächenkontakt erforderlich Rechtsklick oder Mittelklick an, entfällt das für diese Tasten.
 
-**Aufhebehilfe** – Hält den Stiftklick nach dem Abheben der Spitze noch kurz offen, wenn du dich weiterhin schnell bewegst, damit schnelle Zeichenzüge nicht unbeabsichtigt unterbrochen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.
+**Aufhebehilfe** – Hält den Klick nach dem Abheben der Spitze kurz offen, solange sich der Stift schnell bewegt, damit schnelle Striche nicht abreißen. Ziehe den Regler auf Off, um die Funktion auszuschalten.
 
-**Ziehschwelle** – Verlangt, dass sich der Stift erst eine Mindeststrecke bewegt, bevor aus einem Tippen ein Ziehen wird. Das fängt Zittern beim Aufsetzen ab, damit leichte Tipper nicht versehentlich zu Drag-Aktionen werden. Ziehe den Regler auf Off, um die Funktion auszuschalten.
+**Ziehschwelle** – Verlangt eine Mindeststrecke, bevor aus einem Tippen ein Ziehen wird, damit Zittern beim Aufsetzen leichte Tipper nicht zu Drag-Aktionen macht. Ziehe den Regler auf Off, um die Funktion auszuschalten.
 
 [buttons]
 
@@ -121,7 +121,7 @@ Ringe, Dials und Touch-Strips haben jeweils eigene Modi. Klicke auf einen Modus 
 
 ## Tastendisplays
 
-Ein Intuos4 mit Tastendisplays zeigt per USB neben jeder Taste ihre Aktion an. Nach 5 Minuten ohne Eingabe werden die Displays gedimmt, nach 10 schalten sie sich ab. Jede Stift- oder Tasteneingabe weckt sie wieder.
+Ein Intuos4 mit Tastendisplays zeigt per USB neben jeder Taste ihre Aktion an, und die Displays dimmen sich bei Inaktivität.
 
 ## Beleuchtung
 
