@@ -4,11 +4,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/settings-backup-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O \
-    "$ROOT/MockTab/Settings/Serialization/SettingsBackup.swift" \
-    "$DIR/main.swift" \
-    -o "$BIN"
-"$BIN"
+swift_test settings-backup-tests "$ROOT/MockTab/Settings/Serialization/SettingsBackup.swift" "$DIR/main.swift"
+"$TEST_BIN"

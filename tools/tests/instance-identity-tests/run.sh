@@ -13,13 +13,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/Devices/DeviceInstanceClaims.swift"
-TEST="$DIR/InstanceIdentityTests.swift"
-T="$(mktemp -d)"
-BIN="$T/instance-identity-tests"
+. "$DIR/../lib.sh"
 
-KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
-
-swiftc -O -I "$KIT" "$SRC" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
-"$BIN"
+swift_test instance-identity-tests --kit "$ROOT/MockTab/Driver/Devices/DeviceInstanceClaims.swift" "$DIR/InstanceIdentityTests.swift"
+"$TEST_BIN"

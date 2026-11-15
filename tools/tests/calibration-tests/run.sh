@@ -5,10 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Settings/Model/CalibrationData.swift"
-TEST="$DIR/CalibrationFitTests.swift"
-BIN="$(mktemp -d)/calibration-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$SRC" "$TEST" -o "$BIN"
-"$BIN"
+swift_test calibration-tests "$ROOT/MockTab/Settings/Model/CalibrationData.swift" "$DIR/CalibrationFitTests.swift"
+"$TEST_BIN"

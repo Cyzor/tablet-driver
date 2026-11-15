@@ -4,8 +4,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/area-lengths-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$ROOT/MockTab/UI/Panes/TabletArea/AreaLengths.swift" "$DIR/main.swift" -o "$BIN"
-"$BIN"
+swift_test area-lengths-tests "$ROOT/MockTab/UI/Panes/TabletArea/AreaLengths.swift" "$DIR/main.swift"
+"$TEST_BIN"

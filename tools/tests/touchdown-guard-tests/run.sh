@@ -4,8 +4,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/touchdown-guard-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$ROOT/MockTab/Driver/Injection/TouchdownGuard.swift" "$DIR/main.swift" -o "$BIN"
-"$BIN"
+swift_test touchdown-guard-tests "$ROOT/MockTab/Driver/Injection/TouchdownGuard.swift" "$DIR/main.swift"
+"$TEST_BIN"

@@ -5,9 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-TEST="$DIR/main.swift"
-T="$(mktemp -d)"
-BIN="$T/dial-scale-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$TEST" -o "$BIN"
-"$BIN"
+swift_test dial-scale-tests "$DIR/main.swift"
+"$TEST_BIN"

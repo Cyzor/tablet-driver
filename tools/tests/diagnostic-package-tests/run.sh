@@ -5,12 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/Diagnostics/DiagnosticPackage.swift"
-TEST="$DIR/DiagnosticPackageTests.swift"
-BIN="$(mktemp -d)/diagnostic-package-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$SRC" "$ROOT/MockTab/App/DateStamp.swift" "$TEST" -o "$BIN"
-# The source path is passed through: some checks read the flags ditto is given
-# rather than the archive, because the staging strip hides them at runtime.
-"$BIN" "$SRC"
+swift_test diagnostic-package-tests "$ROOT/MockTab/Driver/Diagnostics/DiagnosticPackage.swift" "$ROOT/MockTab/App/DateStamp.swift" "$DIR/DiagnosticPackageTests.swift"
+"$TEST_BIN" "$ROOT/MockTab/Driver/Diagnostics/DiagnosticPackage.swift"

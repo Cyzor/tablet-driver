@@ -4,8 +4,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/ring-step-filter-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$ROOT/MockTab/Driver/Injection/RingStepFilter.swift" "$DIR/main.swift" -o "$BIN"
-"$BIN"
+swift_test ring-step-filter-tests "$ROOT/MockTab/Driver/Injection/RingStepFilter.swift" "$DIR/main.swift"
+"$TEST_BIN"

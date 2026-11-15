@@ -7,18 +7,13 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-MAPPER="$ROOT/MockTab/Driver/Mapping/DisplayMapper.swift"
-BALLISTICS="$ROOT/MockTab/Driver/Mapping/RelativeBallistics.swift"
-ORIENTATION="$ROOT/MockTab/Settings/Model/TabletOrientation.swift"
-CALIBRATION="$ROOT/MockTab/Settings/Model/CalibrationData.swift"
-STUB="$DIR/TabletSettingsStub.swift"
-TEST="$DIR/DisplayRegionTests.swift"
-BIN="$(mktemp -d)/display-region-tests"
+. "$DIR/../lib.sh"
 
-# TabletKit is shared with the other harnesses that link it; the helper builds
-# it once and caches it.
-KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
-
-swiftc -O -I "$KIT" "$MAPPER" "$BALLISTICS" "$ORIENTATION" "$CALIBRATION" "$STUB" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
-"$BIN"
+swift_test display-region-tests --kit \
+    "$ROOT/MockTab/Driver/Mapping/DisplayMapper.swift" \
+    "$ROOT/MockTab/Driver/Mapping/RelativeBallistics.swift" \
+    "$ROOT/MockTab/Settings/Model/TabletOrientation.swift" \
+    "$ROOT/MockTab/Settings/Model/CalibrationData.swift" \
+    "$DIR/TabletSettingsStub.swift" \
+    "$DIR/DisplayRegionTests.swift"
+"$TEST_BIN"

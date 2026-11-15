@@ -5,14 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Settings/Model/RotaryConfig.swift"
-DEP="$ROOT/MockTab/Settings/Model/ControlSlot.swift"
-DEP2="$ROOT/MockTab/Settings/Model/ButtonBinding.swift"
-DEP3="$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodec.swift"
-TEST="$DIR/main.swift"
-T="$(mktemp -d)"
-BIN="$T/rotary-config-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$SRC" "$DEP" "$DEP2" "$DEP3" "$TEST" -o "$BIN"
-"$BIN"
+swift_test rotary-config-tests "$ROOT/MockTab/Settings/Model/RotaryConfig.swift" "$ROOT/MockTab/Settings/Model/ControlSlot.swift" "$ROOT/MockTab/Settings/Model/ButtonBinding.swift" "$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodec.swift" "$DIR/main.swift"
+"$TEST_BIN"

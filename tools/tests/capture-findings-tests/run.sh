@@ -6,16 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/Diagnostics/CaptureModels.swift"
-INSPECTOR="$ROOT/MockTab/Driver/Diagnostics/LiveHIDDescriptorInspector.swift"
-TEST="$DIR/CaptureFindingsTests.swift"
-BIN="$(mktemp -d)/capture-findings-tests"
+. "$DIR/../lib.sh"
 
-# TabletKit is shared with the other harnesses that link it; the helper builds
-# it once and caches it. See tools/tests/build-tabletkit.sh for why it compiles
-# from source instead of using SwiftPM's .build output.
-KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
-
-swiftc -O -I "$KIT" "$SRC" "$INSPECTOR" "$TEST" "$KIT/libTabletKit.a" -o "$BIN"
-"$BIN"
+swift_test capture-findings-tests --kit "$ROOT/MockTab/Driver/Diagnostics/CaptureModels.swift" "$ROOT/MockTab/Driver/Diagnostics/LiveHIDDescriptorInspector.swift" "$DIR/CaptureFindingsTests.swift"
+"$TEST_BIN"

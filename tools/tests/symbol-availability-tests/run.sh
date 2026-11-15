@@ -6,6 +6,8 @@
 # Fail when the app names an SF Symbol newer than its deployment target
 # without a fallback. A missing symbol draws nothing and raises no error.
 set -e
+
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
+. "$DIR/../lib.sh"
+
 python3 -I "$DIR/check_symbols.py" "$ROOT"

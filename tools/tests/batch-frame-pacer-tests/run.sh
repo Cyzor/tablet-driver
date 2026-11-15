@@ -5,11 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/batch-frame-pacer-tests"
-KIT="$(sh "$ROOT/tools/tests/build-tabletkit.sh")"
+. "$DIR/../lib.sh"
 
-# Unoptimized, like the app's Debug build, so runtime checks stay on.
-swiftc -I "$KIT" "$ROOT/MockTab/Driver/Devices/BatchFramePacer.swift" "$DIR/main.swift" \
-    "$KIT/libTabletKit.a" -o "$BIN"
-"$BIN"
+swift_test batch-frame-pacer-tests --kit "$ROOT/MockTab/Driver/Devices/BatchFramePacer.swift" "$DIR/main.swift"
+"$TEST_BIN"

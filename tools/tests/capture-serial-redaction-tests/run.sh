@@ -5,9 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/Diagnostics/CaptureSerialRedaction.swift"
-BIN="$(mktemp -d)/capture-serial-redaction-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$SRC" "$DIR/main.swift" -o "$BIN"
-"$BIN"
+swift_test capture-serial-redaction-tests "$ROOT/MockTab/Driver/Diagnostics/CaptureSerialRedaction.swift" "$DIR/main.swift"
+"$TEST_BIN"

@@ -5,10 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-TEST="$DIR/main.swift"
-T="$(mktemp -d)"
-BIN="$T/pen-recipe-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$ROOT/MockTab/Figures/PenRecipe.swift" "$TEST" -o "$BIN"
-"$BIN"
+swift_test pen-recipe-tests "$ROOT/MockTab/Figures/PenRecipe.swift" "$DIR/main.swift"
+"$TEST_BIN"

@@ -8,8 +8,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/open-drop-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$ROOT/MockTab/App/ButtonOpenAction.swift" "$DIR/main.swift" -o "$BIN"
-"$BIN"
+swift_test open-drop-tests "$ROOT/MockTab/App/ButtonOpenAction.swift" "$DIR/main.swift"
+"$TEST_BIN"

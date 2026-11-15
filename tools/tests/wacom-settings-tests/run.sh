@@ -5,34 +5,29 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-BIN="$(mktemp -d)/wacom-settings-tests"
-KIT="$(sh "$DIR/../build-tabletkit.sh")"
+. "$DIR/../lib.sh"
 
-S="$ROOT/MockTab/Settings"
-
+KIT="$(tabletkit_dir)"
 # Unoptimized, as run.sh builds the tool, so runtime checks catch the same faults.
-swiftc -I "$KIT" -L "$KIT" -lTabletKit \
+swift_test wacom-settings-tests --no-opt -I "$KIT" -L "$KIT" -lTabletKit \
     "$ROOT/tools/wacom-settings/WacomPrefs.swift" \
     "$ROOT/tools/wacom-settings/WacomCodes.swift" \
     "$ROOT/tools/wacom-settings/KeyboardLayout.swift" \
     "$ROOT/tools/wacom-settings/Encoder.swift" \
     "$ROOT/tools/wacom-settings/Writer.swift" \
-    "$S/Serialization/ConfigurationImporter.swift" \
-    "$S/Serialization/ImportPlan.swift" \
-    "$S/Serialization/UnknownFieldsCodec.swift" \
-    "$S/Model/ButtonBinding.swift" \
-    "$S/Model/ControlSlot.swift" \
-    "$S/Model/RotaryConfig.swift" \
-    "$S/Model/BezierCurve.swift" \
+    "$ROOT/MockTab/Settings/Serialization/ConfigurationImporter.swift" \
+    "$ROOT/MockTab/Settings/Serialization/ImportPlan.swift" \
+    "$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodec.swift" \
+    "$ROOT/MockTab/Settings/Model/ButtonBinding.swift" \
+    "$ROOT/MockTab/Settings/Model/ControlSlot.swift" \
+    "$ROOT/MockTab/Settings/Model/RotaryConfig.swift" \
+    "$ROOT/MockTab/Settings/Model/BezierCurve.swift" \
     "$DIR/../configuration-display-region-tests/StubTypes.swift" \
     "$DIR/EncoderChecks.swift" \
     "$DIR/WriterChecks.swift" \
     "$DIR/LayoutChecks.swift" \
     "$DIR/AmbiguityChecks.swift" \
     "$DIR/CodeChecks.swift" \
-    "$DIR/main.swift" \
-    -o "$BIN"
-"$BIN" "$DIR/fixtures"
-
+    "$DIR/main.swift"
+"$TEST_BIN" "$DIR/fixtures"
 sh "$DIR/cli-checks.sh"

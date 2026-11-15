@@ -7,8 +7,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-T="$(mktemp -d)"
-BIN="$T/capture-vendor-scope-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$DIR/main.swift" -o "$BIN"
-"$BIN"
+swift_test capture-vendor-scope-tests "$DIR/main.swift"
+"$TEST_BIN"

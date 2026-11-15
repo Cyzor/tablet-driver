@@ -6,16 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SETTINGS="$ROOT/MockTab/Settings"
-TEST="$DIR/main.swift"
-BIN="$(mktemp -d)/prefs-resilience-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O \
-    "$SETTINGS/Serialization/UnknownFieldsCodec.swift" \
-    "$SETTINGS/Model/ButtonBinding.swift" \
-    "$SETTINGS/Model/ControlSlot.swift" \
-    "$SETTINGS/Model/BezierCurve.swift" \
-    "$TEST" \
-    -o "$BIN"
-"$BIN"
+swift_test prefs-resilience-tests "$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodec.swift" "$ROOT/MockTab/Settings/Model/ButtonBinding.swift" "$ROOT/MockTab/Settings/Model/ControlSlot.swift" "$ROOT/MockTab/Settings/Model/BezierCurve.swift" "$DIR/main.swift"
+"$TEST_BIN"

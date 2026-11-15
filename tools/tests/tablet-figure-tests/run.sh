@@ -6,12 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-FIGURES="$ROOT/MockTab/Figures"
-TEST="$DIR/main.swift"
-T="$(mktemp -d)"
-BIN="$T/tablet-figure-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$FIGURES/TabletFigure.swift" "$FIGURES/TabletLayoutTable.swift" "$FIGURES/TabletLayoutIdentity.swift" \
-    "$ROOT/MockTab/Settings/Model/TabletOrientation.swift" "$TEST" -o "$BIN"
-"$BIN" "$DIR"
+swift_test tablet-figure-tests "$ROOT/MockTab/Figures/TabletFigure.swift" "$ROOT/MockTab/Figures/TabletLayoutTable.swift" "$ROOT/MockTab/Figures/TabletLayoutIdentity.swift" "$ROOT/MockTab/Settings/Model/TabletOrientation.swift" "$DIR/main.swift"
+"$TEST_BIN" "$DIR"

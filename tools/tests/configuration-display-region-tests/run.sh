@@ -8,23 +8,16 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SETTINGS="$ROOT/MockTab/Settings"
-IMPORTER="$SETTINGS/Serialization/ConfigurationImporter.swift"
-IMPORT_PLAN="$SETTINGS/Serialization/ImportPlan.swift"
-STUB="$DIR/StubTypes.swift"
-TEST="$DIR/ConfigurationDisplayRegionTests.swift"
-BIN="$(mktemp -d)/configuration-display-region-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O \
-    "$IMPORTER" \
-    "$IMPORT_PLAN" \
-    "$SETTINGS/Model/ButtonBinding.swift" \
-    "$SETTINGS/Model/ControlSlot.swift" \
-    "$SETTINGS/Model/RotaryConfig.swift" \
-    "$SETTINGS/Serialization/UnknownFieldsCodec.swift" \
-    "$SETTINGS/Model/BezierCurve.swift" \
-    "$STUB" \
-    "$TEST" \
-    -o "$BIN"
-"$BIN"
+swift_test configuration-display-region-tests \
+    "$ROOT/MockTab/Settings/Serialization/ConfigurationImporter.swift" \
+    "$ROOT/MockTab/Settings/Serialization/ImportPlan.swift" \
+    "$ROOT/MockTab/Settings/Model/ButtonBinding.swift" \
+    "$ROOT/MockTab/Settings/Model/ControlSlot.swift" \
+    "$ROOT/MockTab/Settings/Model/RotaryConfig.swift" \
+    "$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodec.swift" \
+    "$ROOT/MockTab/Settings/Model/BezierCurve.swift" \
+    "$DIR/StubTypes.swift" \
+    "$DIR/ConfigurationDisplayRegionTests.swift"
+"$TEST_BIN"

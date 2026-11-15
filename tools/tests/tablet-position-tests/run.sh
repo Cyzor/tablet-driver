@@ -5,20 +5,12 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-FIGURES="$ROOT/MockTab/Figures"
-TEST="$DIR/main.swift"
-T="$(mktemp -d)"
-BIN="$T/tablet-position-tests"
+. "$DIR/../lib.sh"
 
-# TabletKit is shared with the other harnesses that link it; see
-# tools/tests/build-tabletkit.sh.
-KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
-
-SETTINGS="$ROOT/MockTab/Settings"
-swiftc -O -I "$KIT" "$FIGURES/TabletFigure.swift" "$FIGURES/TabletLayoutTable.swift" "$FIGURES/TabletLayoutIdentity.swift" \
-    "$FIGURES/TabletControlMap.swift" "$SETTINGS/Model/TabletOrientation.swift" "$SETTINGS/Model/TurnCarry.swift" \
-    "$SETTINGS/Model/ButtonBinding.swift" "$SETTINGS/Model/ControlSlot.swift" "$SETTINGS/Model/RotaryConfig.swift" \
-    "$SETTINGS/Model/BezierCurve.swift" "$SETTINGS/Serialization/UnknownFieldsCodec.swift" "$TEST" \
-    "$KIT/libTabletKit.a" -o "$BIN"
-"$BIN"
+swift_test tablet-position-tests --kit \
+    "$ROOT/MockTab/Figures/TabletFigure.swift" "$ROOT/MockTab/Figures/TabletLayoutTable.swift" "$ROOT/MockTab/Figures/TabletLayoutIdentity.swift" \
+    "$ROOT/MockTab/Figures/TabletControlMap.swift" "$ROOT/MockTab/Settings/Model/TabletOrientation.swift" "$ROOT/MockTab/Settings/Model/TurnCarry.swift" \
+    "$ROOT/MockTab/Settings/Model/ButtonBinding.swift" "$ROOT/MockTab/Settings/Model/ControlSlot.swift" "$ROOT/MockTab/Settings/Model/RotaryConfig.swift" \
+    "$ROOT/MockTab/Settings/Model/BezierCurve.swift" "$ROOT/MockTab/Settings/Serialization/UnknownFieldsCodec.swift" \
+    "$DIR/main.swift"
+"$TEST_BIN"

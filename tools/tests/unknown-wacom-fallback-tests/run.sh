@@ -5,13 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-T="$(mktemp -d)"
-BIN="$T/unknown-wacom-fallback-tests"
+. "$DIR/../lib.sh"
 
-# Shares the cached TabletKit build; see tools/tests/build-tabletkit.sh.
-# The package name reaches TabletKit's package-level routing API.
-KIT="$($ROOT/tools/tests/build-tabletkit.sh)"
-
-swiftc -O -package-name TabletKit -I "$KIT" "$DIR/main.swift" "$KIT/libTabletKit.a" -o "$BIN"
-"$BIN" "$@"
+swift_test unknown-wacom-fallback-tests --kit -package-name TabletKit "$DIR/main.swift"
+"$TEST_BIN" "$@"

@@ -6,10 +6,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
-SRC="$ROOT/MockTab/Driver/Diagnostics/ConflictProcessMatcher.swift"
-TEST="$DIR/ConflictDetectionTests.swift"
-BIN="$(mktemp -d)/conflict-detection-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$SRC" "$TEST" -o "$BIN"
-"$BIN"
+swift_test conflict-detection-tests "$ROOT/MockTab/Driver/Diagnostics/ConflictProcessMatcher.swift" "$DIR/ConflictDetectionTests.swift"
+"$TEST_BIN"

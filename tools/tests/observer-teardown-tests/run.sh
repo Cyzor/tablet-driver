@@ -5,9 +5,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-TEST="$DIR/ObserverTeardownTests.swift"
-T="$(mktemp -d)"
-BIN="$T/observer-teardown-tests"
+. "$DIR/../lib.sh"
 
-swiftc -O "$TEST" -o "$BIN"
-"$BIN"
+swift_test observer-teardown-tests "$DIR/ObserverTeardownTests.swift"
+"$TEST_BIN"

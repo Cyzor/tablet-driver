@@ -4,5 +4,6 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$DIR/../../.." && pwd)"
+. "$DIR/../lib.sh"
+
 python3 -I "$DIR/test_attachment_check.py" "$ROOT/.github/scripts"
