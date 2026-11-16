@@ -69,7 +69,7 @@ Legt fest, wie nah zwei Tipper beieinanderliegen müssen, um als Doppelklick zu 
 
 ## Ansicht schwenken
 
-**Geschwindigkeit** – Legt fest, wie schnell sich Inhalte verschieben, während du eine Taste für „Ansicht schwenken“ gedrückt hältst. Weise die Aktion „Ansicht schwenken“ im Tasten-Bereich einer Stifttaste, Express-Taste oder Puck-Taste zu.
+**Geschwindigkeit** – Legt fest, wie schnell sich Inhalte verschieben, während du eine Taste für „Ansicht schwenken“ gedrückt hältst. Weise die Aktion „Ansicht schwenken“ im Tasten-Bereich einer Stifttaste, Express-Taste oder Quick Keys-Taste zu.
 
 **Richtung umkehren** – An: Der Inhalt bewegt sich entgegen dem Stift, wie bei einem klassischen Mausrad. Aus: Der Inhalt folgt dem Stift.
 
@@ -93,7 +93,7 @@ Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuh
 
 ## Mäuse
 
-Eine Wacom-Maus oder ein Puck bekommt ein eigenes Diagramm und eigene Tastenzeilen. Die ersten drei Tasten starten als Links-, Rechts- und Mittelklick.
+Eine Wacom-Maus bekommt ein eigenes Diagramm und eigene Tastenzeilen. Die ersten drei Tasten starten als Links-, Rechts- und Mittelklick.
 
 ## Tablett-Diagramm
 
@@ -169,7 +169,7 @@ Der Berührungsbereich arbeitet unabhängig vom aktiven Stiftbereich. Ziehe die 
 
 ## Einschränkungen
 
-MockTab unterstützt aktuell kein Mission Control, Spaces, Launchpad oder App Exposé per Touch.
+MockTab unterstützt kein Mission Control, Spaces, Launchpad oder App Exposé per Touch.
 
 [display]
 

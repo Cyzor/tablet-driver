@@ -69,7 +69,7 @@ Sets how close two taps must be to count as a double-click. Raise it if double-c
 
 ## Pan View
 
-**Speed** – Sets how fast content pans while you hold a Pan View button. Assign the Pan View action to any pen barrel, express key, or puck button in the Buttons pane.
+**Speed** – Sets how fast content pans while you hold a Pan View button. Assign the Pan View action to any pen barrel, express key, or Quick Keys button in the Buttons pane.
 
 **Reverse Direction** – On: content moves opposite to the pen, like a conventional mouse wheel. Off: content follows the pen.
 
@@ -93,7 +93,7 @@ Press any button while the window is open to highlight its position; this helps 
 
 ## Mice
 
-A Wacom mouse or puck gets its own diagram and button rows. Its first three buttons start as Left, Right, and Middle Click.
+A Wacom mouse gets its own diagram and button rows. Its first three buttons start as Left, Right, and Middle Click.
 
 ## Tablet Diagram
 
@@ -169,7 +169,7 @@ The touch area operates independently from the pen’s active area. Drag the han
 
 ## Limitations
 
-MockTab doesn't currently support Mission Control, Spaces, Launchpad, or App Exposé from touch.
+MockTab doesn't support Mission Control, Spaces, Launchpad, or App Exposé from touch.
 
 [display]
 

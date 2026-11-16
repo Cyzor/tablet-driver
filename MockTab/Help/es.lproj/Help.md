@@ -69,7 +69,7 @@ Controla lo cerca que deben estar dos toques para contar como doble clic. Aumén
 
 ## Desplazar vista
 
-**Velocidad** – Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Desplazar vista. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del puck en el panel Botones.
+**Velocidad** – Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Desplazar vista. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del Quick Keys en el panel Botones.
 
 **Invertir dirección** – Activado: el contenido se mueve al revés que el lápiz, como una rueda de ratón clásica. Desactivado: el contenido sigue al lápiz.
 
@@ -93,7 +93,7 @@ Pulsa cualquier botón mientras la ventana está abierta para resaltar su posici
 
 ## Ratones
 
-Un ratón o puck de Wacom tiene su propio diagrama y sus propias filas de botones. Sus tres primeros botones empiezan como clic izquierdo, derecho y central.
+Un ratón de Wacom tiene su propio diagrama y sus propias filas de botones. Sus tres primeros botones empiezan como clic izquierdo, derecho y central.
 
 ## Diagrama de la tableta
 
@@ -169,7 +169,7 @@ El área táctil funciona de forma independiente al área activa del lápiz. Arr
 
 ## Limitaciones
 
-MockTab no admite todavía Mission Control, Spaces, Launchpad ni App Exposé desde el tacto.
+MockTab no admite Mission Control, Spaces, Launchpad ni App Exposé desde el tacto.
 
 [display]
 

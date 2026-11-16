@@ -222,6 +222,8 @@
 				Base,
 				de,
 				es,
+				fr,
+				it,
 				ja,
 			);
 			mainGroup = AC000099;

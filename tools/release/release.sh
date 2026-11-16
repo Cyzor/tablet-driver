@@ -70,6 +70,13 @@ xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
     ${RELEASE_SETTING[@]+"${RELEASE_SETTING[@]}"} \
     archive | $BEAUTIFY
 
+# French and Italian are preliminary: they stay in the source and out of
+# releases. Export signs the app afterward, so the archive is safe to edit.
+PRELIMINARY_LANGUAGES=(fr it)
+for lang in "${PRELIMINARY_LANGUAGES[@]}"; do
+    find "$ARCHIVE/Products" -type d -name "$lang.lproj" -prune -exec /bin/rm -rf {} +
+done
+
 echo "==> Exporting signed .app"
 xcodebuild -exportArchive \
     -archivePath "$ARCHIVE" \
@@ -81,6 +88,13 @@ if [[ ! -d "$APP_PATH" ]]; then
     echo "error: expected $APP_PATH after export" >&2
     exit 1
 fi
+
+SHIPPED_LANGUAGES=$(find "$APP_PATH/Contents/Resources" -maxdepth 1 -name "*.lproj" -exec basename {} .lproj \; | sort | tr '\n' ' ')
+if [[ "$SHIPPED_LANGUAGES" != "de en es ja " ]]; then
+    echo "error: expected languages de en es ja, found: $SHIPPED_LANGUAGES" >&2
+    exit 1
+fi
+codesign --verify --deep --strict "$APP_PATH"
 
 tools/release/size-watch.sh "$APP_PATH"
 tools/release/arch-check.sh "$APP_PATH"

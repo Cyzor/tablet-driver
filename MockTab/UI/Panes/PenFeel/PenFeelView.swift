@@ -120,7 +120,7 @@ struct PenFeelView: View {
                         "How fast content pans while pressing a Pan View button."
                 )
                 .help(
-                    "Multiplies pen motion while you hold Pan View. At 1.00, content pans one screen point for each point of pen travel, and higher values pan further. Assign the Pan View action to any pen barrel, express key, or puck button in Button Mapping.")
+                    "Multiplies pen motion while you hold Pan View. At 1.00, content pans one screen point for each point of pen travel, and higher values pan further. Assign the Pan View action to any pen barrel, express key, or Quick Keys button in the Buttons pane.")
 
                 DescribedToggle(
                     "Reverse Direction",
