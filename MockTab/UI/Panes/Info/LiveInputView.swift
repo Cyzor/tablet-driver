@@ -178,7 +178,7 @@ private struct LiveInputView: View {
         let tiltFormat = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(1)).sign(strategy: .always())
         HStack(alignment: .top, spacing: 6) {
             gauge(
-                label: String(localized: "Coordinate", comment: "Live Input table row label — raw X/Y position"),
+                label: String(localized: "Position", comment: "Live Input gauge label — pen position on the tablet"),
                 spokenValue: point.map { "X: \(quantize($0.x, to: 100)), Y: \(quantize($0.y, to: 100))" } ?? String(localized: "None"),
                 mark: .position
             ) {
@@ -319,12 +319,8 @@ private struct LiveInputView: View {
                     return registry.knownTools.first(where: { $0.id == id })
                 }()
 
-                stylusRow(label: String(localized: "Stylus Name", comment: "Live Input table row label"), value: tool?.nickname ?? "—")
-                stylusRow(label: String(localized: "Stylus Type", comment: "Live Input table row label"), value: tool?.kind ?? "—")
-                stylusRow(
-                    label: String(localized: "Tool Code", comment: "Live Input table row label — hex tool identifier"),
-                    value: tool?.toolCode.map { "0x\(String(format: "%04X", $0))" } ?? "—")
-                stylusRow(label: String(localized: "Serial", comment: "Live Input table row label — tool serial number"), value: tool?.displayID ?? "—")
+                penRow(label: String(localized: "Pen Name", comment: "Live Input table row label"), value: tool?.nickname ?? "—")
+                penRow(label: String(localized: "Pen Type", comment: "Live Input table row label"), value: tool?.kind ?? "—")
 
                 let lb = liveButtons
 
@@ -372,7 +368,7 @@ private struct LiveInputView: View {
     }
 
     @ViewBuilder
-    private func stylusRow(label: String, value: String) -> some View {
+    private func penRow(label: String, value: String) -> some View {
         GridRow {
             Text(label)
                 .foregroundStyle(.secondary)
