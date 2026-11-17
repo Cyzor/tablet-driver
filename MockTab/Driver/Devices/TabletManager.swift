@@ -14,10 +14,10 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 /// so the ~30 Hz touch stream invalidates only views that explicitly observe
 /// this object, not every view that observes `TabletManager`.
 ///
-/// `isPublishingEnabled` lets the sole consumer (ScratchpadView) gate updates
-/// on its own visibility — when the scratchpad tab is hidden or the app
-/// resigns active, the HID-thread closure skips both the throttle bookkeeping
-/// and the main-thread dispatch entirely.
+/// `isPublishingEnabled` is on while a view shows touch (the Scratchpad or
+/// the Info pane's gauge). With none showing, or the app inactive, the
+/// HID-thread closure skips both the throttle bookkeeping and the
+/// main-thread dispatch entirely.
 final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // split as each property notes
     @MainActor @Published var contacts: [TouchContact] = []
 
@@ -27,6 +27,19 @@ final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // spli
         set { _isPublishingEnabled.withLock { $0 = newValue } }
     }
     private let _isPublishingEnabled = OSAllocatedUnfairLock(initialState: false)
+
+    /// The views showing touch right now. Publishing runs while there is at
+    /// least one, so a view that leaves can't switch the stream off under
+    /// another that has just appeared.
+    @MainActor private var viewers: Set<UUID> = []
+
+    @MainActor func setShowing(_ showing: Bool, for viewer: UUID) {
+        if showing { viewers.insert(viewer) } else { viewers.remove(viewer) }
+        // Clear lingering contacts on the way out so no view paints a stale
+        // snapshot when one shows again.
+        if viewers.isEmpty && isPublishingEnabled { contacts = [] }
+        isPublishingEnabled = !viewers.isEmpty
+    }
 
     /// HID-thread-only.  Last time the throttle let a publish through.
     /// Lives here (rather than on `TabletManager`, which is `@MainActor`)

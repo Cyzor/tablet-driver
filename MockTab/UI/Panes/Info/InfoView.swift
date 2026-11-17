@@ -102,7 +102,12 @@ struct InfoView: View {
             Section {
                 LiveInputSectionContent(
                     deviceContext: deviceContext,
-                    productID: productID
+                    productID: productID,
+                    orientation: settings.tabletOrientation,
+                    liveTouch: tabletManager.liveTouch,
+                    companion: productID
+                        .flatMap { ButtonsView.companionProductID(forProductID: $0, in: tabletManager) }
+                        .flatMap { tabletManager.contexts[$0] }
                 )
             } header: {
                 Text(String(localized: "Live Input", comment: "Section header: live input state and pen position"))

@@ -148,6 +148,24 @@ private struct TiltDisc: View, Equatable {
 
 // MARK: - Touch contacts visualizer
 
+/// Where to draw each contact, as fractions of the contacts' own bounding
+/// box, turned to match the tablet on the desk. A contact carries raw units
+/// with no axis maxima, so this shows how the fingers sit relative to each
+/// other; one finger alone sits in the middle.
+func touchContactLayout(_ contacts: [TouchContact], orientation: TabletOrientation) -> [CGPoint] {
+    // The bounding-box normalization cancels the axis offsets, so zero
+    // maxima suffice.
+    let points = contacts.map {
+        DisplayMapper.orient(x: Double($0.x), y: Double($0.y), maxX: 0, maxY: 0, orientation: orientation)
+    }
+    func fraction(_ value: Double, in values: [Double]) -> Double {
+        guard let lo = values.min(), let hi = values.max(), hi > lo else { return 0.5 }
+        return (value - lo) / (hi - lo)
+    }
+    let xs = points.map(\.ox), ys = points.map(\.oy)
+    return points.map { CGPoint(x: fraction($0.ox, in: xs), y: fraction($0.oy, in: ys)) }
+}
+
 /// Top-down rectangle showing normalized finger-contact positions as numbered
 /// dots, turned to match the tablet on the desk. The tablet's touch surface
 /// maps to the full canvas area.
@@ -184,36 +202,14 @@ private struct TouchContactsCanvas: View, Equatable {
     private func drawContacts(ctx: GraphicsContext, size: CGSize) {
         guard !contacts.isEmpty else { return }
 
-        // Determine the normalized coordinate range from the first contact.
-        // TouchContact uses raw tablet units; we don't have access to maxX/maxY
-        // here, so normalize each contact against the bounding box of all
-        // contacts with a small guard against zero-range.
-        // Turned like pen and touch input. The bounding-box normalization
-        // below cancels the axis offsets, so zero maxima suffice.
-        let points = contacts.map {
-            DisplayMapper.orient(x: Double($0.x), y: Double($0.y), maxX: 0, maxY: 0, orientation: orientation)
-        }
-        let xs = points.map(\.ox)
-        let ys = points.map(\.oy)
-
-        // Normalize within [0,1] using whatever range the contacts span.
-        // Falls back to centring a single contact on the canvas.
-        func norm(_ val: Double, _ vals: [Double]) -> Double {
-            let lo = vals.min() ?? 0
-            let hi = vals.max() ?? 1
-            guard hi > lo else { return 0.5 }
-            return (val - lo) / (hi - lo)
-        }
+        let layout = touchContactLayout(contacts, orientation: orientation)
 
         let r: CGFloat = 6
         let pad: CGFloat = r + 4
 
-        for (i, point) in points.enumerated() {
-            let nx = contacts.count == 1 ? 0.5 : norm(point.ox, xs)
-            let ny = contacts.count == 1 ? 0.5 : norm(point.oy, ys)
-
-            let cx = pad + nx * (size.width  - 2 * pad)
-            let cy = pad + ny * (size.height - 2 * pad)
+        for (i, spot) in layout.enumerated() {
+            let cx = pad + spot.x * (size.width  - 2 * pad)
+            let cy = pad + spot.y * (size.height - 2 * pad)
             let dot = CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)
 
             ctx.fill(Path(ellipseIn: dot), with: .color(.accentColor.opacity(0.8)))

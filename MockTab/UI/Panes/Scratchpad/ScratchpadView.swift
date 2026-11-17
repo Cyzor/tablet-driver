@@ -17,7 +17,7 @@ struct ScratchpadView: View {
     /// invalidate only the small `TouchVisualizer` child (which observes the
     /// publisher itself), not this whole pane — re-evaluating the full body
     /// per frame was a measurable main-thread CPU cost while touch was live.
-    /// This view only writes gating state (`isPublishingEnabled`, clearing
+    /// This view only writes gating state (`setShowing`, clearing
     /// `contacts`); it never reads `contacts` in `body`.
     private let liveTouch: LiveTouchPublisher
     let instanceKey: DeviceInstanceKey?
@@ -51,6 +51,7 @@ struct ScratchpadView: View {
     /// HID-thread closure skips dispatch entirely, so a palm resting on
     /// the tablet costs nothing while the user is in another tab or app.
     @State private var isVisible = false
+    @State private var touchViewer = UUID()
     @State private var isAppActive = NSApp.isActive
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -95,13 +96,7 @@ struct ScratchpadView: View {
     }
 
     private func updateLiveTouchGate() {
-        let newValue = isVisible && isAppActive
-        // Clear any lingering contacts on the way out so the canvas doesn't
-        // paint a stale snapshot when the view becomes visible again.
-        if !newValue && liveTouch.isPublishingEnabled {
-            liveTouch.contacts = []
-        }
-        liveTouch.isPublishingEnabled = newValue
+        liveTouch.setShowing(isVisible && isAppActive, for: touchViewer)
     }
 
     private var mainContent: some View {

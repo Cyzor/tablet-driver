@@ -145,7 +145,12 @@ struct ButtonsView: View {
     /// vanishing while the accessory is detached (disable-vs-hide rule:
     /// disconnection is temporary state, not a capability change).
     var companionProductID: Int? {
-        guard let pid = productID else { return nil }
+        productID.flatMap { Self.companionProductID(forProductID: $0, in: tabletManager) }
+    }
+
+    /// The companion of tablet `pid`; see `companionProductID`. Shared
+    /// with the Info pane.
+    static func companionProductID(forProductID pid: Int, in tabletManager: TabletManager) -> Int? {
         if let live = DeviceCompanions.connectedCompanion(
             forProductID: pid, connectedProductIDs: tabletManager.connectedProductIDs)
         {
