@@ -9414,7 +9414,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default"
+            "value" : "Predefinito"
           }
         },
         "ja" : {
@@ -10961,7 +10961,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Display"
+            "value" : "Monitor"
           }
         },
         "ja" : {
@@ -11176,7 +11176,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mappatura del display"
+            "value" : "Mappatura dello schermo"
           }
         },
         "ja" : {
@@ -11285,7 +11285,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rotazione del display rilevata"
+            "value" : "Rotazione del monitor rilevata"
           }
         },
         "ja" : {
@@ -27509,7 +27509,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Display ruotato. Controlla dove si posa la penna."
+            "value" : "Monitor ruotato. Controlla dove si posa la penna."
           }
         },
         "ja" : {
@@ -29846,7 +29846,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Estende la tavoletta sui monitor selezionati nel pannello Display. Premi di nuovo per tornare all’impostazione precedente."
+            "value" : "Estende la tavoletta sui monitor selezionati nel pannello Monitor. Premi di nuovo per tornare all’impostazione precedente."
           }
         },
         "ja" : {

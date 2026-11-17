@@ -1,0 +1,132 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSAccessibilityUsageDescription" : {
+      "comment" : "Permission prompt: why MockTab needs Accessibility",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab benötigt Zugriff auf die Bedienungshilfen, um den Cursor zu bewegen und Grafiktablett-Ereignisse zu senden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab needs Accessibility access to move the cursor and send tablet events."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab necesita acceso a Accesibilidad para mover el cursor y enviar eventos de la tableta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab a besoin de l’accès à l’Accessibilité pour déplacer le curseur et envoyer les événements de la tablette."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab ha bisogno dell’accesso ad Accessibilità per muovere il cursore e inviare gli eventi della tavoletta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カーソルを動かしてタブレットのイベントを送信するために、MockTab にはアクセシビリティへのアクセスが必要です。"
+          }
+        }
+      }
+    },
+    "NSBluetoothAlwaysUsageDescription" : {
+      "comment" : "Permission prompt: why MockTab uses Bluetooth",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab nutzt Bluetooth, um beim Erfassen von Diagnosedaten die Signalstärke deines Grafiktabletts zu lesen. So lässt sich eine schwache Verbindung von einem Softwareproblem unterscheiden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab uses Bluetooth to read signal strength from your tablet while collecting diagnostic data, to help tell a weak connection apart from a software problem."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab usa Bluetooth para leer la intensidad de la señal de la tableta mientras recopila datos de diagnóstico, para distinguir una conexión débil de un problema de software."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab utilise le Bluetooth pour lire la puissance du signal de votre tablette pendant la collecte de données de diagnostic, afin de distinguer une connexion faible d’un problème logiciel."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab usa il Bluetooth per leggere l’intensità del segnale della tavoletta durante la raccolta dei dati di diagnostica, così da distinguere una connessione debole da un problema software."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "診断データの収集中にタブレットの信号強度を読み取り、接続の弱さとソフトウェアの問題を見分けるために、MockTab は Bluetooth を使用します。"
+          }
+        }
+      }
+    },
+    "NSInputMonitoringUsageDescription" : {
+      "comment" : "Permission prompt: why MockTab needs Input Monitoring",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab benötigt Zugriff auf die Eingabeüberwachung, um die Rohdaten deines Grafiktabletts zu lesen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "MockTab needs Input Monitoring access to read raw HID reports from your tablet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab necesita acceso a Monitorización de los dispositivos de entrada para leer los datos de la tableta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab a besoin de l’accès à la Surveillance de l’entrée pour lire les données brutes de votre tablette."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab ha bisogno dell’accesso a Monitoraggio input per leggere i dati grezzi della tavoletta."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットから送られる生データを読み取るために、MockTab には入力監視へのアクセスが必要です。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -165,9 +165,9 @@ MockTab non supporta Mission Control, Spaces, Launchpad o App Exposé con il toc
 
 [display]
 
-## Mappatura del display
+## Mappatura dello schermo
 
-La mappatura del display stabilisce quale schermo la tavoletta considera attivo.
+La mappatura dello schermo stabilisce quale schermo la tavoletta considera attivo.
 
 **Tutti i monitor** – Fai clic tenendo premuto Maiuscole su un monitor nello schema per coprire in proporzione l’intera scrivania. Adatto a chi lavora su più monitor.
 
@@ -205,7 +205,7 @@ Se un altro driver per tavolette (come il driver ufficiale Wacom) è in esecuzio
 
 ## Profili
 
-Un profilo è un’istantanea delle impostazioni della tavoletta: area attiva, curva di pressione, assegnazioni dei pulsanti e mappatura del display. Cambiando profilo, tutte queste impostazioni si applicano subito.
+Un profilo è un’istantanea delle impostazioni della tavoletta: area attiva, curva di pressione, assegnazioni dei pulsanti e mappatura dello schermo. Cambiando profilo, tutte queste impostazioni si applicano subito.
 
 ## Creare e rinominare
 
