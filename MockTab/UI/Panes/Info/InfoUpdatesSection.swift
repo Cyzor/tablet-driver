@@ -139,7 +139,7 @@ struct InfoUpdatesSection: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .help(String(localized: "A newer version only changes this section. Nothing opens or interrupts you.", comment: "Tooltip on the automatic update checkbox"))
+            .help(String(localized: "When MockTab finds an update, it marks its menu bar icon. Nothing opens or interrupts you.", comment: "Tooltip on the automatic update checkbox"))
         }
     }
 

@@ -2396,48 +2396,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un tocco breve quasi senza muoversi produce un clic sinistro. Disattivato di default, perché per molti causa clic involontari."
+            "value" : "Un breve tocco quasi senza movimento produce un clic sinistro. Disattivato di default, perché per molti causa clic involontari."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "大きな動きを伴わない短い接触で左クリックを送信します。意図しないクリックが起きやすいため、既定ではオフです。"
-          }
-        }
-      }
-    },
-    "A newer version only changes this section. Nothing opens or interrupts you." : {
-      "comment" : "Tooltip on the automatic update checkbox",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eine neuere Version ändert nur diesen Bereich. Nichts öffnet sich oder unterbricht dich."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Una versión más reciente solo cambia esta sección. No se abre nada ni te interrumpe."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Une version plus récente ne modifie que cette section. Rien ne s’ouvre ni ne vous interrompt."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Una versione più recente cambia solo questa sezione. Niente si apre né ti interrompe."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新しいバージョンがあっても、このセクションの表示が変わるだけです。何も開かず、作業も中断しません。"
           }
         }
       }
@@ -2460,7 +2425,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Une préversion est aussi disponible. Maintenez Option pour la rechercher."
+            "value" : "Une préversion est aussi disponible. Maintenez la touche Option pour la rechercher."
           }
         },
         "it" : {
@@ -3284,13 +3249,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajoute cet écran à la bascule entre écrans ou l’en retire."
+            "value" : "Ajoute cet écran à la sélection ou l’en retire."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aggiunge questo monitor all’alternanza tra monitor o lo rimuove."
+            "value" : "Aggiunge questo monitor alla selezione o lo rimuove."
           }
         },
         "ja" : {
@@ -6061,13 +6026,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les actions cochées attendent que la pointe se pose et s’arrêtent quand elle se lève. Les autres agissent dès que vous appuyez sur le bouton."
+            "value" : "Les actions cochées attendent que la pointe se pose et s’arrêtent quand elle se lève. Les autres se déclenchent dès que vous appuyez sur le bouton."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le azioni selezionate aspettano che la punta tocchi e terminano quando si solleva. Le altre partono appena premi il pulsante."
+            "value" : "Le azioni selezionate iniziano quando appoggi la punta e terminano quando la sollevi. Le altre partono appena premi il pulsante."
           }
         },
         "ja" : {
@@ -6437,13 +6402,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cliquez sur un écran pour y associer la tablette. ⌘+clic pour l’ajouter à la bascule entre écrans. ⇧+clic pour étendre sur tous les écrans."
+            "value" : "Cliquez sur un écran pour y associer la tablette. ⌘+clic pour l’ajouter aux écrans à parcourir. ⇧+clic pour étendre sur tous les écrans."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fai clic su un monitor per associarlo alla tavoletta. ⌘+clic per aggiungerlo all’alternanza tra monitor. ⇧+clic per estendere su tutti i monitor."
+            "value" : "Fai clic su un monitor per associarlo alla tavoletta. ⌘+clic per aggiungerlo ai monitor tra cui alternare. ⇧+clic per estendere su tutti i monitor."
           }
         },
         "ja" : {
@@ -6472,13 +6437,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cliquez sur un écran pour y associer la tablette. Commande-clic pour l’ajouter à la bascule entre écrans. Maj-clic pour étendre sur tous les écrans."
+            "value" : "Cliquez sur un écran pour y associer la tablette. Commande-clic pour l’ajouter aux écrans à parcourir. Maj-clic pour étendre sur tous les écrans."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fai clic su un monitor per associarlo alla tavoletta. Comando-clic per aggiungerlo all’alternanza tra monitor. Maiuscole-clic per estendere su tutti i monitor."
+            "value" : "Fai clic su un monitor per associarlo alla tavoletta. Comando-clic per aggiungerlo ai monitor tra cui alternare. Maiuscole-clic per estendere su tutti i monitor."
           }
         },
         "ja" : {
@@ -6506,13 +6471,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cliquez sur une vignette pour inclure cet écran dans la bascule entre écrans ou l’en exclure. ⌘-clic pour ajouter des écrans un à un ; ⇧-clic pour sélectionner une plage."
+            "value" : "Cliquez sur une vignette pour ajouter ou retirer cet écran de la sélection. ⌘-clic pour ajouter des écrans un à un ; ⇧-clic pour sélectionner une plage."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fai clic su una miniatura per includere o escludere quel monitor dall’alternanza tra monitor. ⌘-clic per aggiungere singoli monitor; ⇧-clic per selezionare un intervallo."
+            "value" : "Fai clic su una miniatura per aggiungere o rimuovere quel monitor dalla selezione. ⌘-clic per aggiungere singoli monitor; ⇧-clic per selezionare un intervallo."
           }
         },
         "ja" : {
@@ -6541,13 +6506,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cliquez sur une vignette pour inclure cet écran dans la bascule entre écrans ou l’en exclure. Commande-clic pour ajouter des écrans un à un, ou Maj-clic pour sélectionner une plage."
+            "value" : "Cliquez sur une vignette pour ajouter ou retirer cet écran de la sélection. Commande-clic pour ajouter des écrans un à un, ou Maj-clic pour sélectionner une plage."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fai clic su una miniatura per includere o escludere quel monitor dall’alternanza tra monitor. Comando-clic per aggiungere singoli monitor, o Maiuscole-clic per selezionare un intervallo."
+            "value" : "Fai clic su una miniatura per aggiungere o rimuovere quel monitor dalla selezione. Comando-clic per aggiungere singoli monitor, o Maiuscole-clic per selezionare un intervallo."
           }
         },
         "ja" : {
@@ -10927,6 +10892,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "破棄"
+          }
+        }
+      }
+    },
+    "Discards all settings, profiles, button mappings, and the saved pen list for this tablet. When the tablet next connects, MockTab adds it again with defaults." : {
+      "comment" : "Message explaining what gets wiped when removing a tablet",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwirft alle Einstellungen, Profile, Tastenzuordnungen und die gespeicherte Stiftliste für dieses Grafiktablett. Beim nächsten Anschließen fügt MockTab das Grafiktablett mit den Standardwerten wieder hinzu."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descarta todos los ajustes, perfiles, asignaciones de botones y la lista de lápices guardada para esta tableta. La próxima vez que se conecte, MockTab la añadirá de nuevo con los valores predeterminados."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Efface tous les réglages, profils, affectations de boutons et la liste des stylets enregistrés pour cette tablette. À la prochaine connexion, MockTab ajoutera de nouveau la tablette avec les réglages par défaut."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elimina tutte le impostazioni, i profili, le assegnazioni dei pulsanti e l’elenco delle penne salvate per questa tavoletta. Al prossimo collegamento, MockTab aggiungerà di nuovo la tavoletta con i valori di default."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このタブレットのすべての設定、プロファイル、ボタン割り当て、保存されたペンリストを破棄します。次に接続したとき、MockTab がデフォルト設定で再追加します。"
           }
         }
       }
@@ -17304,13 +17304,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Entrée en direct"
+            "value" : "En direct"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Input in tempo reale"
+            "value" : "In tempo reale"
           }
         },
         "ja" : {
@@ -17608,7 +17608,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Per calibrare, mappa la penna sul suo display o includi quel display nell’alternanza tra monitor."
+            "value" : "Per calibrare, mappa la penna sul suo monitor o includi quel monitor tra quelli da alternare."
           }
         },
         "ja" : {
@@ -21448,7 +21448,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ouvre le calque de calibrage pour toucher les cibles en croix sur votre écran à stylet."
+            "value" : "Affiche les cibles de calibrage à toucher sur votre écran à stylet."
           }
         },
         "it" : {
@@ -28437,7 +28437,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stabilisce quanta pressione serve perché la punta registri un contatto. Funziona come la sensibilità, ma per il punto in cui inizia il contatto anziché per la curva di risposta. Aumentalo per un clic più deciso e intenzionale, o riducilo per il tocco più leggero possibile. Su Disattivato, il valore di default, la punta risponde dal minimo del sensore."
+            "value" : "Stabilisce quanta pressione serve perché la punta registri un contatto. Funziona come la sensibilità, ma per il punto in cui inizia il contatto anziché per la curva di risposta. Aumentalo per un clic più deciso e intenzionale, o riducilo per il tocco più leggero possibile. Su Disattivato, il valore di default, la punta risponde dalla soglia minima del sensore."
           }
         },
         "ja" : {
@@ -28963,13 +28963,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Surtout visible sur les tracés lents et légers. Les pressions fortes passent sans changement."
+            "value" : "Surtout visible sur les tracés lents et légers. Les pressions fortes restent inchangées."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si nota soprattutto nei tratti lenti e leggeri. La pressione decisa passa invariata."
+            "value" : "Si nota soprattutto nei tratti lenti e leggeri. Le pressioni forti restano invariate."
           }
         },
         "ja" : {
@@ -31859,47 +31859,6 @@
         }
       }
     },
-    "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects." : {
-      "comment" : "Message explaining what gets wiped when removing a tablet",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dadurch werden alle Einstellungen, Profile, Tastenzuordnungen und die gespeicherte Stiftliste für dieses Grafiktablett verworfen. Beim nächsten Anschließen wird das Grafiktablett mit den Standardwerten neu hinzugefügt."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esto descartará todos los ajustes, perfiles, asignaciones de botones y la lista de lápices guardada para esta tableta. La tableta se añadirá de nuevo con los valores predeterminados la próxima vez que se conecte."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tous les réglages, profils, affectations de boutons et la liste des stylets enregistrés pour cette tablette seront effacés. La tablette sera rajoutée avec les réglages par défaut à sa prochaine connexion."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elimina tutte le impostazioni, i profili, le assegnazioni dei pulsanti e l’elenco delle penne salvate per questa tavoletta. Al prossimo collegamento, MockTab aggiungerà di nuovo la tavoletta con i valori di default."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このタブレットのすべての設定、プロファイル、ボタン割り当て、および保存されたペンリストが破棄されます。次回接続時にデフォルト設定で再追加されます。"
-          }
-        }
-      }
-    },
     "Three fingers landing together hold the mouse button down. Move them to drag, and lift to let go." : {
       "localizations" : {
         "de" : {
@@ -34156,6 +34115,41 @@
         }
       }
     },
+    "When MockTab finds an update, it marks its menu bar icon. Nothing opens or interrupts you." : {
+      "comment" : "Tooltip on the automatic update checkbox",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Findet MockTab ein Update, markiert es sein Menüleistensymbol. Nichts öffnet sich oder unterbricht dich."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuando MockTab encuentra una actualización, la indica en su icono de la barra de menús. No se abre nada ni te interrumpe."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quand MockTab trouve une mise à jour, il le signale sur son icône dans la barre des menus. Rien ne s’ouvre ni ne vous interrompt."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quando MockTab trova un aggiornamento, lo segnala sull’icona nella barra dei menu. Non si apre nulla e il lavoro continua senza interruzioni."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アップデートが見つかると、MockTab はメニューバーのアイコンに表示します。何も開かず、作業も中断しません。"
+          }
+        }
+      }
+    },
     "When on, content moves opposite to your fingers, like a classic mouse wheel. When off, which is the default, content follows your fingers." : {
       "comment" : "Tooltip on the touch Reverse Direction switch",
       "localizations" : {
@@ -34249,7 +34243,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verso di lettura del Quick Keys, così le etichette sono rivolte a te comunque lo tieni."
+            "value" : "Verso di lettura del Quick Keys, così puoi leggere le etichette in qualsiasi posizione."
           }
         },
         "ja" : {

@@ -188,7 +188,7 @@ struct DevicesView: View {
             Button("Cancel", role: .cancel) { pendingRemoveTablet = nil }
                 .keyboardShortcut(.cancelAction)
         } message: {
-            Text(String(localized: "This will discard all settings, profiles, button mappings, and the saved pen list for this tablet. The tablet will be re-added with defaults the next time it connects.", comment: "Message explaining what gets wiped when removing a tablet"))
+            Text(String(localized: "Discards all settings, profiles, button mappings, and the saved pen list for this tablet. When the tablet next connects, MockTab adds it again with defaults.", comment: "Message explaining what gets wiped when removing a tablet"))
         }
     }
 

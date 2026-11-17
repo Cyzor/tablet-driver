@@ -239,7 +239,7 @@ L’opacité et l’épaisseur du trait répondent toutes deux à la pression de
 
 [info]
 
-## Entrée en direct
+## En direct
 
 La sous-fenêtre Infos affiche les valeurs du stylet en temps réel : position X/Y, pression, inclinaison, rotation, distance de survol et état des boutons. Ces valeurs se mettent à jour en continu tant que le stylet reste à portée.
 

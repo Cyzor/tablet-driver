@@ -239,7 +239,7 @@ Opacità e spessore del tratto rispondono entrambi alla pressione della punta. L
 
 [info]
 
-## Input in tempo reale
+## In tempo reale
 
 Il pannello Info mostra in tempo reale i valori della penna: posizione X/Y, pressione, inclinazione, rotazione, distanza in prossimità e stato dei pulsanti. I valori si aggiornano di continuo finché la penna resta a portata.
 
