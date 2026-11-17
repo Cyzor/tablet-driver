@@ -464,10 +464,14 @@ final class Downloader: NSObject, URLSessionDownloadDelegate {
     }
 }
 
-func sha256(of url: URL) -> String {
+/// Nil when the file can't be read, so a bad download fails like any other.
+func sha256(of url: URL) -> String? {
     var hasher = SHA256()
-    let h = try! FileHandle(forReadingFrom: url)
-    while let chunk = try! h.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
+    guard let h = try? FileHandle(forReadingFrom: url) else { return nil }
+    defer { try? h.close() }
+    do {
+        while let chunk = try h.read(upToCount: 1 << 20), !chunk.isEmpty { hasher.update(data: chunk) }
+    } catch { return nil }
     return hasher.finalize().map { String(format: "%02x", $0) }.joined()
 }
 
@@ -514,6 +518,7 @@ func stage() {
 
     emit(["state": "verifying"])
     if let expected = option("--sha256"), sha256(of: dmg) != expected.lowercased() {
+        // An unreadable download lands here too: nil never matches.
         try? fm.removeItem(at: dest)
         fail(.rejected, "the download doesn't match the published checksum")
     }
