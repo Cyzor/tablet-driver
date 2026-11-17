@@ -45,45 +45,37 @@ Mit **Zeiger-Versatz** justierst du einen verbleibenden kleinen Versatz nach, et
 
 ## Druckkurve
 
-Die Kurve bildet Stiftdruck auf Ausgabedruck ab. Nach oben gezogen, wirken leichte Striche kräftiger; nach unten gedrückt, braucht derselbe Effekt mehr Kraft.
-
-**Voreinstellungen** – Linear, Weich und Fest. Verschiebst du einen Kurvenpunkt, wechselt die Kurve zu einer benutzerdefinierten Form.
+Ziehst du die Kurve nach oben, wirken leichte Striche kräftiger; nach unten brauchst du mehr Kraft. Linear, Weich und Fest sind Voreinstellungen.
 
 ## Druckglättung
 
-Dämpft Druckrauschen im unteren Bereich, das sich bei langsamen, leichten Strichen als ungleichmäßige Linienbreite zeigt. Kräftiger Druck bleibt unverändert.
+Gleicht die Strichbreite bei langsamen, leichten Strichen aus.
 
 ## Stabilisierung
 
-Reduziert Cursorzittern durch Handunruhe. Höhere Werte glätten stärker, erhöhen aber die Eingabelatenz.
+Dämpft das Zittern des Cursors durch unruhige Hände, kostet aber etwas Verzögerung.
 
 ## Doppelklick-Abstand
 
-Legt fest, wie nah zwei Tipper beieinanderliegen müssen, um als Doppelklick zu zählen. Erhöhe den Wert, wenn Doppelklicks nicht erkannt werden; senke ihn, wenn beim Zeichnen versehentlich welche entstehen. Bei „Aus“ muss der zweite Tipp etwa dort landen, wo der erste lag.
+Wie nah zwei Tipper beieinander landen müssen, um als Doppelklick zu zählen.
 
 ## Bewegung
 
-**Drehrichtung umkehren** – Kehrt die Drehrichtung eines drehbaren Stifts um, etwa des Art Pen. Aktiviere das pro App für Anwendungen, die die Drehung verkehrt lesen, zum Beispiel Krita.
+**Drehrichtung umkehren** – Legt fest, ob das Drehen des Schafts eine Bewegung im oder gegen den Uhrzeigersinn ergibt.
 
-**Relative Cursorbewegung** – Wechselt vom absoluten Modus (jeder Punkt auf dem Grafiktablett entspricht einem festen Punkt auf dem Bildschirm) in den relativen Modus (der Cursor bewegt sich um die Strecke des Stifts, wie bei einer Maus).
+**Relative Cursorbewegung** – Bewegt den Cursor wie eine Maus, statt das Grafiktablett auf den Bildschirm abzubilden.
 
 ## Ansicht schwenken
 
-**Geschwindigkeit** – Legt fest, wie schnell sich Inhalte verschieben, während du eine Taste für „Ansicht schwenken“ gedrückt hältst. Weise die Aktion „Ansicht schwenken“ im Tasten-Bereich einer Stifttaste, Express-Taste oder Quick Keys-Taste zu.
-
-**Richtung umkehren** – An: Der Inhalt bewegt sich entgegen dem Stift, wie bei einem klassischen Mausrad. Aus: Der Inhalt folgt dem Stift.
-
-**Scrollen mit Nachlauf** – Der Inhalt läuft nach dem Loslassen der Taste kurz nach. Manche Apps lassen ihn in jedem Fall selbst nachlaufen.
+**Geschwindigkeit**, **Richtung umkehren** und **Scrollen mit Nachlauf** legen fest, wie sich der Inhalt bewegt, solange du eine Taste für „Ansicht schwenken“ hältst. Weise „Ansicht schwenken“ im Tasten-Bereich zu.
 
 ## Klickverhalten
 
-**Oberflächenkontakt erforderlich** – Hake Rechtsklick, Mittelklick, Doppelklick oder Ansicht schwenken an, damit Seitenknöpfe mit dieser Aktion nur greifen, solange der Stift aufgesetzt ist. Nicht markierte Aktionen wirken schon beim Schweben.
+**Oberflächenkontakt erforderlich** – Markierte Aktionen der Seitentasten warten, bis die Spitze aufsetzt. Nicht markierte Klickaktionen wirken auch beim Schweben, auch zum Ziehen.
 
-Hältst du eine Taste mit Links-, Rechts- oder Mittelklick gedrückt, während der Stift schwebt, ziehst du, ohne die Oberfläche zu berühren. Hakst du bei Oberflächenkontakt erforderlich Rechtsklick oder Mittelklick an, entfällt das für diese Tasten.
+**Aufhebehilfe** – Verhindert, dass schnelle Striche abreißen, wenn die Spitze kurz abhebt.
 
-**Aufhebehilfe** – Hält den Klick nach dem Abheben der Spitze kurz offen, solange sich der Stift schnell bewegt, damit schnelle Striche nicht abreißen. Ziehe den Regler auf Off, um die Funktion auszuschalten.
-
-**Ziehschwelle** – Verlangt eine Mindeststrecke, bevor aus einem Tippen ein Ziehen wird, damit Zittern beim Aufsetzen leichte Tipper nicht zu Drag-Aktionen macht. Ziehe den Regler auf Off, um die Funktion auszuschalten.
+**Ziehschwelle** – Verhindert, dass ein Tippen zu einem kleinen Ziehen wird.
 
 [buttons]
 
@@ -125,11 +117,11 @@ Ein Intuos4 mit Tastendisplays zeigt per USB neben jeder Taste ihre Aktion an, u
 
 ## Beleuchtung
 
-Einige Geräte haben konfigurierbare Beleuchtung. Bei Hardware mit beleuchtetem Dial-Ring enthalten die Einstellungen jedes Modus die Farbe und Helligkeit, die angezeigt werden, solange dieser Modus aktiv ist. Pen-Displays mit hinterleuchteten Rahmentasten haben eine Zeile **Tastenbeleuchtung**. Die Hardware behält ihre letzte Farbe, bis du sie änderst.
+Bei Geräten mit beleuchtetem Einstellradring oder hinterleuchteten Tasten lassen sich Farbe und Helligkeit einstellen. Die Hardware behält ihre letzte Farbe, bis du sie änderst.
 
 ## Radierer
 
-Die Radiererspitze hat eine eigene Belegung, die im Stiftbereich konfiguriert wird. Manche Zeichenprogramme wechseln automatisch zum Radiergummi-Werkzeug, wenn die Radiererspitze in die Nähe des Grafiktabletts kommt. Belege einen Seitenknopf mit Radierer, damit der Stift beim Gedrückthalten wie seine Radiererspitze wirkt – praktisch für Stifte ohne Radierer.
+Das Radiererende hat eine eigene Zuweisung im Stiftabschnitt. Hat ein Stift keins, weise einer Seitentaste „Radierer“ zu und halte sie, um mit der Spitze zu radieren.
 
 ## App-spezifische Overrides
 
@@ -231,19 +223,13 @@ Ziehe die JSON-Kachel in den Finder, um alle Einstellungen zu sichern, auch Seri
 
 ## Testbereich
 
-Der Testbereich ist eine druckempfindliche Testfläche. Damit lässt sich schnell prüfen, ob der Stift Druck, Neigung und Bewegung korrekt meldet.
-
-Sowohl Deckkraft als auch Breite des Strichs reagieren auf den Spitzendruck. Die Neigung beeinflusst den Strichwinkel, wenn der Stift Neigungsdaten unterstützt. Das Panel speichert keine Striche; beim Schließen oder Leeren wird der Inhalt verworfen.
-
-**Löschen** – Entfernt alle Striche von der Zeichenfläche.
+Eine Testfläche, um zu prüfen, ob der Stift Druck, Neigung und Bewegung erkennt. MockTab speichert keine Striche.
 
 [info]
 
 ## Live-Eingabe
 
-Der Info-Bereich zeigt Echtzeitwerte des Stifts an: X/Y-Position, Druck, Neigung, Rotation, Hover-Abstand und Tastenstatus. Diese Werte werden laufend aktualisiert, solange sich der Stift im Erkennungsbereich befindet.
-
-Diese Ansicht hilft bei der Diagnose unerwarteten Verhaltens, zum Beispiel um zu prüfen, ob der Druck seinen Maximalwert erreicht oder ob das Grafiktablett überhaupt Neigung meldet.
+Der Info-Bereich zeigt, was das Grafiktablett meldet. Anzeigen stehen für Position, Druck, Neigung, Rotation, Schwebehöhe und Touch-Eingaben.
 
 ## Gerätedaten erfassen
 

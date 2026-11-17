@@ -45,45 +45,37 @@ Tourner la tablette déplace chaque affectation vers la touche qui occupe désor
 
 ## Courbe de pression
 
-La courbe fait correspondre la pression du stylet à la pression en sortie. La tirer vers le haut renforce les traits légers ; la pousser vers le bas demande plus de force pour le même effet.
-
-**Préréglages** – Linéaire, Souple et Ferme. Modifier un point de la courbe passe à une forme personnalisée.
+Montez la courbe pour que les tracés légers comptent davantage, ou descendez-la pour exiger plus de force. Linéaire, Souple et Ferme sont des préréglages.
 
 ## Lissage de la pression
 
-Atténue le bruit de pression dans le bas de la plage, visible comme une épaisseur de trait irrégulière sur les tracés lents et légers. Les pressions fortes restent inchangées.
+Égalise l’épaisseur du trait sur les tracés lents et légers.
 
 ## Stabilisation
 
-Réduit le tremblement du curseur dû à la main. Les valeurs élevées lissent davantage, mais peuvent ajouter du retard.
+Réduit le tremblement du curseur dû à la main, au prix d’un léger retard.
 
 ## Distance de double-clic
 
-Définit la distance maximale entre deux touchers pour qu’ils comptent comme un double-clic. Augmentez-la si les doubles-clics échouent ; réduisez-la si le dessin en déclenche par accident. Sur Désactivé, le second toucher doit se poser à peu près au même endroit que le premier.
+Distance maximale entre deux touchers pour compter comme un double-clic.
 
 ## Mouvement
 
-**Inverser le sens de rotation** – Inverse le sens de rotation d’un stylet qui tourne sur son axe, comme l’Art Pen. Activez-le par app pour celles qui lisent la rotation à l’envers, comme Krita.
+**Inverser le sens de rotation** – Choisissez si la rotation du corps du stylet produit un mouvement horaire ou antihoraire.
 
-**Mouvement relatif du curseur** – passe du mode absolu (chaque point de la tablette correspond à un point fixe de l’écran) au mode relatif (le curseur se déplace de la distance parcourue par le stylet, comme une souris).
+**Mouvement relatif du curseur** – Déplace le curseur comme une souris au lieu de faire correspondre la tablette à l’écran.
 
 ## Déplacer la vue
 
-**Vitesse** – Définit la vitesse de déplacement du contenu tant que vous maintenez un bouton Déplacer la vue. Attribuez l’action Déplacer la vue à un bouton de stylet, une ExpressKey ou un bouton du Quick Keys dans la sous-fenêtre Boutons.
-
-**Inverser le sens** – Activé : le contenu se déplace à l’opposé du stylet, comme avec une molette de souris classique. Désactivé : le contenu suit le stylet.
-
-**Défilement avec inertie** – Le contenu continue brièvement sur sa lancée après le relâchement du bouton. Certaines apps le font d’elles-mêmes dans tous les cas.
+**Vitesse**, **Inverser le sens** et **Défilement avec inertie** règlent le déplacement du contenu tant que vous maintenez un bouton Déplacer la vue. Attribuez Déplacer la vue dans la sous-fenêtre Boutons.
 
 ## Comportement du clic
 
-**Exiger le contact** – cochez Clic droit, Clic du milieu, Double-clic ou Déplacer la vue pour que les boutons latéraux ayant cette action n’agissent que lorsque le stylet touche la surface. Les actions non cochées fonctionnent en survol.
+**Exiger le contact** – Les actions cochées des boutons latéraux attendent que la pointe se pose. Les actions de clic non cochées fonctionnent aussi en survol, glissements compris.
 
-Maintenir un bouton réglé sur Clic gauche, Clic droit ou Clic du milieu pendant que le stylet survole la tablette fait glisser sans toucher la surface. Cocher Exiger le contact pour Clic droit ou Clic du milieu désactive ce comportement pour ces boutons.
+**Aide au lever** – Évite que les tracés rapides se coupent quand la pointe se lève un instant.
 
-**Aide au lever** – maintient brièvement le clic après le lever de la pointe tant que le stylet bouge encore vite, ce qui évite les coupures de trait lors d’un dessin rapide. Faites glisser sur Désactivé pour la désactiver.
-
-**Seuil de glissement** – exige un déplacement minimal du stylet avant qu’un toucher devienne un glissement, pour qu’un tremblement à la pose de la pointe ne transforme pas les touchers légers en glissements. Faites glisser sur Désactivé pour le désactiver.
+**Seuil de glissement** – Évite qu’un toucher se transforme en petit glissement.
 
 [buttons]
 
@@ -125,11 +117,11 @@ Une Intuos4 dotée d’écrans de touches affiche l’action de chaque touche à
 
 ## Éclairage
 
-Certains appareils ont des éclairages configurables. Sur le matériel dont la molette est entourée d’un anneau lumineux, les réglages de chaque mode comprennent la couleur et la luminosité affichées tant que ce mode est actif. Les écrans à stylet dont les boutons du cadre sont rétroéclairés ont une ligne **Rétroéclairage des boutons**. Le matériel garde sa dernière couleur jusqu’à ce que vous la changiez.
+Sur les appareils avec une bague de molette lumineuse ou des boutons rétroéclairés, vous pouvez régler la couleur et la luminosité. Le matériel garde sa dernière couleur jusqu’à ce que vous la changiez.
 
 ## Gomme
 
-La gomme a sa propre affectation, configurée dans la section du stylet. Certaines apps de dessin passent automatiquement à leur outil gomme lorsque la gomme du stylet s’approche de la tablette. Réglez un bouton latéral sur Gomme pour que le stylet agisse comme sa gomme tant que vous maintenez le bouton, ce qui convient aux stylets sans gomme.
+L’extrémité gomme a sa propre affectation dans la section du stylet. Sur un stylet qui n’en a pas, attribuez Gomme à un bouton latéral et maintenez-le pour gommer avec la pointe.
 
 ## Exceptions par app
 
@@ -231,19 +223,13 @@ Faites glisser la vignette JSON vers le Finder pour enregistrer tous les réglag
 
 ## Zone de test
 
-La zone de test est un canevas sensible à la pression. Elle permet de vérifier rapidement que le stylet transmet correctement la pression, l’inclinaison et le mouvement.
-
-L’opacité et l’épaisseur du trait répondent toutes deux à la pression de la pointe. L’inclinaison modifie l’angle du trait lorsque le stylet la prend en charge. La sous-fenêtre ne conserve pas les traits ; la fermer ou l’effacer supprime son contenu.
-
-**Effacer** – Supprime tous les traits du canevas.
+Une zone de dessin pour vérifier que le stylet transmet la pression, l’inclinaison et le mouvement. MockTab ne conserve pas les tracés.
 
 [info]
 
 ## En direct
 
-La sous-fenêtre Infos affiche les valeurs du stylet en temps réel : position X/Y, pression, inclinaison, rotation, distance de survol et état des boutons. Ces valeurs se mettent à jour en continu tant que le stylet reste à portée.
-
-Cette vue aide à diagnostiquer un comportement inattendu, par exemple en confirmant que la pression atteint sa valeur maximale ou que la tablette transmet l’inclinaison.
+La sous-fenêtre Infos montre ce que transmet la tablette. Des jauges représentent la position, la pression, l’inclinaison, la rotation, la hauteur de survol et l’activité tactile.
 
 ## Collecter les données de l’appareil
 

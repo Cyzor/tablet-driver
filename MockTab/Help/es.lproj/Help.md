@@ -45,45 +45,37 @@ Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, 
 
 ## Curva de presión
 
-La curva traduce la presión del lápiz en presión de salida. Tirada hacia arriba, los trazos suaves se registran con más fuerza; hacia abajo, exige más presión para el mismo efecto.
-
-**Preajustes** – Lineal, Suave y Firme. Al mover un punto de la curva, cambia a una forma personalizada.
+Sube la curva para que los trazos suaves cuenten más, o bájala para necesitar más fuerza. Lineal, Suave y Firme son preajustes.
 
 ## Suavizado de presión
 
-Atenúa el ruido de presión en la parte baja del rango, que aparece como un grosor de línea irregular en trazos lentos y suaves. La presión firme no se altera.
+Iguala el grosor de línea en trazos lentos y suaves.
 
 ## Estabilización
 
-Reduce el temblor del cursor causado por el pulso de la mano. Los valores más altos suavizan más, pero añaden latencia.
+Reduce el temblor del cursor causado por el pulso, a cambio de algo de retraso.
 
 ## Distancia de doble clic
 
-Controla lo cerca que deben estar dos toques para contar como doble clic. Auméntalo si los dobles clics no se registran; bájalo si aparecen accidentales al dibujar. En Desactivado, el segundo toque debe caer más o menos donde cayó el primero.
+Lo cerca que deben caer dos toques para contar como doble clic.
 
 ## Movimiento
 
-**Invertir dirección de rotación** – Invierte el sentido de giro de un lápiz que gira, como el Art Pen. Actívalo por app en las apps que leen la rotación al revés, como Krita.
+**Invertir dirección de rotación** – Cambia si girar el cuerpo del lápiz produce un giro en el sentido de las agujas del reloj o en el contrario.
 
-**Movimiento relativo del cursor** – Cambia del modo absoluto (cada punto de la tableta corresponde a un punto fijo de la pantalla) al modo relativo (el cursor se mueve según la distancia que recorre el lápiz, como con un ratón).
+**Movimiento relativo del cursor** – Mueve el cursor como un ratón en lugar de asignar la tableta a la pantalla.
 
 ## Desplazar vista
 
-**Velocidad** – Define la velocidad a la que se desplaza el contenido mientras mantienes pulsado un botón de Desplazar vista. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del Quick Keys en el panel Botones.
-
-**Invertir dirección** – Activado: el contenido se mueve al revés que el lápiz, como una rueda de ratón clásica. Desactivado: el contenido sigue al lápiz.
-
-**Desplazamiento con inercia** – El contenido sigue deslizándose un momento al soltar el botón. Algunas apps aplican su propia inercia en ambos casos.
+**Velocidad**, **Invertir dirección** y **Desplazamiento con inercia** definen cómo se mueve el contenido mientras mantienes pulsado un botón de Desplazar vista. Asigna Desplazar vista en el panel Botones.
 
 ## Comportamiento del clic
 
-**Requerir contacto** – Marca Clic derecho, Clic central, Doble clic o Desplazar vista para que los botones laterales con esa acción solo actúen con el lápiz apoyado. Las acciones sin marcar funcionan sin tocar.
+**Requerir contacto** – Las acciones marcadas de los botones laterales esperan a que la punta toque. Las acciones de clic sin marcar también funcionan en proximidad, incluso para arrastrar.
 
-Si mantienes pulsado un botón con clic izquierdo, derecho o central mientras el lápiz flota, arrastras sin tocar la superficie. Al marcar Clic derecho o Clic central en Requerir contacto, esto se desactiva para esos botones.
+**Asistencia de levantamiento** – Evita que los trazos rápidos se corten cuando la punta se levanta un instante.
 
-**Asistencia de levantamiento** – Mantiene el clic un instante después de levantar la punta mientras el lápiz sigue moviéndose rápido, para que los trazos rápidos no se corten. Arrástralo hasta Off para desactivarlo.
-
-**Umbral de arrastre** – Exige una distancia mínima antes de que un toque pase a ser un arrastre, para que el temblor al apoyar la punta no convierta un toque ligero en arrastre. Arrástralo hasta Off para desactivarlo.
+**Umbral de arrastre** – Evita que un toque se convierta en un pequeño arrastre.
 
 [buttons]
 
@@ -125,11 +117,11 @@ Una Intuos4 con pantallas de teclas muestra por USB la acción de cada tecla a s
 
 ## Iluminación
 
-Algunos dispositivos tienen luces configurables. En el hardware con un anillo iluminado alrededor del dial, la configuración de cada modo incluye el color y el brillo que se muestran mientras ese modo está activo. Los pen displays con botones de marco retroiluminados tienen una fila **Retroiluminación de los botones**. El hardware conserva el último color hasta que lo cambies.
+Los dispositivos con anillo del dial iluminado o botones retroiluminados te permiten ajustar su color y brillo. El hardware mantiene su último color hasta que lo cambies.
 
 ## Borrador
 
-La punta del borrador tiene su propia asignación y se configura en la sección del lápiz. Algunas aplicaciones de dibujo cambian automáticamente a la herramienta de borrado cuando el borrador se acerca a la tableta. Asigna Borrador a un botón lateral para que el lápiz actúe como su punta de borrador mientras lo mantienes pulsado, útil en lápices sin borrador.
+El extremo borrador tiene su propia asignación en la sección del lápiz. En un lápiz sin borrador, asigna Borrador a un botón lateral y mantenlo pulsado para borrar con la punta.
 
 ## Overrides por app
 
@@ -229,21 +221,15 @@ Arrastra el recuadro JSON al Finder para guardar todos los ajustes, incluidos n�
 
 [scratchpad]
 
-## Scratchpad
+## Área de prueba
 
-El scratchpad es un lienzo de prueba sensible a la presión. Sirve para comprobar rápidamente que el lápiz registra bien la presión, la inclinación y el movimiento.
-
-Tanto la opacidad como el grosor del trazo responden a la presión de la punta. La inclinación afecta al ángulo del trazo cuando el lápiz admite entrada de inclinación. El panel no conserva los trazos; al cerrarlo o limpiarlo, se descarta su contenido.
-
-**Limpiar** – Elimina todos los trazos del lienzo.
+Un lienzo de prueba para comprobar que el lápiz registra presión, inclinación y movimiento. MockTab no guarda los trazos.
 
 [info]
 
-## Entrada en tiempo real
+## Entrada en vivo
 
-El panel Info muestra en tiempo real los valores del lápiz: posición X/Y, presión, inclinación, rotación, distancia de hover y estado de los botones. Estos valores se actualizan continuamente mientras el lápiz sigue al alcance de la tableta.
-
-Esta vista ayuda a diagnosticar comportamientos inesperados, por ejemplo para confirmar si la presión llega a su valor máximo o si la tableta informa de inclinación.
+El panel Info muestra lo que informa la tableta. Los indicadores representan la posición, la presión, la inclinación, la rotación, la altura de proximidad y la actividad táctil.
 
 ## Recopilar datos del dispositivo
 

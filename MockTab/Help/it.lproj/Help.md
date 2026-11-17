@@ -45,45 +45,37 @@ Ruotando la tavoletta, ogni assegnazione passa al tasto che ora ne occupa il pos
 
 ## Curva di pressione
 
-La curva fa corrispondere la pressione della penna alla pressione in uscita. Tirandola verso l’alto i tratti leggeri risultano più marcati; spingendola verso il basso serve più forza per lo stesso effetto.
-
-**Preimpostazioni** – Lineare, Morbida e Rigida. Modificando un punto della curva si passa a una forma personalizzata.
+Alza la curva perché i tratti leggeri risultino più marcati, o abbassala per richiedere più forza. Lineare, Morbida e Rigida sono preimpostazioni.
 
 ## Smussatura della pressione
 
-Attenua il rumore di pressione nella parte bassa dell’intervallo, visibile come spessore irregolare nei tratti lenti e leggeri. La pressione decisa resta invariata.
+Uniforma lo spessore nei tratti lenti e leggeri.
 
 ## Stabilizzazione
 
-Riduce il tremolio del cursore dovuto alla mano. I valori alti smussano di più, ma possono aggiungere ritardo.
+Riduce il tremolio del cursore dovuto alla mano, al prezzo di un po’ di ritardo.
 
 ## Distanza del doppio clic
 
-Stabilisce quanto devono essere vicini due tocchi per valere come doppio clic. Aumentala se i doppi clic non riescono; riducila se disegnando ne partono di involontari. Su Disattivato, il secondo tocco deve cadere più o meno dove è caduto il primo.
+Quanto vicini devono cadere due tocchi per contare come doppio clic.
 
 ## Movimento
 
-**Inverti direzione di rotazione** – Inverte il verso di rotazione di una penna che ruota sul proprio asse, come la Art Pen. Attivalo per app in quelle che leggono la rotazione al contrario, come Krita.
+**Inverti direzione di rotazione** – Scegli se ruotare il corpo della penna produce un movimento orario o antiorario.
 
-**Movimento relativo del cursore** – passa dalla modalità assoluta (ogni punto della tavoletta corrisponde a un punto fisso dello schermo) alla modalità relativa (il cursore si sposta della distanza percorsa dalla penna, come un mouse).
+**Movimento relativo del cursore** – Muove il cursore come un mouse invece di mappare la tavoletta sullo schermo.
 
 ## Sposta vista
 
-**Velocità** – Stabilisce la velocità con cui scorre il contenuto mentre tieni premuto un pulsante Sposta vista. Assegna l’azione Sposta vista a un pulsante della penna, a un ExpressKey o a un pulsante del Quick Keys nel pannello Pulsanti.
-
-**Inverti direzione** – Attivo: il contenuto si muove in senso opposto alla penna, come con una classica rotella del mouse. Disattivo: il contenuto segue la penna.
-
-**Scorrimento con inerzia** – Il contenuto prosegue brevemente per inerzia dopo il rilascio del pulsante. Alcune app lo fanno comunque per conto loro.
+**Velocità**, **Inverti direzione** e **Scorrimento con inerzia** stabiliscono come si muove il contenuto mentre tieni premuto un pulsante Sposta vista. Assegna Sposta vista nel pannello Pulsanti.
 
 ## Comportamento del clic
 
-**Richiedi contatto** – seleziona Clic destro, Clic centrale, Doppio clic o Sposta vista perché i pulsanti laterali con quell’azione agiscano solo mentre la penna tocca la superficie. Le azioni non selezionate funzionano anche con la punta sollevata.
+**Richiedi contatto** – Le azioni selezionate dei pulsanti laterali aspettano che la punta tocchi. Le azioni di clic non selezionate funzionano anche in prossimità, trascinamenti compresi.
 
-Tenendo premuto un pulsante impostato su Clic sinistro, Clic destro o Clic centrale mentre la penna è in prossimità, trascini senza toccare la superficie. Selezionando Richiedi contatto per Clic destro o Clic centrale, questo comportamento si disattiva per quei pulsanti.
+**Assistenza al sollevamento** – Evita che i tratti rapidi si interrompano quando la punta si solleva per un attimo.
 
-**Assistenza al sollevamento** – mantiene brevemente il clic dopo aver sollevato la punta mentre la penna si muove ancora velocemente, evitando interruzioni del tratto nel disegno rapido. Trascina su Disattivato per disattivarla.
-
-**Soglia di trascinamento** – richiede un movimento minimo della penna prima che un tocco diventi un trascinamento, così un tremito all’appoggio della punta non trasforma i tocchi leggeri in trascinamenti. Trascina su Disattivato per disattivarla.
+**Soglia di trascinamento** – Evita che un tocco diventi un piccolo trascinamento.
 
 [buttons]
 
@@ -125,11 +117,11 @@ Una Intuos4 con display dei tasti mostra via USB l’azione di ogni tasto accant
 
 ## Illuminazione
 
-Alcuni dispositivi hanno luci configurabili. Sull’hardware con un anello luminoso attorno alla ghiera, le impostazioni di ogni modalità comprendono il colore e la luminosità mostrati mentre quella modalità è attiva. I display interattivi con pulsanti della cornice retroilluminati hanno una riga **Retroilluminazione dei pulsanti**. L’hardware mantiene l’ultimo colore finché non lo cambi.
+Sui dispositivi con anello della ghiera illuminato o pulsanti retroilluminati puoi impostare colore e luminosità. L’hardware mantiene l’ultimo colore finché non lo cambi.
 
 ## Gomma
 
-La gomma ha una propria assegnazione, configurata nella sezione della penna. Alcune app di disegno passano automaticamente allo strumento gomma quando la gomma della penna si avvicina alla tavoletta. Imposta un pulsante laterale su Gomma per usare la penna come gomma mentre tieni premuto il pulsante: utile per le penne senza gomma.
+L’estremità gomma ha una propria assegnazione nella sezione della penna. Su una penna senza gomma, assegna Gomma a un pulsante laterale e tienilo premuto per cancellare con la punta.
 
 ## Eccezioni per app
 
@@ -231,19 +223,13 @@ Trascina il riquadro JSON nel Finder per salvare tutte le impostazioni, compresi
 
 ## Area di prova
 
-L’area di prova è un’area di disegno sensibile alla pressione. Offre un modo rapido per verificare che la penna comunichi correttamente pressione, inclinazione e movimento.
-
-Opacità e spessore del tratto rispondono entrambi alla pressione della punta. L’inclinazione cambia l’angolo del tratto quando la penna la supporta. Il pannello non conserva i tratti; chiudendolo o cancellandolo il contenuto va perso.
-
-**Cancella** – Rimuove tutti i tratti dall’area.
+Un’area di prova per verificare che la penna registri pressione, inclinazione e movimento. MockTab non conserva i tratti.
 
 [info]
 
 ## In tempo reale
 
-Il pannello Info mostra in tempo reale i valori della penna: posizione X/Y, pressione, inclinazione, rotazione, distanza in prossimità e stato dei pulsanti. I valori si aggiornano di continuo finché la penna resta a portata.
-
-Questa vista aiuta a diagnosticare comportamenti inattesi, per esempio confermando se la pressione raggiunge il valore massimo o se la tavoletta comunica l’inclinazione.
+Il pannello Info mostra cosa comunica la tavoletta. Gli indicatori rappresentano posizione, pressione, inclinazione, rotazione, altezza in prossimità e attività touch.
 
 ## Raccogli dati del dispositivo
 

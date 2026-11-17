@@ -94,7 +94,7 @@ struct PenFeelView: View {
                         currentIcon: settings.invertRotation ? "arrow.counterclockwise" : "arrow.clockwise",
                         current: settings.invertRotation ? " Counter-clockwise." : " Clockwise.",
                         help: tabletHasTurningPen
-                            ? "Reverses the pen's twist direction. Turn it on per app for apps that read rotation backwards, such as Krita."
+                            ? "Swaps clockwise and counter-clockwise for barrel rotation. Set it per app with the override bar above."
                             : "Works with pens that rotate, such as the Art Pen. Available once one is used on this tablet.")
                     .disabled(!tabletHasTurningPen)
                 }

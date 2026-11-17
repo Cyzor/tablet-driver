@@ -45,45 +45,37 @@ Turning the tablet moves each assignment to the key now in its place, in every p
 
 ## Pressure Curve
 
-The curve maps pen pressure to output pressure. Pulling it up makes light strokes register heavier; pushing it down takes more force for the same effect.
-
-**Presets** – Linear, Soft, and Firm. Adjusting a curve point switches to a custom shape.
+Pull the curve up to make light strokes heavier, or down to need more force. Linear, Soft, and Firm are presets.
 
 ## Pressure Smoothing
 
-Dampens pressure noise near the low end, which shows up as uneven line width on slow, light strokes. Firm pressure is unaffected.
+Evens out line width in slow, light strokes.
 
 ## Steadiness
 
-Reduces cursor wobble from hand tremor. Higher values smooth more aggressively but may add input lag.
+Reduces cursor wobble from hand tremor, at the cost of some lag.
 
 ## Double-Click Distance
 
-Sets how close two taps must be to count as a double-click. Raise it if double-clicks fail; lower it if drawing triggers accidental ones. At Off, the second tap must land about where the first did.
+How close two taps must land to count as a double-click.
 
 ## Movement
 
-**Invert Rotation Direction** – Reverses the twist direction of a pen that rotates, such as the Art Pen. Turn it on per app for apps that read rotation backwards, such as Krita.
+**Invert Rotation Direction** – Change barrel rotation to produce clockwise or counter-clockwise motion.
 
-**Relative Cursor Movement** – switches from absolute mode (each tablet point maps to a fixed screen point) to relative mode (the cursor moves by the distance the pen travels, like a mouse).
+**Relative Cursor Movement** – Moves the cursor like a mouse instead of mapping the tablet to the screen.
 
 ## Pan View
 
-**Speed** – Sets how fast content pans while you hold a Pan View button. Assign the Pan View action to any pen barrel, express key, or Quick Keys button in the Buttons pane.
-
-**Reverse Direction** – On: content moves opposite to the pen, like a conventional mouse wheel. Off: content follows the pen.
-
-**Momentum Scrolling** – Content coasts briefly after you release the button. Some apps coast on their own either way.
+**Speed**, **Reverse Direction**, and **Momentum Scrolling** set how content moves while you hold a Pan View button. Assign Pan View in the Buttons pane.
 
 ## Click Behavior
 
-**Require Contact** – check Right Click, Middle Click, Double Click, or Pan View to make side buttons with that action engage only while the pen touches the surface. Unchecked actions work while hovering.
+**Require Contact** – Checked side-button actions wait for the tip to touch. Unchecked click actions also work while hovering, including drags.
 
-Holding a button set to Left, Right, or Middle Click while the pen hovers drags without touching the surface. Checking Require Contact for Right Click or Middle Click turns this off for those buttons.
+**Tip-up Assist** – Keeps fast strokes from breaking when the tip briefly lifts.
 
-**Tip-up Assist** – holds the click briefly after the tip lifts while the pen is still moving fast, preventing stroke breaks in quick drawing. Drag to Off to disable.
-
-**Drag Threshold** – requires a minimum pen movement before a tap becomes a drag, so tremor at tip-down doesn't turn light taps into drags. Drag to Off to disable.
+**Drag Threshold** – Keeps a tap from turning into a small drag.
 
 [buttons]
 
@@ -125,11 +117,11 @@ An Intuos4 with key displays shows each key's action beside it over USB, and the
 
 ## Lighting
 
-Some devices have configurable lights. On hardware with a lit dial ring, each mode's settings include the color and brightness shown while that mode is active. Pen displays with backlit bezel buttons have a **Button Backlight** row. The hardware keeps its last color until you change it.
+Devices with a lit dial ring or backlit buttons let you set their color and brightness. The hardware keeps its last color until you change it.
 
 ## Eraser
 
-The eraser tip has its own binding, configured in the pen section. Some drawing apps switch to their eraser tool automatically when the eraser end comes near the tablet. Set a side button to Eraser to use the pen as its eraser end while you hold the button, which suits pens without an eraser.
+The eraser end has its own assignment in the pen section. On a pen without one, set a side button to Eraser and hold it to erase with the tip.
 
 ## Per-App Overrides
 
@@ -231,19 +223,13 @@ Drag the JSON tile to the Finder to save all settings, including serial numbers 
 
 ## Scratchpad
 
-The scratchpad is a pressure-sensitive test canvas. It provides a quick way to verify that the pen registers pressure, tilt, and motion correctly.
-
-Stroke opacity and width both respond to tip pressure. Tilt affects the stroke angle when the pen supports tilt input. The pane does not retain strokes; closing or clearing the pane discards its contents.
-
-**Clear** – Removes all strokes from the canvas.
+A test canvas for checking that the pen registers pressure, tilt, and motion. MockTab doesn't save strokes.
 
 [info]
 
 ## Live Input
 
-The Info pane displays real-time values from the pen: X/Y position, pressure, tilt, rotation, hover distance, and button state. These values update continuously while the pen remains in range.
-
-This view helps diagnose unexpected behavior, for example by confirming whether pressure reaches its maximum value or whether the tablet reports tilt.
+The Info pane shows what the tablet reports. Gauges represent position, pressure, tilt, rotation, hover height, and touch activity.
 
 ## Collect Device Data
 

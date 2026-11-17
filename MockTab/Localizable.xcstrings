@@ -17286,7 +17286,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Liveeingabe"
+            "value" : "Live-Eingabe"
           }
         },
         "en" : {
@@ -26043,41 +26043,6 @@
         }
       }
     },
-    "Reverses the pen's twist direction. Turn it on per app for apps that read rotation backwards, such as Krita." : {
-      "comment" : "Tooltip on the Invert Rotation Direction switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kehrt die Drehrichtung des Stifts um. Schalte es pro App ein, wenn eine App die Drehung falsch herum liest, etwa Krita."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invierte el sentido de giro del lápiz. Actívalo por app en las apps que leen la rotación al revés, como Krita."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inverse le sens de rotation du stylet sur son axe. Activez-le par app pour celles qui lisent la rotation à l’envers, comme Krita."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inverte il verso di rotazione della penna sul suo asse. Attivalo per app in quelle che leggono la rotazione al contrario, come Krita."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペンのひねる方向を反転します。Krita など、回転を逆に読み取るアプリでは、アプリごとにオンにしてください。"
-          }
-        }
-      }
-    },
     "Review or turn off MockTab's permission to move the pointer and press keys." : {
       "comment" : "Tooltip on Open System Settings button for a granted permission",
       "localizations" : {
@@ -30383,6 +30348,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "スタイラスの種類"
+          }
+        }
+      }
+    },
+    "Swaps clockwise and counter-clockwise for barrel rotation. Set it per app with the override bar above." : {
+      "comment" : "Tooltip on the Invert Rotation Direction switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertauscht bei der Schaftdrehung Uhrzeigersinn und Gegenuhrzeigersinn. Pro App über die Leiste oben einstellbar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intercambia el sentido horario y antihorario del giro del cuerpo del lápiz. Ajústalo por app con la barra de excepciones de arriba."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inverse le sens horaire et antihoraire de la rotation du corps du stylet. Réglez-le par app avec la barre d’exceptions ci-dessus."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scambia senso orario e antiorario nella rotazione del corpo della penna. Impostalo per app con la barra delle eccezioni qui sopra."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "軸の回転の時計回りと反時計回りを入れ替えます。上のアプリ別設定バーでアプリごとに設定できます。"
           }
         }
       }
