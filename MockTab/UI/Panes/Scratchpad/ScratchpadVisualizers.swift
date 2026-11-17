@@ -13,18 +13,29 @@ import TabletKit
 /// Isolation boundary for the live-touch stream: observes the publisher so
 /// each ~30 Hz contact frame re-evaluates only this wrapper (and redraws the
 /// Equatable-gated canvas when contacts actually changed) instead of the
-/// whole Scratchpad pane.
+/// whole Scratchpad pane. It shows only its own tablet's fingers, and only
+/// in the front window; others hold still apart from clearing on a lift.
 struct TouchVisualizer: View {
-    @ObservedObject var liveTouch: LiveTouchPublisher
+    let liveTouch: LiveTouchPublisher
+    /// The window's tablet; nil accepts any.
+    let source: ObjectIdentifier?
     let maxContacts: Int
     let orientation: TabletOrientation
+    @State private var contacts: [TouchContact] = []
+    @Environment(\.controlActiveState) private var controlActiveState
 
     var body: some View {
-        TouchContactsCanvas(contacts: liveTouch.contacts, maxContacts: maxContacts, orientation: orientation)
+        TouchContactsCanvas(contacts: contacts, maxContacts: maxContacts, orientation: orientation)
             .accessibilityElement()
             .accessibilityAddTraits(.isStaticText)
             .accessibilityLabel(Text("Touch contacts", comment: "VoiceOver label for the Scratchpad touch visualizer"))
-            .accessibilityValue(Text(liveTouch.contacts.count, format: .number))
+            .accessibilityValue(Text(contacts.count, format: .number))
+            .onReceive(liveTouch.$contacts) { new in
+                guard new.isEmpty
+                    || (controlActiveState == .key && (source == nil || liveTouch.source == source))
+                else { return }
+                contacts = new
+            }
     }
 }
 
@@ -55,6 +66,8 @@ struct TiltVisualizerCanvas: View {
     /// state (tip pressure) re-ran the parent body, i.e. only on fresh
     /// surface contact, never during pure hover. Matches InfoView's pattern.
     @State private var livePointTick = 0
+    /// Only the front window follows the pen; others recenter when it leaves.
+    @Environment(\.controlActiveState) private var controlActiveState
 
     var body: some View {
         let _ = BodyCounter.note("TiltCanvas")
@@ -80,7 +93,10 @@ struct TiltVisualizerCanvas: View {
             .onReceive(
                 tabletManager.activeContext?.livePointPublisher.eraseToAnyPublisher()
                     ?? Empty().eraseToAnyPublisher()
-            ) { _ in livePointTick &+= 1 }
+            ) { point in
+                guard controlActiveState == .key || point?.inProximity != true else { return }
+                livePointTick &+= 1
+            }
     }
 
     private func quantize(_ value: Double) -> Double {

@@ -20,6 +20,9 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 /// main-thread dispatch entirely.
 final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // split as each property notes
     @MainActor @Published var contacts: [TouchContact] = []
+    /// The tablet `contacts` came from, set just before them, so a view for
+    /// another tablet can ignore them.
+    @MainActor var source: ObjectIdentifier?
 
     /// HID-thread reads, main-thread writes, behind a lock.
     var isPublishingEnabled: Bool {
@@ -1271,7 +1274,9 @@ final class TabletManager: ObservableObject {
             let elapsed = now - publisher.lastPublishTime
             if !contacts.isEmpty && elapsed < LiveTouchPublisher.publishInterval { return }
             publisher.lastPublishTime = now
+            let source = ObjectIdentifier(context)
             DispatchQueue.main.async {
+                publisher.source = source
                 publisher.contacts = contacts
             }
         }

@@ -39,12 +39,12 @@ struct LiveInputSectionContent: View {
 
     @State private var isVisible = false
     @State private var touchViewer = UUID()
-    @State private var isAppActive = NSApp.isActive
+    /// Only the front window follows the pen and fingers; others hold
+    /// still, apart from going quiet when the pen leaves.
+    @Environment(\.controlActiveState) private var controlActiveState
 
-    /// Touch frames reach the window only while this section shows, as in
-    /// the Scratchpad.
     private func updateLiveTouchGate() {
-        liveTouch.setShowing(isVisible && isAppActive, for: touchViewer)
+        liveTouch.setShowing(isVisible && controlActiveState == .key, for: touchViewer)
     }
 
     var body: some View {
@@ -82,12 +82,14 @@ struct LiveInputSectionContent: View {
                     connected: c.isConnected)
             },
             orientation: orientation,
-            liveTouch: spec?.hasFingerTouch == true ? liveTouch : nil
+            liveTouch: spec?.hasFingerTouch == true ? liveTouch : nil,
+            touchSource: deviceContext.map(ObjectIdentifier.init)
         )
         .onReceive(
             deviceContext?.livePointPublisher.eraseToAnyPublisher()
                 ?? Empty().eraseToAnyPublisher()
         ) { point in
+            guard controlActiveState == .key || point?.inProximity != true else { return }
             marks.receive(point)
             let now = ProcessInfo.processInfo.systemUptime
             let edge = (point?.inProximity == true) != (spokenPoint?.inProximity == true)
@@ -116,13 +118,14 @@ struct LiveInputSectionContent: View {
         ) { _ in livePointTick &+= 1 }
         .onAppear { isVisible = true; updateLiveTouchGate() }
         .onDisappear { isVisible = false; updateLiveTouchGate() }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            isAppActive = true
+        .onChange(of: controlActiveState) { state in
             updateLiveTouchGate()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-            isAppActive = false
-            updateLiveTouchGate()
+            // Catch up with whatever happened while another window was in front.
+            guard state == .key else { return }
+            let point = deviceContext?.livePoint
+            marks.receive(point)
+            spokenPoint = point
+            lastSpokenAt = ProcessInfo.processInfo.systemUptime
         }
     }
 }
@@ -149,6 +152,8 @@ private struct LiveInputView: View {
     var orientation: TabletOrientation = .landscape
     /// Nil for a tablet without finger touch.
     var liveTouch: LiveTouchPublisher?
+    /// The tablet whose fingers the touch gauge shows; nil accepts any.
+    var touchSource: ObjectIdentifier?
 
     // MARK: - Gauges
     //
@@ -218,7 +223,7 @@ private struct LiveInputView: View {
                 Self.gaugeFrame.stroke(Self.outline, lineWidth: 1.5)
             }
             if let liveTouch {
-                TouchGauge(liveTouch: liveTouch, orientation: orientation) { label, spoken, drawing in
+                TouchGauge(liveTouch: liveTouch, source: touchSource, orientation: orientation) { label, spoken, drawing in
                     gauge(label: label, spokenValue: spoken) { drawing }
                 }
             }
@@ -407,19 +412,23 @@ private struct LiveInputView: View {
 
 /// A dot for each finger on the surface, placed as the fingers sit relative
 /// to each other: the Scratchpad's touch view in plain form. It observes the
-/// touch stream itself, so a touch frame redraws only this gauge. `framed`
-/// wraps the drawing in the row's shared frame and caption.
+/// touch stream itself, so a touch frame redraws only this gauge, and only
+/// for its own tablet in the front window. `framed` wraps the drawing in the
+/// row's shared frame and caption.
 private struct TouchGauge<Framed: View>: View {
-    @ObservedObject var liveTouch: LiveTouchPublisher
+    let liveTouch: LiveTouchPublisher
+    let source: ObjectIdentifier?
     let orientation: TabletOrientation
     let framed: (_ label: String, _ spokenValue: String, _ drawing: AnyView) -> Framed
+    @State private var contacts: [TouchContact] = []
+    @Environment(\.controlActiveState) private var controlActiveState
 
     var body: some View {
-        let spots = touchContactLayout(liveTouch.contacts, orientation: orientation)
+        let spots = touchContactLayout(contacts, orientation: orientation)
         let travel = LiveInputView.gaugeSide - 14
         framed(
             String(localized: "Touch"),
-            liveTouch.contacts.count.formatted(),
+            contacts.count.formatted(),
             AnyView(ZStack {
                 LiveInputView.gaugeFrame.stroke(LiveInputView.outline, lineWidth: 1.5)
                 ForEach(spots.indices, id: \.self) { i in
@@ -429,6 +438,12 @@ private struct TouchGauge<Framed: View>: View {
                 }
             })
         )
+        .onReceive(liveTouch.$contacts) { new in
+            guard new.isEmpty
+                || (controlActiveState == .key && (source == nil || liveTouch.source == source))
+            else { return }
+            contacts = new
+        }
     }
 }
 

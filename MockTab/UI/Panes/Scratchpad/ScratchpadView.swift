@@ -46,13 +46,12 @@ struct ScratchpadView: View {
     @State private var resetViewID = 0
     @State private var isViewMoved = false
 
-    /// Tracks whether this view is on-screen AND the app is frontmost.
-    /// Used to gate the live-touch publish — when either is false, the
-    /// HID-thread closure skips dispatch entirely, so a palm resting on
-    /// the tablet costs nothing while the user is in another tab or app.
+    /// Live touch reaches this view only while it shows in the front
+    /// window; with no such viewer anywhere, the HID-thread closure skips
+    /// dispatch, so a resting palm costs nothing in another tab, window, or app.
     @State private var isVisible = false
     @State private var touchViewer = UUID()
-    @State private var isAppActive = NSApp.isActive
+    @Environment(\.controlActiveState) private var controlActiveState
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -79,14 +78,7 @@ struct ScratchpadView: View {
             isVisible = false
             updateLiveTouchGate()
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            isAppActive = true
-            updateLiveTouchGate()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
-            isAppActive = false
-            updateLiveTouchGate()
-        }
+        .onChange(of: controlActiveState) { _ in updateLiveTouchGate() }
         .onChange(of: settings.touchEnabled) { enabled in
             // The HID closure stops publishing immediately when touch is
             // disabled, but the previously displayed contacts would otherwise
@@ -96,7 +88,7 @@ struct ScratchpadView: View {
     }
 
     private func updateLiveTouchGate() {
-        liveTouch.setShowing(isVisible && isAppActive, for: touchViewer)
+        liveTouch.setShowing(isVisible && controlActiveState == .key, for: touchViewer)
     }
 
     private var mainContent: some View {
@@ -224,6 +216,7 @@ struct ScratchpadView: View {
 
                     TouchVisualizer(
                         liveTouch: liveTouch,
+                        source: tabletManager.context(forKey: instanceKey).map(ObjectIdentifier.init),
                         maxContacts: spec?.maxTouchContacts ?? 10,
                         orientation: settings.tabletOrientation
                     )
