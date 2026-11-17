@@ -151,7 +151,7 @@ struct TouchView: View {
                 )
                 .disabled(!settings.touchEnabled)
                 .opacity(settings.touchEnabled ? 1 : 0.5)
-                .help("Multiplier for cursor motion from finger drag. At 1.00, the cursor follows the natural mapping through the touch area. Raise it to move faster across the screen, or lower it for finer control.")
+                .help("At 1.00, the cursor follows the touch area's mapping. Raise it for speed, lower it for control.")
             }
         }
     }
@@ -176,7 +176,7 @@ struct TouchView: View {
                     get: { settings.pinchZoomEnabled },
                     set: { settings.pinchZoomEnabled = $0 }),
                 description: "Use two fingers to pinch and zoom in or out.",
-                help: "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch, and work anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Scroll, pinch, and rotate each read the same two-finger gesture, so each can be on or off on its own.")
+                help: "Works wherever a trackpad pinch does, such as Safari, Preview, and Photoshop.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
 
@@ -187,7 +187,7 @@ struct TouchView: View {
                     get: { settings.rotateEnabled },
                     set: { settings.rotateEnabled = $0 }),
                 description: "Swivel two fingers apart to rotate.",
-                help: "Two fingers held well apart rotate as they swivel about their center, the same as a trackpad rotate gesture. Scroll, pinch, and rotate each read the same two-finger gesture, so each can be on or off on its own.")
+                help: "Works wherever a trackpad rotate does.")
             .disabled(!settings.touchEnabled)
             .opacity(settings.touchEnabled ? 1 : 0.5)
 

@@ -58,7 +58,7 @@ struct PenFeelView: View {
                     caption: "Reduces line-width variation from sensor noise at light pressure."
                 )
                 .help(
-                    "Damps pressure noise near the low end of the sensor's range, which shows most as uneven line width on slow, light strokes. Firm pressure passes through unchanged.")
+                    "Shows most in slow, light strokes. Firm pressure passes through unchanged.")
             }
 
             Section("Steadiness") {
@@ -70,7 +70,7 @@ struct PenFeelView: View {
                     caption: "Higher values add lag and reduce precision during fast motion."
                 )
                 .help(
-                    "Reduces cursor wobble and makes clicks and taps steadier. Higher values smooth more aggressively but add input lag and reduce precision during fast motion.")
+                    "Steadies the cursor, clicks, and taps.")
             }
 
             Section("Double-Click Distance") {
@@ -120,7 +120,7 @@ struct PenFeelView: View {
                         "How fast content pans while pressing a Pan View button."
                 )
                 .help(
-                    "Multiplies pen motion while you hold Pan View. At 1.00, content pans one screen point for each point of pen travel, and higher values pan further. Assign the Pan View action to any pen barrel, express key, or Quick Keys button in the Buttons pane.")
+                    "At 1.00, content moves as far as the pen. Assign Pan View to a button in the Buttons pane.")
 
                 DescribedToggle(
                     "Reverse Direction",
@@ -128,19 +128,19 @@ struct PenFeelView: View {
                     description: tool.panScrollReverse
                         ? "Content moves opposite the pen."
                         : "Content follows the pen.",
-                    help: "When on, content moves opposite to the pen while you hold Pan View, like a classic mouse wheel. When off, which is the default, the pen drags content along with it.")
+                    help: "Like a classic mouse wheel.")
 
                 DescribedToggle(
                     "Momentum Scrolling",
                     isOn: panScrollMomentumBinding,
                     description: "Inertia scrolling. Compatibility varies by app.",
-                    help: "When on, Pan View keeps coasting after you let go in apps with scroll views. It's off by default; turn it on per app with the override bar above to get momentum only where it works.")
+                    help: "Pan View keeps coasting after you let go. Turn it on only for apps where it works, with the override bar above.")
             }
 
             Section("Click Behavior") {
                 requireContactRow
                     .help(
-                        "A side button with a checked action does nothing while hovering. Touching the tip starts the action, and lifting the tip ends it. Unchecked actions start as soon as you press the button. Other actions, such as keystrokes and modifiers, always act on press.")
+                        "Checked actions wait for the tip to touch and end when it lifts. Others act as soon as you press the button.")
 
                 SettingSliderRow(
                     "Tip-up Assist",
@@ -152,7 +152,7 @@ struct PenFeelView: View {
                         "Prevents accidental stroke movement when lifting pen."
                 )
                 .help(
-                    "Holds the pen click open for this long after the tip lifts, if you're still moving quickly. This helps prevent unintended stroke breaks during fast drawing. Drag to Off to disable.")
+                    "Holds the click this long after the tip lifts during fast strokes, so they don't break. Drag to Off to disable.")
 
                 SettingSliderRow(
                     "Drag Threshold",
@@ -164,7 +164,7 @@ struct PenFeelView: View {
                         "Movement before a tap becomes a drag."
                 )
                 .help(
-                    "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable.")
+                    "Absorbs tremor and pressure jitter as the tip touches down. Drag to Off to disable.")
             }
         }
     }

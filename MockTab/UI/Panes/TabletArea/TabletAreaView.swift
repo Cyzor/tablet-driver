@@ -203,7 +203,7 @@ struct TabletAreaView: View {
                         // uses checkboxes for inline options like this.
                         Toggle("Proportional mapping", isOn: proportionalMappingBinding)
                             .toggleStyle(.checkbox)
-                            .help("Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed.")
+                            .help("Matches the tablet's proportions to the screen's, so drawing keeps its shape.")
                         
                         Spacer()
 
@@ -211,7 +211,7 @@ struct TabletAreaView: View {
                             .buttonStyle(.bordered)
                             .appControlSize(.small)
                             .disabled(screenAreaAspect == nil)
-                            .help("Make the active area the screen area's shape, as large as the tablet allows, so the cursor isn't stretched.")
+                            .help("Make the active area the screen area's shape, as large as the tablet allows, so drawing keeps its shape.")
 
                         Button("Reset to Full Area") {
                             let snap = TabletSettings.AreaSnapshot(

@@ -171,7 +171,6 @@ struct ProfilesView: View {
                     .appControlSize(.small)
                     .keyboardShortcut(.cancelAction)
                     .fixedSize()
-                    .help("Cancel creating a new profile")
                 }
             } else {
                 Button {

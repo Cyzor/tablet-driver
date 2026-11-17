@@ -334,256 +334,6 @@
         }
       }
     },
-    "Downloading MockTab %@…" : {
-      "comment" : "Updates section title while an update downloads",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ wird geladen …"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Descargando MockTab %@…"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Téléchargement de MockTab %@…"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Download di MockTab %@…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ をダウンロード中…"
-          }
-        }
-      }
-    },
-    "MockTab %@ Is Available" : {
-      "comment" : "Status menu item: an update was found; opens the Info tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ ist verfügbar"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ está disponible"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ est disponible"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ è disponibile"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ が利用可能です"
-          }
-        }
-      }
-    },
-    "MockTab %@ Is Ready" : {
-      "comment" : "Status menu item: a downloaded update waits to install; opens the Info tab",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ ist bereit"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ está listo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ est prêt"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ è pronto"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ の準備ができました"
-          }
-        }
-      }
-    },
-    "MockTab, update available" : {
-      "comment" : "VoiceOver label for the menu bar icon when an update is waiting",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab, Update verfügbar"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab, actualización disponible"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab, mise à jour disponible"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab, aggiornamento disponibile"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab、アップデートあり"
-          }
-        }
-      }
-    },
-    "Saves everything, including serial numbers, app names, and button assignments." : {
-      "comment" : "Save panel message for exporting a backup; it is complete, so sharing it shares these",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Speichert alles, auch Seriennummern, App-Namen und Tastenbelegungen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guarda todo, incluidos números de serie, nombres de apps y asignaciones de botones."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enregistre tout, y compris les numéros de série, les noms d’apps et les affectations de boutons."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salva tutto, compresi numeri di serie, nomi delle app e assegnazioni dei pulsanti."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "シリアル番号、App名、ボタン割り当てを含め、すべてを保存します。"
-          }
-        }
-      }
-    },
-    "Verifying MockTab %@…" : {
-      "comment" : "Updates section title while a download is verified",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ wird überprüft …"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verificando MockTab %@…"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vérification de MockTab %@…"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifica di MockTab %@…"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MockTab %@ を検証中…"
-          }
-        }
-      }
-    },
-    "—" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "—"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "—"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "—"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "—"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "—"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "—"
-          }
-        }
-      }
-    },
     ", " : {
       "comment" : "List separator",
       "localizations" : {
@@ -649,7 +399,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "« Autrefois, » dit enfin la Fausse-Tortue, « j’étais une vraie Tortue. »"
+            "value" : "« Autrefois, dit enfin la Fausse-Tortue, j’étais une vraie Tortue. »"
           }
         },
         "it" : {
@@ -703,88 +453,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "(充電中)"
-          }
-        }
-      }
-    },
-    "(In Range)" : {
-      "comment" : "Hover proximity state",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Im Bereich)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "(In Range)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(En rango)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(À portée)"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(A portata)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(範囲内)"
-          }
-        }
-      }
-    },
-    "(Out)" : {
-      "comment" : "Hover proximity state — out of range",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Außerhalb)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "(Out)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Fuera de rango)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Hors de portée)"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Fuori portata)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(範囲外)"
           }
         }
       }
@@ -924,17 +592,6 @@
           }
         }
       }
-    },
-    "%@ · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ · %2$@"
-          }
-        }
-      },
-      "shouldTranslate" : false
     },
     "%@ (Eraser)" : {
       "comment" : "Tool name for a pen's eraser end; the argument is the pen's name",
@@ -1382,46 +1039,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld"
-          }
-        }
-      }
-    },
-    "%lld   %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld   %2$@"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld   %2$@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld   %2$@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld   %2$@"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld   %2$@"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld   %2$@"
           }
         }
       }
@@ -2382,40 +1999,6 @@
         }
       }
     },
-    "0" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "0"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "0"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "0"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "0"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "0"
-          }
-        }
-      }
-    },
     "0x02" : {
       "localizations" : {
         "de" : {
@@ -2929,41 +2512,6 @@
         }
       }
     },
-    "A side button with a checked action does nothing while hovering. Touching the tip starts the action, and lifting the tip ends it. Unchecked actions start as soon as you press the button. Other actions, such as keystrokes and modifiers, always act on press." : {
-      "comment" : "Tooltip for Require Contact in the Pen Feel pane",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein Seitenknopf mit markierter Aktion bleibt beim Schweben wirkungslos. Aufsetzen der Spitze startet die Aktion, Abheben beendet sie. Nicht markierte Aktionen starten sofort beim Drücken. Andere Aktionen wie Tastenkürzel und Sondertasten wirken immer sofort."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un botón lateral con una acción marcada no hace nada mientras el lápiz flota. Al tocar con la punta empieza la acción y al levantarla termina. Las acciones sin marcar empiezan en cuanto pulsas el botón. Las demás acciones, como los atajos y las teclas modificadoras, siempre actúan al pulsar."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un bouton latéral dont l’action est cochée ne fait rien en survol. Poser la pointe lance l’action, la lever y met fin. Les actions non cochées démarrent dès que vous appuyez sur le bouton. Les autres actions, comme les touches et les modificateurs, agissent toujours à l’appui."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un pulsante laterale con un’azione selezionata non fa nulla finché la punta resta sollevata. Appoggiare la punta avvia l’azione, sollevarla la termina. Le azioni non selezionate partono appena premi il pulsante. Le altre azioni, come tasti e modificatori, si attivano sempre appena premi il pulsante."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "チェックした操作のサイドボタンは、ホバー中は何もしません。ペン先が触れると操作が始まり、離すと終わります。チェックしていない操作は、ボタンを押した瞬間に始まります。キー操作や修飾キーなどその他の操作は、常に押した瞬間に動作します。"
-          }
-        }
-      }
-    },
     "About" : {
       "comment" : "Help section title",
       "localizations" : {
@@ -3071,6 +2619,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "MockTabについて"
+          }
+        }
+      }
+    },
+    "Absorbs tremor and pressure jitter as the tip touches down. Drag to Off to disable." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fängt Handzittern und Druckschwankungen beim Aufsetzen der Spitze ab. Zum Deaktivieren auf Aus ziehen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Absorbe el temblor y las fluctuaciones de presión al apoyar la punta. Arrastra a Desactivado para desactivarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Absorbe les tremblements et les variations de pression quand la pointe se pose. Faites glisser sur Désactivé pour le désactiver."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Assorbe tremiti e sbalzi di pressione quando la punta si appoggia. Trascina su Disattivato per disattivarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペン先を下ろした瞬間の手ぶれや筆圧の揺れを吸収します。無効にするには「オフ」までドラッグしてください。"
           }
         }
       }
@@ -3871,37 +3453,37 @@
         }
       }
     },
-    "Allow MockTab to read your tablet. Without this, the tablet is detected but sends nothing." : {
+    "Allow MockTab to read your tablet. Without this, MockTab sees the tablet but none of its input." : {
       "comment" : "Tooltip on Grant button for Input Monitoring permission",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab erlauben, dein Grafiktablett zu lesen. Ohne diese Berechtigung wird es erkannt, sendet aber nichts."
+            "value" : "MockTab erlauben, dein Grafiktablett zu lesen. Ohne diese Berechtigung sieht MockTab das Grafiktablett, aber keine Eingaben."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Permitir que MockTab lea la tableta. Sin esto, la tableta se detecta pero no envía nada."
+            "value" : "Permitir que MockTab lea la tableta. Sin esto, MockTab ve la tableta pero no recibe nada de ella."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autorisez MockTab à lire votre tablette. Sans cela, la tablette est détectée mais n’envoie rien."
+            "value" : "Autorisez MockTab à lire votre tablette. Sans cela, MockTab voit la tablette mais rien de ce qu’elle envoie."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Consenti a MockTab di leggere la tavoletta. Senza questo, la tavoletta viene rilevata ma non invia nulla."
+            "value" : "Consenti a MockTab di leggere la tavoletta. Senza questo, MockTab vede la tavoletta ma nessun suo input."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTabがタブレットを読み取れるようにします。これがないと、タブレットは検出されても何も送信しません。"
+            "value" : "MockTabがタブレットを読み取れるようにします。これがないと、MockTabはタブレットを認識しても入力を受け取れません。"
           }
         }
       }
@@ -4316,6 +3898,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ショートカットの代わりに、クリック、修飾キー、ディスプレイ切り替えなどの操作を割り当てます。"
+          }
+        }
+      }
+    },
+    "At 1.00, content moves as far as the pen. Assign Pan View to a button in the Buttons pane." : {
+      "comment" : "Tooltip on the Pan View speed slider",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei 1,00 bewegt sich der Inhalt so weit wie der Stift. Weise „Ansicht schwenken“ im Tasten-Bereich einer Taste zu."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con 1,00, el contenido se mueve lo mismo que el lápiz. Asigna Desplazar vista a un botón en el panel Botones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À 1,00, le contenu se déplace autant que le stylet. Attribuez Déplacer la vue à un bouton dans la sous-fenêtre Boutons."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A 1,00 il contenuto si sposta quanto la penna. Assegna Sposta vista a un pulsante nel pannello Pulsanti."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1.00 では、コンテンツがペンと同じだけ動きます。「ビューをパン」はボタンパネルでボタンに割り当てます。"
+          }
+        }
+      }
+    },
+    "At 1.00, the cursor follows the touch area's mapping. Raise it for speed, lower it for control." : {
+      "comment" : "Tooltip on the touch Cursor Speed slider",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei 1,00 folgt der Cursor der Abbildung der Touch-Fläche. Höher für mehr Tempo, niedriger für mehr Kontrolle."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con 1,00, el cursor sigue el mapeo del área táctil. Súbelo para ir más rápido o bájalo para más control."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À 1,00, le curseur suit la correspondance de la zone tactile. Augmentez-le pour la vitesse, réduisez-le pour la précision."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A 1,00 il cursore segue la mappatura dell’area touch. Aumentalo per andare più veloce, riducilo per più controllo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1.00 では、カーソルがタッチエリアの対応どおりに動きます。上げると速く、下げると細かく操作できます。"
           }
         }
       }
@@ -5927,44 +5579,37 @@
         }
       }
     },
-    "Cancel creating a new profile" : {
-      "comment" : "Label for a button that cancels the creation of a new profile.",
-      "isCommentAutoGenerated" : true,
+    "Cancels or closes in most apps" : {
+      "comment" : "Tooltip for the Escape key option in the button action menu",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neues Profil verwerfen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Cancel creating a new profile"
+            "value" : "Bricht in den meisten Apps ab oder schließt"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Descartar perfil nuevo"
+            "value" : "Cancela o cierra en la mayoría de las apps"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Annuler la création du profil"
+            "value" : "Annule ou ferme dans la plupart des apps"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Annulla la creazione del profilo"
+            "value" : "Annulla o chiude nella maggior parte delle app"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新しいプロファイルをやめる"
+            "value" : "多くのアプリでキャンセルや閉じる操作になります"
           }
         }
       }
@@ -6394,6 +6039,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "今すぐ確認"
+          }
+        }
+      }
+    },
+    "Checked actions wait for the tip to touch and end when it lifts. Others act as soon as you press the button." : {
+      "comment" : "Tooltip for Require Contact in the Pen Feel pane",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markierte Aktionen warten, bis die Spitze aufsetzt, und enden beim Abheben. Andere wirken sofort beim Drücken."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las acciones marcadas esperan a que la punta toque y terminan al levantarla. Las demás actúan en cuanto pulsas el botón."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les actions cochées attendent que la pointe se pose et s’arrêtent quand elle se lève. Les autres agissent dès que vous appuyez sur le bouton."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le azioni selezionate aspettano che la punta tocchi e terminano quando si solleva. Le altre partono appena premi il pulsante."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チェックした操作は、ペン先が触れるまで待ち、離すと終わります。それ以外はボタンを押した瞬間に動作します。"
           }
         }
       }
@@ -7137,6 +6817,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "クリックして幅を入力"
+          }
+        }
+      }
+    },
+    "Clicks twice with one press" : {
+      "comment" : "A description of the \"Double Click\" button action.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klickt zweimal mit einem Druck"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hace dos clics con una sola pulsación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique deux fois en un seul appui"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fa doppio clic con una sola pressione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1回押すと2回クリックします"
           }
         }
       }
@@ -8652,6 +8367,40 @@
         }
       }
     },
+    "Covers every ring, dial, and strip on this tablet, in every mode." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für jeden Ring, jedes Einstellrad und jeden Streifen auf diesem Grafiktablett, in jedem Modus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afecta a todos los anillos, diales y bandas de esta tableta, en todos los modos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S’applique à chaque anneau, molette et bande de cette tablette, dans tous les modes."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vale per ogni anello, ghiera e striscia di questa tavoletta, in ogni modalità."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このタブレットのすべてのリング、ダイヤル、ストリップに、どのモードでも適用されます。"
+          }
+        }
+      }
+    },
     "CPU       : Apple Silicon (arm64)" : {
       "comment" : "Diagnostic: CPU architecture",
       "localizations" : {
@@ -9601,41 +9350,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タッチリングモード切り替え"
-          }
-        }
-      }
-    },
-    "Damps pressure noise near the low end of the sensor's range, which shows most as uneven line width on slow, light strokes. Firm pressure passes through unchanged." : {
-      "comment" : "Tooltip on the Pressure Smoothing strength slider",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dämpft Druckrauschen am unteren Ende des Sensorbereichs, das sich vor allem als ungleichmäßige Strichbreite bei langsamen, leichten Strichen zeigt. Fester Druck bleibt unverändert."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Atenúa el ruido de presión en el extremo inferior del rango del sensor, que se nota sobre todo como grosor de línea desigual en trazos lentos y suaves. La presión firme no cambia."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Atténue le bruit de pression dans le bas de la plage du capteur, surtout visible comme une épaisseur de trait irrégulière sur les tracés lents et légers. Les pressions fortes restent inchangées."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Attenua il rumore di pressione nella parte bassa dell’intervallo del sensore, visibile soprattutto come spessore irregolare nei tratti lenti e leggeri. La pressione decisa passa invariata."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "センサー範囲の下限付近での筆圧ノイズを抑えます。ゆっくりとした軽いストロークで線幅がばらつく現象に最も効果があります。強い筆圧はそのまま変化しません。"
           }
         }
       }
@@ -11829,72 +11543,72 @@
         }
       }
     },
-    "Downloads and checks the update now, and installs it the next time MockTab quits." : {
+    "Downloading MockTab %@…" : {
+      "comment" : "Updates section title while an update downloads",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ wird geladen …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargando MockTab %@…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargement de MockTab %@…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download di MockTab %@…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ をダウンロード中…"
+          }
+        }
+      }
+    },
+    "Downloads the update now, so it's ready when MockTab quits." : {
       "comment" : "Tooltip on Install on Quit",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lädt und prüft das Update jetzt und installiert es beim nächsten Beenden von MockTab."
+            "value" : "Lädt das Update jetzt, damit es beim Beenden von MockTab bereitliegt."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Descarga y comprueba la actualización ahora, y la instala la próxima vez que salgas de MockTab."
+            "value" : "Descarga la actualización ahora para que esté lista al salir de MockTab."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Télécharge et vérifie la mise à jour maintenant, puis l’installe à la prochaine fermeture de MockTab."
+            "value" : "Télécharge la mise à jour maintenant, pour qu’elle soit prête à la fermeture de MockTab."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scarica e verifica l’aggiornamento ora, e lo installa alla prossima chiusura di MockTab."
+            "value" : "Scarica l’aggiornamento ora, così è pronto alla chiusura di MockTab."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アップデートを今すぐダウンロードして検証し、次に MockTab を終了したときにインストールします。"
-          }
-        }
-      }
-    },
-    "Downloads and checks the update, then quits MockTab, installs it, and opens it again. The pen pauses for about a second." : {
-      "comment" : "Tooltip on Install and Relaunch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lädt und prüft das Update, beendet MockTab, installiert es und öffnet es wieder. Der Stift pausiert etwa eine Sekunde."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Descarga y comprueba la actualización, cierra MockTab, la instala y vuelve a abrirlo. El lápiz se detiene un segundo, más o menos."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Télécharge et vérifie la mise à jour, puis quitte MockTab, l’installe et le rouvre. Le stylet s’interrompt environ une seconde."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scarica e verifica l’aggiornamento, poi chiude MockTab, lo installa e lo riapre. La penna si ferma per circa un secondo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "アップデートをダウンロードして検証し、MockTab を終了してインストールしてから再度開きます。ペンは 1 秒ほど止まります。"
+            "value" : "アップデートを今すぐダウンロードし、MockTab の終了時に備えます。"
           }
         }
       }
@@ -12952,47 +12666,6 @@
         }
       }
     },
-    "Escape key" : {
-      "comment" : "Tooltip for the Escape key option in the button action menu",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Escape-Taste"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Escape key"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tecla Escape"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touche Échap"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tasto Esc"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "エスケープキー"
-          }
-        }
-      }
-    },
     "Experimental support" : {
       "comment" : "Banner title shown when another maker's tablet is read from its own description",
       "localizations" : {
@@ -13690,40 +13363,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タブレットに合わせる"
-          }
-        }
-      }
-    },
-    "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kehrt die Richtung jedes Rings, Einstellrads und Streifens auf diesem Grafiktablett um, unabhängig vom eingestellten Modus. Aktiviere dies, wenn die Hardware entgegen deiner Erwartung läuft."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invierte la dirección de todos los anillos, diales y bandas de esta tableta, sea cual sea el modo de cada uno. Actívalo si el hardware funciona al contrario de lo que esperas."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inverse le sens de chaque anneau, molette et bande de cette tablette, quel que soit le mode. Activez-le si le matériel tourne à l’inverse de ce que vous attendez."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inverte la direzione di ogni anello, ghiera e striscia di questa tavoletta, qualunque sia la modalità. Attivalo se l’hardware gira al contrario di come ti aspetti."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "モードの設定にかかわらず、このタブレットのすべてのリング、ダイヤル、ストリップの方向を反転します。ハードウェアの動作が予想と逆の場合にオンにします。"
           }
         }
       }
@@ -15166,36 +14805,36 @@
         }
       }
     },
-    "Holds the pen click open for this long after the tip lifts, if you're still moving quickly. This helps prevent unintended stroke breaks during fast drawing. Drag to Off to disable." : {
+    "Holds the click this long after the tip lifts during fast strokes, so they don't break. Drag to Off to disable." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hält den Stiftklick nach dem Abheben der Spitze so lange offen, wenn du dich noch schnell bewegst. Das verhindert ungewollte Strichunterbrechungen beim schnellen Zeichnen. Zum Deaktivieren auf Aus ziehen."
+            "value" : "Hält den Klick bei schnellen Strichen nach dem Abheben so lange, damit sie nicht abreißen. Zum Deaktivieren auf Aus ziehen."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantiene el clic del lápiz activo durante este tiempo después de levantar la punta, si todavía te mueves rápido. Esto evita cortes de trazo no deseados al dibujar rápido. Arrastra a Desactivado para desactivarlo."
+            "value" : "Mantiene el clic este tiempo tras levantar la punta en trazos rápidos, para que no se corten. Arrastra a Desactivado para desactivarlo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Garde le clic du stylet enfoncé pendant cette durée après le lever de la pointe, si vous bougez encore vite. Cela évite les coupures de trait involontaires lors d’un dessin rapide. Faites glisser sur Désactivé pour le désactiver."
+            "value" : "Maintient le clic pendant cette durée après le lever de la pointe lors des tracés rapides, pour qu’ils ne se coupent pas. Faites glisser sur Désactivé pour le désactiver."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mantiene il clic della penna per questo tempo dopo aver sollevato la punta, se ti stai ancora muovendo velocemente. Aiuta a evitare interruzioni involontarie del tratto nel disegno rapido. Trascina su Disattivato per disattivarlo."
+            "value" : "Mantiene il clic per questo tempo dopo il sollevamento della punta nei tratti rapidi, così non si interrompono. Trascina su Disattivato per disattivarlo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ペン先を離した後も素早く動かしている場合、この時間だけクリックを保持したままにします。すばやく描画する際の意図しないストロークの途切れを防ぎます。無効にするには「オフ」までドラッグしてください。"
+            "value" : "素早いストロークでペン先が離れても、この時間だけクリックを保持して途切れを防ぎます。無効にするには「オフ」までドラッグしてください。"
           }
         }
       }
@@ -17425,6 +17064,40 @@
         }
       }
     },
+    "Like a classic mouse wheel." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie bei einem klassischen Mausrad."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como una rueda de ratón clásica."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comme une molette de souris classique."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come una classica rotella del mouse."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "従来のマウスホイールと同じです。"
+          }
+        }
+      }
+    },
     "Limit touch to part of the surface." : {
       "comment" : "Description of a section in the TouchView that explains that the touch area can only be set on certain devices.",
       "localizations" : {
@@ -17684,48 +17357,6 @@
         }
       }
     },
-    "Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed." : {
-      "comment" : "A help text for the \"Proportional mapping\" toggle.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grafiktablett-zu-Bildschirm-Verhältnis sperren, damit der Cursor nie gestreckt oder gestaucht wirkt."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Lock the tablet-to-screen mapping ratio to match your display's proportions, so the cursor never feels stretched or compressed."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bloquee la relación de asignación de tableta a pantalla para que coincida con las proporciones de su pantalla, de modo que el cursor nunca se sienta estirado o comprimido."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verrouille les proportions entre tablette et écran sur celles de votre écran, pour que le curseur ne paraisse jamais étiré ni comprimé."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Blocca le proporzioni tra tavoletta e schermo su quelle del tuo monitor, così il cursore non risulta mai allungato o compresso."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タブレット-スクリーン マッピング比率をロック して、ディスプレイの比率に一致させます。カーソルが伸びたり圧縮されたように感じることはありません。"
-          }
-        }
-      }
-    },
     "Looks like %@, but MockTab doesn't know this model yet." : {
       "comment" : "Brand guess shown above the unknown-device banner body when USB strings hint at a known tablet brand",
       "localizations" : {
@@ -17884,37 +17515,37 @@
         }
       }
     },
-    "Make the active area the screen area's shape, as large as the tablet allows, so the cursor isn't stretched." : {
+    "Make the active area the screen area's shape, as large as the tablet allows, so drawing keeps its shape." : {
       "comment" : "Tooltip for the Fit to Screen Area button",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gibt dem aktiven Bereich die Form des Bildschirmbereichs, so groß wie möglich – so wird der Zeiger nicht verzerrt."
+            "value" : "Gibt dem aktiven Bereich die Form des Bildschirmbereichs, so groß wie möglich, damit Zeichnungen ihre Form behalten."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Da al área activa la forma del área de pantalla, lo más grande posible, para que el cursor no se deforme."
+            "value" : "Da al área activa la forma del área de pantalla, lo más grande posible, para que el dibujo conserve su forma."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Donne à la zone active la forme de la zone d’écran, aussi grande que la tablette le permet, pour que le curseur ne soit pas étiré."
+            "value" : "Donne à la zone active la forme de la zone d’écran, aussi grande que la tablette le permet, pour que le dessin garde ses proportions."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dà all’area attiva la forma dell’area dello schermo, grande quanto la tavoletta consente, così il cursore non viene deformato."
+            "value" : "Dà all’area attiva la forma dell’area dello schermo, grande quanto la tavoletta consente, così il disegno mantiene le proporzioni."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アクティブ領域を画面エリアと同じ形にし、できるだけ大きくします。ポインタが歪みません。"
+            "value" : "アクティブ領域を画面エリアと同じ形にし、できるだけ大きくします。描いた形が歪みません。"
           }
         }
       }
@@ -18284,6 +17915,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "タブレット領域と一致"
+          }
+        }
+      }
+    },
+    "Matches the tablet's proportions to the screen's, so drawing keeps its shape." : {
+      "comment" : "A help text for the \"Proportional mapping\" toggle.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passt die Proportionen des Grafiktabletts an den Bildschirm an, damit Zeichnungen ihre Form behalten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajusta las proporciones de la tableta a las de la pantalla para que el dibujo conserve su forma."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aligne les proportions de la tablette sur celles de l’écran, pour que le dessin garde ses proportions."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adegua le proporzioni della tavoletta a quelle dello schermo, così il disegno mantiene la sua forma."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "タブレットの縦横比を画面に合わせ、描いた形が歪まないようにします。"
           }
         }
       }
@@ -18715,8 +18381,78 @@
         }
       }
     },
+    "MockTab %@ Is Available" : {
+      "comment" : "Status menu item: an update was found; opens the Info tab",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ ist verfügbar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ está disponible"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ est disponible"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ è disponibile"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ が利用可能です"
+          }
+        }
+      }
+    },
     "MockTab %@ is ready" : {
       "comment" : "Updates section title when an update waits for quit",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ ist bereit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ está listo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ est prêt"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ è pronto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ の準備ができました"
+          }
+        }
+      }
+    },
+    "MockTab %@ Is Ready" : {
+      "comment" : "Status menu item: a downloaded update waits to install; opens the Info tab",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -19322,6 +19058,41 @@
         }
       }
     },
+    "MockTab, update available" : {
+      "comment" : "VoiceOver label for the menu bar icon when an update is waiting",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab, Update verfügbar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab, actualización disponible"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab, mise à jour disponible"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab, aggiornamento disponibile"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab、アップデートあり"
+          }
+        }
+      }
+    },
     "mocktab.org" : {
       "comment" : "Link label: MockTab's website",
       "localizations" : {
@@ -19878,76 +19649,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "指によるドラッグ時のカーソル移動の倍率。"
-          }
-        }
-      }
-    },
-    "Multiplier for cursor motion from finger drag. At 1.00, the cursor follows the natural mapping through the touch area. Raise it to move faster across the screen, or lower it for finer control." : {
-      "comment" : "Tooltip on the touch Cursor Speed slider",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multiplikator für die Cursorbewegung beim Ziehen mit dem Finger. Bei 1,00 folgt der Cursor der natürlichen Abbildung der Touch-Fläche. Höher für schnellere Bewegung über den Bildschirm, niedriger für feinere Kontrolle."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multiplicador del movimiento del cursor al arrastrar con el dedo. Con 1,00, el cursor sigue el mapeo natural del área táctil. Súbelo para moverte más rápido por la pantalla o bájalo para un control más fino."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multiplicateur du mouvement du curseur au doigt. À 1,00, le curseur suit la correspondance naturelle de la zone tactile. Augmentez-le pour traverser l’écran plus vite, ou réduisez-le pour plus de finesse."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Moltiplicatore del movimento del cursore con il dito. A 1,00 il cursore segue la mappatura naturale dell’area touch. Aumentalo per attraversare lo schermo più in fretta, o riducilo per un controllo più fine."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "指でドラッグしたときのカーソル移動の倍率です。1.00 では、タッチエリアに自然に対応して動きます。上げると画面上を速く移動し、下げるとより細かく操作できます。"
-          }
-        }
-      }
-    },
-    "Multiplies pen motion while you hold Pan View. At 1.00, content pans one screen point for each point of pen travel, and higher values pan further. Assign the Pan View action to any pen barrel, express key, or Quick Keys button in the Buttons pane." : {
-      "comment" : "Tooltip on the Pan View speed slider",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vervielfacht die Stiftbewegung, solange du „Ansicht schwenken“ hältst. Bei 1,00 schwenkt der Inhalt einen Bildschirmpunkt pro Punkt Stiftweg, höhere Werte schwenken weiter. Weise „Ansicht schwenken“ im Tasten-Bereich einem Barrel-Knopf, einer Express-Taste oder einer Quick Keys-Taste zu."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multiplica el movimiento del lápiz mientras mantienes Desplazar vista. Con 1,00, el contenido se desplaza un punto de pantalla por cada punto de recorrido del lápiz, y los valores más altos desplazan más. Asigna la acción Desplazar vista a cualquier botón del lápiz, tecla express o botón del Quick Keys en el panel Botones."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Multiplie le mouvement du stylet tant que vous maintenez Déplacer la vue. À 1,00, le contenu se déplace d’un point d’écran par point parcouru ; les valeurs supérieures vont plus loin. Attribuez l’action Déplacer la vue à un bouton de stylet, une ExpressKey ou un bouton du Quick Keys dans la sous-fenêtre Boutons."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Moltiplica il movimento della penna mentre tieni premuto Sposta vista. A 1,00 il contenuto si sposta di un punto dello schermo per ogni punto percorso; valori più alti lo spostano di più. Assegna l’azione Sposta vista a un pulsante della penna, a un ExpressKey o a un pulsante del Quick Keys nel pannello Pulsanti."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「ビューをパン」を押している間、ペンの動きに掛ける倍率です。1.00 では、ペンの移動量1ポイントにつき画面上で1ポイントパンし、値を上げるほど大きくパンします。「ビューをパン」アクションは、ボタンパネルでペンのバレルボタン、エクスプレスキー、Quick Keys のボタンのいずれにも割り当てられます。"
           }
         }
       }
@@ -20743,7 +20444,7 @@
       }
     },
     "None" : {
-      "comment" : "Button action: no action",
+      "comment" : "No value: a button with no action, or no active profile",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -20779,47 +20480,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "なし"
-          }
-        }
-      }
-    },
-    "None (device defaults)" : {
-      "comment" : "Profile row value when no profile is active",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine (Gerätevorgaben)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "None (device defaults)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ninguno (valores pred. del dispositivo)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun (réglages par défaut)"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nessuno (default)"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "なし（デバイスのデフォルト）"
           }
         }
       }
@@ -22335,6 +21995,41 @@
         }
       }
     },
+    "Pan View keeps coasting after you let go. Turn it on only for apps where it works, with the override bar above." : {
+      "comment" : "Tooltip on the Pan View Momentum Scrolling switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Ansicht schwenken“ läuft nach dem Loslassen weiter. Schalte es über die Leiste oben nur für Apps ein, in denen es funktioniert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desplazar vista sigue deslizándose al soltar. Actívalo solo en las apps donde funcione, con la barra de excepciones de arriba."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer la vue continue sur sa lancée après le relâchement. Activez-le seulement pour les apps où il fonctionne, avec la barre d’exceptions ci-dessus."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sposta vista continua per inerzia dopo il rilascio. Attivalo solo per le app in cui funziona, con la barra delle eccezioni qui sopra."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "離した後も「ビューをパン」の動きが続きます。上のアプリ別設定バーで、効果のあるアプリだけオンにしてください。"
+          }
+        }
+      }
+    },
     "Pan View Momentum" : {
       "comment" : "Undo action name: Pan View trackpad-style momentum toggle in the Pen Feel pane",
       "localizations" : {
@@ -23547,40 +23242,6 @@
         }
       }
     },
-    "Prevents a light tap from turning into an accidental drag due to hand tremor or pressure jitter right when the tip touches down. Drag to Off to disable." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verhindert, dass ein leichter Tipp durch Handzittern oder Druckschwankungen beim Aufsetzen versehentlich zu einem Ziehen wird. Zum Deaktivieren auf Aus ziehen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Evita que un toque suave se convierta en un arrastre accidental por temblor de la mano o fluctuaciones de presión justo al apoyar la punta. Arrastra a Desactivado para desactivarlo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Évite qu’un toucher léger devienne un glissement accidentel à cause d’un tremblement de la main ou d’une pression instable au moment où la pointe se pose. Faites glisser sur Désactivé pour le désactiver."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Evita che un tocco leggero diventi un trascinamento accidentale per un tremito della mano o una pressione instabile nel momento in cui la punta si appoggia. Trascina su Disattivato per disattivarlo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ペン先を下ろした瞬間の手ぶれや筆圧の揺れによって、軽いタップが誤ってドラッグになるのを防ぎます。無効にするには「オフ」までドラッグしてください。"
-          }
-        }
-      }
-    },
     "Prevents accidental stroke movement when lifting pen." : {
       "localizations" : {
         "de" : {
@@ -24724,40 +24385,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "やり直す"
-          }
-        }
-      }
-    },
-    "Reduces cursor wobble and makes clicks and taps steadier. Higher values smooth more aggressively but add input lag and reduce precision during fast motion." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reduziert das Zittern des Cursors und macht Klicks und Tippen treffsicherer. Höhere Werte glätten stärker, erhöhen aber die Eingabeverzögerung und mindern die Präzision bei schnellen Bewegungen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reduce el temblor del cursor y hace que los clics y toques sean más estables. Los valores más altos suavizan más, pero añaden latencia de entrada y reducen la precisión en movimientos rápidos."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réduit le tremblement du curseur et stabilise les clics et les touchers. Les valeurs élevées lissent davantage, mais ajoutent du retard et réduisent la précision lors des mouvements rapides."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Riduce il tremolio del cursore e rende più stabili clic e tocchi. I valori alti smussano di più, ma aggiungono ritardo e riducono la precisione nei movimenti rapidi."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "カーソルのブレを抑え、クリックやタップが安定します。値が高いほど強く補正されますが、入力遅延が増え、素早い動きでの精度が落ちます。"
           }
         }
       }
@@ -28165,6 +27792,41 @@
         }
       }
     },
+    "Saves everything, including serial numbers, app names, and button assignments." : {
+      "comment" : "Save panel message for exporting a backup; it is complete, so sharing it shares these",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speichert alles, auch Seriennummern, App-Namen und Tastenbelegungen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda todo, incluidos números de serie, nombres de apps y asignaciones de botones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistre tout, y compris les numéros de série, les noms d’apps et les affectations de boutons."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salva tutto, compresi numeri di serie, nomi delle app e assegnazioni dei pulsanti."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "シリアル番号、App名、ボタン割り当てを含め、すべてを保存します。"
+          }
+        }
+      }
+    },
     "Scratchpad" : {
       "comment" : "Help section title\nMenu item: open Scratchpad tab\nTab name: test area for pen input",
       "localizations" : {
@@ -29283,6 +28945,41 @@
         }
       }
     },
+    "Shows most in slow, light strokes. Firm pressure passes through unchanged." : {
+      "comment" : "Tooltip on the Pressure Smoothing strength slider",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wirkt vor allem bei langsamen, leichten Strichen. Fester Druck bleibt unverändert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se nota sobre todo en trazos lentos y suaves. La presión firme pasa sin cambios."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Surtout visible sur les tracés lents et légers. Les pressions fortes passent sans changement."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si nota soprattutto nei tratti lenti e leggeri. La pressione decisa passa invariata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ゆっくりとした軽いストロークで最も効果があります。強い筆圧はそのまま通ります。"
+          }
+        }
+      }
+    },
     "Side button" : {
       "comment" : "Pen button row label: single side button",
       "localizations" : {
@@ -30343,6 +30040,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ステータス"
+          }
+        }
+      }
+    },
+    "Steadies the cursor, clicks, and taps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beruhigt Cursor, Klicks und Tippen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estabiliza el cursor, los clics y los toques."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stabilise le curseur, les clics et les touchers."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stabilizza cursore, clic e tocchi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "カーソル、クリック、タップを安定させます。"
           }
         }
       }
@@ -31633,6 +31364,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Linux Wacom Project"
+          }
+        }
+      }
+    },
+    "The pen pauses for about a second." : {
+      "comment" : "Tooltip on Install and Relaunch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Stift pausiert etwa eine Sekunde."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El lápiz se detiene un segundo, más o menos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le stylet s’interrompt environ une seconde."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La penna si ferma per circa un secondo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペンは 1 秒ほど止まります。"
           }
         }
       }
@@ -33261,41 +33027,6 @@
         }
       }
     },
-    "Two fingers held well apart rotate as they swivel about their center, the same as a trackpad rotate gesture. Scroll, pinch, and rotate each read the same two-finger gesture, so each can be on or off on its own." : {
-      "comment" : "Tooltip on the Rotate switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwei weit auseinanderliegende Finger drehen, wenn sie um ihre Mitte schwenken, genau wie die Drehgeste auf dem Trackpad. Scrollen, Zoomen und Drehen lesen jeweils dieselbe Zwei-Finger-Geste, daher lässt sich jede einzeln ein- oder ausschalten."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dos dedos bien separados giran al rotar alrededor de su centro, igual que el gesto de girar del trackpad. Desplazar, pellizcar y girar leen el mismo gesto de dos dedos, así que cada uno se activa o desactiva por separado."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deux doigts bien écartés font tourner en pivotant autour de leur centre, comme le geste de rotation d’un trackpad. Le défilement, le pincement et la rotation lisent le même geste à deux doigts : chacun s’active ou se désactive séparément."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Due dita ben distanziate ruotano girando attorno al loro centro, come il gesto di rotazione del trackpad. Scorrimento, pizzico e rotazione leggono lo stesso gesto a due dita, quindi ognuno si può attivare o disattivare separatamente."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2本指を大きく離して中心を軸に回すと回転します。トラックパッドの回転ジェスチャーと同じ動作です。スクロール、ピンチ、回転はどれも同じ2本指ジェスチャーを読み取るので、それぞれ個別にオンとオフを切り替えられます。"
-          }
-        }
-      }
-    },
     "Two fingers landing together, a fingertip's width apart, and lifting without moving post a right click. Fingers that move scroll, zoom, or rotate instead." : {
       "localizations" : {
         "de" : {
@@ -33362,83 +33093,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "2 本の指がそろって動くと、アプリがトラックパッドのスクロールとして扱う滑らかなスクロールイベントを送信します。Safari やプレビューのラバーバンド効果も含まれます。"
-          }
-        }
-      }
-    },
-    "Two fingers spreading or pinching together zoom in or out, the same as a trackpad pinch, and work anywhere a trackpad pinch would, including Safari, Preview, and Photoshop. Scroll, pinch, and rotate each read the same two-finger gesture, so each can be on or off on its own." : {
-      "comment" : "Tooltip on the Pinch to Zoom switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwei Finger auseinander- oder zusammenziehen zoomt hinein oder heraus, genau wie auf dem Trackpad, und funktioniert überall, wo das Trackpad zoomt, auch in Safari, Vorschau und Photoshop. Scrollen, Zoomen und Drehen lesen jeweils dieselbe Zwei-Finger-Geste, daher lässt sich jede einzeln ein- oder ausschalten."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Separar o juntar dos dedos amplía o reduce, igual que el pellizco del trackpad, y funciona en cualquier sitio donde lo haría, incluidos Safari, Vista Previa y Photoshop. Desplazar, pellizcar y girar leen el mismo gesto de dos dedos, así que cada uno se activa o desactiva por separado."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deux doigts qui s’écartent ou se rapprochent zooment, comme le pincement d’un trackpad, partout où celui-ci fonctionne, notamment dans Safari, Aperçu et Photoshop. Le défilement, le pincement et la rotation lisent le même geste à deux doigts : chacun s’active ou se désactive séparément."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Due dita che si allargano o si avvicinano ingrandiscono o riducono, come il pizzico del trackpad, ovunque questo funzioni, compresi Safari, Anteprima e Photoshop. Scorrimento, pizzico e rotazione leggono lo stesso gesto a due dita, quindi ognuno si può attivare o disattivare separatamente."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2本指を広げたりつまんだりすると、トラックパッドのピンチと同じようにズームインやズームアウトをします。Safari、プレビュー、Photoshop など、トラックパッドのピンチが使える場所ならどこでも動作します。スクロール、ピンチ、回転はどれも同じ2本指ジェスチャーを読み取るので、それぞれ個別にオンとオフを切り替えられます。"
-          }
-        }
-      }
-    },
-    "Two rapid clicks in succession" : {
-      "comment" : "A description of the \"Double Click\" button action.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwei schnelle Klicks hintereinander"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Two rapid clicks in succession"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dos clics rápidos seguidos"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deux clics rapides à la suite"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Due clic rapidi in successione"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "素早く2回クリック"
           }
         }
       }
@@ -34029,6 +33683,41 @@
         }
       }
     },
+    "Verifying MockTab %@…" : {
+      "comment" : "Updates section title while a download is verified",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ wird überprüft …"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificando MockTab %@…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification de MockTab %@…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifica di MockTab %@…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MockTab %@ を検証中…"
+          }
+        }
+      }
+    },
     "Version %@" : {
       "comment" : "App version label in about view",
       "localizations" : {
@@ -34467,40 +34156,6 @@
         }
       }
     },
-    "When on, content moves opposite to the pen while you hold Pan View, like a classic mouse wheel. When off, which is the default, the pen drags content along with it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ist es an, bewegt sich der Inhalt entgegen dem Stift, solange du „Ansicht schwenken“ hältst, wie bei einem klassischen Mausrad. Ist es aus, wie standardmäßig, zieht der Stift den Inhalt mit."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si está activado, el contenido se mueve al revés que el lápiz mientras mantienes Desplazar vista, como una rueda de ratón clásica. Si está desactivado, como viene por defecto, el lápiz arrastra el contenido consigo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activé, le contenu se déplace à l’opposé du stylet tant que vous maintenez Déplacer la vue, comme avec une molette de souris classique. Désactivé, par défaut, le stylet entraîne le contenu avec lui."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se attivo, il contenuto si muove in senso opposto alla penna mentre tieni premuto Sposta vista, come con una classica rotella del mouse. Se disattivo, come di default, la penna trascina il contenuto con sé."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オンにすると、「ビューをパン」を押している間、従来のマウスホイールのように、コンテンツがペンと逆方向に動きます。既定のオフでは、コンテンツがペンと一緒に動きます。"
-          }
-        }
-      }
-    },
     "When on, content moves opposite to your fingers, like a classic mouse wheel. When off, which is the default, content follows your fingers." : {
       "comment" : "Tooltip on the touch Reverse Direction switch",
       "localizations" : {
@@ -34532,41 +34187,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "オンにすると、従来のマウスホイールのように、コンテンツが指と逆方向に動きます。既定のオフでは、コンテンツが指の動きに追従します。"
-          }
-        }
-      }
-    },
-    "When on, Pan View keeps coasting after you let go in apps with scroll views. It's off by default; turn it on per app with the override bar above to get momentum only where it works." : {
-      "comment" : "Tooltip on the Pan View Momentum Scrolling switch",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ist es an, läuft „Ansicht schwenken“ in Apps mit Scroll-Ansicht nach dem Loslassen weiter. Standardmäßig ist es aus; schalte es pro App über die Leiste oben ein, um Trägheit nur dort zu nutzen, wo sie funktioniert."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si está activado, Desplazar vista sigue deslizándose al soltar en las apps con vistas de desplazamiento. Viene desactivado por defecto; actívalo por app con la barra de excepciones de arriba para tener inercia solo donde funcione."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activé, Déplacer la vue continue sur sa lancée après le relâchement dans les apps avec des zones de défilement. Désactivé par défaut ; activez-le par app avec la barre d’exceptions ci-dessus pour n’avoir l’inertie que là où elle fonctionne."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Se attivo, Sposta vista continua per inerzia dopo il rilascio nelle app con aree di scorrimento. È disattivato di default; attivalo per app con la barra delle eccezioni qui sopra per avere l’inerzia solo dove funziona."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "オンにすると、スクロールビューを持つアプリでは、離した後も「ビューをパン」の動きが続きます。既定ではオフです。慣性が効くアプリだけで使うには、上のアプリ別設定バーでアプリごとにオンにしてください。"
           }
         }
       }
@@ -34967,6 +34587,76 @@
         }
       }
     },
+    "Works wherever a trackpad pinch does, such as Safari, Preview, and Photoshop." : {
+      "comment" : "Tooltip on the Pinch to Zoom switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funktioniert überall, wo das Zoomen per Trackpad funktioniert, etwa in Safari, Vorschau und Photoshop."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funciona donde funcione el pellizco del trackpad, como Safari, Vista Previa y Photoshop."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonctionne partout où le pincement du trackpad fonctionne, comme Safari, Aperçu et Photoshop."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funziona ovunque funzioni il pizzico del trackpad, come Safari, Anteprima e Photoshop."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Safari、プレビュー、Photoshop など、トラックパッドのピンチが使える場所ならどこでも動作します。"
+          }
+        }
+      }
+    },
+    "Works wherever a trackpad rotate does." : {
+      "comment" : "Tooltip on the Rotate switch",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funktioniert überall, wo die Drehgeste des Trackpads funktioniert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funciona donde funcione el gesto de girar del trackpad."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonctionne partout où la rotation du trackpad fonctionne."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funziona ovunque funzioni la rotazione del trackpad."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トラックパッドの回転ジェスチャーが使える場所ならどこでも動作します。"
+          }
+        }
+      }
+    },
     "Works with pens that rotate, such as the Art Pen. Available once one is used on this tablet." : {
       "localizations" : {
         "de" : {
@@ -35032,47 +34722,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "X %1$@、Y %2$@"
-          }
-        }
-      }
-    },
-    "X: 0   Y: 0" : {
-      "comment" : "Default coordinate display when no pen is detected",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X: 0   Y: 0"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "X: 0   Y: 0"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X: 0   Y: 0"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X: 0   Y: 0"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X: 0   Y: 0"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "X: 0   Y: 0"
           }
         }
       }

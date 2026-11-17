@@ -257,7 +257,7 @@ extension InfoView {
 
     var profileLabel: String {
         guard let profile = settings.activeProfile else {
-            return String(localized: "None (device defaults)", comment: "Profile row value when no profile is active")
+            return String(localized: "None", comment: "No value: a button with no action, or no active profile")
         }
         return profile.name
     }

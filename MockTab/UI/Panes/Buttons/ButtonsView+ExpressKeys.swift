@@ -278,7 +278,7 @@ extension ButtonsView {
             current: hasTouchStrips
                 ? (reversed ? " Reversed." : " Forward.")
                 : (reversed ? " Counter-clockwise." : " Clockwise."),
-            help: "Flips the direction of every ring, dial, and strip on this tablet, whatever each mode is set to. Turn on if the hardware runs opposite to your expectation.")
+            help: "Covers every ring, dial, and strip on this tablet, in every mode.")
     }
 
     /// Express keys + dial for a connected companion puck/dongle, folded

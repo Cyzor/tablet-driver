@@ -96,13 +96,13 @@ struct InfoUpdatesSection: View {
                             Button(String(localized: "Install on Quit", comment: "Update button: get the update ready and install it when MockTab quits")) {
                                 updates.install(relaunch: false)
                             }
-                            .help(String(localized: "Downloads and checks the update now, and installs it the next time MockTab quits.", comment: "Tooltip on Install on Quit"))
+                            .help(String(localized: "Downloads the update now, so it's ready when MockTab quits.", comment: "Tooltip on Install on Quit"))
                             Button(String(localized: "Install and Relaunch", comment: "Update button: install now; MockTab quits and reopens")) {
                                 updates.install(relaunch: true)
                             }
                             .buttonStyle(.borderedProminent)
                             .disabled(captures.isActive)
-                            .help(captures.isActive ? String(localized: "Available once MockTab finishes collecting device data.", comment: "Tooltip on Install and Relaunch or Relaunch Now while they are unavailable because a device data collection is running") : String(localized: "Downloads and checks the update, then quits MockTab, installs it, and opens it again. The pen pauses for about a second.", comment: "Tooltip on Install and Relaunch"))
+                            .help(captures.isActive ? String(localized: "Available once MockTab finishes collecting device data.", comment: "Tooltip on Install and Relaunch or Relaunch Now while they are unavailable because a device data collection is running") : String(localized: "The pen pauses for about a second.", comment: "Tooltip on Install and Relaunch"))
                         } else {
                             Button(String(localized: "Open Download Page", comment: "Update button: get the update in the browser instead")) {
                                 updates.openDownload(offer)

@@ -195,7 +195,7 @@ extension InfoView {
                     : String(localized: "Grant…", comment: "Button that requests a system permission from the Info tab"),
                 actionHelp: inputMonitoringGranted
                     ? String(localized: "Review or turn off MockTab's permission to read your tablet.", comment: "Tooltip on Open System Settings button for a granted permission")
-                    : String(localized: "Allow MockTab to read your tablet. Without this, the tablet is detected but sends nothing.", comment: "Tooltip on Grant button for Input Monitoring permission")
+                    : String(localized: "Allow MockTab to read your tablet. Without this, MockTab sees the tablet but none of its input.", comment: "Tooltip on Grant button for Input Monitoring permission")
             )
 
             row(

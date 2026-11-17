@@ -245,7 +245,7 @@ struct ButtonBindingControl: View, Equatable {
             Button("Pan View") { binding = ButtonBinding(kind: .scrollDrag) }
                 .help("Hold to pan or scroll by moving the pen, like a hand tool")
             Button("Double Click") { binding = ButtonBinding(kind: .doubleClick) }
-                .help("Two rapid clicks in succession")
+                .help("Clicks twice with one press")
             Button("Click Lock") { binding = ButtonBinding(kind: .clickLock) }
                 .help("Press once to hold the left button, press again or lift the pen away to release")
             if offersEraser {
@@ -258,7 +258,7 @@ struct ButtonBindingControl: View, Equatable {
             Button("Escape") {
                 binding = ButtonBinding(kind: .keyCombo, keyCode: 53, modifierFlags: 0, keyLabel: "⎋")
             }
-            .help("Escape key")
+            .help("Cancels or closes in most apps")
             // Keys most keyboards lack, so the recorder can't capture them.
             // No app claims them, which makes them good triggers for menu apps.
             Menu("Function Keys") {
@@ -400,7 +400,7 @@ struct ButtonBindingControl: View, Equatable {
                 : modifierGlyphs(pendingModifiers) + "…"
         }
         if binding.kind == .none {
-            if showsNoneAsValue { return String(localized: "None", comment: "Button action: no action") }
+            if showsNoneAsValue { return String(localized: "None", comment: "No value: a button with no action, or no active profile") }
             return String(
                 localized: "Record Shortcut",
                 comment: "Placeholder in shortcut recorder field when empty")

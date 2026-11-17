@@ -162,7 +162,7 @@ struct MappingSheet: View {
                     fit: { edit(tablet: fitted(shape: screenShape, in: tabletAspect, around: tabletRect)) },
                     full: { edit(tablet: Self.full) },
                     fitLabel: "Fit to Screen Area",
-                    fitHelp: "Make the active area the screen area's shape, as large as the tablet allows, so the cursor isn't stretched.",
+                    fitHelp: "Make the active area the screen area's shape, as large as the tablet allows, so drawing keeps its shape.",
                     fullLabel: "Reset to Full Area",
                     fullHelp: "Reset the active area to the full tablet surface (undoable).")
 

@@ -191,7 +191,7 @@ struct ButtonBinding: Codable, Equatable {
 
     var displayLabel: String {
         switch kind {
-        case .none: return String(localized: "None", comment: "Button action: no action")
+        case .none: return String(localized: "None", comment: "No value: a button with no action, or no active profile")
         case .leftClick:
             return String(localized: "Left Click", comment: "Button action: left mouse click")
         case .clickLock:
