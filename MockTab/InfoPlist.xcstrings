@@ -3,7 +3,7 @@
   "strings" : {
     "NSAccessibilityUsageDescription" : {
       "comment" : "Permission prompt: why MockTab needs Accessibility",
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -45,7 +45,7 @@
     },
     "NSBluetoothAlwaysUsageDescription" : {
       "comment" : "Permission prompt: why MockTab uses Bluetooth",
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -87,7 +87,7 @@
     },
     "NSInputMonitoringUsageDescription" : {
       "comment" : "Permission prompt: why MockTab needs Input Monitoring",
-      "extractionState" : "extracted_with_value",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
