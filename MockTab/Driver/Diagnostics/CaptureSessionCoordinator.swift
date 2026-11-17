@@ -483,7 +483,7 @@ final class CaptureSessionCoordinator: ObservableObject {
                     localized: "That tablet isn't connected anymore.",
                     comment: "Capture error shown when the target device disappeared before collection started")
                 : String(
-                    localized: "No HID devices are visible to macOS at all right now.",
+                    localized: "macOS doesn't see any input devices right now.",
                     comment: "Capture error shown when no tablet is known and no HID device of any kind is found on the system")
             return false
         }

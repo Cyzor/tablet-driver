@@ -37,9 +37,9 @@ Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt,
 
 ## Kalibrierung (Pen-Displays)
 
-**Kalibrieren…** öffnet ein Vollbild-Overlay mit Fadenkreuzen, die du mit der Stiftspitze antippst. Es korrigiert den Parallaxenversatz zwischen Stiftspitze und Cursor, den das Displayglas verursacht.
+**Kalibrieren…** zeigt bildschirmfüllende Ziele, die du mit der Stiftspitze antippst. Es korrigiert den Versatz zwischen Stiftspitze und Cursor, den das Displayglas verursacht.
 
-Mit **Zeiger-Versatz** justierst du einen verbleibenden kleinen Versatz nach, etwa wenn sich die Parallaxe mit dem Blickwinkel verschiebt.
+Mit **Zeiger-Versatz** gleichst du einen kleinen verbleibenden Versatz aus, etwa einen, der sich mit dem Blickwinkel ändert.
 
 [penFeel]
 
@@ -131,7 +131,7 @@ Das Radiererende hat eine eigene Zuweisung im Stiftabschnitt. Hat ein Stift kein
 
 ## Berührung
 
-Grafiktabletts mit kapazitiver Touch-Oberfläche melden Fingerkontakte zusätzlich zur Stifteingabe. MockTab lässt das standardmäßig ausgeschaltet; aktiviere **Fingereingabe aktivieren**, um es zu verwenden. Die Reaktion hängt von der App ab.
+Manche Grafiktabletts erkennen auch deine Finger. MockTab lässt Touch standardmäßig ausgeschaltet; aktiviere **Fingereingabe aktivieren**, um es zu verwenden. Die Reaktion hängt von der App ab.
 
 **Tippen zum Klicken** – Eine kurze Berührung ohne nennenswerte Bewegung sendet einen Linksklick.
 

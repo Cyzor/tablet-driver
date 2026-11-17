@@ -37,9 +37,9 @@ Tourner la tablette déplace chaque affectation vers la touche qui occupe désor
 
 ## Calibrage (écrans à stylet)
 
-**Calibrer…** ouvre un calque plein écran avec des croix à toucher avec la pointe du stylet. Il corrige l’écart de parallaxe que la vitre de l’écran crée entre la pointe et le curseur.
+**Calibrer…** affiche des cibles en plein écran à toucher avec la pointe du stylet. Il corrige l’écart que la vitre de l’écran crée entre la pointe et le curseur.
 
-**Décalage du pointeur** corrige le petit écart qui subsiste, comme une parallaxe qui varie avec l’angle de vue.
+**Décalage du pointeur** corrige le petit écart qui subsiste, par exemple un écart qui varie avec l’angle de vue.
 
 [penFeel]
 
@@ -131,7 +131,7 @@ La barre d’exceptions d’app en haut attribue des boutons différents à une 
 
 ## Toucher
 
-Les tablettes dotées d’une surface tactile capacitive transmettent les contacts des doigts en plus du stylet. MockTab laisse cette fonction désactivée par défaut. Activez **Activer le toucher** pour vous en servir. La réponse varie selon l’app.
+Certaines tablettes détectent aussi les doigts. MockTab laisse le toucher désactivé par défaut. Activez **Activer le toucher** pour vous en servir. La réponse varie selon l’app.
 
 **Toucher pour cliquer** – Un bref toucher sans déplacement notable produit un clic gauche.
 

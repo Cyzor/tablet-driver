@@ -37,9 +37,9 @@ Turning the tablet moves each assignment to the key now in its place, in every p
 
 ## Calibration (Pen Displays)
 
-**Calibrate…** opens a full-screen overlay with crosshairs to tap with the pen tip. It corrects the parallax gap the display glass puts between the pen tip and the cursor.
+**Calibrate…** shows full-screen targets to tap with the pen tip. It corrects the gap the display glass puts between the pen tip and the cursor.
 
-**Pointer Offset** adjusts any small offset that remains, such as parallax that shifts with viewing angle.
+**Pointer Offset** fixes any small gap that remains, such as one that changes with viewing angle.
 
 [penFeel]
 
@@ -131,7 +131,7 @@ The app override bar at the top assigns different buttons for a specific applica
 
 ## Touch
 
-Tablets with a capacitive touch surface report finger contacts alongside pen input. MockTab keeps this disabled by default. Turn on **Enable Finger Touch** to use it. Response varies by app.
+Some tablets also sense your fingers. MockTab leaves touch off by default. Turn on **Enable Finger Touch** to use it. Response varies by app.
 
 **Tap to Click** – A brief touch with no significant motion produces a left click.
 

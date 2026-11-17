@@ -37,9 +37,9 @@ Ruotando la tavoletta, ogni assegnazione passa al tasto che ora ne occupa il pos
 
 ## Calibrazione (display interattivi)
 
-**Calibra…** apre una schermata a tutto schermo con mirini da toccare con la punta della penna. Corregge lo scarto di parallasse che il vetro del display crea tra la punta della penna e il cursore.
+**Calibra…** mostra dei bersagli a tutto schermo da toccare con la punta della penna. Corregge lo scarto che il vetro del display crea tra la punta della penna e il cursore.
 
-**Scostamento del puntatore** regola il piccolo scarto che può restare, come una parallasse che cambia con l’angolo di visione.
+**Scostamento del puntatore** corregge il piccolo scarto che può restare, per esempio uno che cambia con l’angolo di visione.
 
 [penFeel]
 
@@ -131,7 +131,7 @@ La barra delle eccezioni per app in alto assegna pulsanti diversi a un’applica
 
 ## Tocco
 
-Le tavolette con superficie touch capacitiva comunicano i contatti delle dita insieme all’input della penna. MockTab lo tiene disattivato di default. Attiva **Attiva tocco delle dita** per usarlo. La risposta varia a seconda dell’app.
+Alcune tavolette rilevano anche le dita. MockTab tiene il tocco disattivato di default. Attiva **Attiva tocco delle dita** per usarlo. La risposta varia a seconda dell’app.
 
 **Tocca per fare clic** – Un tocco breve quasi senza muoversi produce un clic sinistro.
 

@@ -17480,6 +17480,41 @@
         }
       }
     },
+    "macOS doesn't see any input devices right now." : {
+      "comment" : "Capture error shown when no tablet is known and no HID device of any kind is found on the system",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS sieht gerade keine Eingabegeräte."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS no detecta ningún dispositivo de entrada en este momento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS ne voit aucun périphérique d’entrée pour le moment."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al momento macOS non vede alcun dispositivo di input."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在、macOS は入力デバイスを 1 台も認識していません。"
+          }
+        }
+      }
+    },
     "Magenta" : {
       "comment" : "LED swatch name",
       "localizations" : {
@@ -20000,41 +20035,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "デバイス未接続"
-          }
-        }
-      }
-    },
-    "No HID devices are visible to macOS at all right now." : {
-      "comment" : "Capture error shown when no tablet is known and no HID device of any kind is found on the system",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS sieht derzeit überhaupt keine HID-Geräte."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS no detecta ningún dispositivo HID en este momento."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS ne voit aucun appareil HID pour le moment."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Al momento macOS non vede alcun dispositivo HID."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "現在、macOSにはHIDデバイスが一つも見えていません。"
           }
         }
       }

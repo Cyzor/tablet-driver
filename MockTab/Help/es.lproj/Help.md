@@ -37,9 +37,9 @@ Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, 
 
 ## Calibración (pen displays)
 
-**Calibrar…** abre una superposición a pantalla completa con cruces para tocar con la punta del lápiz. Corrige la separación por paralaje que el cristal introduce entre la punta y el cursor.
+**Calibrar…** muestra objetivos a pantalla completa para tocar con la punta del lápiz. Corrige la separación que el cristal introduce entre la punta y el cursor.
 
-**Desplazamiento del puntero** ajusta cualquier pequeño desplazamiento que quede, por ejemplo si la paralaje cambia con el ángulo de visión.
+**Desplazamiento del puntero** corrige cualquier pequeña separación que quede, por ejemplo una que cambie con el ángulo de visión.
 
 [penFeel]
 
@@ -131,7 +131,7 @@ La barra de overrides de la parte superior permite asignar botones distintos a u
 
 ## Táctil
 
-Las tabletas con superficie táctil capacitiva informan de los contactos de los dedos junto con la entrada del lápiz. MockTab lo mantiene desactivado de forma predeterminada; activa **Habilitar toque con el dedo** para usarlo. La respuesta varía según la app.
+Algunas tabletas también detectan los dedos. MockTab mantiene el toque desactivado de forma predeterminada; activa **Habilitar toque con el dedo** para usarlo. La respuesta varía según la app.
 
 **Tocar para hacer clic** – Un toque breve sin movimiento apreciable envía un clic izquierdo.
 

@@ -23,10 +23,10 @@
     <string>13.0</string>
     <!-- Prompt text shown in System Settings → Privacy & Security → Input Monitoring -->
     <key>NSInputMonitoringUsageDescription</key>
-    <string>MockTab needs Input Monitoring access to read raw HID reports from your tablet.</string>
+    <string>MockTab needs Input Monitoring access to read your tablet.</string>
     <!-- Accessibility usage (for CGEventPost) -->
     <key>NSAccessibilityUsageDescription</key>
-    <string>MockTab needs Accessibility access to move the cursor and send tablet events.</string>
+    <string>MockTab needs Accessibility access to turn your tablet's input into cursor movement, clicks, and keystrokes.</string>
     <!-- Bluetooth usage: reading RSSI/link quality for a Bluetooth tablet
          during Collect Device Data only, via IOBluetoothDevice. Required by
          the OS the moment any code touches a Bluetooth device object, even
