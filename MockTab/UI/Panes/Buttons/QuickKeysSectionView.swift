@@ -327,7 +327,7 @@ struct QuickKeysSectionView: View {
     /// coalescing lives inside LEDColorControl; the binding just reads and
     /// writes the slot's stored color (nil = factory palette default).
     private func slotLEDWell(at index: Int) -> LEDColorControl {
-        let defaults = XencelabsOutputProtocol.defaultSlotColors
+        let defaults = LEDColor.xencelabsModeDefaults
         let d = defaults[((index % defaults.count) + defaults.count) % defaults.count]
         return LEDColorControl(
             style: .well,
@@ -342,7 +342,7 @@ struct QuickKeysSectionView: View {
                     updated[index].ledColor = newValue
                     settings.touchRingSlots = updated
                 }),
-            defaultWire: d,
+            defaultWire: (d.r, d.g, d.b),
             undoLabel: "Dial Color",
             settings: settings)
     }
