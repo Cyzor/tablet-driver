@@ -92,6 +92,11 @@ codesign --verify --deep --strict "$APP_PATH"
 
 tools/release/size-watch.sh "$APP_PATH"
 tools/release/arch-check.sh "$APP_PATH"
+if [[ "$NAME" == "snapshot" ]]; then
+    tools/release/bundle-check.sh "$APP_PATH"
+else
+    tools/release/bundle-check.sh --release "$APP_PATH"
+fi
 
 # The update page matches a snapshot on this stamp.
 if [[ "$NAME" == "snapshot" ]]; then
