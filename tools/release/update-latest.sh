@@ -17,10 +17,13 @@
 #              e.g. 20260927T1432Z, copied from the built app), DMG link and sha256,
 #              notes from the release body's "Notes:" line, else from
 #              CHANGELOG.md's Unreleased line.
+#   both     — minimumSystemVersion from the tagged commit's MockTab/Info.plist
+#              (bundle-check.sh keeps it in line with the built executables).
 # Refuses drafts: the page must never link to a download that isn't public.
 #
 # Writes $MOCKTAB_WEB/latest.json (default: ../mocktab-web beside this repo)
-# and commits it there. Does not push.
+# and commits it there. Does not push. Sets schema 1 once both entries carry
+# a checksum, and refuses to commit a feed that fails feed-check.sh.
 
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
@@ -60,6 +63,12 @@ if [[ -z "$SHA" ]]; then
 fi
 [[ "$SHA" =~ ^[0-9a-f]{64}$ ]] || { echo "error: no usable sha256 for $TAG's DMG." >&2; exit 1; }
 
+# Lets a helper on an older macOS say so without downloading.
+MINOS=$(gh api -H "Accept: application/vnd.github.raw" "repos/$REPO/contents/MockTab/Info.plist?ref=$TAG" \
+    | sed -n '/<key>LSMinimumSystemVersion<\/key>/{n;s/.*<string>\(.*\)<\/string>.*/\1/p;}')
+[[ "$MINOS" =~ ^[0-9]+\.[0-9]+$ ]] \
+    || { echo "error: no MAJOR.MINOR LSMinimumSystemVersion in $TAG's MockTab/Info.plist." >&2; exit 1; }
+
 if [[ "$TAG" == "snapshot" ]]; then
     # Lightweight tags have no message; the object type tells them apart.
     REF=$(gh api "repos/$REPO/git/ref/tags/snapshot")
@@ -81,13 +90,15 @@ if [[ "$TAG" == "snapshot" ]]; then
         NOTES=$(changelog_notes "- Unreleased —")
     fi
     ENTRY=$(jq -n --arg d "${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}Z" --arg u "$URL" \
-        --arg s "$SHA" --argjson n "$NOTES" '{snapshot: {date: $d, url: $u, sha256: $s, notes: $n}}')
+        --arg s "$SHA" --argjson n "$NOTES" --arg os "$MINOS" \
+        '{snapshot: {date: $d, url: $u, sha256: $s, minimumSystemVersion: $os, notes: $n}}')
 else
     VERSION="${TAG#v}"
     PUBLISHED=$(jq -r .publishedAt <<<"$INFO")
     NOTES=$(changelog_notes "- [$TAG](")
     ENTRY=$(jq -n --arg v "$VERSION" --arg d "${PUBLISHED:0:16}Z" --arg u "$URL" \
-        --arg s "$SHA" --argjson n "$NOTES" '{release: {version: $v, date: $d, url: $u, sha256: $s, notes: $n}}')
+        --arg s "$SHA" --argjson n "$NOTES" --arg os "$MINOS" \
+        '{release: {version: $v, date: $d, url: $u, sha256: $s, minimumSystemVersion: $os, notes: $n}}')
 fi
 
 if (( DRY_RUN )); then
@@ -96,7 +107,16 @@ if (( DRY_RUN )); then
 fi
 
 [[ -f "$WEB/latest.json" ]] || { echo "error: $WEB/latest.json not found (set MOCKTAB_WEB)." >&2; exit 1; }
-jq --indent 4 --argjson e "$ENTRY" '. * $e' "$WEB/latest.json" >"$WEB/latest.json.tmp"
+# Schema 1 makes every helper require both checksums, so it waits until both
+# entries have one. A higher schema stays.
+jq --indent 4 --argjson e "$ENTRY" '. * $e
+    | if (.release.sha256 and .snapshot.sha256)
+      then {schema: ([.schema // 0, 1] | max)} + del(.schema) else . end' \
+    "$WEB/latest.json" >"$WEB/latest.json.tmp"
+if ! tools/release/feed-check.sh "$WEB/latest.json.tmp"; then
+    rm -f "$WEB/latest.json.tmp"
+    exit 1
+fi
 mv "$WEB/latest.json.tmp" "$WEB/latest.json"
 
 if git -C "$WEB" diff --quiet -- latest.json; then
