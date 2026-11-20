@@ -14,10 +14,9 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "manager")
 /// so the ~30 Hz touch stream invalidates only views that explicitly observe
 /// this object, not every view that observes `TabletManager`.
 ///
-/// `isPublishingEnabled` is on while a view shows touch (the Scratchpad or
-/// the Info pane's gauge). With none showing, or the app inactive, the
-/// HID-thread closure skips both the throttle bookkeeping and the
-/// main-thread dispatch entirely.
+/// `isPublishingEnabled` is on while the Info pane's touch gauge shows.
+/// Otherwise, or with the app inactive, the HID-thread closure skips both
+/// the throttle bookkeeping and the main-thread dispatch entirely.
 final class LiveTouchPublisher: ObservableObject, @unchecked Sendable {  // split as each property notes
     @MainActor @Published var contacts: [TouchContact] = []
     /// The tablet `contacts` came from, set just before them, so a view for

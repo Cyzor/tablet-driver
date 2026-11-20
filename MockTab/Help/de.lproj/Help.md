@@ -223,7 +223,7 @@ Ziehe die JSON-Kachel in den Finder, um alle Einstellungen zu sichern, auch Seri
 
 ## Testbereich
 
-Eine Testfläche, um zu prüfen, ob der Stift Druck, Neigung und Bewegung erkennt. MockTab speichert keine Striche.
+Eine Testfläche, um zu prüfen, ob der Stift Druck und Bewegung erkennt. MockTab speichert keine Striche.
 
 [info]
 

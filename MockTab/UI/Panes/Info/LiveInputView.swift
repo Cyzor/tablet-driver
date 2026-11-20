@@ -406,11 +406,28 @@ private struct LiveInputView: View {
     }
 }
 
+/// Where to draw each contact, as fractions of the contacts' own bounding
+/// box, turned to match the tablet on the desk. A contact carries raw units
+/// with no axis maxima, so this shows how the fingers sit relative to each
+/// other; one finger alone sits in the middle.
+private func touchContactLayout(_ contacts: [TouchContact], orientation: TabletOrientation) -> [CGPoint] {
+    // The bounding-box normalization cancels the axis offsets, so zero
+    // maxima suffice.
+    let points = contacts.map {
+        DisplayMapper.orient(x: Double($0.x), y: Double($0.y), maxX: 0, maxY: 0, orientation: orientation)
+    }
+    func fraction(_ value: Double, in values: [Double]) -> Double {
+        guard let lo = values.min(), let hi = values.max(), hi > lo else { return 0.5 }
+        return (value - lo) / (hi - lo)
+    }
+    let xs = points.map(\.ox), ys = points.map(\.oy)
+    return points.map { CGPoint(x: fraction($0.ox, in: xs), y: fraction($0.oy, in: ys)) }
+}
+
 /// A dot for each finger on the surface, placed as the fingers sit relative
-/// to each other: the Scratchpad's touch view in plain form. It observes the
-/// touch stream itself, so a touch frame redraws only this gauge, and only
-/// for its own tablet in the front window. `framed` wraps the drawing in the
-/// row's shared frame and caption.
+/// to each other. It observes the touch stream itself, so a touch frame
+/// redraws only this gauge, and only for its own tablet in the front window.
+/// `framed` wraps the drawing in the row's shared frame and caption.
 private struct TouchGauge<Framed: View>: View {
     let liveTouch: LiveTouchPublisher
     let source: ObjectIdentifier?

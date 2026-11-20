@@ -223,7 +223,7 @@ Faites glisser la vignette JSON vers le Finder pour enregistrer tous les réglag
 
 ## Zone de test
 
-Une zone de dessin pour vérifier que le stylet transmet la pression, l’inclinaison et le mouvement. MockTab ne conserve pas les tracés.
+Une zone de dessin pour vérifier que le stylet transmet la pression et le mouvement. MockTab ne conserve pas les tracés.
 
 [info]
 

@@ -223,7 +223,7 @@ Drag the JSON tile to the Finder to save all settings, including serial numbers 
 
 ## Scratchpad
 
-A test canvas for checking that the pen registers pressure, tilt, and motion. MockTab doesn't save strokes.
+A test canvas for checking that the pen registers pressure and motion. MockTab doesn't save strokes.
 
 [info]
 

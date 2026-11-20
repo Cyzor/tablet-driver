@@ -223,7 +223,7 @@ Trascina il riquadro JSON nel Finder per salvare tutte le impostazioni, compresi
 
 ## Area di prova
 
-Un’area di prova per verificare che la penna registri pressione, inclinazione e movimento. MockTab non conserva i tratti.
+Un’area di prova per verificare che la penna registri pressione e movimento. MockTab non conserva i tratti.
 
 [info]
 

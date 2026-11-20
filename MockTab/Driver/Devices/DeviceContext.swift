@@ -374,9 +374,9 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// published, plain hovering (no button change) re-ran those views' full,
     /// expensive bodies at ~16 Hz for no reason, which is what caused the
     /// Buttons pane's 100% CPU/choppy-scroll behavior while a pen hovered.
-    /// Consumers that need live position (InfoView, ScratchpadView's tilt
-    /// disc) subscribe to `livePointPublisher` directly instead of relying
-    /// on the general cascade.
+    /// Consumers that need live position (InfoView) subscribe to
+    /// `livePointPublisher` directly instead of relying on the general
+    /// cascade.
     var livePoint: TabletPoint? = nil {
         didSet { livePointPublisher.send(livePoint) }
     }

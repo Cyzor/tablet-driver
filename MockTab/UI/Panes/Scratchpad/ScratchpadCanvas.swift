@@ -11,7 +11,6 @@ import TabletKit
 // MARK: - NSViewRepresentable bridge
 
 struct ScratchpadCanvas: NSViewRepresentable {
-    @Binding var currentPressure: Double
     let clearID: Int
     let resetViewID: Int
     @Binding var isViewMoved: Bool
@@ -23,9 +22,6 @@ struct ScratchpadCanvas: NSViewRepresentable {
         view.setAccessibilityElement(true)
         view.setAccessibilityRole(.group)
         view.setAccessibilityLabel(String(localized: "Test canvas", comment: "VoiceOver label for the Scratchpad drawing canvas"))
-        view.onPressureChange = { pressure in
-            currentPressure = pressure
-        }
         view.onViewMovedChange = { moved in
             isViewMoved = moved
         }
@@ -65,7 +61,6 @@ struct ScratchpadCanvas: NSViewRepresentable {
 // MARK: - NSView drawing canvas
 
 final class ScratchpadNSView: NSView {
-    var onPressureChange: ((Double) -> Void)?
     var onViewMovedChange: ((Bool) -> Void)?
     weak var tabletManager: TabletManager?
     var injectedUndoManager: UndoManager?
@@ -277,7 +272,6 @@ final class ScratchpadNSView: NSView {
             isErasingGesture = false
             currentStroke = Stroke(points: [(pt, CGFloat(event.pressure))], isEraser: false)
         }
-        onPressureChange?(Double(event.pressure))
         needsDisplay = true
     }
 
@@ -287,12 +281,10 @@ final class ScratchpadNSView: NSView {
         let pt = canvasPoint(viewPt)
         if isErasingGesture {
             eraseStrokes(crossing: pt)
-            onPressureChange?(Double(event.pressure))
             return
         }
         guard let previousCanvas = currentStroke?.points.last?.0 else { return }
         currentStroke?.points.append((pt, CGFloat(event.pressure)))
-        onPressureChange?(Double(event.pressure))
         // Dirty rect is in view space; convert the previous canvas point back.
         let previousView = viewPoint(previousCanvas)
         let t = userTransform
@@ -319,7 +311,6 @@ final class ScratchpadNSView: NSView {
             currentStroke = nil
         }
 
-        onPressureChange?(0)
         needsDisplay = true
     }
 
@@ -327,7 +318,6 @@ final class ScratchpadNSView: NSView {
         let previous = strokes
         currentStroke = nil
         guard !previous.isEmpty else {
-            onPressureChange?(0)
             needsDisplay = true
             return
         }
@@ -339,7 +329,6 @@ final class ScratchpadNSView: NSView {
         undoManager?.setActionName(
             NSLocalizedString("Clear Canvas", comment: "Undo name for clearing the scratchpad")
         )
-        onPressureChange?(0)
         needsDisplay = true
     }
 

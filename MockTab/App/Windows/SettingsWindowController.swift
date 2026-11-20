@@ -480,7 +480,7 @@ final class SettingsWindowController: NSWindowController {
         // Wire up the live-state visibility flag so TabletManager can skip
         // @Published UI writes when nobody is looking at live data.
         // "Info" (pen coordinates/pressure), "Buttons" (live indicators), and
-        // "Scratchpad" (tilt visualizer) all consume livePoint/liveButtons, so
+        // "Scratchpad" (the eraser end) all consume livePoint/liveButtons, so
         // any of those tabs enables the updates.
         // Also check window focus: only update when this window is key (active).
         let updateVisibility: @MainActor @Sendable () -> Void = { [weak self, weak window] in

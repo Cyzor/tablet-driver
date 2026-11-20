@@ -223,7 +223,7 @@ Arrastra el recuadro JSON al Finder para guardar todos los ajustes, incluidos n�
 
 ## Área de prueba
 
-Un lienzo de prueba para comprobar que el lápiz registra presión, inclinación y movimiento. MockTab no guarda los trazos.
+Un lienzo de prueba para comprobar que el lápiz registra presión y movimiento. MockTab no guarda los trazos.
 
 [info]
 
