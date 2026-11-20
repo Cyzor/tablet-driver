@@ -128,8 +128,14 @@ controls instead of pen data. (kernel, observed)
 | UGEE v2 | `0xF0` | Bitmap, lowest bit first, bytes 2–3 | kernel, observed |
 
 The Pen Display 24 also sends battery on `0xF2` and echoes commands back as
-`0xB0` to `0xBF`. Dials, rings, and touch strips use other status values;
-TabletKit doesn't decode them yet. (observed)
+`0xB0` to `0xBF`. (observed)
+
+Some dials arrive in the `0xF0` frame itself, with byte 7 reading 1 for one
+direction and 2 for the other. The Quick Keys' dial does
+([Xencelabs](Xencelabs-Protocol.md)), and so does a UGEE v2 tablet's when
+its self-description names a dial frame. (kernel) Other dials, rings, and
+touch strips may use other status values. TabletKit doesn't decode any of
+them yet.
 
 ## Unverified
 
@@ -141,6 +147,8 @@ TabletKit doesn't decode them yet. (observed)
 - The XP-Pen Artist 22R Pro and 24 Pro, which the kernel handles as a
   special case.
 - Dials, rings, touch strips, and the older UC-Logic protocols.
+- A charging flag at bit 0 of byte 4 in `0xF2` battery frames, which the
+  kernel reads.
 
 ## Tests
 

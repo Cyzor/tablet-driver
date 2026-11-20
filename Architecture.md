@@ -4,7 +4,7 @@ How MockTab turns tablet reports into cursor movement, clicks, and gestures.
 
 ## Overview
 
-Every few milliseconds, a tablet sends a small packet of bytes called a report. It says where the pen is, how hard it presses, which buttons are down, and sometimes where fingers touch. MockTab reads each report, works out what it means, and posts matching events to macOS.
+Every few milliseconds, a tablet sends a small packet of bytes called a report. It says where the pen is, how hard it presses, which buttons are down, and sometimes where fingers touch. MockTab reads each report, works out what it means, and posts matching events to macOS. It posts events rather than presenting a virtual pen; [macOS pen events](Notes/macOS-Pen-Events.md#why-post-events) explains why.
 
 The work splits into two parts:
 

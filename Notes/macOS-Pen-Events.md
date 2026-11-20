@@ -105,3 +105,13 @@ momentum, though every field an app can set matches a trackpad's
 ([evidence](Evidence/Scroll-Event-Parity.md)). What differs can't be set by an
 ordinary app: the sending process, its HID source state, and the trackpad's
 raw contact events. Scrolling works there with momentum turned off.
+
+## Why Post Events
+
+A driver could publish a virtual HID digitizer instead. macOS then moves the
+pointer and clicks, but:
+
+- In our tests, tip and barrel pressure didn't reliably reach apps.
+- It takes an entitlement from Apple, and a driver extension adds an approval.
+- A pen digitizer can't carry key combos, phased and momentum scrolling, or
+  gestures, so the driver would still post events for those.
