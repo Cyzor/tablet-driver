@@ -4,15 +4,19 @@
 # running. The terminal needs Input Monitoring.
 #
 # Usage: tools/hardware-check/key-order.sh [--out <dir>]
+#        tools/hardware-check/key-order.sh --build-only
 set -euo pipefail
 
 ROOT="$(git -C "$(dirname "$0")/../.." rev-parse --show-toplevel)"
 HERE="$ROOT/tools/hardware-check"
-WORK=/tmp/mocktab-hwcheck
+WORK="${MOCKTAB_HWCHECK_WORK:-/tmp/mocktab-hwcheck}"
 KIT="$WORK/tabletkit"
 FIGURES="$ROOT/MockTab/Figures"
+SETTINGS="$ROOT/MockTab/Settings"
+# The files MockTabTests compiles for the control map.
 SOURCES=("$HERE/wacom_key_order.swift" "$FIGURES/TabletControlMap.swift" "$FIGURES/TabletLayoutIdentity.swift"
-         "$FIGURES/TabletLayoutTable.swift" "$FIGURES/TabletFigure.swift" "$ROOT/MockTab/Settings/Model/TabletOrientation.swift")
+         "$FIGURES/TabletLayoutTable.swift" "$FIGURES/TabletFigure.swift" "$SETTINGS/Model/TabletOrientation.swift"
+         "$SETTINGS/Model/ButtonBinding.swift" "$SETTINGS/Serialization/UnknownFieldsCodec.swift")
 
 mkdir -p "$WORK/bin" "$KIT"
 # Same TabletKit build as hardware-check.sh.
@@ -27,4 +31,5 @@ BIN="$WORK/bin/wacom_key_order"
 if [[ ! -x "$BIN" || -n $(find "${SOURCES[@]}" -newer "$BIN") ]]; then
     swiftc -O -parse-as-library -I "$KIT" -L "$KIT" -lTabletKit "${SOURCES[@]}" -o "$BIN"
 fi
+[[ "${1:-}" == "--build-only" ]] && exit 0
 exec "$BIN" "$@"

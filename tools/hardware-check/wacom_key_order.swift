@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // Checks a Wacom tablet's key order: shows one key at a time by where it sits
-// on the tablet, and records which control the tablet reports for it. The
-// Buttons pane's tablet diagram uses a family's order only once a run like
-// this agrees with it.
+// on the tablet, and records which control the tablet reports for it. A
+// family joins `TabletControlMap.verifiedFamilies` once a run like this
+// agrees with it.
 //
 // Positions come from libwacom's layout, drawn with the tablet in landscape,
 // as a right-handed user holds it. Expected controls come from
-// `TabletControlMap`, without its verification gate.
+// `TabletControlMap`, as the Buttons pane draws them.
 //
 // Opens the tablet without seizing it. Keep MockTab running so the tablet is
 // set up as usual; keys may fire their bindings meanwhile. The terminal needs
@@ -55,7 +55,7 @@ enum KeyOrderCheck {
             }
             guard let walk = current else {
                 say(skipped.isEmpty ? "No Wacom tablet with keys connected."
-                    : "No family rule yet for: " + skipped.joined(separator: ", "))
+                    : "No key layout yet for: " + skipped.joined(separator: ", "))
                 exit(1)
             }
             say("\(walk.name): \(walk.steps.count) keys, \(walk.family) rule")
@@ -121,11 +121,12 @@ final class Walk {
     var reports = 0
 
     init?(pid: Int, model: Int, spec: TabletSpec) {
-        guard let family = TabletControlMap.family(for: spec),
-              let identity = TabletLayoutIdentity.all[model],
+        guard let identity = TabletLayoutIdentity.all[model],
               let parts = TabletFigure.layouts[model]
         else { return nil }
-        let map = TabletControlMap.make(identity, family: family)
+        let family = TabletControlMap.family(for: spec)
+        let map = TabletControlMap.make(identity, family: family, hasCenterRow: TabletControlMap.hasCenterRow(spec),
+                                        keysAreBezel: spec.buttonCount == 0 && spec.bezelButtonCount > 0)
         self.pid = pid
         name = spec.name
         self.family = family
