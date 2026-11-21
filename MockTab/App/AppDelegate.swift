@@ -4,6 +4,7 @@
 
 import AppKit
 import IOKit.hid
+import os
 import TabletKit
 
 @main
@@ -11,10 +12,35 @@ import TabletKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func main() {
+        if handedOffToRunningCopy() { return }
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
         app.run()
+    }
+
+    /// A copy opened from elsewhere (a download, a disk image) while another
+    /// runs would contend with it for the tablet. Before touching settings or
+    /// devices, it brings the running copy forward and quits. If that copy
+    /// is gone by then, this one starts as usual.
+    private static func handedOffToRunningCopy() -> Bool {
+        guard let id = Bundle.main.bundleIdentifier else { return false }
+        let own = ProcessInfo.processInfo.processIdentifier
+        guard let other = NSRunningApplication.runningApplications(withBundleIdentifier: id)
+            .first(where: { $0.processIdentifier != own && !$0.isTerminated }),
+            let url = other.bundleURL
+        else { return false }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        let reached = HandOff()
+        // The completion runs on a background queue, so waiting here is safe.
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { app, _ in
+            reached.set(app != nil)
+        }
+        guard reached.wait() else { return false }
+        Logger(subsystem: "com.cyzor.mocktab", category: "launch")
+            .notice("Another copy is running from \(url.path, privacy: .public); brought it forward and quit")
+        return true
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -196,5 +222,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let key = TabletMenuItems.instanceKey(of: sender) else { return }
         SettingsWindowManager.shared.openWindow(forInstanceKey: key)
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+/// Carries the open result from Launch Services' queue to `main`.
+private final class HandOff: @unchecked Sendable {
+    private let done = DispatchSemaphore(value: 0)
+    private var reached = false
+
+    func set(_ value: Bool) {
+        reached = value
+        done.signal()
+    }
+
+    /// False if Launch Services doesn't answer within five seconds.
+    func wait() -> Bool {
+        done.wait(timeout: .now() + 5) == .success && reached
     }
 }
