@@ -262,6 +262,8 @@ EOF
             around() { # name, release?, version, stamp
                 mkdir -p $T/$1; ditto $SIGNED $T/$1/MockTab.app
                 local plist=$T/$1/MockTab.app/Contents/Info.plist
+                # A release candidate arrives with the flag already set.
+                /usr/libexec/PlistBuddy -c "Delete :MockTabRelease" $plist 2>/dev/null
                 [[ $2 == yes ]] && /usr/libexec/PlistBuddy -c "Add :MockTabRelease bool true" $plist
                 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $3" -c "Set :MockTabBuildStamp $4" $plist
                 codesign --force --sign "Developer ID Application" --timestamp=none \
