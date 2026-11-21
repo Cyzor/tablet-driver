@@ -21,9 +21,9 @@ struct InfoView: View {
     // Permissions start false; `refresh()` in `onAppear` sets them before the
     // first frame. Calling the checks here repeated them on every rebuild.
     @State var accessibilityGranted = false
-    /// Gates *reading* the tablet at all; denial also surfaces as "HID
-    /// Manager: failed to open" elsewhere, but this row names the actual
-    /// cause and carries the fix.
+    /// Gates reading interfaces that present as a mouse or keyboard; denial
+    /// also surfaces as "HID Manager: some interfaces refused" in the
+    /// diagnostics, but this row names the cause and carries the fix.
     @State var inputMonitoringGranted = false
     @State var launchAtLogin = InfoView.knownLaunchAtLogin
     /// Follows the status menu's Show in Dock toggle too.

@@ -12988,47 +12988,6 @@
         }
       }
     },
-    "failed to open" : {
-      "comment" : "HID Manager status",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "konnte nicht öffnen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "failed to open"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "error al abrir"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "échec de l’ouverture"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "apertura non riuscita"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "開くに失敗しました"
-          }
-        }
-      }
-    },
     "File is missing a version field." : {
       "comment" : "Import error — no version key in backup file",
       "localizations" : {
@@ -29466,6 +29425,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "一部の機能はまだ使えないことがあります。"
+          }
+        }
+      }
+    },
+    "some interfaces refused" : {
+      "comment" : "HID Manager status: macOS refused at least one interface",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "einige Schnittstellen abgewiesen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "algunas interfaces rechazadas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "certaines interfaces refusées"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "alcune interfacce rifiutate"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一部のインターフェイスが拒否されました"
           }
         }
       }

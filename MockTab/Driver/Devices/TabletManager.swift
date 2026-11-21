@@ -468,7 +468,7 @@ final class TabletManager: ObservableObject {
         let ret = session.start()
         hidManagerOpen = (ret == kIOReturnSuccess)
         if !hidManagerOpen {
-            logger.error("TabletManager: failed to open HID manager (\(ret, privacy: .public)). Check Input Monitoring permission or uninstall any existing tablet driver.")
+            logger.error("TabletManager: macOS refused at least one HID interface (\(ret, privacy: .public)); tablets on the rest still work. Check Input Monitoring, or quit any other tablet driver.")
         }
 
         // A tablet that stays connected through sleep may lose its mode, and
@@ -488,9 +488,9 @@ final class TabletManager: ObservableObject {
 
     /// Re-attempt the HID open after an Input Monitoring grant.
     ///
-    /// A denied grant makes the open fail outright, so the permission
-    /// arriving later doesn't bring the tablet to life by itself. Only the
-    /// open is repeated, and only when it previously failed.
+    /// Without the grant, macOS keeps interfaces that present as a mouse or
+    /// keyboard closed, and a later grant doesn't open them by itself. Only
+    /// the open is repeated, and only when it previously failed.
     @discardableResult
     func reopenIfClosed() -> Bool {
         guard !hidManagerOpen, let session else { return hidManagerOpen }
