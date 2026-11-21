@@ -13,6 +13,10 @@
 // Usage:  hid_feature_get <vid-hex> <pid-hex> <report-id-hex> [report-id-hex ...]
 //         Re-issues all GETs every 2 seconds so you can swap pens between
 //         reads and diff the output. Ctrl-C to stop.
+//
+// Refuses Wacom report 0xD1. On Intuos Pro (PTH-x60) generation tablets it
+// reads flash, and a read past the end is reported to wedge the tablet
+// until it loses power. Repeated reads make that too easy to reach.
 
 #include <IOKit/hid/IOHIDManager.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -70,8 +74,13 @@ int main(int argc, char **argv) {
     long vid = strtol(argv[1], NULL, 16), pid = strtol(argv[2], NULL, 16);
     reportIDCount = argc - 3;
     if (reportIDCount > 32) reportIDCount = 32;
-    for (int i = 0; i < reportIDCount; i++)
+    for (int i = 0; i < reportIDCount; i++) {
         reportIDs[i] = (uint8_t)strtol(argv[3 + i], NULL, 16);
+        if (vid == 0x056A && reportIDs[i] == 0xD1) {
+            fprintf(stderr, "refusing Wacom report 0xd1: it reads flash, and reading past the end can wedge the tablet\n");
+            return 2;
+        }
+    }
 
     IOHIDManagerRef mgr = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
     CFMutableDictionaryRef match = CFDictionaryCreateMutable(NULL, 0,
