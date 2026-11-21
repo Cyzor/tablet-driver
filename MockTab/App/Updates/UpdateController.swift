@@ -69,11 +69,14 @@ final class UpdateController: ObservableObject {
     private static let simulateKey = "UpdateSimulateRunningVersion"
     /// Written before an install; read once at the next launch.
     private static let pendingKey = "_updateInstallPending"
-    /// The app's language with the system's region, so dates match the
-    /// surrounding text.
+    /// The system's locale in the app's language, so dates match the
+    /// surrounding text and keep the user's clock and region formats.
     static var textLocale: Locale {
-        let language = Bundle.main.preferredLocalizations.first ?? "en"
-        return Locale(identifier: Locale.current.region.map { "\(language)_\($0.identifier)" } ?? language)
+        var components = Locale.Components(locale: .current)
+        var language = Locale.Language.Components(identifier: Bundle.main.preferredLocalizations.first ?? "en")
+        language.region = Locale.current.region
+        components.languageComponents = language
+        return Locale(components: components)
     }
 
     private static let lastCheckedKey = "updateLastChecked"
