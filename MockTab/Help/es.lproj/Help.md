@@ -31,11 +31,11 @@ El área activa es la parte de la superficie de la tableta que se asigna a la pa
 
 Elige la orientación que coincida con la posición actual de la tableta (⌘⌥1 a ⌘⌥4 en el panel Área de tableta). El lápiz, el toque y la inclinación siguen la elección, y el panel Botones dibuja la tableta en consecuencia.
 
-Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, en todos los perfiles y overrides por app. Deshacer revierte ambas cosas a la vez.
+Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, en todos los perfiles y excepciones de app. Deshacer revierte ambas cosas a la vez.
 
 **Invertir asignaciones** – Haz clic derecho en el dibujo de la tableta del panel Botones para pasar cada asignación a la tecla opuesta sin cambiar la orientación. Elígelo de nuevo para dejarlo como estaba.
 
-## Calibración (pen displays)
+## Calibración (pantallas interactivas)
 
 **Calibrar…** muestra objetivos a pantalla completa para tocar con la punta del lápiz. Corrige la separación que el cristal introduce entre la punta y el cursor.
 
@@ -125,7 +125,7 @@ El extremo borrador tiene su propia asignación en la sección del lápiz. En un
 
 ## Overrides por app
 
-La barra de overrides de la parte superior permite asignar botones distintos a una aplicación concreta. Los overrides se activan automáticamente cuando esa aplicación pasa al primer plano. La configuración global se aplica en todos los demás casos.
+La barra de excepciones de la parte superior permite asignar botones distintos a una aplicación concreta. Las excepciones se activan automáticamente cuando esa aplicación pasa al primer plano. La configuración global se aplica en todos los demás casos.
 
 [touch]
 
@@ -189,13 +189,13 @@ Como el área activa, pero del lado de la pantalla: recorta la zona del display 
 
 ## Dispositivos conectados
 
-El panel Devices muestra todas las tabletas y lápices que MockTab ha detectado. Cada fila indica el nombre del dispositivo, el tipo de conexión (USB o Bluetooth) y el estado actual.
+El panel Dispositivos muestra todas las tabletas y lápices que MockTab ha detectado. Cada fila indica el nombre del dispositivo, el tipo de conexión (USB o Bluetooth) y el estado actual.
 
 Al seleccionar una fila de dispositivo, en el panel de detalles de la derecha aparecen los ajustes y lápices específicos de ese modelo.
 
 Los dispositivos desconectados permanecen en la lista para que sus perfiles sigan disponibles para inspección o ajuste aunque estén desenchufados. Cuando un dispositivo de la lista vuelve a conectarse, MockTab aplica automáticamente su configuración guardada.
 
-En una Intuos5 o Intuos Pro (2013) con el kit inalámbrico de Wacom, la fila **Batería** del panel Info establece cuánto tiempo puede estar la tableta sin usarse antes de entrar en reposo.
+En una Intuos5 o Intuos Pro (2013) con el kit inalámbrico de Wacom, la fila **Batería** del panel Información establece cuánto tiempo puede estar la tableta sin usarse antes de entrar en reposo.
 
 ## Detección de conflictos
 
@@ -213,7 +213,7 @@ Haz clic en **Crear perfil** para guardar la configuración actual como un perfi
 
 ## Overrides por app en los perfiles
 
-Cada perfil guarda sus propios overrides por aplicación. Al cambiar de perfil, también cambian los overrides asociados al perfil activo.
+Cada perfil guarda sus propias excepciones de app. Al cambiar de perfil, también cambian las excepciones asociadas al perfil activo.
 
 ## Copia de seguridad e importación
 
@@ -229,7 +229,7 @@ Un lienzo de prueba para comprobar que el lápiz registra presión y movimiento.
 
 ## Entrada en vivo
 
-El panel Info muestra lo que informa la tableta. Los indicadores representan la posición, la presión, la inclinación, la rotación, la altura de proximidad y la actividad táctil.
+El panel Información muestra lo que informa la tableta. Los indicadores representan la posición, la presión, la inclinación, la rotación, la altura de proximidad y la actividad táctil.
 
 ## Recopilar datos del dispositivo
 

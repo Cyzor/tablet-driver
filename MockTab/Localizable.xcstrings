@@ -1018,13 +1018,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld App-Override"
+                  "value" : "%lld App-Ausnahme"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld App-Overrides"
+                  "value" : "%lld App-Ausnahmen"
                 }
               }
             }
@@ -1781,7 +1781,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⇧ Shift"
+            "value" : "⇧ Mayúsculas"
           }
         },
         "fr" : {
@@ -1799,7 +1799,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⇧ シフト"
+            "value" : "⇧ Shift"
           }
         }
       }
@@ -1841,7 +1841,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌃ コントロール"
+            "value" : "⌃ Control"
           }
         }
       }
@@ -1865,7 +1865,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌘ Command"
+            "value" : "⌘ Comando"
           }
         },
         "fr" : {
@@ -1883,7 +1883,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌘ コマンド"
+            "value" : "⌘ Command"
           }
         }
       }
@@ -1942,7 +1942,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌥ Option"
+            "value" : "⌥ Opción"
           }
         },
         "fr" : {
@@ -1960,7 +1960,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⌥ オプション"
+            "value" : "⌥ Option"
           }
         }
       }
@@ -2950,7 +2950,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añade una excepción para una app o arrastra una app aquí desde Finder o el Dock"
+            "value" : "Añade una excepción para una app o arrastra una app aquí desde el Finder o el Dock"
           }
         },
         "fr" : {
@@ -2968,7 +2968,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アプリ固有のオーバーライドを追加します。Finder や Dock からアプリをここにドラッグしても追加できます"
+            "value" : "アプリ別設定を追加します。Finder や Dock からアプリをここにドラッグしても追加できます"
           }
         }
       }
@@ -3015,7 +3015,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App-Override hinzufügen"
+            "value" : "App-Ausnahme hinzufügen"
           }
         },
         "es" : {
@@ -3050,7 +3050,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App-Override hinzufügen"
+            "value" : "App-Ausnahme hinzufügen"
           }
         },
         "es" : {
@@ -3157,7 +3157,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "複数のAppを追加しますか？"
+            "value" : "複数のアプリを追加しますか？"
           }
         }
       }
@@ -3168,7 +3168,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fügt neue Profile hinzu. App-Overrides und Stifteinstellungen gelten sofort."
+            "value" : "Fügt neue Profile hinzu. App-Ausnahmen und Stifteinstellungen gelten sofort."
           }
         },
         "es" : {
@@ -3607,7 +3607,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App名"
+            "value" : "アプリ名"
           }
         }
       }
@@ -6350,7 +6350,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klick auf ein Display, um das Grafiktablett darauf zu mappen. ⌘+Klick fügt es zur Umschalt-Rotation hinzu. ⇧+Klick spannt alle Displays auf."
+            "value" : "Klick auf ein Display, um ihm das Grafiktablett zuzuordnen. ⌘+Klick fügt es zur Display-Auswahl hinzu. ⇧+Klick verteilt es auf alle Displays."
           }
         },
         "en" : {
@@ -6380,7 +6380,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ディスプレイをクリックしてタブレットをそこにマップします。⌘+クリックでローテーション切り替えに追加; ⇧+クリックですべてのディスプレイをスパン。"
+            "value" : "ディスプレイをクリックしてタブレットをそこにマップします。⌘+クリックで切り替え対象に追加、⇧+クリックですべてのディスプレイにまたがって割り当てます。"
           }
         }
       }
@@ -6391,7 +6391,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klick auf ein Display, um das Grafiktablett darauf zu mappen. Command-Klick fügt es zur Umschalt-Rotation hinzu. Shift-Klick spannt alle Displays auf."
+            "value" : "Klick auf ein Display, um ihm das Grafiktablett zuzuordnen. Command-Klick fügt es zur Display-Auswahl hinzu. Shift-Klick verteilt es auf alle Displays."
           }
         },
         "es" : {
@@ -6415,7 +6415,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ディスプレイをクリックすると、タブレットをそのディスプレイにマップします。Command キーを押しながらクリックするとローテーション切り替えに追加し、Shift キーを押しながらクリックするとすべてのディスプレイにまたがります。"
+            "value" : "ディスプレイをクリックすると、タブレットをそのディスプレイにマップします。Command キーを押しながらクリックすると切り替え対象に追加し、Shift キーを押しながらクリックするとすべてのディスプレイにまたがります。"
           }
         }
       }
@@ -6425,7 +6425,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thumbnail anklicken, um ein Display in die Rotation aufzunehmen oder zu entfernen. ⌘-Klick für einzelne Displays; ⇧-Klick für einen Bereich."
+            "value" : "Vorschaubild anklicken, um ein Display in die Display-Auswahl aufzunehmen oder daraus zu entfernen. ⌘-Klick für einzelne Displays; ⇧-Klick für einen Bereich."
           }
         },
         "es" : {
@@ -6449,7 +6449,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "サムネイルをクリックして、そのディスプレイをローテーションに含めるか外すかを切り替えます。⌘クリックで個別追加、⇧クリックで範囲選択。"
+            "value" : "サムネイルをクリックして、そのディスプレイを切り替え対象に含めるか外すかを切り替えます。⌘クリックで個別追加、⇧クリックで範囲選択。"
           }
         }
       }
@@ -6460,7 +6460,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thumbnail anklicken, um ein Display in die Rotation aufzunehmen oder zu entfernen. Command-Klick für einzelne Displays, Shift-Klick für einen Bereich."
+            "value" : "Vorschaubild anklicken, um ein Display in die Display-Auswahl aufzunehmen oder daraus zu entfernen. Command-Klick für einzelne Displays, Shift-Klick für einen Bereich."
           }
         },
         "es" : {
@@ -6484,7 +6484,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "サムネイルをクリックすると、そのディスプレイをローテーションに含めるか外すかを切り替えます。Command キーを押しながらクリックすると個別に追加し、Shift キーを押しながらクリックすると範囲を選択します。"
+            "value" : "サムネイルをクリックすると、そのディスプレイを切り替え対象に含めるか外すかを切り替えます。Command キーを押しながらクリックすると個別に追加し、Shift キーを押しながらクリックすると範囲を選択します。"
           }
         }
       }
@@ -7172,7 +7172,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Color y brillo de la luz detrás de los botones del marco. El hardware conserva su propio color hasta que lo cambie."
+            "value" : "Color y brillo de la luz detrás de los botones del marco. El hardware conserva su propio color hasta que lo cambies."
           }
         },
         "fr" : {
@@ -12586,7 +12586,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "エスケープ"
+            "value" : "Esc"
           }
         }
       }
@@ -13106,7 +13106,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ファーム"
+            "value" : "硬め"
           }
         }
       }
@@ -13141,7 +13141,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ファームカーブ"
+            "value" : "硬めのカーブ"
           }
         }
       }
@@ -13176,7 +13176,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ファーム応答。最大出力までより強い力が必要です。精密な細部の作業に向いています。"
+            "value" : "硬めの応答。最大出力までより強い力が必要です。精密な細部の作業に向いています。"
           }
         }
       }
@@ -15063,7 +15063,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "イラストレーター: ジョン・テニエル、1865年"
+            "value" : "挿絵: ジョン・テニエル、1865年"
           }
         }
       }
@@ -15115,7 +15115,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App-Override importieren"
+            "value" : "App-Ausnahme importieren"
           }
         },
         "es" : {
@@ -15556,7 +15556,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "トラックパッドのように慣性を伴って動きをアニメーション表示します。対応状況はアプリによって異なります。"
+            "value" : "慣性スクロール。対応状況はアプリによって異なります。"
           }
         }
       }
@@ -17053,7 +17053,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "リニア"
+            "value" : "直線"
           }
         }
       }
@@ -17088,7 +17088,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "リニアカーブ"
+            "value" : "直線のカーブ"
           }
         }
       }
@@ -17123,7 +17123,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "リニア応答。ペンの力に比例した筆圧を出力します。普段使いに最適です。"
+            "value" : "直線的な応答。ペンの力に比例した筆圧を出力します。普段使いに最適です。"
           }
         }
       }
@@ -17638,7 +17638,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Asignar la tableta a su pantalla principal."
+            "value" : "Asignar la tableta a tu pantalla principal."
           }
         },
         "fr" : {
@@ -19887,7 +19887,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "他のAppが起動していません"
+            "value" : "他のアプリが起動していません"
           }
         }
       }
@@ -21196,7 +21196,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "GitHubイシューを開く…"
+            "value" : "GitHub で Issue を開く…"
           }
         }
       }
@@ -21948,7 +21948,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ポインタオフセット"
+            "value" : "ポインタ位置の補正"
           }
         }
       }
@@ -22212,7 +22212,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sensación del lápiz"
+            "value" : "Respuesta del lápiz"
           }
         },
         "fr" : {
@@ -22593,7 +22593,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ポインタオフセット"
+            "value" : "ポインタ位置の補正"
           }
         }
       }
@@ -23582,7 +23582,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プロポーショナルマッピング"
+            "value" : "縦横比を保持"
           }
         }
       }
@@ -23617,7 +23617,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "プロポーショナルマッピング"
+            "value" : "縦横比を保持"
           }
         }
       }
@@ -24609,7 +24609,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle %@-Overrides in diesem Tab entfernen"
+            "value" : "Alle %@-Ausnahmen in diesem Tab entfernen"
           }
         },
         "es" : {
@@ -24633,7 +24633,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このタブの %@ オーバーライドをすべて削除"
+            "value" : "このタブの %@ のアプリ別設定をすべて削除"
           }
         }
       }
@@ -24644,7 +24644,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle App-Overrides entfernen"
+            "value" : "Alle App-Ausnahmen entfernen"
           }
         },
         "es" : {
@@ -24679,7 +24679,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App-Override entfernen"
+            "value" : "App-Ausnahme entfernen"
           }
         },
         "es" : {
@@ -24714,7 +24714,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle App-Overrides für dieses Grafiktablett entfernen"
+            "value" : "Alle App-Ausnahmen für dieses Grafiktablett entfernen"
           }
         },
         "es" : {
@@ -24973,7 +24973,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appの名前を変更"
+            "value" : "アプリの名前を変更"
           }
         }
       }
@@ -24984,7 +24984,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App-Override umbenennen"
+            "value" : "App-Ausnahme umbenennen"
           }
         },
         "es" : {
@@ -25253,7 +25253,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App-Override neu anordnen"
+            "value" : "App-Ausnahme neu anordnen"
           }
         },
         "es" : {
@@ -27704,7 +27704,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "シリアル番号、App名、ボタン割り当てを含め、すべてを保存します。"
+            "value" : "シリアル番号、アプリ名、ボタン割り当てを含め、すべてを保存します。"
           }
         }
       }
@@ -29319,7 +29319,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ソフト"
+            "value" : "柔らかめ"
           }
         }
       }
@@ -29354,7 +29354,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ソフトカーブ"
+            "value" : "柔らかめのカーブ"
           }
         }
       }
@@ -29389,7 +29389,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ソフト応答。軽い筆圧ですぐに最大出力に達します。ラフで表現豊かな作業に向いています。"
+            "value" : "柔らかめの応答。軽い筆圧ですぐに最大出力に達します。ラフで表現豊かな作業に向いています。"
           }
         }
       }
@@ -31996,7 +31996,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Umschalttasten"
+            "value" : "Modustasten"
           }
         },
         "es" : {
@@ -32412,7 +32412,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touch Ring-Umschalttaste"
+            "value" : "Touch Ring-Taste"
           }
         },
         "es" : {
@@ -34514,7 +34514,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Du hast %lld Apps abgelegt. Alle als Overrides hinzufügen?"
+            "value" : "Du hast %lld Apps abgelegt. Alle als Ausnahmen hinzufügen?"
           }
         },
         "es" : {
@@ -34538,7 +34538,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld 個のAppをドロップしました。すべてをオーバーライドとして追加しますか？"
+            "value" : "%lld 個のアプリをドロップしました。すべてをアプリ別設定として追加しますか？"
           }
         }
       }

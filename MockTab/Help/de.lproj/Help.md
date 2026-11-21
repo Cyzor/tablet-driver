@@ -31,7 +31,7 @@ Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bilds
 
 Wähle die Ausrichtung, die zur aktuellen Lage des Grafiktabletts passt (⌘⌥1 bis ⌘⌥4 im Grafiktablett-Bereich). Stift, Berührung und Neigung folgen der Wahl, und der Tasten-Bereich zeichnet das Grafiktablett entsprechend.
 
-Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt, in jedem Profil und jedem App-Override. Mit Rückgängig stellst du beides gemeinsam wieder her.
+Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt, in jedem Profil und jeder App-Ausnahme. Mit Rückgängig stellst du beides gemeinsam wieder her.
 
 **Belegung umdrehen** – Klicke mit der rechten Maustaste auf das Grafiktablett im Tasten-Bereich, um jede Belegung auf die gegenüberliegende Taste zu tauschen, ohne die Ausrichtung zu ändern. Ein zweites Mal stellt alles wieder her.
 
@@ -123,9 +123,9 @@ Bei Geräten mit beleuchtetem Einstellradring oder hinterleuchteten Tasten lasse
 
 Das Radiererende hat eine eigene Zuweisung im Stiftabschnitt. Hat ein Stift keins, weise einer Seitentaste „Radierer“ zu und halte sie, um mit der Spitze zu radieren.
 
-## App-spezifische Overrides
+## App-Ausnahmen
 
-Über die Override-Leiste oben kannst du für eine bestimmte Anwendung andere Tastenbelegungen festlegen. Die Overrides werden automatisch aktiv, sobald diese App in den Vordergrund kommt. In allen anderen Fällen gelten die globalen Einstellungen.
+Über die Ausnahmen-Leiste oben kannst du für eine bestimmte Anwendung andere Tastenbelegungen festlegen. Die Ausnahmen werden automatisch aktiv, sobald diese App in den Vordergrund kommt. In allen anderen Fällen gelten die globalen Einstellungen.
 
 [touch]
 
@@ -211,9 +211,9 @@ Ein Profil ist eine Momentaufnahme der Grafiktablett-Einstellungen: aktiver Bere
 
 Klicke auf **Profil erstellen**, um die aktuellen Einstellungen als neues Profil zu speichern. Mit einem Doppelklick auf einen Profilnamen kannst du ihn umbenennen.
 
-## App-spezifische Overrides in Profilen
+## App-Ausnahmen in Profilen
 
-Profile speichern ihre eigenen app-spezifischen Overrides. Wenn du das Profil wechselst, wechseln auch die Overrides, die zum aktiven Profil gehören.
+Profile speichern ihre eigenen App-Ausnahmen. Wenn du das Profil wechselst, wechseln auch die Ausnahmen, die zum aktiven Profil gehören.
 
 ## Sichern und Importieren
 
