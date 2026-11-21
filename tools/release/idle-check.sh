@@ -24,5 +24,5 @@ echo "idle-check: footprint ${footprint} MB (budget ${FOOTPRINT_BUDGET_MB} MB)"
 awk -v c="$cpu" -v b="$CPU_BUDGET_PERCENT" 'BEGIN { exit !(c > b) }' &&
     echo "idle-check: WARNING idle CPU above budget; sample it with: sample $pid 5"
 (( ${footprint%.*} > FOOTPRINT_BUDGET_MB )) &&
-    echo "idle-check: WARNING footprint above budget; a settings window opened this session keeps about 55 MB until relaunch"
+    echo "idle-check: WARNING footprint above budget; settings windows opened this session can keep about 95 MB until relaunch"
 exit 0
