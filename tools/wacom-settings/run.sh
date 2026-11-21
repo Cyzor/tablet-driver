@@ -6,6 +6,7 @@
 # only the first run, and the first after an edit, waits for the compiler.
 #
 # Usage: tools/wacom-settings/run.sh [--apply [options]] <backup.wacomprefs>
+#        tools/wacom-settings/run.sh --build-only
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -42,4 +43,5 @@ if with_sources stale; then
     mv -f "$BIN.new" "$BIN"
 fi
 
+[ "${1:-}" = "--build-only" ] && exit 0
 "$BIN" "$@"

@@ -6,7 +6,7 @@ Registry and capture-triage scripts live in [`TabletKit/tools/`](../TabletKit/to
 
 ## tests/
 
-Standalone test harnesses for app code. `tests/run-all-tests.sh` runs them all, as CI does. See [`Contributing.md`](../Contributing.md).
+Standalone test harnesses for app code. `tests/run-all-tests.sh` runs them all, as CI does. See [`Contributing.md`](../Contributing.md). `tool-build-tests` builds the tools below that only run by hand, so a change that breaks one fails there.
 
 ## release/
 

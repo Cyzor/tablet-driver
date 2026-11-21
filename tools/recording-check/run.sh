@@ -3,6 +3,7 @@
 # given. See main.swift's header for what it compares.
 #
 # Usage: tools/recording-check/run.sh [-v] [-n examples] recording.hid...
+#        tools/recording-check/run.sh --build-only
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,4 +12,5 @@ T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 
 swiftc -O -I "$KIT" -L "$KIT" -lTabletKit "$DIR/main.swift" -o "$T/recording-check"
+[ "${1:-}" = "--build-only" ] && exit 0
 "$T/recording-check" "$@"

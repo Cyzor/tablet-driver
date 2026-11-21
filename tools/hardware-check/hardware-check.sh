@@ -20,7 +20,9 @@
 #
 # Usage:
 #   tools/hardware-check/hardware-check.sh [--again] [--working] [--only wacom|switch|xencelabs|strain] [A] [B]
+#   tools/hardware-check/hardware-check.sh --build-only
 #
+# --build-only builds the checkers and stops, for the tests.
 # --again discards earlier results of the checks chosen. The terminal needs
 # Accessibility and Input Monitoring. Quits and relaunches MockTab as needed,
 # then puts back the build that was running when it started.
@@ -28,27 +30,30 @@ set -euo pipefail
 
 ROOT="$(git -C "$(dirname "$0")/../.." rev-parse --show-toplevel)"
 HERE="$ROOT/tools/hardware-check"
-WORK=/tmp/mocktab-hwcheck
+WORK="${MOCKTAB_HWCHECK_WORK:-/tmp/mocktab-hwcheck}"
 RESULTS="$WORK/results"
 
-again="" only="" working=""
+again="" only="" working="" build_only=""
 while [[ "${1:-}" == --* ]]; do
     case $1 in
         --again) again=1 ;;
         --working) working=1 ;;
         --only) only=$2; shift ;;
+        --build-only) build_only=1 ;;
         *) echo "hardware-check: unknown option $1"; exit 64 ;;
     esac
     shift
 done
-A=$(git -C "$ROOT" rev-parse --short "${1:-origin/main}")
-if [[ -n "$working" ]]; then
-    B=working
-else
-    B=$(git -C "$ROOT" rev-parse --short "${2:-HEAD}")
-    [[ "$A" == "$B" ]] && { echo "hardware-check: A and B are the same commit ($A); use --working for uncommitted changes"; exit 1; }
-    if [[ -n $(git -C "$ROOT" status --porcelain --untracked-files=no) ]]; then
-        echo "hardware-check: note: uncommitted changes aren't in either build; --working includes them"
+if [[ -z "$build_only" ]]; then
+    A=$(git -C "$ROOT" rev-parse --short "${1:-origin/main}")
+    if [[ -n "$working" ]]; then
+        B=working
+    else
+        B=$(git -C "$ROOT" rev-parse --short "${2:-HEAD}")
+        [[ "$A" == "$B" ]] && { echo "hardware-check: A and B are the same commit ($A); use --working for uncommitted changes"; exit 1; }
+        if [[ -n $(git -C "$ROOT" status --porcelain --untracked-files=no) ]]; then
+            echo "hardware-check: note: uncommitted changes aren't in either build; --working includes them"
+        fi
     fi
 fi
 
@@ -71,6 +76,7 @@ for tool in transport_switch_check xencelabs_check; do
         swiftc -O "$HERE/$tool.swift" -o "$WORK/bin/$tool"
     fi
 done
+[[ -n "$build_only" ]] && exit 0
 
 # MARK: Builds
 
