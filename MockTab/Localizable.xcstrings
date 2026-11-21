@@ -3056,7 +3056,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Agregar excepción de app"
+            "value" : "Añadir excepción de app"
           }
         },
         "fr" : {
@@ -3098,7 +3098,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Agregar solo los primeros 3"
+            "value" : "Añadir solo los primeros 3"
           }
         },
         "fr" : {
@@ -5207,7 +5207,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retroiluminación de los botones"
+            "value" : "Luz de los botones"
           }
         },
         "fr" : {
@@ -5632,7 +5632,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambia la imagen de la pantalla. Las funciones disponibles dependen del modelo."
+            "value" : "Cambia la imagen de la pantalla. Las funciones dependen del modelo."
           }
         },
         "fr" : {
@@ -7021,7 +7021,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se están recopilando datos del dispositivo en otra ventana."
+            "value" : "Recopilando datos del dispositivo en otra ventana."
           }
         },
         "fr" : {
@@ -7613,7 +7613,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El contenido se mueve en sentido contrario al del lápiz."
+            "value" : "El contenido va en sentido contrario al lápiz."
           }
         },
         "fr" : {
@@ -7647,7 +7647,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El contenido se mueve en sentido contrario al de tus dedos."
+            "value" : "El contenido va en sentido contrario a tus dedos."
           }
         },
         "fr" : {
@@ -9805,7 +9805,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configuración predeterminada del dispositivo"
+            "value" : "Predeterminados del dispositivo"
           }
         },
         "fr" : {
@@ -11632,7 +11632,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arrastra fuera para guardar. Arrastra dentro para restaurar."
+            "value" : "Arrastra fuera para guardar y dentro para restaurar."
           }
         },
         "fr" : {
@@ -11818,7 +11818,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dibuje en el lienzo para verificar la presión y el comportamiento de los clics."
+            "value" : "Dibuja en el lienzo para comprobar la presión y los clics."
           }
         },
         "fr" : {
@@ -13408,7 +13408,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Para la compatibilidad completa hace falta una grabación."
+            "value" : "La compatibilidad completa requiere una grabación."
           }
         },
         "fr" : {
@@ -14058,7 +14058,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar ícono del Dock"
+            "value" : "Ocultar icono del Dock"
           }
         },
         "fr" : {
@@ -14181,7 +14181,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Ocultar el ícono de MockTab del Dock?"
+            "value" : "¿Ocultar el icono de MockTab del Dock?"
           }
         },
         "fr" : {
@@ -14373,7 +14373,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los valores más altos añaden latencia y reducen la precisión en movimientos rápidos."
+            "value" : "Valores altos: más retraso y menos precisión en movimientos rápidos."
           }
         },
         "fr" : {
@@ -14893,7 +14893,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con qué velocidad se desplaza el contenido al pulsar un botón de Desplazar vista."
+            "value" : "Velocidad del contenido al pulsar Desplazar vista."
           }
         },
         "fr" : {
@@ -15538,7 +15538,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anima el movimiento con inercia, como en un trackpad. La compatibilidad varía según la app."
+            "value" : "Desplazamiento con inercia. La compatibilidad varía según la app."
           }
         },
         "fr" : {
@@ -15696,7 +15696,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Monitorización de los dispositivos de entrada"
+            "value" : "Monitorización de entrada"
           }
         },
         "fr" : {
@@ -19443,7 +19443,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Movimiento antes de que un toque se convierta en arrastre."
+            "value" : "Movimiento antes de que un toque sea un arrastre."
           }
         },
         "fr" : {
@@ -19518,7 +19518,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controlador nativo de macOS para algunas tabletas de dibujo heredadas"
+            "value" : "Controlador nativo de macOS para algunas tabletas de dibujo antiguas"
           }
         },
         "fr" : {
@@ -21038,7 +21038,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Una vez a la semana mientras MockTab está abierto."
+            "value" : "Cada semana, con MockTab abierto."
           }
         },
         "fr" : {
@@ -24055,7 +24055,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El segundo toque se ajusta a la posición del primero dentro de este radio — para doble clics más fiables."
+            "value" : "Radio para dobles clics fiables."
           }
         },
         "fr" : {
@@ -24073,7 +24073,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "この半径内で2回目のタップを1回目の位置にスナップ – ダブルクリックを確実にする。"
+            "value" : "ダブルクリックを確実にする半径。"
           }
         }
       }
@@ -24317,7 +24317,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reduce las variaciones del grosor de línea causadas por el ruido del sensor con poca presión."
+            "value" : "Uniforma el grosor del trazo con poca presión."
           }
         },
         "fr" : {
@@ -25606,7 +25606,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablezca el área activa a la superficie completa de la tableta (reversible)."
+            "value" : "Restablece el área activa a toda la superficie de la tableta (reversible)."
           }
         },
         "fr" : {
@@ -25640,7 +25640,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablezca el área táctil a la superficie táctil completa (reversible)."
+            "value" : "Restablece el área táctil a toda la superficie táctil (reversible)."
           }
         },
         "fr" : {
@@ -25903,7 +25903,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar archivo de ajustes de MockTab en Finder…"
+            "value" : "Mostrar archivo de ajustes de MockTab…"
           }
         },
         "fr" : {
@@ -26486,7 +26486,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 1: acción"
+            "value" : "Ranura del anillo 1: acción"
           }
         },
         "fr" : {
@@ -26521,7 +26521,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 1: antihorario"
+            "value" : "Ranura del anillo 1: antihorario"
           }
         },
         "fr" : {
@@ -26556,7 +26556,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 1: horario"
+            "value" : "Ranura del anillo 1: horario"
           }
         },
         "fr" : {
@@ -26591,7 +26591,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 1: velocidad"
+            "value" : "Ranura del anillo 1: velocidad"
           }
         },
         "fr" : {
@@ -26626,7 +26626,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 2: acción"
+            "value" : "Ranura del anillo 2: acción"
           }
         },
         "fr" : {
@@ -26661,7 +26661,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 2: antihorario"
+            "value" : "Ranura del anillo 2: antihorario"
           }
         },
         "fr" : {
@@ -26696,7 +26696,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 2: horario"
+            "value" : "Ranura del anillo 2: horario"
           }
         },
         "fr" : {
@@ -26731,7 +26731,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 2: velocidad"
+            "value" : "Ranura del anillo 2: velocidad"
           }
         },
         "fr" : {
@@ -26766,7 +26766,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 3: acción"
+            "value" : "Ranura del anillo 3: acción"
           }
         },
         "fr" : {
@@ -26801,7 +26801,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 3: antihorario"
+            "value" : "Ranura del anillo 3: antihorario"
           }
         },
         "fr" : {
@@ -26836,7 +26836,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 3: horario"
+            "value" : "Ranura del anillo 3: horario"
           }
         },
         "fr" : {
@@ -26871,7 +26871,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 3: velocidad"
+            "value" : "Ranura del anillo 3: velocidad"
           }
         },
         "fr" : {
@@ -26906,7 +26906,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 4: acción"
+            "value" : "Ranura del anillo 4: acción"
           }
         },
         "fr" : {
@@ -26941,7 +26941,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 4: antihorario"
+            "value" : "Ranura del anillo 4: antihorario"
           }
         },
         "fr" : {
@@ -26976,7 +26976,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 4: horario"
+            "value" : "Ranura del anillo 4: horario"
           }
         },
         "fr" : {
@@ -27011,7 +27011,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring 4: velocidad"
+            "value" : "Ranura del anillo 4: velocidad"
           }
         },
         "fr" : {
@@ -27046,7 +27046,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring: acción"
+            "value" : "Ranura del anillo: acción"
           }
         },
         "fr" : {
@@ -27081,7 +27081,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring: giro"
+            "value" : "Ranura del anillo: giro"
           }
         },
         "fr" : {
@@ -27116,7 +27116,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ranura del ring: velocidad"
+            "value" : "Ranura del anillo: velocidad"
           }
         },
         "fr" : {
@@ -28418,7 +28418,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar todas las tabletas conectadas"
+            "value" : "Mostrar todas las conectadas"
           }
         },
         "fr" : {
@@ -29635,7 +29635,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Distribuido en las pantallas seleccionadas"
+            "value" : "Distribuir en pantallas seleccionadas"
           }
         },
         "fr" : {
@@ -30264,7 +30264,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambiar el ring directamente al modo %lld"
+            "value" : "Cambiar el anillo directamente al modo %lld"
           }
         },
         "fr" : {
@@ -31891,7 +31891,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Asistencia de levantamiento"
+            "value" : "Ayuda al levantar"
           }
         },
         "fr" : {
@@ -33331,7 +33331,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cuando está desactivado, la superficie táctil de la tableta se ignora. La entrada del lápiz no se ve afectada."
+            "value" : "Mueve el puntero y haz clic con el dedo."
           }
         },
         "fr" : {
@@ -33349,7 +33349,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オフのとき、タブレットのタッチ面は無視されます。ペン入力には影響しません。"
+            "value" : "指でポインタを動かしてクリックします。"
           }
         }
       }
