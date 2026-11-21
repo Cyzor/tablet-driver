@@ -63,7 +63,8 @@ if [[ ! -f "$KIT/libTabletKit.a" || -n $(find "$ROOT/TabletKit/Sources/TabletKit
     rm -f "$WORK/bin/wacom_pad_check"
 fi
 if [[ ! -x "$WORK/bin/wacom_pad_check" || "$HERE/wacom_pad_check.swift" -nt "$WORK/bin/wacom_pad_check" ]]; then
-    swiftc -O -I "$KIT" -L "$KIT" -lTabletKit "$HERE/wacom_pad_check.swift" -o "$WORK/bin/wacom_pad_check"
+    # TabletKit's package name lets the check use the dongle pairing watcher.
+    swiftc -O -package-name TabletKit -I "$KIT" -L "$KIT" -lTabletKit "$HERE/wacom_pad_check.swift" -o "$WORK/bin/wacom_pad_check"
 fi
 for tool in transport_switch_check xencelabs_check; do
     if [[ ! -x "$WORK/bin/$tool" || "$HERE/$tool.swift" -nt "$WORK/bin/$tool" ]]; then
