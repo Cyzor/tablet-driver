@@ -243,9 +243,13 @@ enum TabletDiagramInk {
             context.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))
             return
         }
-        // Even-odd fills a doubly cut area back in, so each area is cut once:
-        // a pad's four keys share one slot, and the slots of keys close
-        // enough to touch merge into one block, as in a cluster.
+        // Slots are erased one by one, so slots that meet stay open; an
+        // even-odd cut would fill their overlap back in, as a 1x display's
+        // wider gap makes a ring's slot reach its keys'. A pad's four keys
+        // share one slot, and the slots of keys close enough to touch merge
+        // into one block, as in a cluster.
+        var slots: [Path] = []
+        var holes: [Path] = []
         var pads: [CGRect] = []
         var blocks: [CGRect] = []
         for shape in d.shapes where shape.kind != .mark && shape.kind != .center {
@@ -253,14 +257,14 @@ enum TabletDiagramInk {
             case .wedge, .half:
                 if pads.contains(shape.rect) { continue }
                 pads.append(shape.rect)
-                body.addPath(path(shape, outset: gap, corner: u))
+                slots.append(path(shape, outset: gap, corner: u))
             case .ring:
-                body.addPath(path(shape, outset: gap, corner: u))
+                slots.append(path(shape, outset: gap, corner: u))
                 // A hole with no center button is dead space: the body fills it.
                 let r = shape.rect
                 if !d.shapes.contains(where: { $0.kind == .center && r.contains(CGPoint(x: $0.rect.midX, y: $0.rect.midY)) }) {
                     let inset = (r.width * (1 - TabletFigure.ringHole) / 2 * scale).rounded() / scale + gap
-                    body.addPath(Path(ellipseIn: r.insetBy(dx: inset, dy: inset)))
+                    holes.append(Path(ellipseIn: r.insetBy(dx: inset, dy: inset)))
                 }
             case .key, .cluster:
                 var block = shape.rect.insetBy(dx: -gap, dy: -gap)
@@ -269,13 +273,19 @@ enum TabletDiagramInk {
                 }
                 blocks.append(block)
             default:
-                body.addPath(path(shape, outset: gap, corner: u))
+                slots.append(path(shape, outset: gap, corner: u))
             }
         }
         for block in blocks {
-            body.addPath(Path(roundedRect: block, cornerRadius: u + gap, style: .continuous))
+            slots.append(Path(roundedRect: block, cornerRadius: u + gap, style: .continuous))
         }
-        context.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))
+        context.drawLayer { layer in
+            layer.fill(body, with: .color(palette.ink), style: FillStyle(eoFill: true))
+            layer.blendMode = .destinationOut
+            for slot in slots { layer.fill(slot, with: .color(.black)) }
+            layer.blendMode = .normal
+            for hole in holes { layer.fill(hole, with: .color(palette.ink)) }
+        }
 
         // The surface, a screen or an active area, is a face in its opening.
         context.fill(Path(roundedRect: surface, cornerRadius: 2 * u, style: .continuous), with: .color(palette.screen))
