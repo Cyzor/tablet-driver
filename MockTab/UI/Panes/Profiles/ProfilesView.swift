@@ -290,7 +290,7 @@ struct ProfilesView: View {
                             .appFont(size: 26, weight: .semibold)
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(isDropTargeted ? Color.accentColor : Color.primary)
-                            .offset(x: 4)
+                            .offset(x: 2)
                             .accessibilityHidden(true)
 
                         Text(
