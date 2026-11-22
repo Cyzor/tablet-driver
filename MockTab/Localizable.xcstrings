@@ -6385,37 +6385,37 @@
         }
       }
     },
-    "Click a display to map the tablet to it. Command-click to add it to the toggle rotation. Shift-click to span all displays." : {
+    "Click a display to map the tablet to it. Command-click to add it to the toggle rotation. Shift-click to select a range." : {
       "comment" : "VoiceOver hint for the display canvas in single-display modes",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klick auf ein Display, um ihm das Grafiktablett zuzuordnen. Command-Klick fügt es zur Display-Auswahl hinzu. Shift-Klick verteilt es auf alle Displays."
+            "value" : "Klick auf ein Display, um ihm das Grafiktablett zuzuordnen. Command-Klick fügt es zur Display-Auswahl hinzu. Shift-Klick wählt einen Bereich aus."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Haz clic en una pantalla para asignarle la tableta. Comando-clic la añade a la rotación de alternancia. Mayúsculas-clic abarca todas las pantallas."
+            "value" : "Haz clic en una pantalla para asignarle la tableta. Comando-clic la añade a la rotación de alternancia. Mayúsculas-clic selecciona un rango."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cliquez sur un écran pour y associer la tablette. Commande-clic pour l’ajouter aux écrans à parcourir. Maj-clic pour étendre sur tous les écrans."
+            "value" : "Cliquez sur un écran pour y associer la tablette. Commande-clic pour l’ajouter aux écrans à parcourir. Maj-clic pour sélectionner une plage."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fai clic su un monitor per associarlo alla tavoletta. Comando-clic per aggiungerlo ai monitor tra cui alternare. Maiuscole-clic per estendere su tutti i monitor."
+            "value" : "Fai clic su un monitor per associarlo alla tavoletta. Comando-clic per aggiungerlo ai monitor tra cui alternare. Maiuscole-clic per selezionare un intervallo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ディスプレイをクリックすると、タブレットをそのディスプレイにマップします。Command キーを押しながらクリックすると切り替え対象に追加し、Shift キーを押しながらクリックするとすべてのディスプレイにまたがります。"
+            "value" : "ディスプレイをクリックすると、タブレットをそのディスプレイにマップします。Command キーを押しながらクリックすると切り替え対象に追加し、Shift キーを押しながらクリックすると範囲を選択します。"
           }
         }
       }

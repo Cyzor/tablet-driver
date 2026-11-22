@@ -21,7 +21,9 @@ Quit MockTab and move it to the Trash. To remove its settings as well, open each
 
 The active area is the portion of the tablet surface that maps to the screen. Pen input outside this rectangle has no effect.
 
-**Resizing** – Drag the area or its handles; it snaps to the screen area's shape when close (hold **⌘** to skip, **⇧** to keep its shape). Click the width or height below to type an exact size.
+**Resizing** – Drag the area or its handles; it snaps to the screen area's shape when close (hold **⌘** to skip, **⇧** to keep its shape, **⌥** to resize from the center). Click the width or height below to type an exact size.
+
+**Keyboard** – On macOS 14 and later, click the area and use the arrow keys to move it, or hold **⌥** to resize it. **⇧** takes bigger steps.
 
 **Proportional mapping** – Keeps horizontal and vertical cursor travel equal. Turn it off to stretch or compress the mapping.
 
@@ -46,6 +48,8 @@ Turning the tablet moves each assignment to the key now in its place, in every p
 ## Pressure Curve
 
 Pull the curve up to make light strokes heavier, or down to need more force. Linear, Soft, and Firm are presets.
+
+On macOS 14 and later, click the curve and use the arrow keys to move the handle joined to the light end, or hold **⌥** to move the other one. **⇧** takes bigger steps.
 
 ## Pressure Smoothing
 
@@ -127,6 +131,8 @@ The eraser end has its own assignment in the pen section. On a pen without one, 
 
 The app override bar at the top assigns different buttons for a specific application. Overrides activate automatically when that app moves to the foreground. Global settings apply in all other cases.
 
+**Reset** removes the current app's overrides. Hold **⌥** to change it to **Remove All**, which removes every app's overrides for this tablet.
+
 [touch]
 
 ## Touch
@@ -155,7 +161,7 @@ Some tablets also sense your fingers. MockTab leaves touch off by default. Turn 
 
 ## Touch Area
 
-The touch area operates independently from the pen’s active area. Drag the handles in the preview to crop the available touch surface. Finger input outside the rectangle has no effect.
+The touch area operates independently from the pen’s active area. Drag the handles in the preview to crop the available touch surface. Finger input outside the rectangle has no effect. Modifier and arrow keys work as in the active area.
 
 **Reset to Full Surface** – Restores the touch area to the entire touch-capable region.
 
@@ -169,11 +175,11 @@ MockTab doesn't support Mission Control, Spaces, Launchpad, or App Exposé from 
 
 Display mapping determines which screen the tablet treats as active.
 
-**All Displays** – Shift-click any display in the diagram to span the entire desktop proportionally. Suits workflows that move across multiple monitors.
+**All Displays** – Spans the entire desktop proportionally. Suits workflows that move across multiple monitors.
 
 **Single Display** – Click a display in the diagram to map the active area to just that display.
 
-**Toggle Display** – Switches displays from a button. ⌘-click displays in the diagram to choose which ones it cycles through.
+**Toggle Display** – Switches displays from a button. ⌘-click displays in the diagram to choose which ones it cycles through, or Shift-click to select a range.
 
 **Span Displays** – Press a button assigned to Span Displays to spread the pen across the displays selected under Active Displays, and press it again to return to your usual setting. With none selected, it spans every display.
 
@@ -209,7 +215,7 @@ A profile is a snapshot of tablet settings: active area, pressure curve, button 
 
 ## Creating and Renaming
 
-Click **Create Profile** to capture the current settings. Double-click a profile name to rename it.
+Click **Create Profile** to capture the current settings. Double-click a profile name to rename it, or right-click a profile for more choices. Hold **⌥** while you open that menu to delete every profile for this tablet; **⌘Z** brings them back.
 
 ## Per-App Overrides in Profiles
 
@@ -217,7 +223,7 @@ Profiles store their own per-app overrides. Switching profiles also switches to 
 
 ## Backup and Import
 
-Drag the JSON tile to the Finder to save all settings, including serial numbers and app names. Drag a file onto the tile to import it and choose which tablets to bring in. The Profiles menu does the same.
+Drag the JSON tile to the Finder to save all settings, including serial numbers and app names. Drag a file onto the tile to import it and choose which tablets to bring in. The Profiles menu does the same. ⌥-click a tablet's checkbox to check or uncheck them all.
 
 [scratchpad]
 
@@ -240,6 +246,8 @@ The Info pane shows what the tablet reports. Gauges represent position, pressure
 **Check Now** asks mocktab.org for a newer version, and **Check automatically** asks weekly. Nothing else goes online.
 
 A badge on the menu bar and Dock icons means an update is available. **Install on Quit** installs it when MockTab quits, and **Install and Relaunch** installs it now.
+
+Hold **⌥** to change **Check Now** to **Check for Pre-release**, which looks for a newer test version. Pre-releases may be incomplete. The **Check for Updates…** menu item changes the same way.
 
 ## Dock and Login
 

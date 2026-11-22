@@ -21,7 +21,9 @@ Beende MockTab und lege es in den Papierkorb. Um auch die Einstellungen zu entfe
 
 Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bildschirm abgebildet wird. Stifteingaben außerhalb dieses Rechtecks haben keine Wirkung.
 
-**Größe ändern** – Ziehe den Bereich oder seine Griffe; nahe der Form des Bildschirmbereichs rastet er ein (**⌘** verhindert das, **⇧** behält seine Form bei). Für eine genaue Größe klicke auf Breite oder Höhe darunter.
+**Größe ändern** – Ziehe den Bereich oder seine Griffe; nahe der Form des Bildschirmbereichs rastet er ein (**⌘** verhindert das, **⇧** behält seine Form bei, **⌥** ändert die Größe von der Mitte aus). Für eine genaue Größe klicke auf Breite oder Höhe darunter.
+
+**Tastatur** – Ab macOS 14 klickst du auf den Bereich und verschiebst ihn mit den Pfeiltasten; mit **⌥** änderst du seine Größe. Mit **⇧** werden die Schritte größer.
 
 **Proportionale Projektion** – Hält die Cursorwege horizontal und vertikal gleich lang. Schalte sie aus, um die Abbildung zu strecken oder zu stauchen.
 
@@ -46,6 +48,8 @@ Mit **Zeiger-Versatz** gleichst du einen kleinen verbleibenden Versatz aus, etwa
 ## Druckkurve
 
 Ziehst du die Kurve nach oben, wirken leichte Striche kräftiger; nach unten brauchst du mehr Kraft. Linear, Weich und Fest sind Voreinstellungen.
+
+Ab macOS 14 klickst du auf die Kurve und verschiebst mit den Pfeiltasten den Griff am leichten Ende, mit **⌥** den anderen. Mit **⇧** werden die Schritte größer.
 
 ## Druckglättung
 
@@ -127,6 +131,8 @@ Das Radiererende hat eine eigene Zuweisung im Stiftabschnitt. Hat ein Stift kein
 
 Über die Ausnahmen-Leiste oben kannst du für eine bestimmte Anwendung andere Tastenbelegungen festlegen. Die Ausnahmen werden automatisch aktiv, sobald diese App in den Vordergrund kommt. In allen anderen Fällen gelten die globalen Einstellungen.
 
+**Zurücksetzen** entfernt die Ausnahmen der aktuellen App. Mit gedrückter **⌥**-Taste wird daraus **Alle entfernen**, das die Ausnahmen aller Apps für dieses Grafiktablett entfernt.
+
 [touch]
 
 ## Berührung
@@ -155,7 +161,7 @@ Manche Grafiktabletts erkennen auch deine Finger. MockTab lässt Touch standardm
 
 ## Berührungsbereich
 
-Der Berührungsbereich arbeitet unabhängig vom aktiven Stiftbereich. Ziehe die Griffe in der Vorschau, um die verfügbare Touch-Fläche zuzuschneiden. Fingereingaben außerhalb des Rechtecks haben keine Wirkung.
+Der Berührungsbereich arbeitet unabhängig vom aktiven Stiftbereich. Ziehe die Griffe in der Vorschau, um die verfügbare Touch-Fläche zuzuschneiden. Fingereingaben außerhalb des Rechtecks haben keine Wirkung. Modifikator- und Pfeiltasten funktionieren wie beim aktiven Bereich.
 
 **Auf volle Fläche zurücksetzen** – Stellt den Touch-Bereich auf die gesamte touchfähige Fläche zurück.
 
@@ -169,11 +175,11 @@ MockTab unterstützt kein Mission Control, Spaces, Launchpad oder App Exposé pe
 
 Die Anzeigezuordnung legt fest, welcher Bildschirm dem Grafiktablett zugeordnet ist.
 
-**Alle Displays** – Shift-Klick auf ein beliebiges Display im Diagramm spannt proportional über den gesamten Desktop. Eignet sich für Arbeitsabläufe über mehrere Monitore hinweg.
+**Alle Displays** – Spannt proportional über den gesamten Desktop. Eignet sich für Arbeitsabläufe über mehrere Monitore hinweg.
 
 **Einzelnes Display** – Klicke im Diagramm auf ein Display, um den aktiven Bereich genau darauf abzubilden.
 
-**Display umschalten** – Wechselt das Display per Taste. Mit ⌘-Klick auf Displays im Diagramm legst du fest, welche es durchläuft.
+**Display umschalten** – Wechselt das Display per Taste. Mit ⌘-Klick auf Displays im Diagramm legst du fest, welche es durchläuft; mit Shift-Klick wählst du einen Bereich aus.
 
 **Auf Displays verteilen** – Drück eine Taste mit dieser Aktion, um den Stift auf die unter „Aktive Displays“ ausgewählten Displays zu verteilen, und drück sie erneut, um zur gewohnten Einstellung zurückzukehren. Ist keins ausgewählt, gilt es für alle Displays.
 
@@ -209,7 +215,7 @@ Ein Profil ist eine Momentaufnahme der Grafiktablett-Einstellungen: aktiver Bere
 
 ## Erstellen und Umbenennen
 
-Klicke auf **Profil erstellen**, um die aktuellen Einstellungen als neues Profil zu speichern. Mit einem Doppelklick auf einen Profilnamen kannst du ihn umbenennen.
+Klicke auf **Profil erstellen**, um die aktuellen Einstellungen als neues Profil zu speichern. Mit einem Doppelklick auf einen Profilnamen kannst du ihn umbenennen, mit einem Rechtsklick auf ein Profil findest du weitere Optionen. Hältst du beim Öffnen dieses Menüs **⌥** gedrückt, kannst du alle Profile dieses Grafiktabletts löschen; **⌘Z** stellt sie wieder her.
 
 ## App-Ausnahmen in Profilen
 
@@ -217,7 +223,7 @@ Profile speichern ihre eigenen App-Ausnahmen. Wenn du das Profil wechselst, wech
 
 ## Sichern und Importieren
 
-Ziehe die JSON-Kachel in den Finder, um alle Einstellungen zu sichern, auch Seriennummern und App-Namen. Ziehe eine Datei auf die Kachel, um sie zu importieren, und wähle die Grafiktabletts aus, die übernommen werden. Das Menü „Profile“ bietet dasselbe.
+Ziehe die JSON-Kachel in den Finder, um alle Einstellungen zu sichern, auch Seriennummern und App-Namen. Ziehe eine Datei auf die Kachel, um sie zu importieren, und wähle die Grafiktabletts aus, die übernommen werden. Das Menü „Profile“ bietet dasselbe. Mit ⌥-Klick auf das Kästchen eines Grafiktabletts setzt oder entfernst du alle Häkchen.
 
 [scratchpad]
 
@@ -240,6 +246,8 @@ Der Info-Bereich zeigt, was das Grafiktablett meldet. Anzeigen stehen für Posit
 **Jetzt suchen** fragt bei mocktab.org nach einer neueren Version, **Automatisch suchen** fragt wöchentlich. Sonst geht nichts online.
 
 Ein Kennzeichen am Menüleisten- und Dock-Symbol zeigt ein verfügbares Update an. **Beim Beenden installieren** installiert es, wenn MockTab beendet wird, **Installieren und neu starten** sofort.
+
+Mit gedrückter **⌥**-Taste wird aus **Jetzt suchen** **Nach Vorabversion suchen**, das nach einer neueren Testversion sucht. Vorabversionen können unvollständig sein. Der Menübefehl **Nach Updates suchen…** ändert sich ebenso.
 
 ## Dock und Anmeldung
 

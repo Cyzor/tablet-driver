@@ -21,7 +21,9 @@ Esci da MockTab e spostalo nel Cestino. Per rimuovere anche le impostazioni, apr
 
 L’area attiva è la parte della superficie della tavoletta mappata sullo schermo. La penna non ha effetto fuori da questo rettangolo.
 
-**Ridimensionare** – Trascina l’area o le sue maniglie; quando è vicina si aggancia alla forma dell’area dello schermo (tieni premuto **⌘** per evitarlo, **⇧** per mantenerne la forma). Fai clic sulla larghezza o sull’altezza qui sotto per inserire una misura esatta.
+**Ridimensionare** – Trascina l’area o le sue maniglie; quando è vicina si aggancia alla forma dell’area dello schermo (tieni premuto **⌘** per evitarlo, **⇧** per mantenerne la forma, **⌥** per ridimensionarla dal centro). Fai clic sulla larghezza o sull’altezza qui sotto per inserire una misura esatta.
+
+**Tastiera** – Su macOS 14 o versioni successive, fai clic sull’area e spostala con i tasti freccia, oppure tieni premuto **⌥** per ridimensionarla. Con **⇧** i passi sono più ampi.
 
 **Mappatura proporzionale** – Mantiene uguali gli spostamenti orizzontali e verticali del cursore. Disattivala per allungare o comprimere la mappatura.
 
@@ -46,6 +48,8 @@ Ruotando la tavoletta, ogni assegnazione passa al tasto che ora ne occupa il pos
 ## Curva di pressione
 
 Alza la curva perché i tratti leggeri risultino più marcati, o abbassala per richiedere più forza. Lineare, Morbida e Rigida sono preimpostazioni.
+
+Su macOS 14 o versioni successive, fai clic sulla curva e sposta con i tasti freccia la maniglia dal lato della pressione leggera, oppure tieni premuto **⌥** per spostare l’altra. Con **⇧** i passi sono più ampi.
 
 ## Smussatura della pressione
 
@@ -127,6 +131,8 @@ L’estremità gomma ha una propria assegnazione nella sezione della penna. Su u
 
 La barra delle eccezioni per app in alto assegna pulsanti diversi a un’applicazione specifica. Le eccezioni si attivano automaticamente quando quell’app passa in primo piano. In tutti gli altri casi valgono le impostazioni globali.
 
+**Ripristina** rimuove le eccezioni dell’app attuale. Tieni premuto **⌥** per trasformarlo in **Rimuovi tutto**, che rimuove le eccezioni di tutte le app per questa tavoletta.
+
 [touch]
 
 ## Tocco
@@ -155,7 +161,7 @@ Alcune tavolette rilevano anche le dita. MockTab tiene il tocco disattivato di d
 
 ## Area touch
 
-L’area touch è indipendente dall’area attiva della penna. Trascina le maniglie nell’anteprima per ritagliare la superficie touch disponibile. Le dita non hanno effetto fuori dal rettangolo.
+L’area touch è indipendente dall’area attiva della penna. Trascina le maniglie nell’anteprima per ritagliare la superficie touch disponibile. Le dita non hanno effetto fuori dal rettangolo. I tasti modificatori e freccia funzionano come nell’area attiva.
 
 **Ripristina superficie completa** – Riporta l’area touch all’intera zona sensibile al tocco.
 
@@ -169,11 +175,11 @@ MockTab non supporta Mission Control, Spaces, Launchpad o App Exposé con il toc
 
 La mappatura dello schermo stabilisce quale schermo la tavoletta considera attivo.
 
-**Tutti i monitor** – Fai clic tenendo premuto Maiuscole su un monitor nello schema per coprire in proporzione l’intera scrivania. Adatto a chi lavora su più monitor.
+**Tutti i monitor** – Copre in proporzione l’intera scrivania. Adatto a chi lavora su più monitor.
 
 **Un solo monitor** – Fai clic su un monitor nello schema per mappare l’area attiva solo su quello.
 
-**Cambia monitor** – Cambia monitor da un pulsante. Fai ⌘-clic sui monitor nello schema per scegliere quelli tra cui passa.
+**Cambia monitor** – Cambia monitor da un pulsante. Fai ⌘-clic sui monitor nello schema per scegliere quelli tra cui passa, o Maiuscole-clic per selezionare un intervallo.
 
 **Estendi sui monitor** – Premi un pulsante assegnato a Estendi sui monitor per estendere la penna sui monitor selezionati in Monitor attivi, e premilo di nuovo per tornare all’impostazione abituale. Se non ne è selezionato nessuno, li copre tutti.
 
@@ -209,7 +215,7 @@ Un profilo è un’istantanea delle impostazioni della tavoletta: area attiva, c
 
 ## Creare e rinominare
 
-Fai clic su **Crea profilo** per catturare le impostazioni attuali. Fai doppio clic sul nome di un profilo per rinominarlo.
+Fai clic su **Crea profilo** per catturare le impostazioni attuali. Fai doppio clic sul nome di un profilo per rinominarlo, o clic destro su un profilo per altre opzioni. Tieni premuto **⌥** mentre apri quel menu per eliminare tutti i profili di questa tavoletta; **⌘Z** li ripristina.
 
 ## Eccezioni per app nei profili
 
@@ -217,7 +223,7 @@ I profili conservano le proprie eccezioni per app. Cambiando profilo si passa an
 
 ## Backup e importazione
 
-Trascina il riquadro JSON nel Finder per salvare tutte le impostazioni, compresi numeri di serie e nomi delle app. Trascina un file sul riquadro per importarlo e scegliere quali tavolette riprendere. Il menu Profili fa lo stesso.
+Trascina il riquadro JSON nel Finder per salvare tutte le impostazioni, compresi numeri di serie e nomi delle app. Trascina un file sul riquadro per importarlo e scegliere quali tavolette riprendere. Il menu Profili fa lo stesso. Fai ⌥-clic sulla casella di una tavoletta per selezionarle o deselezionarle tutte.
 
 [scratchpad]
 
@@ -240,6 +246,8 @@ Il pannello Info mostra cosa comunica la tavoletta. Gli indicatori rappresentano
 **Verifica ora** chiede a mocktab.org se c’è una versione più recente, e **Verifica automaticamente** lo chiede ogni settimana. Nient’altro va online.
 
 Un badge sulle icone nella barra dei menu e nel Dock indica che è disponibile un aggiornamento. **Installa alla chiusura** lo installa quando MockTab si chiude, e **Installa e riapri** lo installa subito.
+
+Tieni premuto **⌥** per trasformare **Verifica ora** in **Cerca versione preliminare**, che cerca una versione di prova più recente. Le versioni preliminari possono essere incomplete. Il comando di menu **Verifica aggiornamenti…** cambia allo stesso modo.
 
 ## Dock e login
 

@@ -21,7 +21,9 @@ Quittez MockTab et placez-le dans la corbeille. Pour supprimer aussi ses réglag
 
 La zone active est la partie de la surface de la tablette qui correspond à l’écran. Le stylet n’a aucun effet en dehors de ce rectangle.
 
-**Redimensionner** – Faites glisser la zone ou ses poignées ; elle s’aligne sur la forme de la zone d’écran lorsqu’elle s’en approche (maintenez **⌘** pour l’éviter, **⇧** pour garder sa forme). Cliquez sur la largeur ou la hauteur en dessous pour saisir une taille exacte.
+**Redimensionner** – Faites glisser la zone ou ses poignées ; elle s’aligne sur la forme de la zone d’écran lorsqu’elle s’en approche (maintenez **⌘** pour l’éviter, **⇧** pour garder sa forme, **⌥** pour redimensionner depuis le centre). Cliquez sur la largeur ou la hauteur en dessous pour saisir une taille exacte.
+
+**Clavier** – Sous macOS 14 ou ultérieur, cliquez sur la zone et déplacez-la avec les touches fléchées, ou maintenez **⌥** pour la redimensionner. Avec **⇧**, les pas sont plus grands.
 
 **Correspondance proportionnelle** – Garde des déplacements horizontaux et verticaux égaux pour le curseur. Désactivez-la pour étirer ou comprimer la correspondance.
 
@@ -46,6 +48,8 @@ Tourner la tablette déplace chaque affectation vers la touche qui occupe désor
 ## Courbe de pression
 
 Montez la courbe pour que les tracés légers comptent davantage, ou descendez-la pour exiger plus de force. Linéaire, Souple et Ferme sont des préréglages.
+
+Sous macOS 14 ou ultérieur, cliquez sur la courbe et déplacez avec les touches fléchées la poignée côté pression légère, ou maintenez **⌥** pour déplacer l’autre. Avec **⇧**, les pas sont plus grands.
 
 ## Lissage de la pression
 
@@ -127,6 +131,8 @@ L’extrémité gomme a sa propre affectation dans la section du stylet. Sur un 
 
 La barre d’exceptions d’app en haut attribue des boutons différents à une application donnée. Les exceptions s’activent automatiquement lorsque cette app passe au premier plan. Les réglages globaux s’appliquent dans tous les autres cas.
 
+**Réinitialiser** supprime les exceptions de l’app actuelle. Maintenez **⌥** pour le changer en **Tout supprimer**, qui supprime les exceptions de toutes les apps pour cette tablette.
+
 [touch]
 
 ## Toucher
@@ -155,7 +161,7 @@ Certaines tablettes détectent aussi les doigts. MockTab laisse le toucher désa
 
 ## Zone tactile
 
-La zone tactile est indépendante de la zone active du stylet. Faites glisser les poignées de l’aperçu pour rogner la surface tactile disponible. Les doigts n’ont aucun effet en dehors du rectangle.
+La zone tactile est indépendante de la zone active du stylet. Faites glisser les poignées de l’aperçu pour rogner la surface tactile disponible. Les doigts n’ont aucun effet en dehors du rectangle. Les touches de modification et fléchées fonctionnent comme pour la zone active.
 
 **Rétablir la surface complète** – Rétablit la zone tactile sur toute la région tactile.
 
@@ -169,11 +175,11 @@ MockTab ne prend pas en charge Mission Control, Spaces, Launchpad ni App Exposé
 
 La correspondance d’écran détermine quel écran la tablette considère comme actif.
 
-**Tous les écrans** – Maj-cliquez sur un écran du schéma pour couvrir tout le bureau proportionnellement. Convient au travail réparti sur plusieurs moniteurs.
+**Tous les écrans** – Couvre tout le bureau proportionnellement. Convient au travail réparti sur plusieurs moniteurs.
 
 **Un seul écran** – Cliquez sur un écran du schéma pour associer la zone active à cet écran uniquement.
 
-**Changer d’écran** – Change d’écran depuis un bouton. ⌘-cliquez sur les écrans du schéma pour choisir ceux qu’il parcourt.
+**Changer d’écran** – Change d’écran depuis un bouton. ⌘-cliquez sur les écrans du schéma pour choisir ceux qu’il parcourt, ou Maj-cliquez pour sélectionner une plage.
 
 **Étendre sur les écrans** – Appuyez sur un bouton réglé sur Étendre sur les écrans pour étendre le stylet sur les écrans sélectionnés sous Écrans actifs, et appuyez de nouveau pour revenir à votre réglage habituel. Si aucun n’est sélectionné, il couvre tous les écrans.
 
@@ -209,7 +215,7 @@ Un profil est un instantané des réglages de la tablette : zone active, courbe
 
 ## Créer et renommer
 
-Cliquez sur **Créer un profil** pour capturer les réglages actuels. Double-cliquez sur le nom d’un profil pour le renommer.
+Cliquez sur **Créer un profil** pour capturer les réglages actuels. Double-cliquez sur le nom d’un profil pour le renommer, ou cliquez sur un profil avec le bouton droit pour d’autres options. Maintenez **⌥** en ouvrant ce menu pour supprimer tous les profils de cette tablette ; **⌘Z** les rétablit.
 
 ## Exceptions par app dans les profils
 
@@ -217,7 +223,7 @@ Les profils conservent leurs propres exceptions par app. Changer de profil fait 
 
 ## Sauvegarde et importation
 
-Faites glisser la vignette JSON vers le Finder pour enregistrer tous les réglages, y compris les numéros de série et les noms d’apps. Faites glisser un fichier sur la vignette pour l’importer et choisir les tablettes à reprendre. Le menu Profils fait de même.
+Faites glisser la vignette JSON vers le Finder pour enregistrer tous les réglages, y compris les numéros de série et les noms d’apps. Faites glisser un fichier sur la vignette pour l’importer et choisir les tablettes à reprendre. Le menu Profils fait de même. ⌥-cliquez sur la case d’une tablette pour tout cocher ou tout décocher.
 
 [scratchpad]
 
@@ -240,6 +246,8 @@ La sous-fenêtre Infos montre ce que transmet la tablette. Des jauges représent
 **Rechercher maintenant** demande à mocktab.org s’il existe une version plus récente, et **Rechercher automatiquement** le demande chaque semaine. Rien d’autre ne passe par Internet.
 
 Une pastille sur les icônes de la barre des menus et du Dock signale qu’une mise à jour est disponible. **Installer à la fermeture** l’installe lorsque MockTab quitte, et **Installer et rouvrir** l’installe tout de suite.
+
+Maintenez **⌥** pour changer **Rechercher maintenant** en **Rechercher une préversion**, qui cherche une version de test plus récente. Les préversions peuvent être incomplètes. La commande **Rechercher les mises à jour…** du menu change de la même façon.
 
 ## Dock et ouverture de session
 

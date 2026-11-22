@@ -21,7 +21,9 @@ Sal de MockTab y muévelo a la Papelera. Para borrar también sus ajustes, abre 
 
 El área activa es la parte de la superficie de la tableta que se asigna a la pantalla. La entrada del lápiz fuera de este rectángulo no tiene efecto.
 
-**Redimensionar** – Arrastra el área o sus tiradores; cerca de la forma del área de pantalla se ajusta a ella (**⌘** lo evita, **⇧** conserva su forma). Haz clic en la anchura o la altura de abajo para escribir un tamaño exacto.
+**Redimensionar** – Arrastra el área o sus tiradores; cerca de la forma del área de pantalla se ajusta a ella (**⌘** lo evita, **⇧** conserva su forma, **⌥** redimensiona desde el centro). Haz clic en la anchura o la altura de abajo para escribir un tamaño exacto.
+
+**Teclado** – En macOS 14 o posterior, haz clic en el área y muévela con las flechas, o mantén **⌥** para redimensionarla. Con **⇧**, los pasos son más grandes.
 
 **Asignación proporcional** – Mantiene iguales los recorridos del cursor en horizontal y vertical. Desactívala para estirar o comprimir el mapeo.
 
@@ -46,6 +48,8 @@ Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, 
 ## Curva de presión
 
 Sube la curva para que los trazos suaves cuenten más, o bájala para necesitar más fuerza. Lineal, Suave y Firme son preajustes.
+
+En macOS 14 o posterior, haz clic en la curva y mueve con las flechas el tirador del lado de presión ligera, o mantén **⌥** para mover el otro. Con **⇧**, los pasos son más grandes.
 
 ## Suavizado de presión
 
@@ -127,6 +131,8 @@ El extremo borrador tiene su propia asignación en la sección del lápiz. En un
 
 La barra de excepciones de la parte superior permite asignar botones distintos a una aplicación concreta. Las excepciones se activan automáticamente cuando esa aplicación pasa al primer plano. La configuración global se aplica en todos los demás casos.
 
+**Restablecer** elimina las excepciones de la app actual. Mantén **⌥** para cambiarlo a **Eliminar todo**, que elimina las excepciones de todas las apps para esta tableta.
+
 [touch]
 
 ## Táctil
@@ -155,7 +161,7 @@ Algunas tabletas también detectan los dedos. MockTab mantiene el toque desactiv
 
 ## Área táctil
 
-El área táctil funciona de forma independiente al área activa del lápiz. Arrastra los tiradores de la vista previa para recortar la superficie táctil disponible. La entrada de dedos fuera del rectángulo no tiene efecto.
+El área táctil funciona de forma independiente al área activa del lápiz. Arrastra los tiradores de la vista previa para recortar la superficie táctil disponible. La entrada de dedos fuera del rectángulo no tiene efecto. Las teclas modificadoras y de flecha funcionan como en el área activa.
 
 **Restablecer a superficie completa** – Restablece el área táctil a toda la superficie compatible con tacto.
 
@@ -169,11 +175,11 @@ MockTab no admite Mission Control, Spaces, Launchpad ni App Exposé desde el tac
 
 El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 
-**Todas las pantallas** – Mayús-clic en cualquier pantalla del diagrama para abarcar todo el escritorio de forma proporcional. Va bien para flujos de trabajo que se mueven entre varios monitores.
+**Todas las pantallas** – Abarca todo el escritorio de forma proporcional. Va bien para flujos de trabajo que se mueven entre varios monitores.
 
 **Una sola pantalla** – Haz clic en una pantalla del diagrama para asignar el área activa solo a esa pantalla.
 
-**Cambiar pantalla** – Cambia de pantalla con un botón. Haz ⌘-clic en las pantallas del diagrama para elegir cuáles recorre.
+**Cambiar pantalla** – Cambia de pantalla con un botón. Haz ⌘-clic en las pantallas del diagrama para elegir cuáles recorre, o Mayúsculas-clic para seleccionar un rango.
 
 **Distribuir en pantallas** – Pulsa un botón con esta acción para distribuir el lápiz en las pantallas seleccionadas en Pantallas activas, y vuelve a pulsarlo para volver a tu ajuste habitual. Si no hay ninguna seleccionada, abarca todas las pantallas.
 
@@ -209,7 +215,7 @@ Un perfil es una instantánea de la configuración de la tableta: área activa, 
 
 ## Crear y renombrar
 
-Haz clic en **Crear perfil** para guardar la configuración actual como un perfil nuevo. Haz doble clic en el nombre de un perfil para cambiarlo.
+Haz clic en **Crear perfil** para guardar la configuración actual como un perfil nuevo. Haz doble clic en el nombre de un perfil para cambiarlo, o clic derecho en un perfil para ver más opciones. Mantén **⌥** al abrir ese menú para eliminar todos los perfiles de esta tableta; **⌘Z** los recupera.
 
 ## Overrides por app en los perfiles
 
@@ -217,7 +223,7 @@ Cada perfil guarda sus propias excepciones de app. Al cambiar de perfil, tambié
 
 ## Copia de seguridad e importación
 
-Arrastra el recuadro JSON al Finder para guardar todos los ajustes, incluidos números de serie y nombres de apps. Arrastra un archivo al recuadro para importarlo y elige qué tabletas incorporar. El menú Perfiles hace lo mismo.
+Arrastra el recuadro JSON al Finder para guardar todos los ajustes, incluidos números de serie y nombres de apps. Arrastra un archivo al recuadro para importarlo y elige qué tabletas incorporar. El menú Perfiles hace lo mismo. Haz ⌥-clic en la casilla de una tableta para marcarlas o desmarcarlas todas.
 
 [scratchpad]
 
@@ -240,6 +246,8 @@ El panel Información muestra lo que informa la tableta. Los indicadores represe
 **Buscar ahora** pregunta a mocktab.org si hay una versión más reciente, y **Buscar automáticamente** lo hace cada semana. Nada más se conecta a internet.
 
 Una marca en los iconos de la barra de menús y del Dock indica que hay una actualización. **Instalar al salir** la instala cuando sales de MockTab, e **Instalar y reiniciar** la instala ahora.
+
+Mantén **⌥** para cambiar **Buscar ahora** a **Buscar versión preliminar**, que busca una versión de prueba más reciente. Las versiones preliminares pueden estar incompletas. El comando **Buscar actualizaciones…** del menú cambia igual.
 
 ## Dock e inicio de sesión
 

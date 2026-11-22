@@ -509,6 +509,6 @@ struct DisplayView: View {
         if settings.targetDisplayIndex == modeToggle || settings.targetDisplayIndex == modeSpan {
             return String(localized: "Command-click to add or remove a display from the selection. Shift-click to select a range.", comment: "VoiceOver hint for the display canvas while in Toggle or Span mode")
         }
-        return String(localized: "Click a display to map the tablet to it. Command-click to add it to the toggle rotation. Shift-click to span all displays.", comment: "VoiceOver hint for the display canvas in single-display modes")
+        return String(localized: "Click a display to map the tablet to it. Command-click to add it to the toggle rotation. Shift-click to select a range.", comment: "VoiceOver hint for the display canvas in single-display modes")
     }
 }
