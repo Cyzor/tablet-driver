@@ -84,7 +84,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AppWatcher.shared.start()
         UpdateController.shared.start()
         // After the driver starts, so the pen works while windows build.
-        DisplayInfo.prewarmThumbnails()
         InfoView.prewarmSystemQueries()
         SettingsWindowManager.shared.restoreWindows {
             HelpWindowController.shared.restoreIfWasOpen()

@@ -122,6 +122,14 @@ struct DisplayInfo {
         }
     }
 
+    /// Empties both caches, called when the last settings window closes.
+    /// Views still showing a thumbnail keep their own reference.
+    @MainActor
+    static func releaseThumbnails() {
+        thumbnailCache.removeAll()
+        decoded.withLock { $0.removeAll() }
+    }
+
     private static func cachedThumbnail(from url: URL) -> NSImage? {
         if let cached = thumbnailCache[url] { return cached }
         // Decodes here only when the prewarm hasn't finished or the wallpaper changed.

@@ -741,6 +741,8 @@ final class SettingsWindowManager: ObservableObject {
         tabIndex: Int,
         frame: NSRect?
     ) -> SettingsWindowController {
+        // Off the main thread while the window builds; released on last close.
+        DisplayInfo.prewarmThumbnails()
         let (s, label) = settingsAndLabel(forKey: instanceKey)
         let wc = SettingsWindowController(
             settings: s, deviceLabel: label, instanceKey: instanceKey)
@@ -854,6 +856,7 @@ final class SettingsWindowManager: ObservableObject {
                 // as part of shutdown, which would zero out the saved list
                 // before willTerminateNotification fires.
                 guard !self.isTerminating else { return }
+                if self.windows.isEmpty { DisplayInfo.releaseThumbnails() }
                 self.saveWindowState()
             }
         }
