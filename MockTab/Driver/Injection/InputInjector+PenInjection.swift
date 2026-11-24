@@ -195,9 +195,11 @@ extension InputInjector {
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
             if point.inProximity {
+                // Hover distance as the tablet reports it: where in its range the
+                // pen was first noticed.
                 FlightRecorder.shared.note(String(
-                    format: "pen enters range (0x%04X): %@ (0x%04X)", deviceProductID,
-                    ToolCatalog.name(forToolCode: activeToolCode), activeToolCode))
+                    format: "pen enters range (0x%04X): %@ (0x%04X), hover %d", deviceProductID,
+                    ToolCatalog.name(forToolCode: activeToolCode), activeToolCode, point.hoverDistance))
                 postProximityEvent(entering: true, at: rawPoint, eraser: point.eraser)
                 TouchPipelineProbe.note { $0.penProximityEnters += 1 }
                 logModifierCacheMismatch()
