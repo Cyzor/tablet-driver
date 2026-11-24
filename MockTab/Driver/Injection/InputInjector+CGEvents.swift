@@ -246,6 +246,7 @@ extension InputInjector {
             event.timestamp = Self.currentReportTimestampNs
         }
         stampClickSequence(event)
+        UserActivity.noteInput()
         // Non-coalesced, so the system keeps each pen sample instead of
         // merging moves.
         event.flags.insert(.maskNonCoalesced)
