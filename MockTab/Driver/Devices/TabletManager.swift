@@ -481,6 +481,7 @@ final class TabletManager: ObservableObject {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self else { return }
                 logger.info("TabletManager: woke from sleep, resending init to \(self.contexts.count, privacy: .public) device(s)")
+                FlightRecorder.shared.note("system woke; init resent to \(self.contexts.count) tablet(s)")
                 for context in self.contexts.values { context.tabletDevice?.reawaken() }
             }
         }
@@ -846,6 +847,9 @@ final class TabletManager: ObservableObject {
                     || identity.serial != injector.activeToolSerial
                 let reannounce = changed && injector.lastProximity
                 if reannounce {
+                    FlightRecorder.shared.note(String(
+                        format: "pen in range changed to %@ (0x%04X)",
+                        ToolCatalog.name(forToolCode: identity.toolCode), identity.toolCode))
                     injector.postProximityEvent(
                         entering: false, at: injector.shimLastScreen,
                         eraser: injector.activeToolIsEraser)
@@ -1551,6 +1555,7 @@ final class TabletManager: ObservableObject {
         if let token = latencyActivityToken {
             ProcessInfo.processInfo.endActivity(token)
             latencyActivityToken = nil
+            FlightRecorder.shared.note("latency assertion released: no tablet connected")
         }
     }
 
@@ -1562,6 +1567,7 @@ final class TabletManager: ObservableObject {
         latencyActivityToken = ProcessInfo.processInfo.beginActivity(
             options: [.userInitiated, .latencyCritical],
             reason: "Pen in proximity — latency-critical input injection")
+        FlightRecorder.shared.note("latency assertion armed")
     }
 
     /// Whether any connected tablet has a pen in range.
@@ -1583,6 +1589,7 @@ final class TabletManager: ObservableObject {
                 guard !self.anyPenInProximity(), let token = self.latencyActivityToken else { return }
                 ProcessInfo.processInfo.endActivity(token)
                 self.latencyActivityToken = nil
+                FlightRecorder.shared.note("latency assertion released: \(Int(Self.proximityIdleDelay)) s with no pen in range")
             }
         }
     }
@@ -1700,6 +1707,7 @@ enum DeviceCompanions {
 
 extension TabletManager: TabletSessionDelegate {
     func session(_ session: TabletSession, didAttach transport: TabletTransport, to tablet: ConnectedTablet) {
+        FlightRecorder.shared.note(String(format: "tablet attached: 0x%04X%@", transport.rawProductID, transport.isBluetooth ? " over Bluetooth" : ""))
         guard let device = (transport.primary as? IOKitHIDInterface)?.device else { return }
         let (context, probe, rawProductID, vendorID) = beginConnecting(device, joining: tabletContexts[tablet.id])
         tabletContexts[tablet.id] = context
@@ -1778,6 +1786,7 @@ extension TabletManager: TabletSessionDelegate {
     }
 
     func session(_ session: TabletSession, didDetach transport: TabletTransport, from tablet: ConnectedTablet) {
+        FlightRecorder.shared.note(String(format: "tablet detached: 0x%04X", transport.rawProductID))
         let context = self.context(of: transport)
         transportHandles.removeValue(forKey: transport.id)
         sessionDrivers.removeValue(forKey: transport.id)

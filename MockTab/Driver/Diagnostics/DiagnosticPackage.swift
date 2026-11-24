@@ -17,10 +17,11 @@ private let logger = Logger(subsystem: "com.cyzor.mocktab", category: "capture")
 /// package for one zip call would be the wrong trade.
 enum DiagnosticPackage {
 
-    /// Build a zip beside `summaryURL` holding it, the raw log if any, and a
-    /// README. Nil if it couldn't be written — the caller then keeps its loose
+    /// Build a zip beside `summaryURL` holding it, the raw log if any, the
+    /// recent activity if any, and a README. Nil if it couldn't be written — the caller then keeps its loose
     /// files, since a failed zip must never mean a lost capture.
-    static func build(summaryURL: URL, rawLogURL: URL?, productID: String, date: Date = Date())
+    static func build(
+        summaryURL: URL, rawLogURL: URL?, recentText: String? = nil, productID: String, date: Date = Date())
         -> URL?
     {
         let stem = "mocktab-diagnostics-\(productID)-\(DateStamp.compact(date))"
@@ -42,7 +43,11 @@ enum DiagnosticPackage {
                 try FileManager.default.copyItem(
                     at: rawLogURL, to: staging.appendingPathComponent("full-log.txt"))
             }
-            try readme(hasRawLog: rawLogURL != nil, date: date)
+            if let recentText {
+                try recentText.write(
+                    to: staging.appendingPathComponent("recent.txt"), atomically: true, encoding: .utf8)
+            }
+            try readme(hasRawLog: rawLogURL != nil, hasRecent: recentText != nil, date: date)
                 .write(
                     to: staging.appendingPathComponent("README.txt"), atomically: true,
                     encoding: .utf8)
@@ -138,7 +143,7 @@ enum DiagnosticPackage {
     /// (`CaptureGuideView.isTextEntryDevice`,
     /// `DiagnosticSession.knownVendorDevices`). Change that filtering and
     /// this text must change too.
-    static func readme(hasRawLog: Bool, date: Date = Date()) -> String {
+    static func readme(hasRawLog: Bool, hasRecent: Bool = false, date: Date = Date()) -> String {
         var lines = [
             "MockTab diagnostics",
             "",
@@ -147,13 +152,20 @@ enum DiagnosticPackage {
         if hasRawLog {
             lines.append("full-log.txt   Every report received, as plain text.")
         }
+        if hasRecent {
+            lines.append(contentsOf: [
+                "recent.txt     The last few minutes of tablet activity before this collection began,",
+                "               with how busy the Mac was and when the mouse or keyboard was used.",
+            ])
+        }
         lines.append(contentsOf: [
             "",
             "This contains tablet, pen, and button activity, plus the model and",
             "settings of your external displays and of USB devices sharing a hub",
             "with the tablet. No keystrokes, no personal files, no screen",
-            "contents. Everything here is readable text — open it and look",
-            "before you send it.",
+            "contents, and no names of apps that aren't part of macOS.",
+            "Everything here is readable text — open it and look before you",
+            "send it.",
             "",
             "MockTab MockTap Metrics",
             DateStamp.day(date),

@@ -846,6 +846,7 @@ final class InputInjector: @unchecked Sendable {
             let snap = self.injectionSnapshot
         {
             injectLog.notice("leak-watchdog: forcing stuck pen-proximity exit (pen idle \(Int(penIdleInterval))s)")
+            FlightRecorder.shared.note(String(format: "pen leaves range by watchdog: no pen report for %.1f s (0x%04X)", penIdleInterval, deviceProductID))
             TouchPipelineProbe.note { $0.penProximityForcedExits += 1 }
             self.commitProximityExit(snap: snap)
         }

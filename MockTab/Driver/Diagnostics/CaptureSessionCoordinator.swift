@@ -466,6 +466,10 @@ final class CaptureSessionCoordinator: ObservableObject {
     /// nothing to record.
     @discardableResult
     func start() -> Bool {
+        // Taken now: the checklist's own pen activity would otherwise push
+        // whatever prompted the collection out of the recording.
+        FlightRecorder.shared.note("device data collection started")
+        let recentText = FlightRecorder.shared.exportText()
         // Each interface is described from its own `IOHIDDevice`: the usage
         // page and the report descriptor differ between them, and those are
         // exactly what the capture file needs in order to say which interface
@@ -520,7 +524,8 @@ final class CaptureSessionCoordinator: ObservableObject {
                 // Off main: packaging copies files and waits for ditto.
                 let packaged = await Task.detached(priority: .utility) {
                     let packaged = DiagnosticPackage.build(
-                        summaryURL: summaryURL, rawLogURL: rawLogURL, productID: productID)
+                        summaryURL: summaryURL, rawLogURL: rawLogURL, recentText: recentText,
+                        productID: productID)
                     if packaged != nil {
                         // Only once the archive holds them.
                         try? FileManager.default.removeItem(at: summaryURL)

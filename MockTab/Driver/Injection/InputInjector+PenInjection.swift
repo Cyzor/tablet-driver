@@ -79,6 +79,7 @@ extension InputInjector {
         let panDt = lastPanScrollFrameTime > 0 ? panNow - lastPanScrollFrameTime : 0
         lastPanScrollFrameTime = panNow
         if panScroll.isActive {
+            FlightRecorder.shared.mark(.panHeld)
             postPanScroll(panScroll.process(screen: screenPoint, dt: panDt))
         }
         // Computed once per report for every post below.
@@ -171,6 +172,7 @@ extension InputInjector {
                 ) { [weak self] _ in
                     guard let self else { return }
                     self.proximityExitDebounceTimer = nil
+                    FlightRecorder.shared.note("pen leaves range after the Xencelabs debounce")
                     self.commitProximityExit(snap: snap)
                 }
                 CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
@@ -193,6 +195,9 @@ extension InputInjector {
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
             if point.inProximity {
+                FlightRecorder.shared.note(String(
+                    format: "pen enters range (0x%04X): %@ (0x%04X)", deviceProductID,
+                    ToolCatalog.name(forToolCode: activeToolCode), activeToolCode))
                 postProximityEvent(entering: true, at: rawPoint, eraser: point.eraser)
                 TouchPipelineProbe.note { $0.penProximityEnters += 1 }
                 logModifierCacheMismatch()
@@ -203,6 +208,7 @@ extension InputInjector {
                 lastProximity = true
                 proximityConfirmStartTime = ProcessInfo.processInfo.systemUptime
             } else {
+                FlightRecorder.shared.note(String(format: "pen leaves range by report (0x%04X)", deviceProductID))
                 commitProximityExit(snap: snap)
             }
         }
@@ -379,6 +385,7 @@ extension InputInjector {
                 }
                 if touchdownHeld {
                     // Tap or stroke isn't known yet, so the sample waits.
+                    FlightRecorder.shared.mark(.guardHeld)
                     withholdForTouchdown(screenPoint, pressure: pressure, point: point, pose: pose)
                 } else {
                     replayWithheld(snap: snap)
@@ -398,6 +405,8 @@ extension InputInjector {
                 // Backlog: skip the post, so the cursor jumps once when live
                 // data resumes instead of replaying history. Logged because it
                 // freezes the cursor with nothing else to show for it.
+                FlightRecorder.shared.mark(.staleSkipped)
+                if staleHoverSuppressCount == 0 { FlightRecorder.shared.note("hover moves start being skipped as backlog") }
                 staleHoverSuppressCount += 1
                 let now = ProcessInfo.processInfo.systemUptime
                 if now - lastStaleHoverLogAt > 1.0 {
@@ -408,6 +417,7 @@ extension InputInjector {
                 }
             } else {
                 if staleHoverSuppressCount > 0 {
+                    FlightRecorder.shared.note("hover moves resume after \(staleHoverSuppressCount) skipped")
                     injectLog.info(
                         "hover resumed after \(self.staleHoverSuppressCount) suppressed stale report(s)"
                     )
@@ -714,6 +724,7 @@ extension InputInjector {
         guard let snap = injectionSnapshot else { return }
         releaseBindingHeldButton(at: currentCursorPosition(), snapshot: snap)
         releaseAuxButtons(at: currentCursorPosition(), snapshot: snap)
+        if lastProximity { FlightRecorder.shared.note(String(format: "pen leaves range: tablet disconnected (0x%04X)", deviceProductID)) }
         commitProximityExit(snap: snap)
         // See releaseHeldStateForToolChange.
         if panMomentumTail.isRunning || touchMomentumTail.isRunning {
@@ -864,6 +875,7 @@ extension InputInjector {
     /// Force-close a pan whose button release was lost.
     private func panScrollSafetyNetFired() {
         panScrollSafetyNetTimer = nil
+        FlightRecorder.shared.note("Pan View ended by its safety net; its release never came")
         postPanScroll(panScroll.disengage())
         if SharedPanScrollState.shared.driver === self {
             SharedPanScrollState.shared.driver = nil

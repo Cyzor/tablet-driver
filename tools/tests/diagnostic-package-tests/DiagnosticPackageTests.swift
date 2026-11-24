@@ -64,6 +64,25 @@ import Foundation
     expect(!DiagnosticPackage.readme(hasRawLog: false).contains("full-log.txt"),
           "README omits the log when absent")
 
+    // With recent activity
+    let zip3 = DiagnosticPackage.build(
+        summaryURL: summary, rawLogURL: nil, recentText: "recent lines\n", productID: "0x0375")
+    expect(zip3 != nil, "archive with recent activity")
+    if let zip3 {
+        let out3 = tmp.appendingPathComponent("out3")
+        let q = Process()
+        q.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        q.arguments = ["-x", "-k", zip3.path, out3.path]
+        try! q.run(); q.waitUntilExit()
+        let root3 = out3.appendingPathComponent(zip3.deletingPathExtension().lastPathComponent)
+        let recent = try? String(contentsOf: root3.appendingPathComponent("recent.txt"), encoding: .utf8)
+        expect(recent == "recent lines\n", "recent activity survives")
+    }
+    expect(DiagnosticPackage.readme(hasRawLog: false, hasRecent: true).contains("recent.txt"),
+          "README lists recent activity when present")
+    expect(!DiagnosticPackage.readme(hasRawLog: false).contains("recent.txt"),
+          "README omits recent activity when absent")
+
     // Missing raw log file must not abort the package
     let ghost = tmp.appendingPathComponent("nope.txt")
     expect(DiagnosticPackage.build(summaryURL: summary, rawLogURL: ghost, productID: "0x1") != nil,

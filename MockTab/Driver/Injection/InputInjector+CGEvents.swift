@@ -251,6 +251,7 @@ extension InputInjector {
         event.flags.insert(.maskNonCoalesced)
         // Diagnostic: `event.post` is synchronous IPC into WindowServer and
         // the only stage no other stall probe covers.
+        FlightRecorder.shared.mark(event.type == .mouseMoved ? .postedMove : .postedOther)
         let postStart = mach_absolute_time()
         let signpost = PipelineSignposts.begin("Post")
         event.post(tap: .cghidEventTap)
@@ -1097,6 +1098,7 @@ extension InputInjector {
         // on whichever injector moves the pointer. Begin and end fire at once.
         let driver = Self.resolvePanScrollDriver(preferring: self)
         if down {
+            FlightRecorder.shared.note(String(format: "Pan View engaged by 0x%04X, moving 0x%04X", deviceProductID, driver.deviceProductID))
             SharedPanScrollState.shared.driver = driver
             driver.panScrollCoasts = snapshot.activeTool.panScrollMomentum
             // A fresh grab halts any coasting tail from the previous
@@ -1108,6 +1110,7 @@ extension InputInjector {
                 speed: snapshot.activeTool.panScrollSpeed))
         } else {
             let active = SharedPanScrollState.shared.driver ?? driver
+            FlightRecorder.shared.note(String(format: "Pan View released by 0x%04X", deviceProductID))
             active.cancelPanScrollSafetyNet()
             // The backdate comes from `self`, whose debounce deferred the release, not
             // from `active`.

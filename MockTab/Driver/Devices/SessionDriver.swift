@@ -169,6 +169,11 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
     func didReceive(_ report: HIDReport, at ns: UInt64, from interface: any HIDInterface) {
         // Kernel receipt to here. Spikes mean the scheduler starved HIDThread.
         if ns != 0 { LatencyProbe.shared.record(kernelTimestamp: Self.ticks(ns)) }
+        let spec = spec
+        FlightRecorder.shared.beginReport(
+            device: ObjectIdentifier(interface),
+            name: String(format: "%@ (0x%04X, page 0x%04X)", spec.name, interface.productID, interface.usagePage),
+            ns: ns, report: report)
         guard let device = (interface as? IOKitHIDInterface)?.device else { return }
         let pointer = report.pointer
         CaptureEngine.recordRaw(
@@ -213,6 +218,7 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
             }
         }
         let deferred = dispatchBatch(frames, reportTimestampNs: ns, touchFrameStamps: touchStamps)
+        FlightRecorder.shared.endReport(events: events)
         // Receipt to posted events, unless the pacer still holds some of them.
         if ns != 0 && !deferred {
             LatencyProbe.shared.recordPipelineComplete(kernelTimestamp: Self.ticks(ns))

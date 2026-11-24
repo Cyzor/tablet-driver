@@ -96,6 +96,8 @@ final class AppWatcher {
     }
 
     private func appDidActivate(bundleID: String, name: String) {
+        // Which app stays out: captures go to public issues.
+        FlightRecorder.shared.note("frontmost app changed")
         let needsTabletPointer = Self.qtGtkBundleIDs.contains(bundleID)
         for ctx in TabletManager.shared.deviceContexts.values {
             ctx.settings.handleAppOverrideActivation(bundleID: bundleID, appName: name)

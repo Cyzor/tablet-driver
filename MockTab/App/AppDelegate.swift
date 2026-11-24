@@ -71,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        FlightRecorder.shared.start()
         suppressAutoFillPanel()
 
         // The Accessibility prompt is deferred to the first tablet connection
