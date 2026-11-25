@@ -57,6 +57,9 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         var tiltX: Int8 = 0
         var tiltY: Int8 = 0
         var hover: UInt8 = 0
+        /// 1: a weak frame whose position jumped too far, so the pen held its
+        /// last position. In the struct's padding; the size stays 32.
+        var flags: UInt8 = 0
     }
 
     /// About 5 minutes of one tablet at 200 Hz; 2 MB.
@@ -134,6 +137,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
                     ring[current].tiltX = Int8(clamping: Int((p.tiltX * 100).rounded()))
                     ring[current].tiltY = Int8(clamping: Int((p.tiltY * 100).rounded()))
                     ring[current].hover = UInt8(clamping: p.hoverDistance)
+                    if p.weakSignalHeld { ring[current].flags |= 1 }
                 }
             case .tool(let t) where t.phase == .enter:
                 outcome.insert(.toolEnter)
@@ -420,7 +424,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
                             Double(nowNs &- from) / 1e9, sinceNs > startNs ? " (this collection)" : "",
                             reports.count, events.count))
         for (i, name) in devices.enumerated() { lines.append("Device \(i): \(name)") }
-        lines.append("Report runs: device, report ID, status byte, outcome, count, span, cursor moves and other events posted, X/Y range (0-65535), tilt range (-1 to 1), hover range, delay to callback and to done (ms, max).")
+        lines.append("Report runs: device, report ID, status byte, outcome, count, span, cursor moves and other events posted, weak frames held at the last position for jumping, X/Y range (0-65535), tilt range (-1 to 1), hover range, delay to callback and to done (ms, max).")
         lines.append(String(repeating: "─", count: 78))
 
         var e = 0
@@ -449,6 +453,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             var cbMax = head.callbackUs, doneMax = head.doneUs
             var moved = head.outcome & Outcome.postedMove.rawValue != 0 ? 1 : 0
             var posted = head.outcome & Outcome.postedOther.rawValue != 0 ? 1 : 0
+            var held = Int(head.flags & 1)
             while j < reports.count {
                 let r = reports[j]
                 guard r.device == head.device, r.reportID == head.reportID, r.status == head.status,
@@ -462,6 +467,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
                 cbMax = max(cbMax, r.callbackUs); doneMax = max(doneMax, r.doneUs)
                 if r.outcome & Outcome.postedMove.rawValue != 0 { moved += 1 }
                 if r.outcome & Outcome.postedOther.rawValue != 0 { posted += 1 }
+                held += Int(r.flags & 1)
                 j += 1
             }
             let last = reports[j - 1]
@@ -469,6 +475,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             var line = String(format: "%@ dev%d 0x%02X st=0x%02X %@ ×%d %.3fs", stamp(head.kernelNs),
                               head.device, head.reportID, head.status, flags(head.outcome & ~posts), j - i, span)
             line += " moved \(moved) posted \(posted)"
+            if held > 0 { line += " held \(held)" }
             if Outcome(rawValue: head.outcome).contains(.decodedPen) {
                 line += " x=\(xLo)-\(xHi) y=\(yLo)-\(yHi)"
                 line += String(format: " tilt=%.2f..%.2f,%.2f..%.2f hover=%d-%d",
