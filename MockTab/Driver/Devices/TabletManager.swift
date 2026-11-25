@@ -1545,11 +1545,31 @@ final class TabletManager: ObservableObject {
     private var proximityIdleTimer: Timer?
     private static let proximityIdleDelay: TimeInterval = 60.0
 
-    /// Called on tablet connect/disconnect. Connection alone no longer arms the
-    /// assertion; that happens in `penEnteredProximity()` so idle connected tablets
-    /// don't block App Nap.
+    /// Held while any tablet is connected, so App Nap never slows the pen's
+    /// return after a quiet spell. Leaves out `.latencyCritical`, which stays
+    /// scoped to proximity, and allows idle sleep.
+    private var connectedActivityToken: NSObjectProtocol?
+
+    /// Called on tablet connect/disconnect. Connection holds off App Nap only;
+    /// the latency assertion waits for `penEnteredProximity()`.
     private func updateActivityAssertion() {
-        guard !isConnected else { return }
+        if isConnected {
+            if connectedActivityToken == nil {
+                // Without the termination opt-outs, so logout and restart can
+                // still quit MockTab at once.
+                connectedActivityToken = ProcessInfo.processInfo.beginActivity(
+                    options: ProcessInfo.ActivityOptions.userInitiatedAllowingIdleSystemSleep
+                        .subtracting([.suddenTerminationDisabled, .automaticTerminationDisabled]),
+                    reason: "Tablet connected: ready for the pen's return")
+                FlightRecorder.shared.note("App Nap held off: tablet connected")
+            }
+            return
+        }
+        if let token = connectedActivityToken {
+            ProcessInfo.processInfo.endActivity(token)
+            connectedActivityToken = nil
+            FlightRecorder.shared.note("App Nap allowed: no tablet connected")
+        }
         proximityIdleTimer?.invalidate()
         proximityIdleTimer = nil
         if let token = latencyActivityToken {
