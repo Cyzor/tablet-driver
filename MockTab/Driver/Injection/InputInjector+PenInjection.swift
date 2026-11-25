@@ -21,10 +21,12 @@ extension InputInjector {
         lastPenInjectCallAt = ProcessInfo.processInfo.systemUptime
         TouchPipelineProbe.note { $0.framesPenDelivered += 1 }
         if ignoresFlatEraser(point) { return }
-        // A weak frame never brings the pen in; it only follows one already
-        // in, for `weakSignalLimit` at most.
-        if point.weakSignal && !lastProximity { return }
-        if point.inProximity && !point.weakSignal { lastStrongPenAt = lastPenInjectCallAt }
+        // A weak frame follows a pen already in, for `weakSignalLimit` at most,
+        // unless it's part of a steady stream from a pen without an eraser,
+        // which also brings that pen in.
+        let steadyStream = point.weakSignal && noteWeakStream(point)
+        if point.weakSignal && !steadyStream && !lastProximity { return }
+        if point.inProximity && (!point.weakSignal || steadyStream) { lastStrongPenAt = lastPenInjectCallAt }
         armWeakSignalExit(point.inProximity && point.weakSignal)
         // Seeded before any report arrives; the guard is a backstop.
         guard let snap = injectionSnapshot else { return }
@@ -785,6 +787,25 @@ extension InputInjector {
             FlightRecorder.shared.note(String(format: "pen leaves range: eraser end lying flat (0x%04X)", deviceProductID))
             commitProximityExit(snap: snap)
         }
+        return true
+    }
+
+    /// Tracks the run of weak frames; true once it's a steady, moving stream
+    /// from a pen without an eraser end. See `weakStreamGap`.
+    private func noteWeakStream(_ point: TabletPoint) -> Bool {
+        let now = lastPenInjectCallAt
+        if now - lastWeakAt > Self.weakStreamGap {
+            weakStreamSince = now
+            weakStreamTraveled = 0
+        } else {
+            let step = Swift.max(abs(point.x - weakStreamLast.x), abs(point.y - weakStreamLast.y))
+            if step <= EdgeOfRange.senseBandMaxStep { weakStreamTraveled += step }
+        }
+        weakStreamLast = (point.x, point.y)
+        lastWeakAt = now
+        guard now - weakStreamSince >= Self.weakStreamSpan, weakStreamTraveled >= Self.weakStreamTravel,
+              ToolCatalog.spec(forToolCode: activeToolCode)?.hasEraserVariant == false
+        else { return false }
         return true
     }
 

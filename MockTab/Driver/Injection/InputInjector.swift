@@ -744,12 +744,29 @@ final class InputInjector: @unchecked Sendable {
     /// One timer, made on first use and moved, so HIDThread allocates nothing
     /// per frame; parked at the distant future when idle.
     var weakSignalExitTimer: CFRunLoopTimer?
-    static let weakSignalSilence: CFTimeInterval = 0.06
+    static let weakSignalSilence: CFTimeInterval = 0.1
     /// Weak frames alone keep the pen in range this long at most: sparse
     /// ones can trickle in after the pen has gone.
     static let weakSignalLimit: CFTimeInterval = 1.0
     /// Uptime of the last report with the pen fully in range.
     var lastStrongPenAt: CFTimeInterval = 0
+
+    /// A pen without an eraser end that the tablet senses continuously, but
+    /// never calls in range, is the pen hovering a little too high: a CTL-x100
+    /// kept up such a stream at its full rate for 19 s while the cursor sat
+    /// still. Weak frames no more than `weakStreamGap` apart for
+    /// `weakStreamSpan`, having moved `weakStreamTravel` tablet counts, bring
+    /// that pen in, and keep it in while they last. Pens with an eraser keep
+    /// `weakSignalLimit`: a sideways one sends weak streams that lead astray.
+    static let weakStreamGap: CFTimeInterval = 0.03
+    static let weakStreamSpan: CFTimeInterval = 0.15
+    static let weakStreamTravel = 100
+    var weakStreamSince: CFTimeInterval = 0
+    var lastWeakAt: CFTimeInterval = 0
+    /// Path traveled by the stream, counting only steps a pen could take:
+    /// the jump to where a stream resumes doesn't count.
+    var weakStreamLast = (x: 0, y: 0)
+    var weakStreamTraveled = 0
 
     /// A hovering eraser end tilted this far counts as out of range: the pen
     /// is lying flat, held for typing or turning over, not erasing. Contact
