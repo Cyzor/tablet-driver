@@ -20,8 +20,19 @@ extension InputInjector {
         rearmWatchdog()
         lastPenInjectCallAt = ProcessInfo.processInfo.systemUptime
         TouchPipelineProbe.note { $0.framesPenDelivered += 1 }
+        if ignoresFlatEraser(point) { return }
+        // A weak frame never brings the pen in; it only follows one already
+        // in, for `weakSignalLimit` at most.
+        if point.weakSignal && !lastProximity { return }
+        if point.inProximity && !point.weakSignal { lastStrongPenAt = lastPenInjectCallAt }
+        armWeakSignalExit(point.inProximity && point.weakSignal)
         // Seeded before any report arrives; the guard is a backstop.
         guard let snap = injectionSnapshot else { return }
+        if point.weakSignal, lastPenInjectCallAt - lastStrongPenAt > Self.weakSignalLimit {
+            FlightRecorder.shared.note(String(format: "pen leaves range: weak signal only for %.1f s (0x%04X)", Self.weakSignalLimit, deviceProductID))
+            commitProximityExit(snap: snap)
+            return
+        }
         let tool = snap.activeTool
         var point = point
         if snap.invertRotation && point.rotation != 0.0 {
@@ -195,6 +206,7 @@ extension InputInjector {
         // ── Proximity transitions (always immediate) ───────────────────────────
         if point.inProximity != lastProximity {
             if point.inProximity {
+                FlightRecorder.shared.penEntering()
                 // Hover distance as the tablet reports it: where in its range the
                 // pen was first noticed.
                 FlightRecorder.shared.note(String(
@@ -755,11 +767,56 @@ extension InputInjector {
         releaseSharedAuxModifiers()
     }
 
+    /// True for a hovering eraser end lying flat, which leaves range if it
+    /// was in. Weak frames keep the decision as it stands.
+    private func ignoresFlatEraser(_ point: TabletPoint) -> Bool {
+        let limit = Self.eraserFlatTilt
+        guard limit < 1 else { return false }
+        if !point.weakSignal {
+            if point.inProximity && point.eraser && point.pressure == 0 {
+                let tilt = Swift.max(abs(point.tiltX), abs(point.tiltY))
+                flatEraserIgnored = tilt >= (flatEraserIgnored ? limit - Self.eraserFlatRelease : limit)
+            } else {
+                flatEraserIgnored = false
+            }
+        }
+        guard flatEraserIgnored else { return false }
+        if lastProximity, let snap = injectionSnapshot {
+            FlightRecorder.shared.note(String(format: "pen leaves range: eraser end lying flat (0x%04X)", deviceProductID))
+            commitProximityExit(snap: snap)
+        }
+        return true
+    }
+
+    /// Parks the weak-signal exit, and moves it out after a weak frame.
+    private func armWeakSignalExit(_ weak: Bool) {
+        guard weak else {
+            if let timer = weakSignalExitTimer { CFRunLoopTimerSetNextFireDate(timer, .greatestFiniteMagnitude) }
+            return
+        }
+        if weakSignalExitTimer == nil {
+            // Repeating with an interval that never comes due, so a firing
+            // leaves it valid for the next move.
+            let timer = CFRunLoopTimerCreateWithHandler(nil, .greatestFiniteMagnitude, 1e9, 0, 0) { [weak self] timer in
+                CFRunLoopTimerSetNextFireDate(timer, .greatestFiniteMagnitude)
+                guard let self, self.lastProximity, let snap = self.injectionSnapshot else { return }
+                FlightRecorder.shared.note(String(format: "pen leaves range: weak signal, then no report (0x%04X)", self.deviceProductID))
+                self.commitProximityExit(snap: snap)
+            }
+            CFRunLoopAddTimer(HIDThread.shared.runLoop, timer, .commonModes)
+            weakSignalExitTimer = timer
+        }
+        if let timer = weakSignalExitTimer {
+            CFRunLoopTimerSetNextFireDate(timer, CFAbsoluteTimeGetCurrent() + Self.weakSignalSilence)
+        }
+    }
+
     /// Proximity-exit cleanup: release the tip, held buttons, and modifiers,
     /// then reset per-proximity state. Xencelabs reaches this through
     /// `proximityExitDebounceTimer`.
     func commitProximityExit(snap: InjectionSnapshot) {
         ThreadContract.expectPenThread()
+        if let timer = weakSignalExitTimer { CFRunLoopTimerSetNextFireDate(timer, .greatestFiniteMagnitude) }
         // Posted here, not by the caller, so every exit tells apps, including
         // the Xencelabs debounce, the stuck-proximity watchdog, and disconnect. Exit reports carry no tool, so a leaving eraser
         // takes the identity it entered with.

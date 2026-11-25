@@ -21,7 +21,8 @@ enum DiagnosticPackage {
     /// recent activity if any, and a README. Nil if it couldn't be written — the caller then keeps its loose
     /// files, since a failed zip must never mean a lost capture.
     static func build(
-        summaryURL: URL, rawLogURL: URL?, recentText: String? = nil, productID: String, date: Date = Date())
+        summaryURL: URL, rawLogURL: URL?, recentText: String? = nil, duringText: String? = nil,
+        productID: String, date: Date = Date())
         -> URL?
     {
         let stem = "mocktab-diagnostics-\(productID)-\(DateStamp.compact(date))"
@@ -47,7 +48,12 @@ enum DiagnosticPackage {
                 try recentText.write(
                     to: staging.appendingPathComponent("recent.txt"), atomically: true, encoding: .utf8)
             }
-            try readme(hasRawLog: rawLogURL != nil, hasRecent: recentText != nil, date: date)
+            if let duringText {
+                try duringText.write(
+                    to: staging.appendingPathComponent("during.txt"), atomically: true, encoding: .utf8)
+            }
+            try readme(hasRawLog: rawLogURL != nil, hasRecent: recentText != nil, hasDuring: duringText != nil,
+                       date: date)
                 .write(
                     to: staging.appendingPathComponent("README.txt"), atomically: true,
                     encoding: .utf8)
@@ -143,7 +149,7 @@ enum DiagnosticPackage {
     /// (`CaptureGuideView.isTextEntryDevice`,
     /// `DiagnosticSession.knownVendorDevices`). Change that filtering and
     /// this text must change too.
-    static func readme(hasRawLog: Bool, hasRecent: Bool = false, date: Date = Date()) -> String {
+    static func readme(hasRawLog: Bool, hasRecent: Bool = false, hasDuring: Bool = false, date: Date = Date()) -> String {
         var lines = [
             "MockTab diagnostics",
             "",
@@ -157,6 +163,9 @@ enum DiagnosticPackage {
                 "recent.txt     The last few minutes of tablet activity before this collection began,",
                 "               with how busy the Mac was and when the mouse or keyboard was used.",
             ])
+        }
+        if hasDuring {
+            lines.append("during.txt     The same, for the collection itself.")
         }
         lines.append(contentsOf: [
             "",

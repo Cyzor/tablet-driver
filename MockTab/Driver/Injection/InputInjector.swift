@@ -321,6 +321,7 @@ final class InputInjector: @unchecked Sendable {
         keyDownTapSource.map { CFRunLoopRemoveSource(HIDThread.shared.runLoop, $0, .commonModes) }
         keyDownTap.map { CFMachPortInvalidate($0) }
         watchdogTimer.map { CFRunLoopTimerInvalidate($0) }
+        weakSignalExitTimer.map { CFRunLoopTimerInvalidate($0) }
         pendingMouseUp.map { CFRunLoopTimerInvalidate($0) }
         proximityExitDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         panScrollSafetyNetTimer.map { CFRunLoopTimerInvalidate($0) }
@@ -736,6 +737,29 @@ final class InputInjector: @unchecked Sendable {
     /// immediate; a release waits, and a re-press cancels it. Scales from 0 to
     /// `buttonUpDebounceInterval`'s tuned 50 ms.
     var tipUpDebounceTimer: CFRunLoopTimer?
+
+    /// Armed by a weak frame at the edge of range, cancelled by any pen
+    /// report: a tablet that goes quiet after weak frames has left without
+    /// saying so. Several report intervals, so a late report doesn't end it.
+    /// One timer, made on first use and moved, so HIDThread allocates nothing
+    /// per frame; parked at the distant future when idle.
+    var weakSignalExitTimer: CFRunLoopTimer?
+    static let weakSignalSilence: CFTimeInterval = 0.06
+    /// Weak frames alone keep the pen in range this long at most: sparse
+    /// ones can trickle in after the pen has gone.
+    static let weakSignalLimit: CFTimeInterval = 1.0
+    /// Uptime of the last report with the pen fully in range.
+    var lastStrongPenAt: CFTimeInterval = 0
+
+    /// A hovering eraser end tilted this far counts as out of range: the pen
+    /// is lying flat, held for typing or turning over, not erasing. Contact
+    /// always counts. 1 or more turns it off. Set at launch.
+    nonisolated(unsafe) static var eraserFlatTilt: Double = 0.97
+    /// How far under `eraserFlatTilt` the tilt must fall before the eraser
+    /// counts again.
+    static let eraserFlatRelease = 0.05
+    /// Whether the eraser end is being ignored as flat.
+    var flatEraserIgnored = false
 
     /// Longer release debounce for right-click and eraser bindings, so a context
     /// menu survives lifting the pen with the button held. The button bit drops

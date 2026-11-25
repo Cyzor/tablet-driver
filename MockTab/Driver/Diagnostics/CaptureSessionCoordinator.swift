@@ -470,6 +470,9 @@ final class CaptureSessionCoordinator: ObservableObject {
         // whatever prompted the collection out of the recording.
         FlightRecorder.shared.note("device data collection started")
         let recentText = FlightRecorder.shared.exportText()
+        // The collection itself is saved again at the end: a problem shown
+        // while collecting would otherwise be missing from the recording.
+        let collectionStartNs = FlightRecorder.nowNs()
         // Each interface is described from its own `IOHIDDevice`: the usage
         // page and the report descriptor differ between them, and those are
         // exactly what the capture file needs in order to say which interface
@@ -520,12 +523,14 @@ final class CaptureSessionCoordinator: ObservableObject {
                 // still up, so packaging at dismiss time would zip a log
                 // that hadn't been flushed yet.
                 let rawLogURL = self.onFinalizeRawCapture?()
+                FlightRecorder.shared.note("device data collection finished")
+                let duringText = FlightRecorder.shared.exportText(sinceNs: collectionStartNs)
                 let productID = result.deviceInfo.productID
                 // Off main: packaging copies files and waits for ditto.
                 let packaged = await Task.detached(priority: .utility) {
                     let packaged = DiagnosticPackage.build(
                         summaryURL: summaryURL, rawLogURL: rawLogURL, recentText: recentText,
-                        productID: productID)
+                        duringText: duringText, productID: productID)
                     if packaged != nil {
                         // Only once the archive holds them.
                         try? FileManager.default.removeItem(at: summaryURL)

@@ -66,7 +66,8 @@ import Foundation
 
     // With recent activity
     let zip3 = DiagnosticPackage.build(
-        summaryURL: summary, rawLogURL: nil, recentText: "recent lines\n", productID: "0x0375")
+        summaryURL: summary, rawLogURL: nil, recentText: "recent lines\n", duringText: "during lines\n",
+        productID: "0x0375")
     expect(zip3 != nil, "archive with recent activity")
     if let zip3 {
         let out3 = tmp.appendingPathComponent("out3")
@@ -77,7 +78,13 @@ import Foundation
         let root3 = out3.appendingPathComponent(zip3.deletingPathExtension().lastPathComponent)
         let recent = try? String(contentsOf: root3.appendingPathComponent("recent.txt"), encoding: .utf8)
         expect(recent == "recent lines\n", "recent activity survives")
+        let during = try? String(contentsOf: root3.appendingPathComponent("during.txt"), encoding: .utf8)
+        expect(during == "during lines\n", "activity during the collection survives")
     }
+    expect(DiagnosticPackage.readme(hasRawLog: false, hasDuring: true).contains("during.txt"),
+          "README lists activity during the collection when present")
+    expect(!DiagnosticPackage.readme(hasRawLog: false).contains("during.txt"),
+          "README omits activity during the collection when absent")
     expect(DiagnosticPackage.readme(hasRawLog: false, hasRecent: true).contains("recent.txt"),
           "README lists recent activity when present")
     expect(!DiagnosticPackage.readme(hasRawLog: false).contains("recent.txt"),

@@ -253,6 +253,11 @@ extension InputInjector {
         // Diagnostic: `event.post` is synchronous IPC into WindowServer and
         // the only stage no other stall probe covers.
         FlightRecorder.shared.mark(event.type == .mouseMoved ? .postedMove : .postedOther)
+        switch event.type {
+        case .mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged:
+            FlightRecorder.shared.notePostedMove(event.location)
+        default: break
+        }
         let postStart = mach_absolute_time()
         let signpost = PipelineSignposts.begin("Post")
         event.post(tap: .cghidEventTap)

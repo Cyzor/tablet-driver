@@ -11,8 +11,9 @@ import IOKit.pwr_mgt
 /// every 5 s, the way a mouse would.
 enum UserActivity {
     private static let periodNs: UInt64 = 5_000_000_000
-    // Posting threads; a race only means an extra declaration.
-    nonisolated(unsafe) private static var lastNs: UInt64 = 0
+    // Posting threads; a race only means an extra declaration. Read by the
+    // flight recorder: macOS's idle time resets on each declaration too.
+    nonisolated(unsafe) private(set) static var lastNs: UInt64 = 0
     // Off the posting thread: the declaration is a round trip to powerd.
     private static let queue = DispatchQueue(label: "MockTab user activity", qos: .userInitiated)
     // Queue-confined. Reused, so each declaration renews one assertion.

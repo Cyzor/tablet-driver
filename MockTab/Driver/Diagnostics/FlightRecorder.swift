@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import AppKit
+import IOKit
 import TabletKit
 import os
 import notify
@@ -38,7 +39,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         static let toolEnter = Outcome(rawValue: 1 << 7)
     }
 
-    /// One report, 24 bytes.
+    /// One report, 32 bytes.
     struct Report {
         var kernelNs: UInt64 = 0
         /// Kernel receipt to MockTab's callback.
@@ -52,9 +53,13 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         /// Position in sixteenths of the tablet's range per 65536.
         var x: UInt16 = 0
         var y: UInt16 = 0
+        /// Hundredths of full tilt, and hover as the tablet reports it.
+        var tiltX: Int8 = 0
+        var tiltY: Int8 = 0
+        var hover: UInt8 = 0
     }
 
-    /// About 5 minutes of one tablet at 200 Hz; 1.5 MB.
+    /// About 5 minutes of one tablet at 200 Hz; 2 MB.
     static let capacity = 1 << 16
 
     private let ring: UnsafeMutablePointer<Report>
@@ -120,9 +125,15 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             case .pen(let p):
                 if !outcome.contains(.decodedPen) {
                     outcome.insert(.decodedPen)
-                    if p.inProximity { outcome.insert(.penInRange) }
+                    // A weak frame counts as out of range here, position kept:
+                    // MockTab follows it only while the pen is already in, and
+                    // its moves show that.
+                    if p.inProximity && !p.weakSignal { outcome.insert(.penInRange) }
                     if p.maxX > 0 { ring[current].x = UInt16(clamping: p.x * 65535 / p.maxX) }
                     if p.maxY > 0 { ring[current].y = UInt16(clamping: p.y * 65535 / p.maxY) }
+                    ring[current].tiltX = Int8(clamping: Int((p.tiltX * 100).rounded()))
+                    ring[current].tiltY = Int8(clamping: Int((p.tiltY * 100).rounded()))
+                    ring[current].hover = UInt8(clamping: p.hoverDistance)
                 }
             case .tool(let t) where t.phase == .enter:
                 outcome.insert(.toolEnter)
@@ -132,6 +143,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         }
         ring[current].outcome = outcome.rawValue
         if outcome.contains(.decodedPen) { trackStillness(inRange: outcome.contains(.penInRange)) }
+        if outcome.contains(.penInRange) { lastInRangeNs = ring[current].kernelNs }
         let now = Self.nowNs()
         let ns = ring[current].kernelNs
         ring[current].doneUs = now > ns ? UInt32(clamping: (now - ns) / 1000) : 0
@@ -140,6 +152,10 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
 
     // A pen that stays in range without moving: one resting on the tablet
     // holds proximity, so the pen in hand isn't seen. HIDThread-confined.
+    // A position that holds while tilt or hover keep changing is the pen
+    // pivoting on its tip, or the tablet's position freezing; so the first
+    // note comes early, and the last says how much tilt and hover moved.
+    static let stillEarlyNs: UInt64 = 3_000_000_000
     static let stillNs: UInt64 = 30_000_000_000
     static let stillSpan: UInt16 = 130  // of 65535, about 0.2% of the width
     private var stillDevice: UInt8 = .max
@@ -147,6 +163,15 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     private var stillX: UInt16 = 0
     private var stillY: UInt16 = 0
     private var stillNoted = false
+    private var stillLongNoted = false
+    private var stillTilt = (xLo: Int8(0), xHi: Int8(0), yLo: Int8(0), yHi: Int8(0))
+    private var stillHover = (lo: UInt8(0), hi: UInt8(0))
+
+    private func stillRanges() -> String {
+        String(format: "tilt x %.2f to %.2f, y %.2f to %.2f; hover %d to %d",
+               Double(stillTilt.xLo) / 100, Double(stillTilt.xHi) / 100,
+               Double(stillTilt.yLo) / 100, Double(stillTilt.yHi) / 100, stillHover.lo, stillHover.hi)
+    }
 
     private func trackStillness(inRange: Bool) {
         let r = ring[current]
@@ -154,20 +179,73 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         let moved = r.device != stillDevice || far(r.x, stillX) || far(r.y, stillY)
         if !inRange || moved {
             if stillNoted {
-                note(String(format: "pen was still in range for %.0f s, then %@",
-                            Double(r.kernelNs &- stillSince) / 1e9, inRange ? "moved" : "left"))
+                note(String(format: "pen's position held for %.1f s in range, then it %@; meanwhile %@",
+                            Double(r.kernelNs &- stillSince) / 1e9, inRange ? "moved" : "left", stillRanges()))
             }
             stillNoted = false
+            stillLongNoted = false
             stillDevice = inRange ? r.device : .max
             stillSince = r.kernelNs
             stillX = r.x
             stillY = r.y
+            stillTilt = (r.tiltX, r.tiltX, r.tiltY, r.tiltY)
+            stillHover = (r.hover, r.hover)
             return
         }
-        if !stillNoted, r.kernelNs &- stillSince >= Self.stillNs {
+        stillTilt = (min(stillTilt.xLo, r.tiltX), max(stillTilt.xHi, r.tiltX),
+                     min(stillTilt.yLo, r.tiltY), max(stillTilt.yHi, r.tiltY))
+        stillHover = (min(stillHover.lo, r.hover), max(stillHover.hi, r.hover))
+        if !stillNoted, r.kernelNs &- stillSince >= Self.stillEarlyNs {
             stillNoted = true
+            note("pen's position held for 3 s in range; " + stillRanges())
+        }
+        if !stillLongNoted, r.kernelNs &- stillSince >= Self.stillNs {
+            stillLongNoted = true
             note("pen held still in range for 30 s")
         }
+    }
+
+    // MARK: - Pen return (HIDThread)
+
+    /// Pen out of range this long counts as a quiet spell.
+    static let quietSpellNs: UInt64 = 5_000_000_000
+    private var lastInRangeNs: UInt64 = 0
+    private let hidSystem = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOHIDSystem"))
+
+    /// Called as the pen enters range, before its first post. After a quiet
+    /// spell, notes when the user was last active and watches delivery for
+    /// a while.
+    func penEntering() {
+        armCursorCheck()
+        let now = Self.nowNs()
+        let quiet = lastInRangeNs == 0 ? now : now &- lastInRangeNs
+        guard quiet >= Self.quietSpellNs else { return }
+        openWatch()
+        // macOS's idle time ignores MockTab's posts but resets on its activity
+        // declarations, which stop with the pen, and on other apps'. Read
+        // before the first post.
+        let sinceDeclared = UserActivity.lastNs == 0 ? now : now &- UserActivity.lastNs
+        let idle = hidIdleNs()
+        let key = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown)
+        var parts: [String] = []
+        if let idle, idle + 50_000_000 < sinceDeclared {
+            parts.append(String(format: "user activity %.1f s before (mouse, trackpad, keyboard, or an app's notice)", Double(idle) / 1e9))
+        } else {
+            parts.append(String(format: "no user activity in the %.0f s before", Double(sinceDeclared) / 1e9))
+        }
+        parts.append(String(format: "keyboard or a key shortcut %.1f s before", key))
+        let lead = lastInRangeNs == 0
+            ? "pen in range for the first time since launch; "
+            : String(format: "pen returns after %.0f s out of range; ", Double(quiet) / 1e9)
+        note(lead + parts.joined(separator: "; "))
+    }
+
+    private func hidIdleNs() -> UInt64? {
+        guard hidSystem != 0,
+              let value = IORegistryEntryCreateCFProperty(hidSystem, "HIDIdleTime" as CFString, kCFAllocatorDefault, 0)?
+                .takeRetainedValue() as? NSNumber
+        else { return nil }
+        return value.uint64Value
     }
 
     /// Adds to the open report's outcome. A post outside any report (a timer)
@@ -196,7 +274,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     /// The recording as text, oldest first. Taken on HIDThread so no report
     /// is half written; if that thread doesn't answer within a second, read
     /// anyway, at worst with one torn entry.
-    func exportText() -> String {
+    /// `sinceNs`, if given, keeps only what came after it.
+    func exportText(sinceNs: UInt64 = 0) -> String {
         final class Box: @unchecked Sendable { var reports: [Report] = [] }
         let box = Box()
         if CFRunLoopGetCurrent() === HIDThread.shared.runLoop {
@@ -209,12 +288,12 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             }
             if taken.wait(timeout: .now() + 1) == .timedOut { box.reports = snapshotReports() }
         }
-        let reports = box.reports
+        let reports = box.reports.filter { $0.kernelNs >= sinceNs }
         let (events, devices) = shared.withLock { s in
-            (Array(s.events[s.eventStart...] + s.events[..<s.eventStart]), s.devices)
+            (Array(s.events[s.eventStart...] + s.events[..<s.eventStart]).filter { $0.ns >= sinceNs }, s.devices)
         }
         let text = Self.format(reports: reports, events: events.map { ($0.ns, $0.text) },
-                               devices: devices, startNs: startNs, nowNs: Self.nowNs())
+                               devices: devices, startNs: startNs, nowNs: Self.nowNs(), sinceNs: sinceNs)
         let taps = Self.eventTaps().map { "  " + $0.summary }
         return text + "\nEvent taps at export (filters hold each event until their app lets it through):\n"
             + (taps.isEmpty ? "  none readable" : taps.joined(separator: "\n")) + "\n"
@@ -315,7 +394,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     static let gapNs: UInt64 = 100_000_000
 
     static func format(
-        reports: [Report], events: [(UInt64, String)], devices: [String], startNs: UInt64, nowNs: UInt64
+        reports: [Report], events: [(UInt64, String)], devices: [String], startNs: UInt64, nowNs: UInt64,
+        sinceNs: UInt64 = 0
     ) -> String {
         func stamp(_ ns: UInt64) -> String {
             let s = Double(Int64(bitPattern: ns &- startNs)) / 1e9
@@ -334,10 +414,13 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         }
         var lines: [String] = []
         lines.append("MockTab recent activity")
-        lines.append(String(format: "Recorded %.1f s; %d reports; %d state changes. Times: [since launch | before export], seconds.",
-                            Double(nowNs &- startNs) / 1e9, reports.count, events.count))
+        // A partial export says how much it covers, not how long since launch.
+        let from = sinceNs > startNs ? sinceNs : startNs
+        lines.append(String(format: "Recorded %.1f s%@; %d reports; %d state changes. Times: [since launch | before export], seconds.",
+                            Double(nowNs &- from) / 1e9, sinceNs > startNs ? " (this collection)" : "",
+                            reports.count, events.count))
         for (i, name) in devices.enumerated() { lines.append("Device \(i): \(name)") }
-        lines.append("Report runs: device, report ID, status byte, outcome, count, span, cursor moves and other events posted, X/Y range (0-65535), delay to callback and to done (ms, max).")
+        lines.append("Report runs: device, report ID, status byte, outcome, count, span, cursor moves and other events posted, X/Y range (0-65535), tilt range (-1 to 1), hover range, delay to callback and to done (ms, max).")
         lines.append(String(repeating: "─", count: 78))
 
         var e = 0
@@ -361,6 +444,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             flushEvents(before: head.kernelNs)
             var j = i + 1
             var xLo = head.x, xHi = head.x, yLo = head.y, yHi = head.y
+            var txLo = head.tiltX, txHi = head.tiltX, tyLo = head.tiltY, tyHi = head.tiltY
+            var hLo = head.hover, hHi = head.hover
             var cbMax = head.callbackUs, doneMax = head.doneUs
             var moved = head.outcome & Outcome.postedMove.rawValue != 0 ? 1 : 0
             var posted = head.outcome & Outcome.postedOther.rawValue != 0 ? 1 : 0
@@ -372,6 +457,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
                     e >= events.count || events[e].0 > r.kernelNs
                 else { break }
                 xLo = min(xLo, r.x); xHi = max(xHi, r.x); yLo = min(yLo, r.y); yHi = max(yHi, r.y)
+                txLo = min(txLo, r.tiltX); txHi = max(txHi, r.tiltX); tyLo = min(tyLo, r.tiltY); tyHi = max(tyHi, r.tiltY)
+                hLo = min(hLo, r.hover); hHi = max(hHi, r.hover)
                 cbMax = max(cbMax, r.callbackUs); doneMax = max(doneMax, r.doneUs)
                 if r.outcome & Outcome.postedMove.rawValue != 0 { moved += 1 }
                 if r.outcome & Outcome.postedOther.rawValue != 0 { posted += 1 }
@@ -384,6 +471,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             line += " moved \(moved) posted \(posted)"
             if Outcome(rawValue: head.outcome).contains(.decodedPen) {
                 line += " x=\(xLo)-\(xHi) y=\(yLo)-\(yHi)"
+                line += String(format: " tilt=%.2f..%.2f,%.2f..%.2f hover=%d-%d",
+                               Double(txLo) / 100, Double(txHi) / 100, Double(tyLo) / 100, Double(tyHi) / 100, hLo, hHi)
             }
             line += String(format: " cb≤%.1f done≤%.1f", Double(cbMax) / 1000, Double(doneMax) / 1000)
             lines.append(line)
@@ -450,13 +539,24 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     // at the end of the session's chain sees how long macOS took to pass
     // them on. Runs on its own thread: never HIDThread, which posts them.
     // Notes a stretch of late delivery when it starts and when it ends.
-    // A 10 ms timer on the same thread, running while moves arrive, tells
-    // macOS holding the moves apart from this thread being held itself.
+    // Watching every move costs about half as much as posting it, and
+    // WindowServer as much again to send the copies, so the tap runs only
+    // for `watchNs` after the pen returns from a quiet spell, and on while
+    // moves still arrive late.
+    // A timer on the same thread, running while moves arrive, tells macOS
+    // holding the moves apart from this thread being held itself. Its period
+    // matches the lateness threshold: any hold that long delays a firing.
     static let lateDeliveryNs: UInt64 = 30_000_000
-    private static let heartbeatNs: UInt64 = 10_000_000
+    private static let heartbeatNs: UInt64 = lateDeliveryNs
+    static let watchNs: UInt64 = 10_000_000_000
     private var deliveryTap: CFMachPort?
     private var heartbeat: CFRunLoopTimer?
+    private var watchRunLoop: CFRunLoop?
+    private var watchEnd: CFRunLoopTimer?
     // Delivery-thread-confined.
+    private var watching = false
+    private var watchPostedStart: UInt64 = 0
+    private var watchSeen: UInt64 = 0
     private var lateSince: UInt64 = 0
     private var lateCount = 0
     private var lateWorstNs: UInt64 = 0
@@ -495,7 +595,16 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             }
             deliveryTap = tap
             CFRunLoopAddSource(CFRunLoopGetCurrent(), CFMachPortCreateRunLoopSource(nil, tap, 0), .commonModes)
-            CGEvent.tapEnable(tap: tap, enable: true)
+            CGEvent.tapEnable(tap: tap, enable: false)
+            // Repeating, so macOS keeps it valid after a firing; the interval never comes due.
+            let end = CFRunLoopTimerCreateWithHandler(nil, .greatestFiniteMagnitude, 1e9, 0, 0) { [self] _ in endWatch() }
+            CFRunLoopAddTimer(CFRunLoopGetCurrent(), end, .commonModes)
+            watchEnd = end
+            let cursor = CFRunLoopTimerCreateWithHandler(
+                nil, .greatestFiniteMagnitude, Double(Self.cursorCheckNs) / 1e9, 0, 0
+            ) { [self] _ in checkCursor() }
+            CFRunLoopAddTimer(CFRunLoopGetCurrent(), cursor, .commonModes)
+            cursorTimer = cursor
             let timer = CFRunLoopTimerCreateWithHandler(
                 nil, .greatestFiniteMagnitude, Double(Self.heartbeatNs) / 1e9, 0, 0
             ) { [self] _ in beat() }
@@ -503,6 +612,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, .commonModes)
             heartbeat = timer
             _ = slowerFilters()
+            watchRunLoop = CFRunLoopGetCurrent()
             CFRunLoopRun()
         }
         thread.name = "MockTab delivery watch"
@@ -511,6 +621,137 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     }
 
     private static let ownPID = Int64(getpid())
+
+    private func openWatch() {
+        guard let loop = watchRunLoop else { return }
+        CFRunLoopPerformBlock(loop, CFRunLoopMode.commonModes.rawValue) { [self] in
+            guard let deliveryTap, let watchEnd else { return }
+            if !watching {
+                watching = true
+                watchPostedStart = postedMoves.withLock { $0.count }
+                watchSeen = 0
+                lastPointerNs = 0
+                lastKeyNs = 0
+                CGEvent.tapEnable(tap: deliveryTap, enable: true)
+            }
+            CFRunLoopTimerSetNextFireDate(watchEnd, CFAbsoluteTimeGetCurrent() + Double(Self.watchNs) / 1e9)
+        }
+        CFRunLoopWakeUp(loop)
+    }
+
+    private func endWatch() {
+        guard let deliveryTap, let watchEnd else { return }
+        let now = Self.nowNs()
+        if lateCount > 0 {
+            if now - lastMoveNs < 1_000_000_000 {
+                CFRunLoopTimerSetNextFireDate(watchEnd, CFAbsoluteTimeGetCurrent() + 1)
+                return
+            }
+            note(String(format: "watch ended with moves still late: %d over %.2f s, worst %.0f ms, then none for %.1f s",
+                        lateCount, Double(lastMoveNs - lateSince) / 1e9, Double(lateWorstNs) / 1e6,
+                        Double(now - lastMoveNs) / 1e9))
+            lateCount = 0
+            lateWorstNs = 0
+        }
+        let posted = postedMoves.withLock { $0.count } &- watchPostedStart
+        if watchSeen + 5 < posted {
+            note("while watched, MockTab posted \(posted) moves and \(watchSeen) reached apps")
+        }
+        watching = false
+        CFRunLoopTimerSetNextFireDate(watchEnd, .greatestFiniteMagnitude)
+        CGEvent.tapEnable(tap: deliveryTap, enable: false)
+        heartbeatDueNs = 0
+        if let heartbeat { CFRunLoopTimerSetNextFireDate(heartbeat, .greatestFiniteMagnitude) }
+    }
+
+    // MARK: - Cursor
+
+    // Where macOS shows the cursor against where MockTab's last move put it,
+    // four times a second while moves flow: the ground truth the delivery
+    // watch lacks, since a move macOS never passes on leaves no trace there.
+    // On this thread, never HIDThread: asking WindowServer blocks if it's stuck.
+    static let cursorCheckNs: UInt64 = 250_000_000
+    static let cursorAwayPoints: CGFloat = 40
+    private struct PostedMoves {
+        var count: UInt64 = 0
+        var last = CGPoint.zero
+        var lastNs: UInt64 = 0
+    }
+    private let postedMoves = OSAllocatedUnfairLock(initialState: PostedMoves())
+    private var cursorTimer: CFRunLoopTimer?
+    // Delivery-thread-confined.
+    private var cursorArmed = false
+    private var awayChecks = 0
+    private var nearChecks = 0
+    private var awaySince: UInt64 = 0
+    private var awayFirst = CGPoint.zero
+    private var awayDrift: CGFloat = 0
+
+    /// HIDThread, for each move or drag posted.
+    func notePostedMove(_ location: CGPoint) {
+        let now = Self.nowNs()
+        postedMoves.withLock {
+            $0.count &+= 1
+            $0.last = location
+            $0.lastNs = now
+        }
+    }
+
+    private func armCursorCheck() {
+        guard let loop = watchRunLoop else { return }
+        CFRunLoopPerformBlock(loop, CFRunLoopMode.commonModes.rawValue) { [self] in
+            guard !cursorArmed, let cursorTimer else { return }
+            cursorArmed = true
+            CFRunLoopTimerSetNextFireDate(cursorTimer, CFAbsoluteTimeGetCurrent() + Double(Self.cursorCheckNs) / 1e9)
+        }
+        CFRunLoopWakeUp(loop)
+    }
+
+    private func checkCursor() {
+        let now = Self.nowNs()
+        let posted = postedMoves.withLock { $0 }
+        let flowing = posted.lastNs != 0 && now &- posted.lastNs < Self.cursorCheckNs
+        guard flowing || awayChecks > 0 else {
+            // A still pen posts nothing; park until the next entry.
+            if now &- posted.lastNs > 2_000_000_000, let cursorTimer {
+                cursorArmed = false
+                CFRunLoopTimerSetNextFireDate(cursorTimer, .greatestFiniteMagnitude)
+            }
+            return
+        }
+        guard let actual = CGEvent(source: nil)?.location else { return }
+        let away = hypot(actual.x - posted.last.x, actual.y - posted.last.y)
+        if flowing, away > Self.cursorAwayPoints {
+            nearChecks = 0
+            awayChecks += 1
+            if awayChecks == 1 {
+                awaySince = now
+                awayFirst = actual
+                awayDrift = 0
+            }
+            awayDrift = max(awayDrift, hypot(actual.x - awayFirst.x, actual.y - awayFirst.y))
+            if awayChecks == 2 {
+                note(String(format: "cursor not where MockTab's moves put it: at (%.0f, %.0f), %.0f points from the last move",
+                            actual.x, actual.y, away))
+            }
+            return
+        }
+        // Two good checks in a row end a stretch, so a lucky sample doesn't.
+        if awayChecks >= 2, flowing, nearChecks == 0 {
+            nearChecks = 1
+            return
+        }
+        if awayChecks >= 2 {
+            let span = Double(now - awaySince) / 1e9
+            note(away > Self.cursorAwayPoints
+                 ? String(format: "MockTab's moves stopped with the cursor still %.0f points away, after %.2f s; while away it moved up to %.0f points",
+                          away, span, awayDrift)
+                 : String(format: "cursor followed MockTab's moves again after %.2f s; while away it moved up to %.0f points",
+                          span, awayDrift))
+        }
+        awayChecks = 0
+        nearChecks = 0
+    }
 
     private func beat() {
         let now = Self.nowNs()
@@ -550,7 +791,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     }
 
     private func quietNote(_ what: String, since: UInt64, _ now: UInt64) -> String {
-        since == 0 ? what + " (first since launch)" : String(format: "%@ (first in %.1f s)", what, Double(now - since) / 1e9)
+        since == 0 ? what + " (first since the pen returned)" : String(format: "%@ (first in %.1f s)", what, Double(now - since) / 1e9)
     }
 
     /// Enabled filter taps whose slowest time rose since the last call.
@@ -570,7 +811,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
 
     private func delivered(_ type: CGEventType, _ event: CGEvent) {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let deliveryTap { CGEvent.tapEnable(tap: deliveryTap, enable: true) }
+            guard watching, let deliveryTap else { return }
+            CGEvent.tapEnable(tap: deliveryTap, enable: true)
             note("delivery watch re-enabled after macOS disabled it")
             return
         }
@@ -586,6 +828,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         guard stamped != 0, now > stamped else { return }
         let delay = now - stamped
         lastMoveNs = now
+        watchSeen += 1
         let timed = heartbeatDueNs != 0
         if !timed, let heartbeat {
             heartbeatDueNs = now + Self.heartbeatNs

@@ -54,6 +54,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // redundant and conflicts with the Factory Reset alternate menu item.
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
 
+        // How long a pen at the edge of range keeps moving the cursor on weak
+        // frames, in frames, about a second at 200 Hz; a tablet that stops
+        // sensing the pen ends it sooner by going quiet. 0 for the old
+        // behavior. Read before any tablet connects.
+        let follow = UserDefaults.standard.object(forKey: "senseBandFollowFrames") as? Int ?? 200
+        EdgeOfRange.senseBandFollowFrames = Swift.max(0, Swift.min(follow, 1000))
+        // A hovering eraser end tilted at least this far counts as out of
+        // range; 0 or less, or 1 or more, turns it off. 0.97: a pen lying flat
+        // reads 0.97–0.98, the sensor's limit; a tracked eraser reached 0.95.
+        let flat = UserDefaults.standard.object(forKey: "eraserFlatTilt") as? Double ?? 0.97
+        InputInjector.eraserFlatTilt = flat <= 0 || flat >= 1 ? 1 : Swift.max(0.5, flat)
+
         // Set the activation policy here — before applicationDidFinishLaunching —
         // so the app registers with the Dock as a regular app from the start.
         // If we defer this, the Dock sees the app launch as an accessory and
