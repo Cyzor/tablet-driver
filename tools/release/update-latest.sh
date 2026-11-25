@@ -15,8 +15,10 @@
 #              version's CHANGELOG.md line (split at semicolons).
 #   snapshot — build stamp from the annotated snapshot tag's message (UTC,
 #              e.g. 20260927T1432Z, copied from the built app), DMG link and sha256,
-#              notes from the release body's "Notes:" line, else from
-#              CHANGELOG.md's Unreleased line.
+#              notes from the release body's last line (as published, so
+#              edits on GitHub count; an older "Notes: " prefix is ignored),
+#              else from CHANGELOG.md's Unreleased line when the body ends
+#              with no notes (its stamp, commit, or a bare date).
 #   both     — minimumSystemVersion from the tagged commit's MockTab/Info.plist
 #              (bundle-check.sh keeps it in line with the built executables).
 # Refuses drafts: the page must never link to a download that isn't public.
@@ -82,7 +84,11 @@ if [[ "$TAG" == "snapshot" ]]; then
         exit 1
     fi
     m=("${BASH_REMATCH[@]}")
-    BODY_NOTES=$(jq -r '.body' <<<"$INFO" | sed -n 's/^Notes: //p' | head -1)
+    BODY_NOTES=$(jq -r '.body' <<<"$INFO" | tr -d '\r' | { grep -v '^[[:space:]]*$' || true; } | tail -1 \
+        | sed -E 's/^Notes: //; s/^[[:space:]]+//; s/[[:space:]]+$//')
+    if [[ "$BODY_NOTES" =~ ^(Built:|Commit:|Rolling\ pre-release|[0-9]{4}-[0-9]{2}-[0-9]{2}$) ]]; then
+        BODY_NOTES=""
+    fi
     if [[ -n "$BODY_NOTES" ]]; then
         NOTES=$(sed -E 's/\.$//' <<<"$BODY_NOTES" \
             | jq -R 'split("; ") | map((.[:1] | ascii_upcase) + .[1:])')

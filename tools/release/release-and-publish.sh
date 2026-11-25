@@ -8,7 +8,8 @@
 # This script is the release path. With --snapshot it builds the rolling
 # pre-release instead: it force-moves the "snapshot" tag to HEAD and replaces
 # the one snapshot release, from any branch. SNAPSHOT_NOTES=<file>, relative
-# to the repo root, adds that file's text to the snapshot as a Notes line.
+# to the repo root, ends the release body with that file's text as one line:
+# the notes the app shows, items separated by "; ".
 #
 # Flow:
 #   1. Sanity: clean working tree, on main, gh installed and authenticated.
@@ -81,13 +82,15 @@ if (( SNAPSHOT )); then
     if gh release view snapshot &>/dev/null; then
         gh release delete snapshot --yes
     fi
-    # update-latest.sh reads the Notes line back; without it, the website
-    # uses CHANGELOG.md's Unreleased line.
+    # update-latest.sh takes the body's last line as the notes, however the
+    # body is edited before Publish; without notes, it uses CHANGELOG.md's
+    # Unreleased line.
     NOTES_FILE=${SNAPSHOT_NOTES:-}
     NOTES_LINE=""
     if [[ -n "$NOTES_FILE" && -s "$NOTES_FILE" ]]; then
         NOTES_LINE="
-Notes: $(grep -v '^[[:space:]]*$' "$NOTES_FILE" | tr '\n' ' ' | sed -E 's/ +$//')"
+
+$(grep -v '^[[:space:]]*$' "$NOTES_FILE" | tr '\n' ' ' | sed -E 's/ +$//')"
     fi
     gh release create snapshot "$DMG_PATH" \
         --title "MockTab snapshot" \
