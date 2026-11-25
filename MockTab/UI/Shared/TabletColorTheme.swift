@@ -37,8 +37,10 @@ struct TabletColorTheme {
 
 extension Color {
     /// Accent color in the key window and a quiet gray elsewhere, the way
-    /// system controls fade when their window goes to the back.
+    /// system controls fade when their window goes to the back. The AppKit
+    /// color, because `CGCanvas` converts through `NSColor`, and macOS 15
+    /// turns `Color.accentColor` into the default blue there.
     static func windowAccent(_ state: ControlActiveState) -> Color {
-        state == .key ? .accentColor : Color(nsColor: .tertiaryLabelColor)
+        state == .key ? Color(nsColor: .controlAccentColor) : Color(nsColor: .tertiaryLabelColor)
     }
 }
