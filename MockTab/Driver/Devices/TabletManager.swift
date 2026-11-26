@@ -480,9 +480,9 @@ final class TabletManager: ObservableObject {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self else { return }
-                logger.info("TabletManager: woke from sleep, resending init to \(self.contexts.count, privacy: .public) device(s)")
-                FlightRecorder.shared.note("system woke; init resent to \(self.contexts.count) tablet(s)")
-                for context in self.contexts.values { context.tabletDevice?.reawaken() }
+                logger.info("TabletManager: woke from sleep, resending init to \(self.deviceContexts.count, privacy: .public) device(s)")
+                FlightRecorder.shared.note("system woke; init resent to \(self.deviceContexts.count) tablet(s)")
+                for context in self.deviceContexts.values { context.reawakenAllTransports() }
             }
         }
     }

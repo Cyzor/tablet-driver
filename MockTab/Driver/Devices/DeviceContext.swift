@@ -57,6 +57,12 @@ final class DeviceContext: ObservableObject, Identifiable {
     /// `tabletDevice` below is the computed winner among them.
     private var driverSlots: [Int: any TabletDevice] = [:]
 
+    /// Resends init on every transport after wake, not just the winner, so a
+    /// backup transport is ready if it takes over.
+    func reawakenAllTransports() {
+        for driver in driverSlots.values { driver.reawaken() }
+    }
+
     /// The winning driver among `driverSlots`, ranked by
     /// `VendorDeviceRegistry.transportPriority`. Kept as the property name
     /// and assignment style every existing call site already uses — set
