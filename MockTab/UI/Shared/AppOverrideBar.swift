@@ -94,6 +94,8 @@ struct AppOverrideBar: View {
 
     @Environment(\.controlActiveState) private var controlActiveState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.displayScale) private var displayScale
 
     @State private var isDropTargeted = false
     @State private var dragEnabledID: String? = nil
@@ -544,7 +546,8 @@ struct AppOverrideBar: View {
                             isWindowActive: true,
                             domainKeyCount: 0
                         ),
-                        scale: NSScreen.main?.backingScaleFactor ?? 2
+                        colorScheme: colorScheme,
+                        scale: displayScale
                     )
                 }
             )
@@ -736,30 +739,29 @@ struct AppOverrideBar: View {
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {
         // Item providers call back on arbitrary threads, possibly at once.
-        let loaded = OSAllocatedUnfairLock(initialState: [URL]())
+        // Keyed by position, so the apps keep their dragged order.
+        let loaded = OSAllocatedUnfairLock(initialState: [Int: URL]())
         let group = DispatchGroup()
 
-        for provider in providers where provider.canLoadObject(ofClass: URL.self) {
+        for (index, provider) in providers.enumerated() where provider.canLoadObject(ofClass: URL.self) {
             group.enter()
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 if let url {
-                    loaded.withLock { $0.append(url) }
+                    loaded.withLock { $0[index] = url }
                 }
                 group.leave()
             }
         }
 
         group.notify(queue: .main) {
-            let urls = loaded.withLock { $0 }
-            let validApps = urls.compactMap { self.bundleInfo(fromAppURL: $0) }
-            guard !validApps.isEmpty else { return }
+            let urls = loaded.withLock { $0 }.sorted { $0.key < $1.key }.map(\.value)
+            let appURLs = urls.filter { self.bundleInfo(fromAppURL: $0) != nil }
+            guard !appURLs.isEmpty else { return }
 
-            if validApps.count <= 3 {
-                for (bid, name) in validApps {
-                    addApp(bundleID: bid, name: name)
-                }
+            if appURLs.count <= 3 {
+                addMultipleApps(appURLs)
             } else {
-                pendingDropURLs = urls
+                pendingDropURLs = appURLs
                 showMultiDropAlert = true
             }
         }

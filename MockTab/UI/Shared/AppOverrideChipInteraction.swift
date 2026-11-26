@@ -64,9 +64,11 @@ struct ChipDragHoverState: Equatable {
 }
 
 /// Renders a SwiftUI chip view to an `NSImage` for the drag ghost.
+/// `ImageRenderer` starts from a light environment, so the window's scheme
+/// comes in explicitly.
 @MainActor
-func renderChipGhost<V: View>(_ view: V, scale: CGFloat) -> NSImage? {
-    let renderer = ImageRenderer(content: view)
+func renderChipGhost<V: View>(_ view: V, colorScheme: ColorScheme, scale: CGFloat) -> NSImage? {
+    let renderer = ImageRenderer(content: view.environment(\.colorScheme, colorScheme))
     renderer.scale = scale
     guard let cgImage = renderer.cgImage else { return nil }
     return NSImage(

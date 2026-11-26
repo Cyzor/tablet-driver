@@ -88,8 +88,6 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     /// flip-flop frame to frame — see `applyKeepProportions`.
     @State private var cornerDominantAxisIsWidth: Bool?
     @State private var isSnapped = false
-    /// Brief border pulse when a snap lands.
-    @State private var snapPulse = false
 
     /// Drives the focus ring for keyboard users; also enables `.onKeyPress`
     /// nudging on macOS 14+ via the conditional modifier below.
@@ -310,13 +308,6 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
             .frame(width: w, height: h)
             .offset(x: x, y: y)
             .allowsHitTesting(false)
-
-            Rectangle()
-                .strokeBorder(accent, lineWidth: 5)
-                .opacity(snapPulse ? 0.9 : 0)
-                .frame(width: w, height: h)
-                .offset(x: x, y: y)
-                .allowsHitTesting(false)
 
             overlay(areaRect, cs)
                 .allowsHitTesting(false)
@@ -660,12 +651,9 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     private static var snapEngage: CGFloat { 8 }
     private static var snapRelease: CGFloat { 16 }
 
-    /// The landing: a border pulse, and the system alignment tap on a Force
-    /// Touch trackpad.
+    /// The landing: the system alignment tap on a Force Touch trackpad.
     private func landSnap() {
         NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
-        snapPulse = true
-        withAnimation(.easeOut(duration: 0.35)) { snapPulse = false }
     }
 
     /// Double-click on a handle: fit the rect to the snap shape, like

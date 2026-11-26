@@ -115,8 +115,18 @@ struct CGCanvas: View {
 
         override var isFlipped: Bool { true }
 
-        // A switch between light and dark, or to a screen of another
-        // scale, redraws.
+        // A switch between light and dark, to a screen of another scale,
+        // or to another accent color redraws.
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(systemColorsChanged),
+                name: NSColor.systemColorsDidChangeNotification, object: nil)
+        }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) is unused") }
+
+        @objc private func systemColorsChanged() { needsDisplay = true }
         override func viewDidChangeEffectiveAppearance() { needsDisplay = true }
         override func viewDidChangeBackingProperties() { needsDisplay = true }
 

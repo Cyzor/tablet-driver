@@ -56,12 +56,15 @@ extension LEDSwatch {
             hasSnapshot = true
         }
         pending?.cancel()
-        let work = DispatchWorkItem { [weak self, weak settings] in
+        // Holds the coalescer, so an edit made just before the control
+        // disappears still gets its undo entry.
+        let work = DispatchWorkItem { [self, weak settings] in
             MainActor.assumeIsolated {
-                guard let self, let settings, self.hasSnapshot else { return }
-                let snap = self.snapshot
-                self.hasSnapshot = false
-                self.snapshot = nil
+                pending = nil
+                guard let settings, hasSnapshot else { return }
+                let snap = snapshot
+                hasSnapshot = false
+                snapshot = nil
                 settings.record(label) { restore(snap) }
             }
         }
