@@ -315,7 +315,7 @@ struct ButtonsView: View {
         )
 
         settings.undoManager?.beginUndoGrouping()
-        applyButtonToolReset(toolDefaults, undoTo: toolOld)
+        applyButtonToolReset(toolDefaults, undoTo: toolOld, on: settings.activeTool)
         applyButtonSettingsReset(settingsDefaults, undoTo: settingsOld)
 
         // A connected companion puck/dongle (Quick Keys) keeps its own,
@@ -346,15 +346,14 @@ struct ButtonsView: View {
     }
 
     /// Self-recursive so "Reset to Defaults" also redoes the tool-owned half.
-    private func applyButtonToolReset(_ new: ButtonToolState, undoTo old: ButtonToolState) {
-        let t = activeToolBinding
-        t.wrappedValue.tipBinding = new.tip
-        t.wrappedValue.eraserBinding = new.eraser
-        t.wrappedValue.penButton1Binding = new.pen1
-        t.wrappedValue.penButton2Binding = new.pen2
+    private func applyButtonToolReset(_ new: ButtonToolState, undoTo old: ButtonToolState, on t: ToolSettings) {
+        t.tipBinding = new.tip
+        t.eraserBinding = new.eraser
+        t.penButton1Binding = new.pen1
+        t.penButton2Binding = new.pen2
         settings.objectWillChange.send()
         settings.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
-            self.applyButtonToolReset(old, undoTo: new)
+            self.applyButtonToolReset(old, undoTo: new, on: t)
         }
     }
 

@@ -285,6 +285,7 @@ struct QuickKeysSectionView: View {
                 // value should never be able to exceed its action's actual
                 // ceiling regardless of how it got written.
                 updated[index].speed = ControlSlot.clampedSpeed(newValue, for: updated[index].action)
+                guard updated[index].speed != oldSlots[index].speed else { return }
                 settings.touchRingSlots = updated
                 settings.recordToggle(String(localized: "Dial Slot \(index + 1) Speed", comment: "Undo action name: Quick Keys dial slot binding in the Buttons pane"), from: oldSlots, to: updated) {
                     settings.touchRingSlots = $0
@@ -314,8 +315,8 @@ struct QuickKeysSectionView: View {
                     direction == .cw
                     ? String(localized: "Dial Slot \(index + 1) CW", comment: "Undo action name: Quick Keys dial slot rotation binding, clockwise")
                     : String(localized: "Dial Slot \(index + 1) CCW", comment: "Undo action name: Quick Keys dial slot rotation binding, counterclockwise")
-                settings.record(actionName) {
-                    settings.touchRingSlots = oldSlots
+                settings.recordToggle(actionName, from: oldSlots, to: updated) {
+                    settings.touchRingSlots = $0
                 }
             }
         )

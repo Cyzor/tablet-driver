@@ -389,6 +389,7 @@ private struct TouchRingModeListCore: View, Equatable {
                 }
                 .labelsHidden()
                 .fixedSize()
+                .accessibilityLabel(Text(String(localized: "Action", comment: "Ring mode editor row label")))
             }
 
             // Grayed (not hidden) while the mode is off/skip — the value is
@@ -420,6 +421,7 @@ private struct TouchRingModeListCore: View, Equatable {
                     step: slot.action.speedNotchStep ?? 0.25
                 ) { EmptyView() }
                     .labelsHidden()
+                    .accessibilityLabel(Text(String(localized: "Speed", comment: "Ring mode editor row label")))
                     .frame(maxWidth: .infinity)
                     .help("Adjust how fast the ring scrolls, zooms, rotates, or repeats key presses.")
                 Text(speedLabel(slot.speed, for: slot.action))

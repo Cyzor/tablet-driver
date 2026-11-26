@@ -247,7 +247,8 @@ extension DisplayView {
 
         if flags.contains(.shift) {
             // Shift+click: range selection from rangeStart to current index
-            if rangeStart < 0 {
+            // The list can shrink after an unplug; a stale anchor starts over.
+            if rangeStart < 0 || rangeStart >= displays.count {
                 rangeStart = index
             } else {
                 let start = min(rangeStart, index)
@@ -356,6 +357,7 @@ extension DisplayView {
     func canvasRangeClick(at index: Int) {
         guard displays.indices.contains(index) else { return }
         let oldDisplayIndex = settings.targetDisplayIndex
+        if rangeStart >= displays.count { rangeStart = -1 }
         if rangeStart < 0 {
             if oldDisplayIndex != modeToggle, oldDisplayIndex != modeSpan, let anchor = targetedDisplay,
                 let anchorIndex = displays.firstIndex(where: { $0.id == anchor.id })

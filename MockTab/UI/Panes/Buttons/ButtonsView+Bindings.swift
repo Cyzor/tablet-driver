@@ -13,13 +13,6 @@ import TabletKit
 // stays stable across the ~16 Hz liveButtons invalidations that redraw
 // these rows.
 extension ButtonsView {
-    // Pre-allocated Binding<ToolSettings> — created once, not per body call.
-    // Used to derive Binding<ButtonBinding> for each key path so SwiftUI
-    // view identity is stable across ~16 Hz liveButtons invalidations.
-    var activeToolBinding: Binding<ToolSettings> {
-        $settings.activeTool
-    }
-
     // Pre-allocated touch ring slot bindings — one Binding per slot per direction.
     // Eliminates per-call closure allocation in touchRingSlotsSection during
     // ~16 Hz liveButtons invalidations (same pattern as penNBinding / tipBinding).
@@ -302,12 +295,12 @@ extension ButtonsView {
         Binding(
             get: { tool.penButton1Binding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.penButton1Binding
-                t.wrappedValue.penButton1Binding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.penButton1Binding
+                t.penButton1Binding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Button 1"), from: oldValue, to: newValue) {
-                    t.wrappedValue.penButton1Binding = $0
+                    t.penButton1Binding = $0
                     self.settings.objectWillChange.send()
                 }
             }
@@ -317,12 +310,12 @@ extension ButtonsView {
         Binding(
             get: { tool.penButton2Binding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.penButton2Binding
-                t.wrappedValue.penButton2Binding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.penButton2Binding
+                t.penButton2Binding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Button 2"), from: oldValue, to: newValue) {
-                    t.wrappedValue.penButton2Binding = $0
+                    t.penButton2Binding = $0
                     self.settings.objectWillChange.send()
                 }
             }
@@ -332,12 +325,12 @@ extension ButtonsView {
         Binding(
             get: { tool.penButton3Binding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.penButton3Binding
-                t.wrappedValue.penButton3Binding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.penButton3Binding
+                t.penButton3Binding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Button 3"), from: oldValue, to: newValue) {
-                    t.wrappedValue.penButton3Binding = $0
+                    t.penButton3Binding = $0
                     self.settings.objectWillChange.send()
                 }
             }
@@ -347,12 +340,12 @@ extension ButtonsView {
         Binding(
             get: { tool.penButton4Binding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.penButton4Binding
-                t.wrappedValue.penButton4Binding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.penButton4Binding
+                t.penButton4Binding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Button 4"), from: oldValue, to: newValue) {
-                    t.wrappedValue.penButton4Binding = $0
+                    t.penButton4Binding = $0
                     self.settings.objectWillChange.send()
                 }
             }
@@ -362,12 +355,12 @@ extension ButtonsView {
         Binding(
             get: { tool.penButton5Binding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.penButton5Binding
-                t.wrappedValue.penButton5Binding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.penButton5Binding
+                t.penButton5Binding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Button 5"), from: oldValue, to: newValue) {
-                    t.wrappedValue.penButton5Binding = $0
+                    t.penButton5Binding = $0
                     self.settings.objectWillChange.send()
                 }
             }
@@ -377,12 +370,12 @@ extension ButtonsView {
         Binding(
             get: { tool.tipBinding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.tipBinding
-                t.wrappedValue.tipBinding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.tipBinding
+                t.tipBinding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Tip Button", comment: "Undo action name: pen/tip/eraser/wheel button binding in the Buttons pane"), from: oldValue, to: newValue) {
-                    t.wrappedValue.tipBinding = $0
+                    t.tipBinding = $0
                     self.settings.objectWillChange.send()
                 }
             }
@@ -392,12 +385,12 @@ extension ButtonsView {
         Binding(
             get: { tool.eraserBinding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.eraserBinding
-                t.wrappedValue.eraserBinding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.eraserBinding
+                t.eraserBinding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Eraser Button", comment: "Undo action name: pen/tip/eraser/wheel button binding in the Buttons pane"), from: oldValue, to: newValue) {
-                    t.wrappedValue.eraserBinding = $0
+                    t.eraserBinding = $0
                     self.settings.objectWillChange.send()
                 }
             }
@@ -407,12 +400,12 @@ extension ButtonsView {
         Binding(
             get: { tool.wheelBinding },
             set: { newValue in
-                let t = self.activeToolBinding
-                let oldValue = t.wrappedValue.wheelBinding
-                t.wrappedValue.wheelBinding = newValue
+                let t = self.settings.activeTool
+                let oldValue = t.wheelBinding
+                t.wheelBinding = newValue
                 self.settings.objectWillChange.send()
                 self.settings.recordToggle(String(localized: "Wheel", comment: "Undo action name: pen/tip/eraser/wheel button binding in the Buttons pane"), from: oldValue, to: newValue) {
-                    t.wrappedValue.wheelBinding = $0
+                    t.wheelBinding = $0
                     self.settings.objectWillChange.send()
                 }
             }

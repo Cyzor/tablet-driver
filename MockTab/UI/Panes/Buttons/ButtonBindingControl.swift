@@ -552,7 +552,9 @@ struct ButtonBindingControl: View, Equatable {
     }
 
     private func handleKey(_ event: NSEvent) {
+        // Caps Lock, keypad, and fn flags aren't modifiers the user held.
         let bare = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            .subtracting([.capsLock, .numericPad, .function, .help])
         if event.keyCode == 53 && bare.isEmpty {
             // ESC alone → cancel without changing the binding
         } else if event.keyCode == 51 && bare.isEmpty {

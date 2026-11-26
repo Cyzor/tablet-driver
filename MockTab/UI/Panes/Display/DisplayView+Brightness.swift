@@ -61,6 +61,7 @@ extension DisplayView {
                             // Before the user ever touches the slider (-1), park
                             // the knob at the vendor default without sending.
                             get: { Double(settings.displayBrightness >= 0 ? settings.displayBrightness : 75) },
+                            undoGet: { Double(settings.displayBrightness) },
                             set: { settings.displayBrightness = Int($0.rounded()) }),
                         in: 0...100)
                     .accessibilityLabel(Text("Brightness"))
@@ -80,6 +81,7 @@ extension DisplayView {
                     Picker("Color Space", selection: settings.recordingBinding(
                         String(localized: "Display Color Space", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                         get: { settings.displayColorMode >= 0 ? settings.displayColorMode : 0 },
+                        undoGet: { settings.displayColorMode },
                         set: { settings.displayColorMode = $0 })) {
                         ForEach(colorModeChoices.indices, id: \.self) { i in
                             Text(colorModeChoices[i].name).tag(i)
@@ -105,6 +107,7 @@ extension DisplayView {
                             value: settings.recordingBinding(
                                 String(localized: "Display Contrast", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                                 get: { Double(settings.displayContrast >= 0 ? settings.displayContrast : 50) },
+                                undoGet: { Double(settings.displayContrast) },
                                 set: { settings.displayContrast = Int($0.rounded()) }),
                             in: 0...100)
                         Text(settings.displayContrast >= 0 ? settings.displayContrast.formatted(.percent) : "—")
@@ -123,6 +126,7 @@ extension DisplayView {
                         Picker("Gamma", selection: settings.recordingBinding(
                             String(localized: "Display Gamma", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
                             get: { settings.displayGamma >= 0 ? settings.displayGamma : 22 },
+                            undoGet: { settings.displayGamma },
                             set: { settings.displayGamma = $0 })) {
                             ForEach(gammaChoices, id: \.self) { value in
                                 Text(gammaLabel(value)).tag(value)

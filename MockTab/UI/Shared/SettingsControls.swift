@@ -40,18 +40,21 @@ extension TabletSettings {
 
     /// Equatable overload — skips the write and the undo registration when
     /// the value didn't change (sliders and pickers re-set freely).
+    /// `undoGet` reads the stored value when `get` shows a stand-in for it,
+    /// so undo restores what was stored rather than the stand-in.
     func recordingBinding<T: Equatable & Sendable>(
         _ name: String,
         toolOwned: Bool = false,
         get: @escaping @MainActor @Sendable () -> T,
+        undoGet: (@MainActor @Sendable () -> T)? = nil,
         set: @escaping @MainActor @Sendable (T) -> Void
     ) -> Binding<T> {
         Binding(
             get: { MainActor.assumeIsolated { get() } },
             set: { newValue in
                 MainActor.assumeIsolated {
-                    let oldValue = get()
-                    guard newValue != oldValue else { return }
+                    guard newValue != get() else { return }
+                    let oldValue = undoGet?() ?? get()
                     self.applyRecordedChange(name, value: newValue, undoTo: oldValue, toolOwned: toolOwned, set: set)
                 }
             }
