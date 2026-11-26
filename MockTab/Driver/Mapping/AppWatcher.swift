@@ -51,9 +51,11 @@ final class AppWatcher {
             // Only the strings cross into the task; the notification isn't Sendable.
             guard
                 let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
-                    as? NSRunningApplication,
-                let bundleID = app.bundleIdentifier
+                    as? NSRunningApplication
             else { return }
+            // An app with no bundle ID still switches: it matches no override,
+            // and held input gets released.
+            let bundleID = app.bundleIdentifier ?? ""
             let name = app.localizedName ?? bundleID
             Task { @MainActor [weak self] in
                 self?.appDidActivate(bundleID: bundleID, name: name)

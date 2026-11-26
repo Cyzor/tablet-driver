@@ -1228,6 +1228,8 @@ struct TouchStateTracker {
                     scrollRestarted = true
                     pendingBeganDx = 0
                     pendingBeganDy = 0
+                    // Fingers still down: no coast, and none from the last flick.
+                    releaseVelocity = .zero
                     lastScrollPhase = .ended
                     return .scrollDelta(dx: 0, dy: 0, phase: .ended)
                 }

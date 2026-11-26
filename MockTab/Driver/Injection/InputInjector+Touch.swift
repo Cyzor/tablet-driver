@@ -23,6 +23,31 @@ extension InputInjector {
     ///   `Intent` into CGEvents: `mouseMoved`, scroll-wheel events with phase,
     ///   magnify and rotate gestures (both can post in one frame), and a left
     ///   click at the cursor for a tap.
+    /// Ends a live gesture through the same path as a real lift, so every open
+    /// phase closes. A bare `reset()` never tells the app the gesture ended, so
+    /// its own recognizer (Krita's pinch and rotate handler, say) waits for a
+    /// phase-ended event, reads as stuck engaged, and rejects the next gesture.
+    /// It never clicks. Hover frames (tracker idle) are left alone.
+    private func windDownTouchGesture(snap: InjectionSnapshot, settings: TabletSettings?, now: TimeInterval) {
+        guard touchTracker.mode != .idle else { return }
+        let windDown = touchTracker.process(
+            contacts: [],
+            tapToClick: false,
+            twoFingerScroll: snap.twoFingerScroll,
+            reverseScrollDirection: snap.reverseScrollDirection,
+            sensitivity: snap.touchSensitivity,
+            pinchZoom: snap.pinchZoomEnabled,
+            twoFingerRightClick: false,
+            threeFingerDrag: false,
+            rotate: snap.rotateEnabled,
+            absoluteTouch: cachedTouchIsDirect,
+            onsetDelay: snap.touchOnsetDelay,
+            tapStabilizationPt: snap.touchTapStabilizationPt,
+            now: now)
+        noteOnsetLifecycle(now: now)
+        handleTouchIntent(windDown, snap: snap, settings: settings)
+    }
+
     func injectTouch(contacts: [TouchContact], settings: TabletSettings?) {
         ThreadContract.expectPenThread()
         rearmWatchdog()
@@ -32,6 +57,9 @@ extension InputInjector {
         }
         guard snap.touchEnabled else {
             TouchPipelineProbe.note { $0.framesTouchDisabled += 1 }
+            // Touch turned off mid-gesture: close it like a lift, with no coast.
+            windDownTouchGesture(snap: snap, settings: settings, now: ProcessInfo.processInfo.systemUptime)
+            touchMomentumTail.stop()
             releaseTouchDrag(snapshot: snap)
             return
         }
@@ -98,30 +126,7 @@ extension InputInjector {
             // `!contacts.isEmpty` meant a lift inside a pen-busy window never
             // closed the gesture, and every later touch kept scrolling. Gating
             // on `mode != .idle` keeps hover frames from driving the tracker.
-            if touchTracker.mode != .idle {
-                // A bare `reset()` never tells the app the gesture ended, so its
-                // own recognizer (Krita's pinch and rotate handler, say) waits
-                // for a phase-ended event, reads as stuck engaged, and rejects
-                // the next gesture. Wind down through the same path as a real
-                // lift, so every open phase closes. The pen arriving ends the
-                // touch; it never clicks.
-                let windDown = touchTracker.process(
-                    contacts: [],
-                    tapToClick: false,
-                    twoFingerScroll: snap.twoFingerScroll,
-                    reverseScrollDirection: snap.reverseScrollDirection,
-                    sensitivity: snap.touchSensitivity,
-                    pinchZoom: snap.pinchZoomEnabled,
-                    twoFingerRightClick: false,
-                    threeFingerDrag: false,
-                    rotate: snap.rotateEnabled,
-                    absoluteTouch: cachedTouchIsDirect,
-                    onsetDelay: snap.touchOnsetDelay,
-                    tapStabilizationPt: snap.touchTapStabilizationPt,
-                    now: now)
-                noteOnsetLifecycle(now: now)
-                handleTouchIntent(windDown, snap: snap, settings: settings)
-            }
+            windDownTouchGesture(snap: snap, settings: settings, now: now)
             return
         }
 
