@@ -297,10 +297,13 @@ final class ConfigurationExporter {
             guard ud.object(forKey: prefix + key) != nil else { return nil }
             return (ud.integer(forKey: prefix + key), nil)
 
+        // Any other key a profile or override holds goes out as stored, so a
+        // setting this list doesn't name yet still survives a round trip.
         default:
-            return nil
+            return ConfigurationImporter.plainValue(ud.object(forKey: prefix + key)).map { ($0, nil) }
         }
     }
+
 
     private static func jsonObject(_ data: Data?) -> Any? {
         data.flatMap { try? JSONSerialization.jsonObject(with: $0) }
@@ -367,7 +370,7 @@ enum BackupFilePanel {
             comment: "Save panel message for exporting a backup; it is complete, so sharing it shares these")
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            do { try data.write(to: url) } catch { NSAlert(error: error).runModal() }
+            do { try data.write(to: url, options: .atomic) } catch { NSAlert(error: error).runModal() }
         }
     }
 

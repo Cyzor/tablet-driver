@@ -71,8 +71,29 @@ private func testParsedFile() {
     expect(binding(tool.values, "tipBinding") == .leftClick, "the pen's tip reaches the import plan")
 }
 
+/// Settings the importer has no case for come back as stored: a flag, a
+/// number, or a string, read the way a parsed file delivers them.
+func testUnlistedKeysRoundTrip() {
+    let json = """
+    {"dragThreshold": 7.5, "tipUpAssistDelay": 80, "touchEnabled": true,
+     "bezelButtonBindings": "[]", "someData": {"a": 1}, "someList": [1, 2]}
+    """
+    let parsed = try! JSONSerialization.jsonObject(with: Data(json.utf8)) as! [String: Any]
+    let values = ConfigurationImporter.decodeStoredSettings(parsed)
+    expectEqual(values["dragThreshold"] as? Double, 7.5, "unlisted number imports")
+    expectEqual(values["tipUpAssistDelay"] as? Double, 80, "unlisted whole number imports")
+    expect(values["touchEnabled"] is Bool, "unlisted flag imports as a flag, not a number")
+    expectEqual(values["touchEnabled"] as? Bool, true, "unlisted flag keeps its value")
+    expectEqual(values["bezelButtonBindings"] as? String, "[]", "unlisted string imports")
+    expect(values["someData"] == nil, "a dictionary isn't taken as a plain value")
+    expect(values["someList"] == nil, "a list isn't taken as a plain value")
+    let plainNumber = ConfigurationImporter.plainValue(NSNumber(value: 1))
+    expect(plainNumber is Double, "a stored 1 exports as a number, not a flag")
+}
+
 testCurrentFormat()
 testOlderFormat()
 testParsedFile()
+testUnlistedKeysRoundTrip()
 
 finish()

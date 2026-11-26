@@ -289,11 +289,25 @@ struct ConfigurationImporter {
             case "touchRingActiveSlotIndex", "touchRingActiveSlotIndex2", "requireContact":
                 if let v = rawValue as? Int { values[key] = v }
 
+            // Written by the exporter's fallback: a flag, number, or string
+            // stored as is. The app clamps on load, as for its own writes.
             default:
-                break
+                if let v = Self.plainValue(rawValue) {
+                    values[key] = v
+                }
             }
         }
         return values
+    }
+
+    /// A stored flag, number, or string as JSON can carry it; nil for
+    /// anything else (data, arrays), which needs its own case in both files.
+    nonisolated static func plainValue(_ object: Any?) -> Any? {
+        guard let object else { return nil }
+        if let n = object as? NSNumber {
+            return CFGetTypeID(n) == CFBooleanGetTypeID() ? n.boolValue : n.doubleValue
+        }
+        return object as? String
     }
 
     /// English-only, label-based orientation decode — kept for files exported

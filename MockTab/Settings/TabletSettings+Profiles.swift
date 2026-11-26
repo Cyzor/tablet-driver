@@ -32,6 +32,22 @@ extension TabletSettings {
         // The saved list couldn't be read, so it can't be saved either: a
         // profile made now would vanish at relaunch, with every edit made in it.
         guard !profileListLoadFailed else { return }
+        // Copy the device's (or active profile's) values, not an app
+        // override's: a profile applies in every app.
+        let selected = activeAppOverride, driving = driverOverride
+        let setAside = effectiveOverride != nil
+        if setAside {
+            activeAppOverride = nil
+            driverOverride = nil
+            reloadAll()
+        }
+        defer {
+            if setAside {
+                activeAppOverride = selected
+                driverOverride = driving
+                reloadAll()
+            }
+        }
         var profile = Profile(name: name)
         let prefix = profileKeyPrefix(profile)
 
