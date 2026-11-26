@@ -96,6 +96,7 @@ struct TabletAreaView: View {
         let r = TabletSettings.fittedRegion(
             tabletAspect: shape, displayAspect: orientedAspectRatio,
             centerX: before.x + before.w / 2, centerY: before.y + before.h / 2)
+        guard (r.x, r.y, r.w, r.h) != (before.x, before.y, before.w, before.h) else { return }
         settings.activeAreaX = r.x; settings.activeAreaY = r.y
         settings.activeAreaWidth = r.w; settings.activeAreaHeight = r.h
         settings.recordAreaDrag(before: before)
@@ -809,6 +810,11 @@ private struct CursorOffsetPad: View {
         .accessibilityElement()
         .accessibilityLabel(Text("Pointer Offset"))
         .accessibilityValue(Text(readout))
+        // The pad is two-dimensional, so one adjustable action can't cover it.
+        .accessibilityAction(named: Text("Move Left", comment: "VoiceOver action on the Pointer Offset pad")) { onNudge(-1, 0) }
+        .accessibilityAction(named: Text("Move Right", comment: "VoiceOver action on the Pointer Offset pad")) { onNudge(1, 0) }
+        .accessibilityAction(named: Text("Move Up", comment: "VoiceOver action on the Pointer Offset pad")) { onNudge(0, -1) }
+        .accessibilityAction(named: Text("Move Down", comment: "VoiceOver action on the Pointer Offset pad")) { onNudge(0, 1) }
     }
 
     /// Offset value → the arrow tip's position within the pad, in points from center.

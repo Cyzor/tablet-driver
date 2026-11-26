@@ -17,14 +17,18 @@ struct OrientationPickerView: View {
 
     @State private var windowRef = WindowRef()
     @State private var keyMonitor: Any?
+    @State private var visibleRows = 0
 
     var body: some View {
+        // Modifiers on a ForEach land on every row, and rows come and go
+        // as the form scrolls; a Group would do the same. Count the rows
+        // on screen so the monitor lives while any one is.
         ForEach(TabletOrientation.allCases, id: \.rawValue) { orientation in
             orientationRow(orientation)
+                .background(WindowReader(ref: windowRef))
+                .onAppear { visibleRows += 1; startShortcuts() }
+                .onDisappear { visibleRows -= 1; if visibleRows == 0 { stopShortcuts() } }
         }
-        .background(WindowReader(ref: windowRef))
-        .onAppear(perform: startShortcuts)
-        .onDisappear(perform: stopShortcuts)
     }
 
     // MARK: - Shortcuts
@@ -39,7 +43,8 @@ struct OrientationPickerView: View {
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [windowRef] event in
             guard event.window === windowRef.window,
-                  event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [.command, .option],
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                      .subtracting([.capsLock, .numericPad, .function, .help]) == [.command, .option],
                   let number = Self.digitKeys[event.keyCode]
             else { return event }
             selectOrientation(TabletOrientation.allCases[number - 1])
@@ -76,6 +81,7 @@ struct OrientationPickerView: View {
         .help(Text(orientation.helpText) + Text(verbatim: "  ⌘⌥\(shortcutNumber(orientation))"))
         // VoiceOver reads the shortcut on its own; the hint stays in words.
         .accessibilityHint(Text(orientation.helpText))
+        .accessibilityAddTraits(settings.tabletOrientation == orientation ? .isSelected : [])
     }
 
     private func shortcutNumber(_ orientation: TabletOrientation) -> Int {

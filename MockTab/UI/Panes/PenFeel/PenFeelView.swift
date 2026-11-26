@@ -249,6 +249,7 @@ struct PenFeelView: View {
 
             HStack(spacing: 4) {
                 Button("Linear") {
+                    let tool = self.tool  // undo targets this pen, not whichever is active later
                     let old = tool.pressureCurve
                     tool.pressureCurve = .linear
                     tool.recordToggle(String(localized: "Linear Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .linear) { tool.pressureCurve = $0 }
@@ -256,6 +257,7 @@ struct PenFeelView: View {
                 .help(
                     "Linear response. Equal pen force produces equal pressure output. Best for general use.")
                 Button("Soft") {
+                    let tool = self.tool  // undo targets this pen, not whichever is active later
                     let old = tool.pressureCurve
                     tool.pressureCurve = .soft
                     tool.recordToggle(String(localized: "Soft Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .soft) { tool.pressureCurve = $0 }
@@ -263,6 +265,7 @@ struct PenFeelView: View {
                 .help(
                     "Soft response. Light pressure reaches full output quickly. Good for loose, expressive work.")
                 Button("Firm") {
+                    let tool = self.tool  // undo targets this pen, not whichever is active later
                     let old = tool.pressureCurve
                     tool.pressureCurve = .firm
                     tool.recordToggle(String(localized: "Firm Curve", comment: "Undo action name: pressure curve preset in the Pen Feel pane"), from: old, to: .firm) { tool.pressureCurve = $0 }
@@ -321,17 +324,17 @@ struct PenFeelView: View {
         let settingsDefaults: SettingsResetState = (10.0, false, false, 0.0, TouchdownGuard.defaultRadius, [])
 
         settings.undoManager?.beginUndoGrouping()
-        applyToolReset(toolDefaults, undoTo: toolOld)
+        applyToolReset(toolDefaults, undoTo: toolOld, on: tool)
         applySettingsReset(settingsDefaults, undoTo: settingsOld)
         settings.undoManager?.endUndoGrouping()
     }
 
     /// Self-recursive so "Reset to Defaults" also redoes the tool-owned half.
-    private func applyToolReset(_ new: ToolResetState, undoTo old: ToolResetState) {
+    private func applyToolReset(_ new: ToolResetState, undoTo old: ToolResetState, on tool: ToolSettings) {
         (tool.pressureCurve, tool.smoothingStrength, tool.pressureSmoothingStrength, tool.pressureThreshold,
          tool.panScrollSpeed, tool.panScrollMomentum, tool.panScrollReverse) = new
         tool.record(String(localized: "Reset to Defaults", comment: "Undo action name: restoring a pane's controls to their defaults")) {
-            self.applyToolReset(old, undoTo: new)
+            self.applyToolReset(old, undoTo: new, on: tool)
         }
     }
 
@@ -347,77 +350,88 @@ struct PenFeelView: View {
     // MARK: - Bindings with undo support
 
     private var smoothingBinding: Binding<Double> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Steadiness"), toolOwned: true,
             get: { tool.smoothingStrength },
             set: { tool.smoothingStrength = $0 })
     }
 
     private var pressureSmoothingBinding: Binding<Double> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Pressure Smoothing"), toolOwned: true,
             get: { tool.pressureSmoothingStrength },
             set: { tool.pressureSmoothingStrength = $0 })
     }
 
     private var pressureThresholdBinding: Binding<Double> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Click Threshold", comment: "Undo action name: minimum pressure before tip contact registers, in the Pen Feel pane"), toolOwned: true,
             get: { tool.pressureThreshold },
             set: { tool.pressureThreshold = $0 })
     }
 
     private var panScrollSpeedBinding: Binding<Double> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Pan View Speed", comment: "Undo action name: Pan View pan speed multiplier in the Pen Feel pane"), toolOwned: true,
             get: { tool.panScrollSpeed },
             set: { tool.panScrollSpeed = $0 })
     }
 
     private var panScrollMomentumBinding: Binding<Bool> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Pan View Momentum", comment: "Undo action name: Pan View trackpad-style momentum toggle in the Pen Feel pane"), toolOwned: true,
             get: { tool.panScrollMomentum },
             set: { tool.panScrollMomentum = $0 })
     }
 
     private var panScrollReverseBinding: Binding<Bool> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Pan View Direction", comment: "Undo action name: Pan View reverse-direction toggle in the Pen Feel pane"), toolOwned: true,
             get: { tool.panScrollReverse },
             set: { tool.panScrollReverse = $0 })
     }
 
     private var doubleClickBinding: Binding<Double> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Double-Click Distance"),
             get: { settings.doubleClickDistance },
             set: { settings.doubleClickDistance = $0 })
     }
 
     private var invertRotationBinding: Binding<Bool> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Invert Rotation", comment: "Undo action name: pen barrel-rotation direction in the Pen Feel pane"),
             get: { settings.invertRotation },
             set: { settings.invertRotation = $0 })
     }
 
     private var relativeCursorMovementBinding: Binding<Bool> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Relative Cursor Movement"),
             get: { settings.relativeCursorMovement },
             set: { settings.relativeCursorMovement = $0 })
     }
 
     private var tipUpAssistBinding: Binding<Double> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Tip-up Assist"),
             get: { settings.tipUpAssistDelay },
             set: { settings.tipUpAssistDelay = $0 })
     }
 
     private func requireContactBinding(_ action: RequireContactActions) -> Binding<Bool> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Require Contact", comment: "Setting label and undo action name: which side-button actions engage only while the pen touches the surface, in the Pen Feel pane"),
             get: { settings.requireContact.contains(action) },
             set: { on in
@@ -426,7 +440,8 @@ struct PenFeelView: View {
     }
 
     private var dragThresholdBinding: Binding<Double> {
-        settings.recordingBinding(
+        let tool = self.tool  // undo targets this pen
+        return settings.recordingBinding(
             String(localized: "Drag Threshold"),
             get: { settings.dragThreshold },
             set: { settings.dragThreshold = $0 })

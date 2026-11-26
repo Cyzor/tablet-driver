@@ -21,6 +21,11 @@ final class CalibrationOverlayWindow: NSWindow {
     private var stateObserver: AnyCancellable?
     /// Pending auto-dismiss, cancelled if the user dismisses first.
     private var autoDismissWork: DispatchWorkItem?
+    /// Ends the session when its display moves, resizes, or goes away:
+    /// targets and the fit both assume the bounds it started with.
+    private var screenObserver: NSObjectProtocol?
+    /// The whole display's bounds at start; the session's own are cropped.
+    private var startingDisplayBounds: CGRect?
 
     /// How long the completion panel stays up before dismissing itself.
     private static let autoDismissDelay: TimeInterval = 2.0
@@ -60,6 +65,16 @@ final class CalibrationOverlayWindow: NSWindow {
             guard case .done(_, _, let stored) = newState, stored else { return }
             self?.scheduleAutoDismiss()
         }
+        startingDisplayBounds = currentDisplayBounds()
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.currentDisplayBounds() != self.startingDisplayBounds else { return }
+                calibrationLogger.debug("calibration display changed — cancelling")
+                self.dismiss()
+            }
+        }
         makeKeyAndOrderFront(nil)
         session.start()
     }
@@ -73,8 +88,20 @@ final class CalibrationOverlayWindow: NSWindow {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.autoDismissDelay, execute: work)
     }
 
+    /// The session's display's current bounds, nil once it's gone.
+    private func currentDisplayBounds() -> CGRect? {
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return nil }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return nil }
+        return ids.first { CalibrationKey.uuidString(for: $0) == session.displayUUID }
+            .map { CGDisplayBounds($0) }
+    }
+
     /// Close the overlay and clean up.
     func dismiss() {
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        screenObserver = nil
         autoDismissWork?.cancel()
         autoDismissWork = nil
         stateObserver = nil
