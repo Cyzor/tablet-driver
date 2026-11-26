@@ -272,7 +272,7 @@ extension InputInjector {
             }
             let tipKind = (activeToolIsEraser ? tool.eraserBinding : tool.tipBinding).kind
             if tipDown {
-                cancelPendingMouseUp()
+                flushPendingMouseUp()
                 // Each contact decides afresh; a flag left from an earlier
                 // contact would swallow this one's release.
                 tipClickSwallowed = false
@@ -880,7 +880,7 @@ extension InputInjector {
 
         // Aux buttons have their own reports and outlive pen proximity. Keep
         // their press bindings and modifier contributions until the real up.
-        cancelPendingMouseUp()
+        flushPendingMouseUp()
         hoverDragButton = nil
         // Pan View survives the exit: its button owns the gesture. Suspend so
         // re-entry doesn't jump; the release (or the safety net) ends it.
@@ -1054,9 +1054,9 @@ extension InputInjector {
                 CFAbsoluteTimeGetCurrent() + snap.tipUpAssistDelay / 1000.0,
                 0,  // interval — one-shot
                 0, 0
-            ) { [weak self] _ in
-                guard let self, self.pendingMouseUp != nil else { return }
-                self.pendingMouseUp = nil
+            ) { [weak self] _ in self?.flushPendingMouseUp() }
+            pendingMouseUpPost = { [weak self] in
+                guard let self else { return }
                 // Release where the stroke ended, not where the tip lifted.
                 self.postMouseUp(
                     button: btn, at: self.lastPostedPoint, clickCount: count,
@@ -1107,6 +1107,11 @@ extension InputInjector {
             case .three: snap.activeTool.penButton3Binding
             }
         }
+    }
+
+    /// The binding a held button pressed with; the current one if it isn't held.
+    private func pressBinding(_ slot: BarrelButtonSlot, _ snap: InjectionSnapshot) -> ButtonBinding {
+        barrelPressBindings[slot.bit] ?? slot.binding(in: snap)
     }
 
     /// Xencelabs barrel buttons: presses fire at once; releases wait
@@ -1192,9 +1197,17 @@ extension InputInjector {
     /// while hovering, waits for tip contact; its release fires only if
     /// contact fired the press.
     private func dispatchBarrelButton(
-        _ slot: BarrelButtonSlot, _ binding: ButtonBinding, down: Bool,
+        _ slot: BarrelButtonSlot, _ current: ButtonBinding, down: Bool,
         at location: CGPoint, snap: InjectionSnapshot, settings: TabletSettings?
     ) {
+        let binding: ButtonBinding
+        if down {
+            binding = current
+            barrelPressBindings[slot.bit] = current
+        } else {
+            binding = pressBinding(slot, snap)
+            barrelPressBindings[slot.bit] = nil
+        }
         if !activeToolIsMouse,
             down ? binding.kind == .eraser : barrelEraserButtons & slot.bit != 0
         {
@@ -1228,7 +1241,7 @@ extension InputInjector {
         for slot in BarrelButtonSlot.allCases where pending & slot.bit != 0 {
             contactFiredButtons |= slot.bit
             fireButtonAction(
-                Self.contactAction(slot.binding(in: snap)), down: true, at: location,
+                Self.contactAction(pressBinding(slot, snap)), down: true, at: location,
                 snapshot: snap, settings: settings)
         }
         return true
@@ -1244,7 +1257,7 @@ extension InputInjector {
         contactFiredButtons = 0
         for slot in BarrelButtonSlot.allCases where fired & slot.bit != 0 {
             fireButtonAction(
-                Self.contactAction(slot.binding(in: snap)), down: false, at: location,
+                Self.contactAction(pressBinding(slot, snap)), down: false, at: location,
                 snapshot: snap, settings: settings)
         }
     }

@@ -79,7 +79,7 @@ final class SharedPanScrollState {
 /// | `contactDeferredButtons` / `contactFiredButtons` | Require Contact: barrel button with a checked action pressed while hovering / its tip contact | button release, proximity exit; the fired bits also tip lift and tool change | Button's action held, or a later release posts an up nothing pressed |
 /// | `barrelEraserButtons` / `barrelEraserActive` | barrel button set to Eraser pressed / the switch to the eraser it causes | button release (the switch back waits for tip lift), proximity exit | Pen stays the eraser |
 /// | `lastMiddleDown`, `lastUSBMouseMask` / `usbMouseLeftHeld` | puck/KC-100 mouse button down | `releaseHeldPointerButtons` — proximity exit and tool change/disconnect | Mouse button stuck down |
-/// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down (`cancelPendingMouseUp`), proximity exit, deinit | mouseUp never posted — stroke stays open |
+/// | `pendingMouseUp` (timer) | tip-up while still moving, tip-up assist enabled | tip re-down and proximity exit post it early (`flushPendingMouseUp`); deinit | mouseUp never posted — stroke stays open |
 /// | `panScroll` (PanScrollTracker) | `.scrollDrag` binding engaged | binding release edge; deliberately **survives** proximity blips (`suspend()`), `cancelPanScrollSafetyNet` + `panScrollSafetyNetTimer` backstop | Pen motion scrolls instead of moving cursor |
 /// | `button1/2/3UpDebounceTimer` | Xencelabs barrel-button up edge | reassert within window, timer fire, proximity exit (invalidates + commits), deinit | Release never committed — button reads held |
 /// | `tipUpDebounceTimer` | tip-switch up edge, any device, when `smoothingStrength > 0` | reassert within window, timer fire (commits release, feeds `tipUpAssistDelay`), `commitProximityExit`, 1Hz watchdog's forced exit (via `commitProximityExit`), deinit | Release never committed — `lastTipDown` (and drag/stroke-start state derived from it) reads stuck down |
@@ -397,6 +397,9 @@ final class InputInjector: @unchecked Sendable {
     /// The deferred buttons whose action fired on contact; the tip's lift
     /// releases them.
     var contactFiredButtons: UInt8 = 0
+    /// Each held barrel button's binding at press, keyed by its bit, so the
+    /// release matches the press after a settings or per-app switch.
+    var barrelPressBindings: [UInt8: ButtonBinding] = [:]
     /// Barrel buttons set to Eraser, held. Bit 0 is button 1.
     var barrelEraserButtons: UInt8 = 0
     /// True while those buttons have the pen announced as its eraser end.
@@ -560,11 +563,17 @@ final class InputInjector: @unchecked Sendable {
     /// thread can't stretch the 80 ms delay. It fires and cancels on HIDThread,
     /// with the rest of the per-report state.
     var pendingMouseUp: CFRunLoopTimer? = nil
+    /// Posts the deferred up; set with `pendingMouseUp`.
+    var pendingMouseUpPost: (() -> Void)? = nil
 
-    /// Must run on HIDThread (or deinit, after all callbacks are unregistered).
-    func cancelPendingMouseUp() {
+    /// Posts a deferred up now: a new contact or a proximity exit must not
+    /// leave the earlier press without its release. HIDThread only.
+    func flushPendingMouseUp() {
         if let t = pendingMouseUp { CFRunLoopTimerInvalidate(t) }
         pendingMouseUp = nil
+        let post = pendingMouseUpPost
+        pendingMouseUpPost = nil
+        post?()
     }
 
     /// Set while a barrel-button click binding is held, so the movement path posts
