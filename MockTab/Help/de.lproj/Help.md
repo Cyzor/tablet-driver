@@ -75,7 +75,7 @@ Wie nah zwei Tipper beieinander landen müssen, um als Doppelklick zu zählen.
 
 ## Klickverhalten
 
-**Oberflächenkontakt erforderlich** – Markierte Aktionen der Seitentasten warten, bis die Spitze aufsetzt. Nicht markierte Klickaktionen wirken auch beim Schweben, auch zum Ziehen.
+**Nur bei Kontakt** – Markierte Aktionen der Seitentasten warten, bis die Spitze aufsetzt. Nicht markierte Klickaktionen wirken auch beim Schweben, auch zum Ziehen.
 
 **Abhebehilfe** – Verhindert, dass schnelle Striche abreißen, wenn die Spitze kurz abhebt.
 
@@ -231,7 +231,7 @@ Ziehe die JSON-Kachel in den Finder, um alle Einstellungen zu sichern, auch Seri
 
 [scratchpad]
 
-## Skizzenblock
+## Testbereich
 
 Eine Testfläche, um zu prüfen, ob der Stift Druck und Bewegung erkennt. MockTab speichert keine Striche.
 

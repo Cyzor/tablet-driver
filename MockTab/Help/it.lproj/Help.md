@@ -237,7 +237,7 @@ Un’area di prova per verificare che la penna registri pressione e movimento. M
 
 [info]
 
-## In tempo reale
+## Input in tempo reale
 
 Il pannello Info mostra cosa comunica la tavoletta. Gli indicatori rappresentano posizione, pressione, inclinazione, rotazione, altezza in prossimità e attività touch.
 

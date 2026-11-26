@@ -100,7 +100,7 @@ Le schéma montre la position des touches, des anneaux et des molettes d’une t
 - **Boutons de la souris** – Clic gauche, Clic droit, Clic du milieu, Double-clic et Verrouillage du clic, qui maintient le bouton gauche enfoncé jusqu’au prochain appui  
 - **Raccourcis clavier** – cliquez sur le champ de raccourci et appuyez sur une combinaison de touches  
 - **Touches de modification** – ⌘ ⌥ ⇧ ⌃ maintenues tant que le bouton reste enfoncé  
-- **Actions spéciales** – Déplacer la vue, Gomme, Barre d’espace, Échap, F13 à F19, Changer d’écran, Étendre sur les écrans, Activer ou désactiver le mode relatif, Afficher les réglages de MockTab, et les modes des anneaux, molettes et bandes  
+- **Actions spéciales** – Déplacer la vue, Gomme, Barre d’espace, Échap, F13 à F19, Changer d’écran, Étendre sur les écrans, Basculer le mode relatif, Afficher les réglages de MockTab, et les modes des anneaux, molettes et bandes  
 - **Ouvrir** – faites glisser une app, un fichier, un lien ou une macro Keyboard Maestro sur la ligne d’un bouton. Un point d’interrogation signale que la cible a disparu. Pour saisir ou corriger une URL, cliquez avec le bouton droit sur la ligne et choisissez Modifier l’URL  
 
 Pour lancer un script, un processus Automator ou un raccourci, enregistrez-le comme app et faites glisser celle-ci, ou donnez-lui un raccourci clavier dans Réglages Système ou Raccourcis et attribuez ce raccourci.

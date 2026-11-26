@@ -249,7 +249,7 @@ El panel Información muestra lo que informa la tableta. Los indicadores represe
 
 **Buscar ahora** pregunta a mocktab.org si hay una versión más reciente, y **Buscar automáticamente** lo hace cada semana. Nada más se conecta a internet.
 
-Una marca en los iconos de la barra de menús y del Dock indica que hay una actualización. **Instalar al salir** la instala cuando sales de MockTab, e **Instalar y reiniciar** la instala ahora.
+Una marca en los iconos de la barra de menús y del Dock indica que hay una actualización. **Instalar al salir** la instala cuando sales de MockTab, e **Instalar y volver a abrir** la instala ahora.
 
 Mantén **⌥** para cambiar **Buscar ahora** a **Buscar versión preliminar**, que busca una versión de prueba más reciente. Las versiones preliminares pueden estar incompletas. El comando **Buscar actualizaciones…** del menú cambia igual.
 
@@ -257,7 +257,7 @@ Mantén **⌥** para cambiar **Buscar ahora** a **Buscar versión preliminar**, 
 
 **Icono del Dock** – Oculta MockTab del Dock. El icono de la barra de menús se mantiene.
 
-**Iniciar al acceder** – Abre MockTab al iniciar sesión.
+**Abrir al iniciar sesión** – Abre MockTab automáticamente al iniciar sesión.
 
 **Conceder…** abre Ajustes del Sistema para un permiso que falta.
 

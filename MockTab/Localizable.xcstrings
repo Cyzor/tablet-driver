@@ -411,7 +411,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「むかしは、ぼくもほんもののウミガメでしたのさ」にせウミガメはやっと口をひらきました。"
+            "value" : "むかしは、ぼくもほんもののウミガメでしたのさ」にせウミガメはやっと口をひらきました。"
           }
         }
       }
@@ -4947,7 +4947,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "基盤："
+            "value" : "使用技術："
           }
         }
       }
@@ -7849,7 +7849,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "著作権 © %@ MockTab 協力者"
+            "value" : "Copyright © %@ MockTab Contributors"
           }
         }
       }
@@ -8268,7 +8268,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Afecta a todos los anillos, diales y bandas de esta tableta, en todos los modos."
+            "value" : "Afecta a todos los anillos, diales y franjas de esta tableta, en todos los modos."
           }
         },
         "fr" : {
@@ -12209,7 +12209,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fingerberührung aktivieren"
+            "value" : "Fingereingabe aktivieren"
           }
         },
         "es" : {
@@ -12965,7 +12965,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablecimiento de fábrica…"
+            "value" : "Restablecer valores de fábrica…"
           }
         },
         "fr" : {
@@ -13053,7 +13053,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Molette de doigt"
+            "value" : "Molette"
           }
         },
         "it" : {
@@ -15731,7 +15731,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Instalar y reiniciar"
+            "value" : "Instalar y volver a abrir"
           }
         },
         "fr" : {
@@ -16559,7 +16559,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciar al acceder"
+            "value" : "Abrir al iniciar sesión"
           }
         },
         "fr" : {
@@ -17158,7 +17158,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In tempo reale"
+            "value" : "Input in tempo reale"
           }
         },
         "ja" : {
@@ -20962,7 +20962,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab %@ est maintenant en service"
+            "value" : "Vous utilisez maintenant MockTab %@"
           }
         },
         "it" : {
@@ -24749,7 +24749,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle %@-Ausnahmen in diesem Tab entfernen"
+            "value" : "Alle %@-Ausnahmen in diesem Bereich entfernen"
           }
         },
         "es" : {
@@ -25504,7 +25504,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oberflächenkontakt erforderlich"
+            "value" : "Nur bei Kontakt"
           }
         },
         "es" : {
@@ -25528,7 +25528,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "表面への接触が必要"
+            "value" : "接触時のみ"
           }
         }
       }
@@ -25627,7 +25627,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Restablecer MockTab a la configuración de fábrica?"
+            "value" : "¿Restablecer MockTab a los valores de fábrica?"
           }
         },
         "fr" : {
@@ -25710,7 +25710,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rétablir les réglages par défaut de la sous-fenêtre"
+            "value" : "Réinitialiser la sous-fenêtre"
           }
         },
         "it" : {
@@ -27855,7 +27855,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skizzenblock"
+            "value" : "Testbereich"
           }
         },
         "en" : {
@@ -29365,7 +29365,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desliza un dedo por el anillo o la banda"
+            "value" : "Desliza un dedo por el anillo o la franja"
           }
         },
         "fr" : {
@@ -29546,13 +29546,13 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Puede que algunas funciones aún no vayan."
+            "value" : "Puede que algunas funciones aún no funcionen."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Certaines fonctions peuvent ne pas encore marcher."
+            "value" : "Certaines fonctions peuvent ne pas encore fonctionner."
           }
         },
         "it" : {
@@ -32259,7 +32259,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Activer ou désactiver le mode relatif"
+            "value" : "Basculer le mode relatif"
           }
         },
         "it" : {
@@ -32920,13 +32920,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zwei sich gemeinsam bewegende Finger senden weiche Scrollereignisse, die Apps als Trackpad-Scrollen behandeln, einschließlich Rubber-Banding in Safari und Vorschau."
+            "value" : "Zwei sich gemeinsam bewegende Finger senden weiche Scrollereignisse, die Apps als Trackpad-Scrollen behandeln, einschließlich des elastischen Nachfederns am Rand in Safari und Vorschau."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dos dedos moviéndose juntos emiten eventos de desplazamiento suave que las apps tratan como desplazamiento de trackpad, incluido el efecto rubber-band en Safari y Vista Previa."
+            "value" : "Dos dedos moviéndose juntos emiten eventos de desplazamiento suave que las apps tratan como desplazamiento de trackpad, incluido el rebote elástico al llegar al borde en Safari y Vista Previa."
           }
         },
         "fr" : {
