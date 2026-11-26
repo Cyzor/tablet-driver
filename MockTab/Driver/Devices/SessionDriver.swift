@@ -274,8 +274,10 @@ final class TransportEventHandler: TabletInputSink, @unchecked Sendable {
                 case .toolSupport:
                     logger.info("\(name, privacy: .public): \(device.unsupportedToolNote ?? "", privacy: .public)")
                 case .remotePairing:
+                    // Stand-ins, as captures show: a remote's serial stays out of the log.
                     let paired = (device.remotePairing ?? []).filter { $0.connected }
-                        .map { "\($0.index):\($0.serial)" }.joined(separator: ",")
+                        .map { "\($0.index):\(CaptureSerialRedaction.standIn(forRemoteSerial: $0.serial))" }
+                        .joined(separator: ",")
                     if paired != lastRemotePairingSummary {
                         lastRemotePairingSummary = paired
                         logger.info("\(name, privacy: .public): paired remotes [\(paired.isEmpty ? "none" : paired, privacy: .public)]")

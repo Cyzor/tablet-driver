@@ -132,6 +132,13 @@ enum CaptureSerialRedaction {
         return seen.withLock { $0.penSerials[serial] } ?? standIn(for: serial, bits: 32)
     }
 
+    /// The stand-in a decoded log line prints for an ExpressKey Remote
+    /// serial: the same one `redacted` puts in the report's bytes.
+    static func standIn(forRemoteSerial serial: UInt32) -> UInt32 {
+        guard serial != 0, serial != 0xFF_FFFF else { return serial }
+        return standIn(for: serial, bits: 24)
+    }
+
     /// Serials at or below this are too short to search for: they match
     /// ordinary fields, such as a hover distance of 63.
     private static let distinctiveSerialFloor: UInt32 = 0xFFFF

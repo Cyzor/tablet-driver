@@ -456,7 +456,7 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
                 case .remotePairing:
                     let paired = (event.remotePairing ?? []).filter { $0.connected }
                     guard !paired.isEmpty else { return "pairing none" }
-                    let listed = paired.map { "\($0.index):\($0.serial)" }
+                    let listed = paired.map { "\($0.index):\(CaptureSerialRedaction.standIn(forRemoteSerial: $0.serial))" }
                     return "pairing \(listed.joined(separator: ","))"
                 case .toolSupport:
                     return "toolCompatibility=\"\(event.unsupportedToolNote ?? "")\""

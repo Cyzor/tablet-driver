@@ -101,7 +101,11 @@ final class StrainSampler: @unchecked Sendable {
         let wall = Double(b.ns - a.ns)
         func top(_ before: [pid_t: UInt64], _ after: [pid_t: UInt64]) -> String {
             let shares = after.compactMap { pid, ns -> (pid_t, Int)? in
-                let used = ns &- (before[pid] ?? ns)
+                // A total that went down (a closed GPU client, a reused PID)
+                // says nothing about this interval; skip it rather than wrap.
+                let start = before[pid] ?? ns
+                guard ns >= start else { return nil }
+                let used = ns - start
                 let percent = Int(Double(used) / wall * 100)
                 return percent >= 10 ? (pid, percent) : nil
             }

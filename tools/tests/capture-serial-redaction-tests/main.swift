@@ -25,6 +25,12 @@ expect(Array(shownPairing[28...30]) != [0x99, 0x88, 0x77], "slot 4's serial is s
 expect(Array(shownPairing[10...12]) == [0, 0, 0], "an empty slot stays empty")
 expect(Array(shownPairing[0...3]) == [0x10, 0x00, 0x01, 0x00], "bytes before the serial survive")
 expect(redacted(pairing, ekr) == shownPairing, "the same remote gets the same stand-in")
+// The decoded text shows the stand-in the bytes show, never the serial.
+let shownSerial = UInt32(shownPairing[4]) | UInt32(shownPairing[5]) << 8 | UInt32(shownPairing[6]) << 16
+expectEqual(CaptureSerialRedaction.standIn(forRemoteSerial: 0x001234), shownSerial,
+            "decoded text matches the redacted bytes")
+expect(CaptureSerialRedaction.standIn(forRemoteSerial: 0x001234) != 0x001234, "decoded text hides the serial")
+expectEqual(CaptureSerialRedaction.standIn(forRemoteSerial: 0), 0, "an empty slot reads as empty")
 
 // Report 0x11: the sending remote's serial at bytes 3–5.
 var button: [UInt8] = [0x11, 0x01, 0x00, 0x34, 0x12, 0x00, 0x00, 0x64, 0x00, 0x01]
