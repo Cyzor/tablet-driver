@@ -9,9 +9,10 @@ import TabletKit
 /// Per-tool pressure curve, smoothing, and pen-button bindings.
 ///
 /// Each physical pen body gets its own instance, keyed by serial number.
-/// Reads fall through to `fallbackPrefix` (the device-level namespace) when
-/// no tool-specific value has been stored, so existing device settings are
-/// inherited automatically without migration.
+/// A serial pen reads app override → its own → active profile → device
+/// (`fallbackPrefix`), so a pen's own value beats a profile and anything
+/// unset falls through without migration. The generic pen shares the
+/// device prefix and reads app override → profile → device.
 ///
 /// Storage namespaces:
 ///   Default tool (serial = 0): "device-0x357."           (same as devicePrefix)
@@ -243,15 +244,49 @@ final class ToolSettings: ObservableObject {
         set { wheelRaw = newValue.encoded }
     }
 
-    // MARK: - Override routing
+    // MARK: - Layer routing
 
     /// When non-nil, persist() and savePressureCurve() write here instead of
     /// the tool's own prefix.  Set by TabletSettings when an app override is active.
     var overridePrefix: String? = nil
 
     /// Called after a key is written to overridePrefix so TabletSettings can
-    /// mark the key as overridden in the active AppOverride.
+    /// mark the key as overridden in the effective AppOverride.
     var onOverrideKeyWritten: ((String) -> Void)? = nil
+
+    /// The active profile's prefix and the keys it holds. A serial pen's own
+    /// value beats the profile; the generic pen reads and writes it.
+    var profilePrefix: String? = nil
+    var profileKeys: Set<String> = []
+
+    /// Called after a key is written to `profilePrefix`, to mark it there.
+    var onProfileKeyWritten: ((String) -> Void)? = nil
+
+    /// A serial pen: its own prefix sits above the device's.
+    private var isSerialPen: Bool { fallbackPrefix != nil }
+
+    /// Where `key` reads from, highest first.
+    private func readPrefixes(_ key: String) -> [String] {
+        var layers: [String] = []
+        if let overridePrefix { layers.append(overridePrefix) }
+        if isSerialPen { layers.append(prefix) }
+        if let profilePrefix, profileKeys.contains(key) { layers.append(profilePrefix) }
+        layers.append(fallbackPrefix ?? prefix)
+        return layers
+    }
+
+    /// Writes `value` where an edit of `key` belongs, and marks it there.
+    private func write(_ value: Any, forKey key: String) {
+        if let overridePrefix {
+            ud.set(value, forKey: overridePrefix + key)
+            onOverrideKeyWritten?(key)
+        } else if !isSerialPen, let profilePrefix {
+            ud.set(value, forKey: profilePrefix + key)
+            onProfileKeyWritten?(key)
+        } else {
+            ud.set(value, forKey: prefix + key)
+        }
+    }
 
     // MARK: - Init
 
@@ -304,21 +339,18 @@ final class ToolSettings: ObservableObject {
 
     // MARK: - Persistence
 
-    /// Reads `key` directly from UserDefaults, respecting the full lookup chain:
-    /// active app override → tool-specific prefix → device-level fallback.
-    /// Used by button-binding getters so values are always consistent with where
-    /// `persist()` writes — both routes check `overridePrefix` first.
-    /// Where a stored value comes from, in `freshString`'s order.
+    /// Where a stored value comes from, in `readPrefixes`' order.
     enum ValueSource: String {
-        case appOverride, pen, tablet, builtIn
+        case appOverride, pen, profile, tablet, builtIn
     }
 
     /// Which store `key` reads from, for diagnostics.
     func valueSource(_ key: String) -> ValueSource {
-        if let op = overridePrefix, ud.string(forKey: op + key) != nil { return .appOverride }
-        if ud.string(forKey: prefix + key) != nil { return fallbackPrefix == nil ? .tablet : .pen }
-        if let fb = fallbackPrefix, ud.string(forKey: fb + key) != nil { return .tablet }
-        return .builtIn
+        guard let layer = readPrefixes(key).first(where: { ud.string(forKey: $0 + key) != nil })
+        else { return .builtIn }
+        if layer == overridePrefix { return .appOverride }
+        if layer == profilePrefix { return .profile }
+        return isSerialPen && layer == prefix ? .pen : .tablet
     }
 
     /// `key`'s stored action when this build can't read it, so diagnostics
@@ -331,20 +363,15 @@ final class ToolSettings: ObservableObject {
     }
 
     private func freshString(_ key: String) -> String? {
-        if let op = overridePrefix, let v = ud.string(forKey: op + key) { return v }
-        if let v = ud.string(forKey: prefix + key) { return v }
-        if let fb = fallbackPrefix, let v = ud.string(forKey: fb + key) { return v }
+        for layer in readPrefixes(key) {
+            if let v = ud.string(forKey: layer + key) { return v }
+        }
         return nil
     }
 
     private func persist(_ key: String, _ value: Any) {
         guard !isLoading else { return }
-        if let op = overridePrefix {
-            ud.set(value, forKey: op + key)
-            onOverrideKeyWritten?(key)
-        } else {
-            ud.set(value, forKey: prefix + key)
-        }
+        write(value, forKey: key)
     }
 
     /// Factory `pressureThreshold` for whichever device owns `prefix`, read
@@ -371,47 +398,19 @@ final class ToolSettings: ObservableObject {
     }
 
     private func loadDouble(_ key: String, default d: Double) -> Double {
-        if let op = overridePrefix, ud.object(forKey: op + key) != nil {
-            return ud.double(forKey: op + key)
-        }
-        if ud.object(forKey: prefix + key) != nil { return ud.double(forKey: prefix + key) }
-        if let fb = fallbackPrefix,
-            ud.object(forKey: fb + key) != nil
-        {
-            return ud.double(forKey: fb + key)
-        }
-        return d
+        guard let layer = readPrefixes(key).first(where: { ud.object(forKey: $0 + key) != nil })
+        else { return d }
+        return ud.double(forKey: layer + key)
     }
 
     private func loadBool(_ key: String, default d: Bool) -> Bool {
-        if let op = overridePrefix, ud.object(forKey: op + key) != nil {
-            return ud.bool(forKey: op + key)
-        }
-        if ud.object(forKey: prefix + key) != nil { return ud.bool(forKey: prefix + key) }
-        if let fb = fallbackPrefix,
-            ud.object(forKey: fb + key) != nil
-        {
-            return ud.bool(forKey: fb + key)
-        }
-        return d
+        guard let layer = readPrefixes(key).first(where: { ud.object(forKey: $0 + key) != nil })
+        else { return d }
+        return ud.bool(forKey: layer + key)
     }
 
     private func loadString(_ key: String, default d: String) -> String {
         return freshString(key) ?? d
-    }
-
-    /// Applies externally-resolved values (from a profile or app override) without
-    /// triggering persistence writes.  Called by TabletSettings.reloadAll() so that
-    /// PenFeel — which observes activeTool — stays in sync.
-    func applyExternalValues(
-        pressureCurve: BezierCurve, smoothingStrength: Double,
-        pressureSmoothingStrength: Double
-    ) {
-        isLoading = true
-        self.pressureCurve = pressureCurve
-        self.smoothingStrength = smoothingStrength
-        self.pressureSmoothingStrength = pressureSmoothingStrength
-        isLoading = false
     }
 
     private func savePressureCurve() {
@@ -421,22 +420,16 @@ final class ToolSettings: ObservableObject {
             return
         }
         guard let data = try? JSONEncoder().encode(pressureCurve) else { return }
-        if let op = overridePrefix {
-            ud.set(data, forKey: op + "pressureCurve")
-            onOverrideKeyWritten?("pressureCurve")
-        } else {
-            ud.set(data, forKey: prefix + "pressureCurve")
-        }
+        write(data, forKey: "pressureCurve")
     }
 
     private func loadPressureCurve() {
         let data =
-            overridePrefix.flatMap { ud.data(forKey: $0 + "pressureCurve") }
-            ?? ud.data(forKey: prefix + "pressureCurve")
-            ?? fallbackPrefix.flatMap { ud.data(forKey: $0 + "pressureCurve") }
+            readPrefixes("pressureCurve").lazy.compactMap { self.ud.data(forKey: $0 + "pressureCurve") }.first
             ?? ud.data(forKey: "pressureCurve")  // legacy unprefixed key
         guard let data else {
             pressureCurveLoadFailed = false
+            pressureCurve = .linear
             return
         }
         guard let curve = try? JSONDecoder().decode(BezierCurve.self, from: data) else {

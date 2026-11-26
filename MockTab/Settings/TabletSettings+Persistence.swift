@@ -88,23 +88,13 @@ extension TabletSettings {
         loadPressureCurve()
         seedPanScrollReverse()
 
-        // Sync resolved pressure values and app overrides into activeTool so PenFeel
-        // and ButtonsView reflect the active override or profile.
-        let op = effectiveOverride.map { appOverrideKeyPrefix($0) }
-        activeTool.overridePrefix = op
+        // Every pen reads the current override and profile through its own
+        // layers; the injector uses cached tools, not just `activeTool`.
+        configureToolLayers(activeTool)
         activeTool.reload()
-        activeTool.applyExternalValues(
-            pressureCurve: pressureCurve, smoothingStrength: smoothingStrength,
-            pressureSmoothingStrength: pressureSmoothingStrength)
-
-        // Also propagate to all cached per-tool instances so the injector (which uses
-        // activeToolSettings — a cached ToolSettings — not activeTool) picks up the change.
         for tool in toolCache.values where tool !== activeTool {
-            tool.overridePrefix = op
+            configureToolLayers(tool)
             tool.reload()
-            tool.applyExternalValues(
-                pressureCurve: pressureCurve, smoothingStrength: smoothingStrength,
-                pressureSmoothingStrength: pressureSmoothingStrength)
         }
         isLoading = false
         migrateTargetDisplayUUID()
@@ -157,28 +147,50 @@ extension TabletSettings {
     /// No-ops while `isLoading` to avoid echoing values back during reload.
     func persist(_ key: String, _ value: Any) {
         guard !isLoading else { return }
-        if var override = effectiveOverride {
+        if let override = effectiveOverride {
             ud.set(value, forKey: appOverrideKeyPrefix(override) + key)
-            guard !override.overriddenKeys.contains(key) else { return }
-            override.overriddenKeys.insert(key)
-            if activeAppOverride?.bundleID == override.bundleID { activeAppOverride = override }
-            if driverOverride?.bundleID == override.bundleID { driverOverride = override }
-            if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
-                appOverrides[idx] = override
-            }
-            saveAppOverrides()
-        } else if var preset = activeProfile {
+            markOverrideKey(key)
+        } else if let preset = activeProfile {
             ud.set(value, forKey: profileKeyPrefix(preset) + key)
-            guard !preset.overriddenKeys.contains(key) else { return }
-            preset.overriddenKeys.insert(key)
-            activeProfile = preset
-            if let idx = profiles.firstIndex(where: { $0.id == preset.id }) {
-                profiles[idx] = preset
-            }
-            saveProfileList()
+            markProfileKey(key)
         } else {
             ud.set(value, forKey: devicePrefix + key)
         }
+    }
+
+    /// Records `key` as held by the effective app override.
+    func markOverrideKey(_ key: String) {
+        guard var override = effectiveOverride, !override.overriddenKeys.contains(key) else { return }
+        override.overriddenKeys.insert(key)
+        if activeAppOverride?.bundleID == override.bundleID { activeAppOverride = override }
+        if driverOverride?.bundleID == override.bundleID { driverOverride = override }
+        if let idx = appOverrides.firstIndex(where: { $0.bundleID == override.bundleID }) {
+            appOverrides[idx] = override
+        }
+        saveAppOverrides()
+    }
+
+    /// Records `key` as held by the active profile.
+    func markProfileKey(_ key: String) {
+        guard var preset = activeProfile, !preset.overriddenKeys.contains(key) else { return }
+        preset.overriddenKeys.insert(key)
+        activeProfile = preset
+        if let idx = profiles.firstIndex(where: { $0.id == preset.id }) {
+            profiles[idx] = preset
+        }
+        saveProfileList()
+        // Pens read a profile key only once it's marked.
+        for tool in [activeTool] + Array(toolCache.values) { tool.profileKeys = preset.overriddenKeys }
+    }
+
+    /// Points a pen's layers at the effective app override and the active
+    /// profile, with callbacks that mark what it writes there.
+    func configureToolLayers(_ tool: ToolSettings) {
+        tool.overridePrefix = effectiveOverride.map { appOverrideKeyPrefix($0) }
+        tool.profilePrefix = activeProfile.map { profileKeyPrefix($0) }
+        tool.profileKeys = activeProfile?.overriddenKeys ?? []
+        tool.onOverrideKeyWritten = { [weak self] key in self?.markOverrideKey(key) }
+        tool.onProfileKeyWritten = { [weak self] key in self?.markProfileKey(key) }
     }
 
     // MARK: - Load helpers
@@ -301,6 +313,8 @@ extension TabletSettings {
         }
         guard let data else {
             pressureCurveLoadFailed = false
+            // No layer has one: the default, not whatever the last context held.
+            pressureCurve = .linear
             return
         }
         guard let curve = try? JSONDecoder().decode(BezierCurve.self, from: data) else {
@@ -520,10 +534,21 @@ extension TabletSettings {
 
     // MARK: - First-run defaults
 
-    /// Writes the default ExpressKey bindings if this device has none stored.
+    /// Writes the default ExpressKey bindings to the device layer if neither
+    /// it nor the bare global key holds any. Never through `persist()`, which
+    /// would put them in an active profile or app override; those keep their
+    /// own bindings, and the live value changes only when no layer has one.
     func applyExpressKeyDefaults(vendorID: Int = 0x056A, splitPad: Bool = false, modeKeys: [Int: ButtonBinding] = [:]) {
-        guard ud.string(forKey: devicePrefix + "expressKeyBindings") == nil else { return }
+        let key = "expressKeyBindings"
+        guard ud.string(forKey: devicePrefix + key) == nil, ud.string(forKey: key) == nil else { return }
+        let showsDefaults = resolveLayer(for: key) == nil
+        let wasLoading = isLoading
+        isLoading = true
+        let live = expressKeyRaw
         expressKeyBindings = Self.defaultExpressKeyBindings(vendorID: vendorID, splitPad: splitPad, modeKeys: modeKeys)
+        ud.set(expressKeyRaw, forKey: devicePrefix + key)
+        if !showsDefaults { expressKeyRaw = live }
+        isLoading = wasLoading
     }
 
     /// Default ExpressKey bindings, 16 entries; 8-key tablets use the first

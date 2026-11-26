@@ -31,7 +31,7 @@ extension TabletSettings {
         isSelfFrontmost = isSelf
         driverOverride = isSelf ? nil : appOverrides.first { $0.bundleID == bundleID }
         guard effectiveOverride?.bundleID != previousEffective else { return }
-        activeTool.overridePrefix = effectiveOverride.map { appOverrideKeyPrefix($0) }
+        configureToolLayers(activeTool)
         reloadAll()
     }
 
@@ -43,7 +43,7 @@ extension TabletSettings {
         let newOverride = bundleID.flatMap { bid in appOverrides.first { $0.bundleID == bid } }
         guard newOverride?.bundleID != activeAppOverride?.bundleID else { return }
         activeAppOverride = newOverride
-        activeTool.overridePrefix = newOverride.map { appOverrideKeyPrefix($0) }
+        configureToolLayers(activeTool)
         reloadAll()
     }
 
@@ -76,7 +76,7 @@ extension TabletSettings {
         appOverrides.append(AppOverride(bundleID: bundleID, appName: appName))
         saveAppOverrides()
         activeAppOverride = appOverrides.last
-        activeTool.overridePrefix = activeAppOverride.map { appOverrideKeyPrefix($0) }
+        configureToolLayers(activeTool)
         // No reloadAll needed — the override is empty; values are unchanged.
         record(String(localized: "Add App Override", comment: "Undo action name for an app-override list change on the Devices/pane app-override bar")) { [weak self] in
             self?.removeAppOverride(bundleID: bundleID)
@@ -149,7 +149,7 @@ extension TabletSettings {
         if activeAppOverride?.bundleID == bundleID {
             if remaining.isEmpty {
                 activeAppOverride = nil
-                activeTool.overridePrefix = nil
+                configureToolLayers(activeTool)
             } else {
                 activeAppOverride = appOverrides.first { $0.bundleID == bundleID }
             }
@@ -206,7 +206,7 @@ extension TabletSettings {
 
         if activeAppOverride != nil {
             activeAppOverride = nil
-            activeTool.overridePrefix = nil
+            configureToolLayers(activeTool)
             reloadAll()
         }
 

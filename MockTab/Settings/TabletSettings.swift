@@ -96,24 +96,10 @@ final class TabletSettings: ObservableObject {
     @Published var activeTool: ToolSettings = ToolSettings(prefix: "device-default.") {
         didSet {
             activeTool.undoManager = undoManager
-            // Sync current override to the newly active tool. Tool swaps can
-            // happen while any app is frontmost, so use the effective source,
-            // not the chip-bar selection.
-            activeTool.overridePrefix = effectiveOverride.map { appOverrideKeyPrefix($0) }
+            // Tool swaps can happen while any app is frontmost, so the layers
+            // follow the effective override, not the chip-bar selection.
+            configureToolLayers(activeTool)
             activeTool.reload()
-
-            activeTool.onOverrideKeyWritten = { [weak self] key in
-                guard let self, var override = self.activeAppOverride else { return }
-                guard !override.overriddenKeys.contains(key) else { return }
-                override.overriddenKeys.insert(key)
-                self.activeAppOverride = override
-                if let idx = self.appOverrides.firstIndex(where: {
-                    $0.bundleID == override.bundleID
-                }) {
-                    self.appOverrides[idx] = override
-                }
-                self.saveAppOverrides()
-            }
         }
     }
 
@@ -138,6 +124,8 @@ final class TabletSettings: ObservableObject {
                 toolID: id)
         }
         ts.undoManager = undoManager
+        configureToolLayers(ts)
+        ts.reload()
         toolCache[id] = ts
         return ts
     }
@@ -1064,7 +1052,7 @@ final class TabletSettings: ObservableObject {
         loadAppOverrides()
         driverOverride = nil
         activeAppOverride = nil
-        activeTool.overridePrefix = nil
+        configureToolLayers(activeTool)
         reloadAll()
     }
 

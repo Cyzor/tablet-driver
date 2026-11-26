@@ -29,6 +29,9 @@ extension TabletSettings {
     /// Snapshots the current in-memory settings into a new profile, saves it,
     /// and makes it active.
     func saveAsProfile(name: String) {
+        // The saved list couldn't be read, so it can't be saved either: a
+        // profile made now would vanish at relaunch, with every edit made in it.
+        guard !profileListLoadFailed else { return }
         var profile = Profile(name: name)
         let prefix = profileKeyPrefix(profile)
 
@@ -79,7 +82,9 @@ extension TabletSettings {
     /// simply removing the exact profile that was just created, via the
     /// existing `deleteProfile`.
     @discardableResult
-    func importProfile(name: String, from values: [String: Any]) -> Profile {
+    func importProfile(name: String, from values: [String: Any]) -> Profile? {
+        // See `saveAsProfile`.
+        guard !profileListLoadFailed else { return nil }
         var profile = Profile(name: name)
         let prefix = profileKeyPrefix(profile)
         var writtenKeys = Set<String>()

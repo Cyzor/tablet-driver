@@ -187,6 +187,9 @@ struct ProfilesView: View {
                     }
                 }
                 .buttonStyle(.bordered)
+                // A newer MockTab saved profiles this one can't read; a new one
+                // couldn't be saved beside them.
+                .disabled(settings.profileListLoadFailed)
                 .help("Save the current settings as a new profile")
             }
         }
