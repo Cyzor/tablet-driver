@@ -308,6 +308,9 @@ final class InputInjector: @unchecked Sendable {
         }
     }
 
+    /// What the keyboard taps call back into; see `TapTarget`.
+    let tapTarget = TapTarget()
+
     deinit {
         if let obs = displayObserver { NotificationCenter.default.removeObserver(obs) }
         if let obs = willSleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(obs) }
@@ -334,6 +337,10 @@ final class InputInjector: @unchecked Sendable {
         button2UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         button3UpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
         tipUpDebounceTimer.map { CFRunLoopTimerInvalidate($0) }
+        // A tap callback already running on HIDThread holds the target; it
+        // goes once that thread has moved past it.
+        let target = tapTarget
+        HIDThread.shared.perform { _ = target }
     }
 
     // MARK: - State

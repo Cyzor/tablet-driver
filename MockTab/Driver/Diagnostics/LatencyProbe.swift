@@ -113,22 +113,28 @@ final class LatencyProbe: @unchecked Sendable {
     /// bucket and a higher one — coalesce-then-flush). Reset per capture
     /// window via `resetGapHistogram()` so a USB run and a Bluetooth run of
     /// the same device can be compared without one polluting the other.
-    /// Fixed-size array, no allocation on the hot path.
-    private(set) var gapHistogramMs: [UInt64] = [0, 0, 0, 0, 0, 0]
+    /// Six plain counters, not an array: main reads them while HIDThread
+    /// writes, which a scalar tolerates and an array's buffer doesn't.
+    private var gap0: UInt64 = 0, gap1: UInt64 = 0, gap2: UInt64 = 0
+    private var gap3: UInt64 = 0, gap4: UInt64 = 0, gap5: UInt64 = 0
+    var gapHistogramMs: [UInt64] { [gap0, gap1, gap2, gap3, gap4, gap5] }
     static let gapHistogramBucketsMs: [Double] = [2, 5, 10, 20, 40]
 
     private func bucketGap(_ gapMs: Double) {
-        for (i, bound) in Self.gapHistogramBucketsMs.enumerated() where gapMs < bound {
-            gapHistogramMs[i] &+= 1
-            return
+        switch gapMs {
+        case ..<2: gap0 &+= 1
+        case ..<5: gap1 &+= 1
+        case ..<10: gap2 &+= 1
+        case ..<20: gap3 &+= 1
+        case ..<40: gap4 &+= 1
+        default: gap5 &+= 1
         }
-        gapHistogramMs[Self.gapHistogramBucketsMs.count] &+= 1
     }
 
     /// Clears the gap histogram to start a fresh comparison window (e.g.
     /// before switching a device from USB to Bluetooth mid-diagnosis).
     func resetGapHistogram() {
-        gapHistogramMs = [0, 0, 0, 0, 0, 0]
+        (gap0, gap1, gap2, gap3, gap4, gap5) = (0, 0, 0, 0, 0, 0)
     }
 
     /// Wall clock and this thread's consumed CPU time at the previous

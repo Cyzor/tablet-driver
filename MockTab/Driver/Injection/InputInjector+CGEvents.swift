@@ -322,8 +322,9 @@ extension InputInjector {
     /// ignores the returned event, so returning it retained would leak every
     /// keystroke.
     private static let flagsChangedTapCallback: CGEventTapCallBack = { _, type, event, userInfo -> Unmanaged<CGEvent>? in
-        guard let userInfo else { return Unmanaged.passUnretained(event) }
-        let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
+        guard let userInfo,
+              let injector = Unmanaged<TapTarget>.fromOpaque(userInfo).takeUnretainedValue().injector
+        else { return Unmanaged.passUnretained(event) }
         // macOS can switch a tap off, on a timeout or for user input.
         // If it stays off, the modifier cache goes stale for the rest of the
         // session.
@@ -380,16 +381,16 @@ extension InputInjector {
 
     @MainActor
     func installFlagsChangedTap() {
+        tapTarget.injector = self
         // Listen-only tap at the session level for modifier changes. It never
         // modifies events, just observes them.
-        let selfPtr = Unmanaged.passUnretained(self)
         let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .tailAppendEventTap,
             options: .listenOnly,
             eventsOfInterest: CGEventMask(1 << CGEventType.flagsChanged.rawValue),
             callback: Self.flagsChangedTapCallback,
-            userInfo: selfPtr.toOpaque()
+            userInfo: Unmanaged.passUnretained(tapTarget).toOpaque()
         )
         guard let tap else {
             modLog.error("flagsChanged tap: CGEvent.tap failed (accessibility permission missing?)")
@@ -413,8 +414,9 @@ extension InputInjector {
     /// Stamps hardware key presses for touch's typing hold-off. Same shape as
     /// `flagsChangedTapCallback`; reads only the time, never the key.
     private static let keyDownTapCallback: CGEventTapCallBack = { _, type, event, userInfo -> Unmanaged<CGEvent>? in
-        guard let userInfo else { return Unmanaged.passUnretained(event) }
-        let injector = Unmanaged<InputInjector>.fromOpaque(userInfo).takeUnretainedValue()
+        guard let userInfo,
+              let injector = Unmanaged<TapTarget>.fromOpaque(userInfo).takeUnretainedValue().injector
+        else { return Unmanaged.passUnretained(event) }
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap = injector.keyDownTap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
@@ -440,13 +442,14 @@ extension InputInjector {
             keyDownTapSource = nil
             return
         }
+        tapTarget.injector = self
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .tailAppendEventTap,
             options: .listenOnly,
             eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue),
             callback: Self.keyDownTapCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
+            userInfo: Unmanaged.passUnretained(tapTarget).toOpaque()
         ) else {
             modLog.error("keyDown tap: CGEvent.tap failed (accessibility permission missing?)")
             return
@@ -1437,4 +1440,12 @@ extension InputInjector {
         e.flags = moveSafeEventFlags
         finalizeAndPost(e)
     }
+}
+
+/// What the keyboard taps point at: the injector, weakly. The injector can
+/// be freed on main while a tap callback runs on HIDThread; the target
+/// outlives both (see `deinit`), so a late callback finds nil.
+final class TapTarget: @unchecked Sendable {
+    /// Set before each tap is made, always to the same injector.
+    weak var injector: InputInjector?
 }

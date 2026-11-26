@@ -558,7 +558,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     static let watchNs: UInt64 = 10_000_000_000
     private var deliveryTap: CFMachPort?
     private var heartbeat: CFRunLoopTimer?
-    private var watchRunLoop: CFRunLoop?
+    /// Set on the watch thread, read on HIDThread.
+    private let watchRunLoop = OSAllocatedUnfairLock<CFRunLoop?>(uncheckedState: nil)
     private var watchEnd: CFRunLoopTimer?
     // Delivery-thread-confined.
     private var watching = false
@@ -619,7 +620,8 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, .commonModes)
             heartbeat = timer
             _ = slowerFilters()
-            watchRunLoop = CFRunLoopGetCurrent()
+            let loop = CFRunLoopGetCurrent()
+            watchRunLoop.withLockUnchecked { $0 = loop }
             CFRunLoopRun()
         }
         thread.name = "MockTab delivery watch"
@@ -630,7 +632,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     private static let ownPID = Int64(getpid())
 
     private func openWatch() {
-        guard let loop = watchRunLoop else { return }
+        guard let loop = watchRunLoop.withLockUnchecked({ $0 }) else { return }
         CFRunLoopPerformBlock(loop, CFRunLoopMode.commonModes.rawValue) { [self] in
             guard let deliveryTap, let watchEnd else { return }
             if !watching {
@@ -705,7 +707,7 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     }
 
     private func armCursorCheck() {
-        guard let loop = watchRunLoop else { return }
+        guard let loop = watchRunLoop.withLockUnchecked({ $0 }) else { return }
         CFRunLoopPerformBlock(loop, CFRunLoopMode.commonModes.rawValue) { [self] in
             guard !cursorArmed, let cursorTimer else { return }
             cursorArmed = true
