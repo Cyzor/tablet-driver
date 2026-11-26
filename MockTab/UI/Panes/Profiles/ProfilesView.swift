@@ -386,39 +386,22 @@ struct ProfilesView: View {
         let trimmed = newName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
-        let snap = settings.snapshot()
+        let previousID = settings.activeProfile?.id
+        let countBefore = settings.profiles.count
         settings.saveAsProfile(name: trimmed)
 
-        if let newPreset = settings.profiles.last(where: { $0.name == trimmed }) {
-            recordSaveProfile(created: newPreset, previousSnapshot: snap, name: trimmed)
+        if settings.profiles.count > countBefore, let newPreset = settings.profiles.last {
+            settings.recordSaveProfile(newPreset, previous: previousID)
         }
 
         isCreating = false
         newName = ""
     }
 
-    /// Self-recursive so "Save Profile" also redoes: undoing deletes the
-    /// profile just created and restores the prior settings snapshot; that
-    /// closure then re-creates an equivalent profile (same name, new UUID —
-    /// exact identity isn't preserved, but the visible result is) and
-    /// re-registers itself with the roles swapped, same shape as
-    /// `TabletSettings.restoreSnapshot`.
-    private func recordSaveProfile(created preset: TabletSettings.Profile, previousSnapshot snap: TabletSettings.FullSnapshot, name: String) {
-        settings.record(String(localized: "Save Profile", comment: "Undo action name: creating a new named preset in the Profiles pane")) {
-            let currentSnap = self.settings.snapshot()
-            self.settings.deleteProfile(preset)
-            self.settings.applySnapshot(snap)
-            self.settings.saveAsProfile(name: name)
-            if let recreated = self.settings.profiles.last(where: { $0.name == name }) {
-                self.recordSaveProfile(created: recreated, previousSnapshot: currentSnap, name: name)
-            }
-        }
-    }
-
     private func commitRename() {
         guard let preset = editingProfile else { return }
         let trimmed = editingName.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty {
+        if !trimmed.isEmpty, trimmed != preset.name {
             let oldName = preset.name
             let presetID = preset.id
             settings.renameProfile(preset, to: trimmed)

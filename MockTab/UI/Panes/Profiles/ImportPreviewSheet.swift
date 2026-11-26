@@ -91,7 +91,10 @@ struct ImportPreviewSheet: View {
             get: { !excluded.contains(productID) },
             set: { included in
                 // Option-click sets every box to the clicked one's new state.
-                let targets = NSEvent.modifierFlags.contains(.option)
+                // Clicks only: VoiceOver's keys hold Option too.
+                let event = NSApp.currentEvent
+                let optionClick = event?.type == .leftMouseUp || event?.type == .leftMouseDown
+                let targets = optionClick && event?.modifierFlags.contains(.option) == true
                     ? plan.entries.map(\.productID) : [productID]
                 if included { excluded.subtract(targets) } else { excluded.formUnion(targets) }
             })

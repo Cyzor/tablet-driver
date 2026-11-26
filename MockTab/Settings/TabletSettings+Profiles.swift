@@ -272,6 +272,38 @@ extension TabletSettings {
         }
     }
 
+    /// Registers undo for a profile `saveAsProfile` just made active.
+    /// Saving copies the live values, so nothing else changes: undo removes
+    /// the profile and reactivates `previous`; redo puts the same profile
+    /// back, values and all, and activates it again.
+    func recordSaveProfile(_ profile: Profile, previous previousID: UUID?) {
+        let name = String(localized: "Save Profile", comment: "Undo action name: creating a new named preset in the Profiles pane")
+        record(name) { [weak self] in
+            guard let self else { return }
+            let prefix = self.profileKeyPrefix(profile)
+            var stored: [String: Any] = [:]
+            for key in Self.profileSettingKeys {
+                if let v = self.ud.object(forKey: prefix + key) { stored[key] = v }
+            }
+            let current = self.profiles.first(where: { $0.id == profile.id }) ?? profile
+            let index = self.profiles.firstIndex(where: { $0.id == profile.id })
+            self.deleteProfile(current)
+            self.activate(previousID.flatMap { id in self.profiles.first(where: { $0.id == id }) })
+            self.record(name) { [weak self] in
+                guard let self else { return }
+                if let index, index <= self.profiles.count {
+                    self.profiles.insert(current, at: index)
+                } else {
+                    self.profiles.append(current)
+                }
+                for (key, value) in stored { self.ud.set(value, forKey: prefix + key) }
+                self.saveProfileList()
+                self.activate(current)
+                self.recordSaveProfile(current, previous: previousID)
+            }
+        }
+    }
+
     /// Deletes every profile for this tablet under one undo action
     /// (Option-click "Delete All" in the Profiles pane).
     func deleteAllProfilesRecordingUndo() {

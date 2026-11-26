@@ -164,7 +164,20 @@ final class ScratchpadNSView: NSView {
         wantsLayer = true
         layer?.cornerRadius = 6
         layer?.masksToBounds = true
-        NSEvent.isMouseCoalescingEnabled = false
+    }
+
+    // Every pen sample, not coalesced moves, but only while a canvas is in
+    // a window: the setting is app-wide, and two windows can each show one.
+    private static var canvasesInWindows = 0
+    private var countedInWindow = false
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        let inWindow = window != nil
+        guard inWindow != countedInWindow else { return }
+        countedInWindow = inWindow
+        Self.canvasesInWindows += inWindow ? 1 : -1
+        NSEvent.isMouseCoalescingEnabled = Self.canvasesInWindows == 0
     }
 
     override func viewDidChangeEffectiveAppearance() {

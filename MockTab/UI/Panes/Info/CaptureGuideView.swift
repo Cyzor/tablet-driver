@@ -26,6 +26,8 @@ struct CaptureGuideView: View {
     /// into the package. Owned by the presenting view, not this sheet — see
     /// `DiagnosticSession`. Nil when no raw capture is running.
     var onFinalizeRawCapture: (() -> URL?)? = nil
+    /// Gets the saved package, so the pane's Show in Finder can point at it.
+    var onSaved: ((URL) -> Void)? = nil
 
     // MARK: - State
 
@@ -63,13 +65,15 @@ struct CaptureGuideView: View {
 
     init(
         engine: CaptureEngine, tabletManager: TabletManager, productID: Int,
-        onDismiss: @escaping () -> Void, onFinalizeRawCapture: (() -> URL?)? = nil
+        onDismiss: @escaping () -> Void, onFinalizeRawCapture: (() -> URL?)? = nil,
+        onSaved: ((URL) -> Void)? = nil
     ) {
         self.engine = engine
         self.tabletManager = tabletManager
         self.productID = productID
         self.onDismiss = onDismiss
         self.onFinalizeRawCapture = onFinalizeRawCapture
+        self.onSaved = onSaved
         _coordinator = StateObject(
             wrappedValue: CaptureSessionCoordinator(
                 engine: engine, tabletManager: tabletManager, productID: productID,
@@ -97,6 +101,9 @@ struct CaptureGuideView: View {
             }
             Divider()
             footer
+        }
+        .onChange(of: coordinator.savedURL) { url in
+            if let url { onSaved?(url) }
         }
         .frame(width: 460)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: showInitControl)

@@ -169,7 +169,9 @@ struct InfoView: View {
                     // saved by then; package that file.
                     if rawCaptureRunning { finishRawCaptureTeardown() }
                     return rawCaptureSavedURL
-                }
+                },
+                // Packaging moves the raw log into the zip and deletes it.
+                onSaved: { rawCaptureSavedURL = $0 }
             )
             // Backstop, not the primary path: the raw capture starts before
             // the sheet is presented, so a dismissal route that skips
