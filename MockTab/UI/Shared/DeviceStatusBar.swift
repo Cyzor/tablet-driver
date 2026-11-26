@@ -354,7 +354,9 @@ struct DeviceStatusBar: View {
             return String(localized: "\(name) in use", comment: "Status bar tool slot when another tablet, not this window's, is connected and in use")
         }
         if let context = context, let toolID = context.activeToolID {
-            let name = registry.knownTools.first(where: { $0.id == toolID })?.nickname ?? toolID
+            // Same lookup as `ToolNameLabel`: `knownTools` may hold another tablet.
+            let name = (registry.knownTools.first(where: { $0.id == toolID })
+                ?? registry.allKnownTools.first(where: { $0.id == toolID }))?.nickname ?? toolID
             guard DeviceRegistry.catalogExcludes(toolCode: context.activeToolCode, productID: context.productID)
             else { return name }
             return String(
