@@ -65,6 +65,12 @@ final class CintiqPanelControl: ObservableObject {
     }
     #endif
 
+    /// Models seen to act on writes they won't report. Others that stay
+    /// silent, such as the 24HD, ignore the writes too, so they stay grayed.
+    private static func takesUnreportedWrites(_ modelName: String) -> Bool {
+        modelName.contains("27QHD")
+    }
+
     func probe() {
         guard !isPreview else { return }
         state = .probing
@@ -82,6 +88,7 @@ final class CintiqPanelControl: ObservableObject {
                 guard let self else { return }
                 self.link = link
                 self.writeOnly = link != nil && b == nil && c == nil && !hdmi
+                    && Self.takesUnreportedWrites(model)
                 if self.writeOnly {
                     self.brightness = Value(current: self.remembered(bCode), max: 100)
                     self.contrast = Value(current: self.remembered(cCode), max: 100)

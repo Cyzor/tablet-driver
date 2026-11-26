@@ -13,14 +13,18 @@ import SwiftUI
 /// answers, so a Mac or adapter that can't reach it just grays it out.
 struct CintiqPanelSection: View {
     @StateObject private var panel: CintiqPanelControl
+    /// Holds the window's undo history; the panel keeps the values.
+    private let settings: TabletSettings?
 
-    init(modelName: String) {
+    init(modelName: String, settings: TabletSettings) {
         _panel = StateObject(wrappedValue: CintiqPanelControl(modelName: modelName))
+        self.settings = settings
     }
 
     #if DEBUG
     init(preview panel: CintiqPanelControl) {
         _panel = StateObject(wrappedValue: panel)
+        settings = nil
     }
     #endif
 
@@ -28,10 +32,12 @@ struct CintiqPanelSection: View {
         Section {
             Group {
                 row(String(localized: "Brightness"), symbol: "sun.max",
-                    value: panel.brightness, set: panel.setBrightness)
+                    undoName: String(localized: "Display Brightness", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
+                    \.brightness, set: panel.setBrightness)
                     .help("Backlight brightness of the tablet's built-in display.")
                 row(String(localized: "Contrast"), symbol: "circle.lefthalf.filled",
-                    value: panel.contrast, set: panel.setContrast)
+                    undoName: String(localized: "Display Contrast", comment: "Undo action name: display calibration/mapping control in the Displays pane"),
+                    \.contrast, set: panel.setContrast)
                     .help("Contrast of the tablet's built-in display.")
             }
             .opacity(panel.state == .ready ? 1 : 0.5)
@@ -69,9 +75,10 @@ struct CintiqPanelSection: View {
             : String(localized: "Changes the display's own settings over its video cable.")
     }
 
-    private func row(_ title: String, symbol: String,
-                     value: CintiqPanelControl.Value?, set: @escaping (Int) -> Void) -> some View {
-        HStack {
+    private func row(_ title: String, symbol: String, undoName: String,
+                     _ key: KeyPath<CintiqPanelControl, CintiqPanelControl.Value?>, set: @escaping (Int) -> Void) -> some View {
+        let value = panel[keyPath: key]
+        return HStack {
             Image(systemName: symbol)
                 .foregroundStyle(.secondary)
                 .scaledFrame(width: 20)
@@ -87,9 +94,7 @@ struct CintiqPanelSection: View {
                         .frame(height: 4)
                 } else {
                     Slider(
-                        value: Binding(
-                            get: { Double(value?.current ?? 50) },
-                            set: { set(Int($0.rounded())) }),
+                        value: sliderBinding(undoName, key, set: set),
                         in: 0...Double(max(value?.max ?? 100, 1)))
                     .labelsHidden()
                     .accessibilityLabel(title)
@@ -102,6 +107,23 @@ struct CintiqPanelSection: View {
                 .scaledFrame(width: 48, alignment: .trailing)
         }
         .disabled(value == nil)
+    }
+
+    /// Undoable when a window's settings are at hand (not in previews).
+    /// Reads the panel live, so a drag's old value is never a stale copy.
+    private func sliderBinding(_ undoName: String, _ key: KeyPath<CintiqPanelControl, CintiqPanelControl.Value?>,
+                               set: @escaping (Int) -> Void) -> Binding<Double> {
+        let panel = panel
+        let settings = settings
+        return Binding(
+            get: { Double(panel[keyPath: key]?.current ?? 50) },
+            set: { new in
+                let old = panel[keyPath: key]?.current ?? 50
+                let value = Int(new.rounded())
+                guard value != old else { return }
+                set(value)
+                settings?.recordToggle(undoName, from: old, to: value, apply: set)
+            })
     }
 }
 

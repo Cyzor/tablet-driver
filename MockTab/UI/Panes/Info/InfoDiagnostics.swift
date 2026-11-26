@@ -155,6 +155,14 @@ extension InfoView {
                 stopMouseUpMonitor()
             }
         }
+        // Tabs keep their state when hidden, so the panel can come back
+        // expanded without `onChange` firing.
+        .onAppear {
+            if diagnosticsExpanded {
+                refreshDiagnosticSnapshot()
+                startMouseUpMonitor()
+            }
+        }
         .onDisappear { stopMouseUpMonitor() }
         .onReceive(
             deviceContext?.livePointPublisher.eraseToAnyPublisher()

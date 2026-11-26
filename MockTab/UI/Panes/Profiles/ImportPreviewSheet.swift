@@ -108,7 +108,13 @@ struct ImportPreviewSheet: View {
         } else {
             state = String(localized: "Unknown tablet", comment: "Accessibility state for an unregistered tablet entry in the import sheet")
         }
-        return "\(entry.nickname), \(entry.modelName), \(state)"
+        // Everything the row shows, so VoiceOver users know what each box
+        // brings in. Commas, not the row's dots, which VoiceOver would read.
+        let ts: TabletSettings? = resolveSettings(for: entry.productID)
+        let finalName = ts?.uniqueProfileName(entry.resolvedProfileName) ?? entry.resolvedProfileName
+        let newProfile = String(localized: "New profile “\(finalName)”", comment: "Import sheet: the profile name the import will create")
+        return ([entry.nickname, entry.modelName, state, newProfile] + contentParts(for: entry))
+            .joined(separator: ", ")
     }
 
     private var note: some View {
@@ -184,6 +190,10 @@ struct ImportPreviewSheet: View {
     /// Conflicting overrides and pen settings are always skipped, keeping the
     /// local ones (see `importAppOverride`/`importToolSettings`).
     private func contentSummary(for entry: ImportPlan.TabletEntry) -> String {
+        contentParts(for: entry).joined(separator: " · ")
+    }
+
+    private func contentParts(for entry: ImportPlan.TabletEntry) -> [String] {
         var parts = [String(localized: "\(entry.profileValues.count) setting", comment: "Count of settings in imported profile")]
         if !entry.profiles.isEmpty {
             parts.append(String(localized: "\(entry.profiles.count) profile", comment: "Count of profiles found in the backup for this tablet"))
@@ -194,7 +204,7 @@ struct ImportPreviewSheet: View {
         if !entry.toolSettings.isEmpty {
             parts.append(String(localized: "\(entry.toolSettings.count) pen setting", comment: "Count of per-pen settings found in the backup for this tablet"))
         }
-        return parts.joined(separator: " · ")
+        return parts
     }
 
     // MARK: - Actions

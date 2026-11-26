@@ -144,22 +144,23 @@ struct NormalizedAreaEditor<Background: View, Overlay: View>: View {
     // MARK: - Accessibility (VoiceOver)
 
     /// Four sliders VoiceOver uses in place of the canvas. They never draw,
-    /// so only their labels, values, and ranges matter.
+    /// so only their labels, values, and ranges matter. Each range ends
+    /// where the other edge stops it, so VoiceOver hears the limit.
     private var accessibilityControls: some View {
         VStack {
-            Slider(value: bindingFor(.x), in: 0...1) {
+            Slider(value: bindingFor(.x), in: 0...Swift.max(1 - rect.w, 0)) {
                 Text("Horizontal position", comment: "VoiceOver label: slider for an area's distance from the left edge")
             }
             .accessibilityValue(spokenValue(rect.x, horizontal: true))
-            Slider(value: bindingFor(.y), in: 0...1) {
+            Slider(value: bindingFor(.y), in: 0...Swift.max(1 - rect.h, 0)) {
                 Text("Vertical position", comment: "VoiceOver label: slider for an area's distance from the top edge")
             }
             .accessibilityValue(spokenValue(rect.y, horizontal: false))
-            Slider(value: bindingFor(.w), in: minDimension...1) {
+            Slider(value: bindingFor(.w), in: minDimension...Swift.max(1 - rect.x, minDimension)) {
                 Text("Width")
             }
             .accessibilityValue(spokenValue(rect.w, horizontal: true))
-            Slider(value: bindingFor(.h), in: minDimension...1) {
+            Slider(value: bindingFor(.h), in: minDimension...Swift.max(1 - rect.y, minDimension)) {
                 Text("Height")
             }
             .accessibilityValue(spokenValue(rect.h, horizontal: false))

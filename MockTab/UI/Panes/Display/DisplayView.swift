@@ -59,7 +59,7 @@ struct DisplayView: View {
                 brightnessSection
             }
             if let name = cintiqPanelModelName {
-                CintiqPanelSection(modelName: name)
+                CintiqPanelSection(modelName: name, settings: settings)
             }
             displayRegionSection
         }

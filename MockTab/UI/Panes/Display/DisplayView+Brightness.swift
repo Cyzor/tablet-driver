@@ -110,6 +110,7 @@ extension DisplayView {
                                 undoGet: { Double(settings.displayContrast) },
                                 set: { settings.displayContrast = Int($0.rounded()) }),
                             in: 0...100)
+                        .accessibilityLabel(Text("Contrast"))
                         Text(settings.displayContrast >= 0 ? settings.displayContrast.formatted(.percent) : "—")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
