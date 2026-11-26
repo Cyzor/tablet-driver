@@ -25,7 +25,7 @@ Der aktive Bereich ist der Teil der Grafiktablett-Oberfläche, der auf den Bilds
 
 **Tastatur** – Ab macOS 14 klickst du auf den Bereich und verschiebst ihn mit den Pfeiltasten; mit **⌥** änderst du seine Größe. Mit **⇧** werden die Schritte größer.
 
-**Proportionale Projektion** – Hält die Cursorwege horizontal und vertikal gleich lang. Schalte sie aus, um die Abbildung zu strecken oder zu stauchen.
+**Proportionale Zuordnung** – Hält die Cursorwege horizontal und vertikal gleich lang. Schalte sie aus, um die Abbildung zu strecken oder zu stauchen.
 
 **Auf Vollbereich zurücksetzen** – Stellt die gesamte Grafiktablett-Oberfläche wieder her. ⌘Z macht es rückgängig.
 
@@ -37,7 +37,7 @@ Beim Drehen wandert jede Belegung zu der Taste, die jetzt an ihrer Stelle sitzt,
 
 **Belegung umdrehen** – Klicke mit der rechten Maustaste auf das Grafiktablett im Tasten-Bereich, um jede Belegung auf die gegenüberliegende Taste zu tauschen, ohne die Ausrichtung zu ändern. Ein zweites Mal stellt alles wieder her.
 
-## Kalibrierung (Pen-Displays)
+## Kalibrierung (Stiftdisplays)
 
 **Kalibrieren…** zeigt bildschirmfüllende Ziele, die du mit der Stiftspitze antippst. Es korrigiert den Versatz zwischen Stiftspitze und Cursor, den das Displayglas verursacht.
 
@@ -77,7 +77,7 @@ Wie nah zwei Tipper beieinander landen müssen, um als Doppelklick zu zählen.
 
 **Oberflächenkontakt erforderlich** – Markierte Aktionen der Seitentasten warten, bis die Spitze aufsetzt. Nicht markierte Klickaktionen wirken auch beim Schweben, auch zum Ziehen.
 
-**Aufhebehilfe** – Verhindert, dass schnelle Striche abreißen, wenn die Spitze kurz abhebt.
+**Abhebehilfe** – Verhindert, dass schnelle Striche abreißen, wenn die Spitze kurz abhebt.
 
 **Ziehschwelle** – Verhindert, dass ein Tippen zu einem kleinen Ziehen wird.
 
@@ -91,29 +91,29 @@ Drücke bei geöffnetem Fenster eine beliebige Taste, um ihre Position hervorzuh
 
 Eine Wacom-Maus bekommt ein eigenes Diagramm und eigene Tastenzeilen. Die ersten drei Tasten starten als Links-, Rechts- und Mittelklick.
 
-## Tablett-Diagramm
+## Grafiktablett-Diagramm
 
-Das Diagramm zeigt, wo Tasten, Ringe und Dials eines Grafiktabletts sitzen. Klicke auf ein Element, um ihm eine Aktion zuzuweisen.
+Das Diagramm zeigt, wo Tasten, Ringe und Einstellräder eines Grafiktabletts sitzen. Klicke auf ein Element, um ihm eine Aktion zuzuweisen.
 
 ## Zuordnungstypen
 
 - **Maustasten** – Links-, Rechts- und Mittelklick, Doppelklick und Klick-Verriegelung, die die linke Taste bis zum nächsten Druck gedrückt hält  
-- **Tastaturkürzel** – Klicke ins Shortcut-Feld und drücke eine beliebige Tastenkombination  
+- **Tastaturkurzbefehle** – Klicke ins Kurzbefehlsfeld und drücke eine beliebige Tastenkombination  
 - **Gehaltene Modifikatortasten** – ⌘ ⌥ ⇧ ⌃ bleiben gedrückt, solange die Taste gehalten wird  
-- **Spezialaktionen** – Ansicht schwenken, Radierer, Leertaste, Escape, F13 bis F19, Display umschalten, Auf Displays verteilen, Relativen Modus umschalten, MockTab-Einstellungen anzeigen sowie Modi für Ringe, Dials und Leisten  
+- **Spezialaktionen** – Ansicht schwenken, Radierer, Leertaste, Escape, F13 bis F19, Display umschalten, Auf Displays verteilen, Relativen Modus umschalten, MockTab-Einstellungen anzeigen sowie Modi für Ringe, Einstellräder und Leisten  
 - **Öffnen** – Ziehe eine App, eine Datei, einen Link oder ein Keyboard-Maestro-Makro auf die Zeile einer Taste. Ein Fragezeichen bedeutet, dass das Ziel fehlt. Um eine URL einzugeben oder zu korrigieren, klicke mit der rechten Maustaste auf die Zeile und wähle „URL bearbeiten“  
 
-Um ein Skript, einen Automator-Arbeitsablauf oder einen Kurzbefehl auszuführen, sichere ihn als App und ziehe diese auf die Zeile, oder gib ihm in den Systemeinstellungen oder in Kurzbefehle ein Tastaturkürzel und weise dieses zu.
+Um ein Skript, einen Automator-Arbeitsablauf oder einen Kurzbefehl auszuführen, sichere ihn als App und ziehe diese auf die Zeile, oder gib ihm in den Systemeinstellungen oder in Kurzbefehle einen Tastaturkurzbefehl und weise diesen zu.
 
-## Berührungsring und Dial
+## Touch Ring und Einstellrad
 
-Ringe, Dials und Touch-Strips haben jeweils eigene Modi. Klicke auf einen Modus oder seinen Keil im Diagramm, um seine Einstellungen zu ändern. Um Modi per Taste zu wechseln, weise **Wechseln** oder **Zu Modus springen** zu.
+Touch Rings, Einstellräder und Berührungsleisten haben jeweils eigene Modi. Klicke auf einen Modus oder seinen Keil im Diagramm, um seine Einstellungen zu ändern. Um Modi per Taste zu wechseln, weise **Wechseln** oder **Zu Modus springen** zu.
 
 **Scrollen** – Funktioniert wie ein Scrollrad. Bei 1× scrollt jeder Schritt eine Zeile.
 
 **Zoomen** und **Drehen** – Vergrößern oder drehen die Arbeitsfläche wie eine Trackpad-Geste. Die Geschwindigkeit reicht von Aus bis Maximum; bei Maximum dreht eine Ringumdrehung die Arbeitsfläche einmal komplett herum. Die Unterstützung hängt von der App ab.
 
-**Taste** – Sendet für jede Richtung ein Tastenkürzel.
+**Taste** – Sendet für jede Richtung einen Tastaturkurzbefehl.
 
 ## Tastendisplays
 
@@ -153,7 +153,7 @@ Manche Grafiktabletts erkennen auch deine Finger. MockTab lässt Touch standardm
 
 **Zum Zoomen zusammenziehen** – Zwei Finger spreizen oder zusammenziehen, um zu zoomen.
 
-**Drehen** – Zwei Finger weit auseinander auf das Tablett legen und um ihre Mitte schwenken. Scrollen, Zoomen und Drehen sind unterschiedliche Deutungen derselben Zwei-Finger-Geste und lassen sich einzeln ein- oder ausschalten.
+**Drehen** – Zwei Finger weit auseinander auf das Grafiktablett legen und um ihre Mitte schwenken. Scrollen, Zoomen und Drehen sind unterschiedliche Deutungen derselben Zwei-Finger-Geste und lassen sich einzeln ein- oder ausschalten.
 
 **Richtung umkehren** – Der Inhalt bewegt sich entgegengesetzt zur Fingerbewegung, wie bei einem klassischen Mausrad.
 
@@ -161,9 +161,9 @@ Manche Grafiktabletts erkennen auch deine Finger. MockTab lässt Touch standardm
 
 ## Berührungsbereich
 
-Der Berührungsbereich arbeitet unabhängig vom aktiven Stiftbereich. Ziehe die Griffe in der Vorschau, um die verfügbare Touch-Fläche zuzuschneiden. Fingereingaben außerhalb des Rechtecks haben keine Wirkung. Modifikator- und Pfeiltasten funktionieren wie beim aktiven Bereich.
+Der Berührungsbereich arbeitet unabhängig vom aktiven Stiftbereich. Ziehe die Griffe in der Vorschau, um den verfügbaren Berührungsbereich zuzuschneiden. Fingereingaben außerhalb des Rechtecks haben keine Wirkung. Modifikator- und Pfeiltasten funktionieren wie beim aktiven Bereich.
 
-**Auf volle Fläche zurücksetzen** – Stellt den Touch-Bereich auf die gesamte touchfähige Fläche zurück.
+**Auf volle Fläche zurücksetzen** – Stellt den Berührungsbereich auf die gesamte touchfähige Fläche zurück.
 
 ## Einschränkungen
 
@@ -171,9 +171,9 @@ MockTab unterstützt kein Mission Control, Spaces, Launchpad oder App Exposé pe
 
 [display]
 
-## Anzeigezuordnung
+## Display-Zuordnung
 
-Die Anzeigezuordnung legt fest, welcher Bildschirm dem Grafiktablett zugeordnet ist.
+Die Display-Zuordnung legt fest, welcher Bildschirm dem Grafiktablett zugeordnet ist.
 
 **Hauptdisplay** – Bildet das Grafiktablett auf dein Hauptdisplay ab.
 
@@ -215,7 +215,7 @@ Wenn gleichzeitig ein anderer Grafiktablett-Treiber läuft, etwa der offizielle 
 
 ## Profile
 
-Ein Profil ist eine Momentaufnahme der Grafiktablett-Einstellungen: aktiver Bereich, Druckkurve, Tastenbelegungen und Display-Mapping. Beim Wechseln eines Profils werden all diese Einstellungen sofort angewendet.
+Ein Profil ist eine Momentaufnahme der Grafiktablett-Einstellungen: aktiver Bereich, Druckkurve, Tastenbelegungen und Display-Zuordnung. Beim Wechseln eines Profils werden all diese Einstellungen sofort angewendet.
 
 ## Erstellen und Umbenennen
 
@@ -231,7 +231,7 @@ Ziehe die JSON-Kachel in den Finder, um alle Einstellungen zu sichern, auch Seri
 
 [scratchpad]
 
-## Testbereich
+## Skizzenblock
 
 Eine Testfläche, um zu prüfen, ob der Stift Druck und Bewegung erkennt. MockTab speichert keine Striche.
 
@@ -273,13 +273,13 @@ Bugmeldungen und Fragen gehören nach [github.com/Cyzor/tablet-driver/issues](ht
 
 ## Danksagung
 
-MockTab baut auf Open-Source-Arbeit auf. [OpenTabletDriver](https://opentabletdriver.net/) liefert Konfigurationen für Tablets vieler Hersteller. Das [Linux Wacom Project](https://linuxwacom.github.io/) liefert über libwacom Abmessungen und Bedienelemente von Wacom-Geräten und dokumentiert Wacoms Datenformate in seinem Treiber input-wacom, der auch im Linux-Kernel steckt, und in der Sammlung wacom-hid-descriptors.
+MockTab baut auf Open-Source-Arbeit auf. [OpenTabletDriver](https://opentabletdriver.net/) liefert Konfigurationen für Grafiktabletts vieler Hersteller. Das [Linux Wacom Project](https://linuxwacom.github.io/) liefert über libwacom Abmessungen und Bedienelemente von Wacom-Geräten und dokumentiert Wacoms Datenformate in seinem Treiber input-wacom, der auch im Linux-Kernel steckt, und in der Sammlung wacom-hid-descriptors.
 
 ## Lizenz
 
-MockTab ist freie Software unter der [GNU General Public License, Version 3 oder neuer](https://www.gnu.org/licenses/gpl-3.0.html). Der Quellcode liegt unter [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver). TabletKit, die Bibliothek, mit der MockTab Tablets ausliest, steht unter der [Mozilla Public License 2.0](https://mozilla.org/MPL/2.0/).
+MockTab ist freie Software unter der [GNU General Public License, Version 3 oder neuer](https://www.gnu.org/licenses/gpl-3.0.html). Der Quellcode liegt unter [github.com/Cyzor/tablet-driver](https://github.com/Cyzor/tablet-driver). TabletKit, die Bibliothek, mit der MockTab Grafiktabletts ausliest, steht unter der [Mozilla Public License 2.0](https://mozilla.org/MPL/2.0/).
 
-Die Tablet-Zeichnungen nutzen Bedienelement-Layouts aus libwacom:
+Die Grafiktablett-Zeichnungen nutzen Bedienelement-Layouts aus libwacom:
 
 Copyright © 2011 Red Hat, Inc.
 

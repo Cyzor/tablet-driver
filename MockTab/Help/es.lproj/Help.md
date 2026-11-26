@@ -25,7 +25,7 @@ El área activa es la parte de la superficie de la tableta que se asigna a la pa
 
 **Teclado** – En macOS 14 o posterior, haz clic en el área y muévela con las flechas, o mantén **⌥** para redimensionarla. Con **⇧**, los pasos son más grandes.
 
-**Asignación proporcional** – Mantiene iguales los recorridos del cursor en horizontal y vertical. Desactívala para estirar o comprimir el mapeo.
+**Asignación proporcional** – Mantiene iguales los recorridos del cursor en horizontal y vertical. Desactívala para estirar o comprimir la asignación.
 
 **Restablecer a área completa** – Restaura toda la superficie de la tableta. ⌘Z lo deshace.
 
@@ -37,7 +37,7 @@ Al girar la tableta, cada asignación pasa a la tecla que ahora ocupa su lugar, 
 
 **Invertir asignaciones** – Haz clic derecho en el dibujo de la tableta del panel Botones para pasar cada asignación a la tecla opuesta sin cambiar la orientación. Elígelo de nuevo para dejarlo como estaba.
 
-## Calibración (pantallas interactivas)
+## Calibración (pantallas con lápiz)
 
 **Calibrar…** muestra objetivos a pantalla completa para tocar con la punta del lápiz. Corrige la separación que el cristal introduce entre la punta y el cursor.
 
@@ -77,7 +77,7 @@ Lo cerca que deben caer dos toques para contar como doble clic.
 
 **Requerir contacto** – Las acciones marcadas de los botones laterales esperan a que la punta toque. Las acciones de clic sin marcar también funcionan en proximidad, incluso para arrastrar.
 
-**Asistencia de levantamiento** – Evita que los trazos rápidos se corten cuando la punta se levanta un instante.
+**Ayuda al levantar** – Evita que los trazos rápidos se corten cuando la punta se levanta un instante.
 
 **Umbral de arrastre** – Evita que un toque se convierta en un pequeño arrastre.
 
@@ -100,14 +100,14 @@ El diagrama muestra la posición de las teclas, anillos y diales de una tableta.
 - **Botones del ratón** – Clic izquierdo, derecho y central, doble clic y bloqueo de clic, que mantiene pulsado el botón izquierdo hasta la siguiente pulsación  
 - **Atajos de teclado** – Haz clic en el campo del atajo y pulsa cualquier combinación de teclas  
 - **Modificadores mantenidos** – ⌘ ⌥ ⇧ ⌃ se mantienen mientras el botón siga pulsado  
-- **Acciones especiales** – Desplazar vista, Borrador, Barra espaciadora, Escape, F13 a F19, Cambiar pantalla, Distribuir en pantallas, Cambiar modo relativo, Mostrar configuración de MockTab y modos de anillos, diales y franjas  
+- **Acciones especiales** – Desplazar vista, Borrador, Barra espaciadora, Escape, F13 a F19, Cambiar pantalla, Distribuir en pantallas, Cambiar modo relativo, Mostrar ajustes de MockTab y modos de anillos, diales y franjas  
 - **Abrir** – Arrastra una app, un archivo, un enlace o una macro de Keyboard Maestro a la fila de un botón. Un signo de interrogación indica que el destino ya no está. Para escribir o corregir una URL, haz clic derecho en la fila y elige Editar URL  
 
 Para ejecutar un script, un flujo de trabajo de Automator o un atajo, guárdalo como app y arrástrala, o dale una combinación de teclas en Ajustes del Sistema o en Atajos y asigna esa combinación.
 
-## Touch Ring y dial
+## Anillo táctil y dial
 
-Los anillos, diales y tiras táctiles tienen cada uno sus propios modos. Haz clic en un modo, o en su sector del diagrama, para cambiar sus ajustes. Para cambiar de modo con un botón, asigna **Ciclo** o **Ir al modo**.
+Los anillos, diales y franjas táctiles tienen cada uno sus propios modos. Haz clic en un modo, o en su sector del diagrama, para cambiar sus ajustes. Para cambiar de modo con un botón, asigna **Ciclo** o **Ir al modo**.
 
 **Desplazar** – Funciona como una rueda de desplazamiento. A 1×, cada paso desplaza una línea.
 
@@ -127,7 +127,7 @@ Los dispositivos con anillo del dial iluminado o botones retroiluminados te perm
 
 El extremo borrador tiene su propia asignación en la sección del lápiz. En un lápiz sin borrador, asigna Borrador a un botón lateral y mantenlo pulsado para borrar con la punta.
 
-## Overrides por app
+## Excepciones de app
 
 La barra de excepciones de la parte superior permite asignar botones distintos a una aplicación concreta. Las excepciones se activan automáticamente cuando esa aplicación pasa al primer plano. La configuración global se aplica en todos los demás casos.
 
@@ -171,9 +171,9 @@ MockTab no admite Mission Control, Spaces, Launchpad ni App Exposé desde el tac
 
 [display]
 
-## Mapeo de pantalla
+## Asignación de pantalla
 
-El mapeo de pantalla determina qué pantalla trata la tableta como activa.
+La asignación de pantalla determina qué pantalla trata la tableta como activa.
 
 **Pantalla principal** – Asigna la tableta a tu pantalla principal.
 
@@ -189,7 +189,7 @@ El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 
 ## Área de pantalla
 
-Como el área activa, pero del lado de la pantalla: recorta la zona del display que el lápiz puede alcanzar.
+Como el área activa, pero del lado de la pantalla: recorta la zona de la pantalla que el lápiz puede alcanzar.
 
 **Seleccionar en pantalla…** – Arrastra la región directamente sobre tu escritorio, como con la herramienta de capturas de macOS.
 
@@ -215,13 +215,13 @@ Si otro controlador de tabletas, como el controlador oficial de Wacom, se ejecut
 
 ## Perfiles
 
-Un perfil es una instantánea de la configuración de la tableta: área activa, curva de presión, asignaciones de botones y mapeo de pantalla. Al cambiar de perfil, todos esos ajustes se aplican de inmediato.
+Un perfil es una instantánea de la configuración de la tableta: área activa, curva de presión, asignaciones de botones y asignación de pantalla. Al cambiar de perfil, todos esos ajustes se aplican de inmediato.
 
 ## Crear y renombrar
 
 Haz clic en **Crear perfil** para guardar la configuración actual como un perfil nuevo. Haz doble clic en el nombre de un perfil para cambiarlo, o clic derecho en un perfil para ver más opciones. Mantén **⌥** al abrir ese menú para eliminar todos los perfiles de esta tableta; **⌘Z** los recupera.
 
-## Overrides por app en los perfiles
+## Excepciones de app en los perfiles
 
 Cada perfil guarda sus propias excepciones de app. Al cambiar de perfil, también cambian las excepciones asociadas al perfil activo.
 

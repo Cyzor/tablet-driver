@@ -137,7 +137,7 @@ La barre d’exceptions d’app en haut attribue des boutons différents à une 
 
 ## Toucher
 
-Certaines tablettes détectent aussi les doigts. MockTab laisse le toucher désactivé par défaut. Activez **Activer le toucher** pour vous en servir. La réponse varie selon l’app.
+Certaines tablettes détectent aussi les doigts. MockTab laisse le toucher désactivé par défaut. Cochez **Activer le toucher** pour vous en servir. La réponse varie selon l’app.
 
 **Toucher pour cliquer** – Un bref toucher sans déplacement notable produit un clic gauche.
 
@@ -191,7 +191,7 @@ La correspondance d’écran détermine quel écran la tablette considère comme
 
 Comme la zone active, mais côté écran : rogne la partie de l’écran que le stylet peut atteindre.
 
-**Sélectionner à l’écran…** – Tracez la zone directement sur votre bureau, comme avec l’outil de capture d’écran de macOS.
+**Sélectionner à l’écran…** – Tracez la zone directement sur votre Bureau, comme avec l’outil de capture d’écran de macOS.
 
 **Utiliser tout l’écran** – Rétablit l’écran entier.
 
@@ -243,19 +243,19 @@ La sous-fenêtre Infos montre ce que transmet la tablette. Des jauges représent
 
 ## Collecter les données de l’appareil
 
-**Collecter les données de l’appareil** enregistre ce que la tablette envoie pendant que vous l’utilisez. Le résultat est un seul fichier zip que vous pouvez joindre à une demande GitHub ou envoyer par e-mail, pour ajouter ou améliorer la prise en charge d’un appareil.
+**Collecter les données de l’appareil** enregistre ce que la tablette envoie pendant que vous l’utilisez. Le résultat est un seul fichier zip que vous pouvez joindre à un ticket GitHub ou envoyer par e-mail, pour ajouter ou améliorer la prise en charge d’un appareil.
 
 ## Mises à jour
 
 **Rechercher maintenant** demande à mocktab.org s’il existe une version plus récente, et **Rechercher automatiquement** le demande chaque semaine. Rien d’autre ne passe par Internet.
 
-Une pastille sur les icônes de la barre des menus et du Dock signale qu’une mise à jour est disponible. **Installer à la fermeture** l’installe lorsque MockTab quitte, et **Installer et rouvrir** l’installe tout de suite.
+Une pastille sur les icônes de la barre des menus et du Dock signale qu’une mise à jour est disponible. **Installer à la fermeture** l’installe à la fermeture de MockTab, et **Installer et rouvrir** l’installe tout de suite.
 
 Maintenez **⌥** pour changer **Rechercher maintenant** en **Rechercher une préversion**, qui cherche une version de test plus récente. Les préversions peuvent être incomplètes. La commande **Rechercher les mises à jour…** du menu change de la même façon.
 
 ## Dock et ouverture de session
 
-**Icône du Dock** – Masque MockTab du Dock. L’icône de la barre des menus reste.
+**Icône du Dock** – Retire MockTab du Dock. L’icône de la barre des menus reste.
 
 **Ouvrir à la connexion** – Ouvre MockTab à l’ouverture de session.
 

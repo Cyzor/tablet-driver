@@ -411,7 +411,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "むかしは、ぼくもほんもののウミガメでしたのさ」にせウミガメはやっと口をひらきました。"
+            "value" : "「むかしは、ぼくもほんもののウミガメでしたのさ」にせウミガメはやっと口をひらきました。"
           }
         }
       }
@@ -722,7 +722,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ préversion, %2$@"
+            "value" : "Préversion %1$@, %2$@"
           }
         },
         "it" : {
@@ -892,7 +892,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@, von diesem Tablet nicht unterstützt"
+            "value" : "%@, von diesem Grafiktablett nicht unterstützt"
           }
         },
         "en" : {
@@ -1175,7 +1175,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld detectado"
+            "value" : "%lld detectados"
           }
         },
         "fr" : {
@@ -1664,13 +1664,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld configuración"
+                  "value" : "%lld ajuste"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld configuraciones"
+                  "value" : "%lld ajustes"
                 }
               }
             }
@@ -2362,7 +2362,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un breve tocco quasi senza movimento produce un clic sinistro. Disattivato di default, perché per molti causa clic involontari."
+            "value" : "Un breve tocco quasi senza movimento produce un clic sinistro. Disattivato per impostazione predefinita, perché per molti causa clic involontari."
           }
         },
         "ja" : {
@@ -2571,7 +2571,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Absorbe les tremblements et les variations de pression quand la pointe se pose. Faites glisser sur Désactivé pour le désactiver."
+            "value" : "Absorbe les tremblements et les variations de pression quand la pointe se pose. Faites glisser jusqu’à Désactivé pour l’arrêter."
           }
         },
         "it" : {
@@ -2635,7 +2635,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bedienhilfen    : %@"
+            "value" : "Bedienungshilfen: %@"
           }
         },
         "es" : {
@@ -2944,7 +2944,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App-spezifische Einstellung hinzufügen oder eine App aus Finder oder Dock hierher ziehen"
+            "value" : "App-Ausnahme hinzufügen oder eine App aus dem Finder oder Dock hierher ziehen"
           }
         },
         "es" : {
@@ -3203,7 +3203,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nimmt dieses Display in die Displayrotation auf oder heraus."
+            "value" : "Nimmt dieses Display in die Display-Auswahl auf oder entfernt es daraus."
           }
         },
         "es" : {
@@ -3484,7 +3484,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "別のタブレットのウィンドウがデータを収集中です。先にそちらを終了してください。"
+            "value" : "別のタブレットのウインドウがデータを収集中です。先にそちらを終了してください。"
           }
         }
       }
@@ -3863,7 +3863,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1.00 では、コンテンツがペンと同じだけ動きます。「ビューをパン」はボタンパネルでボタンに割り当てます。"
+            "value" : "1.00 では、コンテンツがペンと同じだけ動きます。「ビューをパン」は「ボタン」パネルでボタンに割り当てます。"
           }
         }
       }
@@ -3874,13 +3874,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bei 1,00 folgt der Cursor der Abbildung der Touch-Fläche. Höher für mehr Tempo, niedriger für mehr Kontrolle."
+            "value" : "Bei 1,00 folgt der Cursor der Abbildung des Berührungsbereichs. Höher für mehr Tempo, niedriger für mehr Kontrolle."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Con 1,00, el cursor sigue el mapeo del área táctil. Súbelo para ir más rápido o bájalo para más control."
+            "value" : "Con 1,00, el cursor sigue la asignación del área táctil. Súbelo para ir más rápido o bájalo para más control."
           }
         },
         "fr" : {
@@ -4012,7 +4012,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Warte auf Antwort der Fernbedienung"
+            "value" : "Warte auf Antwort der Gegenstelle"
           }
         },
         "es" : {
@@ -4338,7 +4338,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "最適化"
+            "value" : "最適サイズ"
           }
         }
       }
@@ -4841,7 +4841,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle nach vorne"
+            "value" : "Alle nach vorne bringen"
           }
         },
         "en" : {
@@ -4871,7 +4871,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "すべてを前面へ"
+            "value" : "すべてを手前に移動"
           }
         }
       }
@@ -5283,7 +5283,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Calibrar display de lápiz"
+            "value" : "Calibrar pantalla con lápiz"
           }
         },
         "fr" : {
@@ -5581,7 +5581,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "センター"
+            "value" : "中央"
           }
         }
       }
@@ -5718,7 +5718,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "映像ケーブル経由でディスプレイ本体の設定を変更します。このディスプレイは設定値を返さないため、スライダーは前回設定した位置から始まります。"
+            "value" : "映像ケーブル経由でディスプレイ本体の設定を変更します。このディスプレイは設定値を返さないため、スライダは前回設定した位置から始まります。"
           }
         }
       }
@@ -6309,7 +6309,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Schaltflächenzuordnung löschen."
+            "value" : "Diese Tastenbelegung löschen."
           }
         },
         "en" : {
@@ -6368,7 +6368,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cliquez sur un écran pour y associer la tablette. ⌘+clic pour l’ajouter aux écrans à parcourir. ⇧+clic pour étendre sur tous les écrans."
+            "value" : "Cliquez sur un écran pour y associer la tablette. ⌘+clic pour l’ajouter à la sélection. ⇧+clic pour étendre sur tous les écrans."
           }
         },
         "it" : {
@@ -6403,7 +6403,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cliquez sur un écran pour y associer la tablette. Commande-clic pour l’ajouter aux écrans à parcourir. Maj-clic pour sélectionner une plage."
+            "value" : "Cliquez sur un écran pour y associer la tablette. Commande-clic pour l’ajouter à la sélection. Maj-clic pour sélectionner une plage."
           }
         },
         "it" : {
@@ -6980,7 +6980,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablet-Details für den Support sammeln."
+            "value" : "Grafiktablett-Details für den Support sammeln."
           }
         },
         "es" : {
@@ -7312,7 +7312,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bildschirmbereich begrenzen. Der Rest bleibt zu."
+            "value" : "Beschränkt das Grafiktablett auf einen Teil des Bildschirms. Der Rest ist nicht erreichbar."
           }
         },
         "es" : {
@@ -8205,7 +8205,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible d’enregistrer sur le bureau, et aucun autre emplacement n’a été choisi."
+            "value" : "Impossible d’enregistrer sur le Bureau, et aucun autre emplacement n’a été choisi."
           }
         },
         "it" : {
@@ -8262,7 +8262,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gilt für jeden Ring, jedes Einstellrad und jeden Streifen auf diesem Grafiktablett, in jedem Modus."
+            "value" : "Gilt für jeden Ring, jedes Einstellrad und jede Leiste auf diesem Grafiktablett, in jedem Modus."
           }
         },
         "es" : {
@@ -9374,7 +9374,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Calibrazione di default"
+            "value" : "Calibrazione predefinita"
           }
         },
         "ja" : {
@@ -9817,7 +9817,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default del dispositivo"
+            "value" : "Valori predefiniti del dispositivo"
           }
         },
         "ja" : {
@@ -10804,13 +10804,13 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ignorer"
+            "value" : "Rejeter"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ignora"
+            "value" : "Scarta"
           }
         },
         "ja" : {
@@ -10845,7 +10845,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elimina tutte le impostazioni, i profili, le assegnazioni dei pulsanti e l’elenco delle penne salvate per questa tavoletta. Al prossimo collegamento, MockTab aggiungerà di nuovo la tavoletta con i valori di default."
+            "value" : "Elimina tutte le impostazioni, i profili, le assegnazioni dei pulsanti e l’elenco delle penne salvate per questa tavoletta. Al prossimo collegamento, MockTab aggiungerà di nuovo la tavoletta con i valori predefiniti."
           }
         },
         "ja" : {
@@ -10909,7 +10909,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Brillo del display"
+            "value" : "Brillo de la pantalla"
           }
         },
         "fr" : {
@@ -10944,7 +10944,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espacio de color del display"
+            "value" : "Espacio de color de la pantalla"
           }
         },
         "fr" : {
@@ -10979,7 +10979,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Contraste del display"
+            "value" : "Contraste de la pantalla"
           }
         },
         "fr" : {
@@ -11014,7 +11014,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gamma del display"
+            "value" : "Gamma de la pantalla"
           }
         },
         "fr" : {
@@ -11714,7 +11714,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tracez la zone directement sur votre bureau, comme avec l’outil de capture d’écran de macOS."
+            "value" : "Tracez la zone directement sur votre Bureau, comme avec l’outil de capture d’écran de macOS."
           }
         },
         "it" : {
@@ -11877,7 +11877,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ウィンドウを複製"
+            "value" : "ウインドウを複製"
           }
         }
       }
@@ -12825,7 +12825,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ exporté"
+            "value" : "Exporté le %@"
           }
         },
         "it" : {
@@ -12848,7 +12848,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Express-Taste %lld"
+            "value" : "ExpressKey %lld"
           }
         },
         "es" : {
@@ -12872,7 +12872,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "エクスプレスキー %lld"
+            "value" : "ExpressKey %lld"
           }
         }
       }
@@ -12883,7 +12883,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Express-Tasten"
+            "value" : "ExpressKeys"
           }
         },
         "en" : {
@@ -12913,7 +12913,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "エクスプレスキー"
+            "value" : "ExpressKey"
           }
         }
       }
@@ -13619,7 +13619,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zum Tab „Tasten\" wechseln, um eine Taste für die Display-Umschaltung zu belegen."
+            "value" : "Zum Bereich „Tasten“ wechseln, um eine Taste für die Display-Umschaltung zu belegen."
           }
         },
         "en" : {
@@ -13637,7 +13637,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Allez dans l’onglet Boutons pour attribuer un bouton qui bascule entre les écrans."
+            "value" : "Allez dans la sous-fenêtre Boutons pour attribuer un bouton qui bascule entre les écrans."
           }
         },
         "it" : {
@@ -13649,7 +13649,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ボタンタブに移動して、ディスプレイ切り替えをトリガーするボタンを割り当てます。"
+            "value" : "「ボタン」パネルでディスプレイ切り替えをトリガーするボタンを割り当てます。"
           }
         }
       }
@@ -14146,7 +14146,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Masque MockTab du Dock et du sélecteur d’apps. Son icône reste dans la barre des menus."
+            "value" : "Retire MockTab du Dock et du sélecteur d’apps. Son icône reste dans la barre des menus."
           }
         },
         "it" : {
@@ -14245,7 +14245,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tab-Leiste ausblenden"
+            "value" : "Tableiste ausblenden"
           }
         },
         "en" : {
@@ -14637,7 +14637,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Maintenez les ExpressKeys extérieures pendant 5 secondes, puis reconnectez."
+            "value" : "Maintenez les ExpressKeys extérieures pendant 5 secondes, puis reconnectez-la."
           }
         },
         "it" : {
@@ -14706,7 +14706,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Maintient le clic pendant cette durée après le lever de la pointe lors des tracés rapides, pour qu’ils ne se coupent pas. Faites glisser sur Désactivé pour le désactiver."
+            "value" : "Maintient le clic pendant cette durée après le lever de la pointe lors des tracés rapides, pour qu’ils ne se coupent pas. Faites glisser jusqu’à Désactivé pour l’arrêter."
           }
         },
         "it" : {
@@ -15398,7 +15398,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En modo absoluto, cada punto de la tableta se asigna a un punto fijo en la pantalla. En modo relativo, el cursor se mueve por la distancia que mueve la pluma, como un ratón."
+            "value" : "En modo absoluto, cada punto de la tableta se asigna a un punto fijo en la pantalla. En modo relativo, el cursor se mueve por la distancia que mueves el lápiz, como un ratón."
           }
         },
         "fr" : {
@@ -15532,7 +15532,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trägheitsscrollen. Kompatibilität hängt von der App ab."
+            "value" : "Scrollen mit Nachlauf. Kompatibilität hängt von der App ab."
           }
         },
         "es" : {
@@ -17403,7 +17403,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gibt dem Bildschirmbereich die Form des Grafiktabletts, so groß wie möglich – so bleibt keine Tablettfläche ungenutzt."
+            "value" : "Gibt dem Bildschirmbereich die Form des Grafiktabletts, so groß wie möglich – so bleibt keine Fläche des Grafiktabletts ungenutzt."
           }
         },
         "es" : {
@@ -17449,7 +17449,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pour calibrer, associez le stylet à son propre écran ou incluez cet écran dans la bascule."
+            "value" : "Pour calibrer, associez le stylet à son propre écran ou incluez cet écran dans « Basculer entre les écrans »."
           }
         },
         "it" : {
@@ -17562,7 +17562,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mapear el tablet solo a %@."
+            "value" : "Asignar la tableta solo a %@."
           }
         },
         "fr" : {
@@ -17656,7 +17656,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タブレットをメイン ディスプレイにマップ。"
+            "value" : "タブレットをメインディスプレイにマップ。"
           }
         }
       }
@@ -18491,7 +18491,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab ne sait pas encore tout lire ici. Le fichier aide."
+            "value" : "MockTab ne sait pas encore tout lire ici. Le fichier sera utile."
           }
         },
         "it" : {
@@ -18538,7 +18538,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab non riesce a leggere questa azione salvata, quindi usa quella di default."
+            "value" : "MockTab non riesce a leggere questa azione salvata, quindi usa quella predefinita."
           }
         },
         "ja" : {
@@ -18602,7 +18602,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab n’a pas pu écrire sur votre bureau. Choisissez où enregistrer les données collectées."
+            "value" : "MockTab n’a pas pu écrire sur votre Bureau. Choisissez où enregistrer les données collectées."
           }
         },
         "it" : {
@@ -18649,7 +18649,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTabは一部のシステムジェスチャーには対応していません。"
+            "value" : "MockTabは一部のシステムジェスチャには対応していません。"
           }
         }
       }
@@ -18812,7 +18812,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configuración de MockTab"
+            "value" : "Ajustes de MockTab"
           }
         },
         "fr" : {
@@ -18900,7 +18900,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MockTab Web サイト…"
+            "value" : "MockTab Webサイト…"
           }
         }
       }
@@ -19474,7 +19474,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aleje de la tableta los receptores de ratón, teclado y Wi-Fi."
+            "value" : "Aleja de la tableta los receptores de ratón, teclado y Wi-Fi."
           }
         },
         "fr" : {
@@ -19567,7 +19567,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "動作モード"
+            "value" : "動作"
           }
         }
       }
@@ -19676,7 +19676,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一部の旧型ペンタブレット向けのネイティブ macOS ドライバー"
+            "value" : "一部の旧型ペンタブレット向けのネイティブ macOS ドライバ"
           }
         }
       }
@@ -19892,7 +19892,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun bouton attribué à la bascule"
+            "value" : "Aucun bouton attribué à « Basculer entre les écrans »"
           }
         },
         "it" : {
@@ -20255,7 +20255,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aún no hay perfiles. Crear uno abajo."
+            "value" : "Aún no hay perfiles. Crea uno abajo."
           }
         },
         "fr" : {
@@ -20548,7 +20548,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一部のシステムジェスチャーには対応していません。"
+            "value" : "一部のシステムジェスチャには対応していません。"
           }
         }
       }
@@ -20710,7 +20710,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "nicht gewährt"
+            "value" : "nicht erteilt"
           }
         },
         "en" : {
@@ -20722,7 +20722,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "no otorgado"
+            "value" : "no concedido"
           }
         },
         "fr" : {
@@ -20740,7 +20740,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "付与されていない"
+            "value" : "未許可"
           }
         }
       }
@@ -20833,7 +20833,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Von diesem Tablet nicht unterstützt"
+            "value" : "Von diesem Grafiktablett nicht unterstützt"
           }
         },
         "en" : {
@@ -21394,7 +21394,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abre la superposición de calibración para tocar objetivos de cruz en tu display de lápiz."
+            "value" : "Abre la superposición de calibración para tocar objetivos de cruz en tu pantalla con lápiz."
           }
         },
         "fr" : {
@@ -21412,7 +21412,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キャリブレーション オーバーレイを開いて、ペン ディスプレイの十字線目標をタップします。"
+            "value" : "キャリブレーションオーバーレイを開いて、ペンディスプレイの十字線目標をタップします。"
           }
         }
       }
@@ -21429,7 +21429,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abrir la ventana de configuración de esta tableta"
+            "value" : "Abrir la ventana de ajustes de esta tableta"
           }
         },
         "fr" : {
@@ -21930,7 +21930,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sens de Déplacer la vue"
+            "value" : "Sens du déplacement de la vue"
           }
         },
         "it" : {
@@ -21988,7 +21988,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schwenk-Trägheit"
+            "value" : "Schwenken mit Nachlauf"
           }
         },
         "en" : {
@@ -22006,7 +22006,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inertie de Déplacer la vue"
+            "value" : "Inertie du déplacement de la vue"
           }
         },
         "it" : {
@@ -22041,7 +22041,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vitesse de Déplacer la vue"
+            "value" : "Vitesse du déplacement de la vue"
           }
         },
         "it" : {
@@ -22070,7 +22070,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desplazamiento del puntero"
+            "value" : "Corrección de paralaje"
           }
         },
         "fr" : {
@@ -22264,7 +22264,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stift-Totzone  : %1$lld Counts, zuletzt angewendet %2$lld (Einstellung %3$lld, Tablett %4$@)"
+            "value" : "Stift-Totzone  : %1$lld Counts, zuletzt angewendet %2$lld (Einstellung %3$lld, Grafiktablett %4$@)"
           }
         },
         "es" : {
@@ -22311,7 +22311,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Calibración del display de lápiz"
+            "value" : "Calibración de la pantalla con lápiz"
           }
         },
         "fr" : {
@@ -23120,7 +23120,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "圧力曲線"
+            "value" : "筆圧カーブ"
           }
         }
       }
@@ -23155,7 +23155,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "感圧曲線ポイント1の入力"
+            "value" : "筆圧カーブポイント1の入力"
           }
         }
       }
@@ -23190,7 +23190,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "感圧曲線ポイント1の出力"
+            "value" : "筆圧カーブポイント1の出力"
           }
         }
       }
@@ -23225,7 +23225,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "感圧曲線ポイント2の入力"
+            "value" : "筆圧カーブポイント2の入力"
           }
         }
       }
@@ -23260,7 +23260,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "感圧曲線ポイント2の出力"
+            "value" : "筆圧カーブポイント2の出力"
           }
         }
       }
@@ -23692,7 +23692,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proportionale Projektion"
+            "value" : "Proportionale Zuordnung"
           }
         },
         "en" : {
@@ -23733,7 +23733,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proportionale Projektion"
+            "value" : "Proportionale Zuordnung"
           }
         },
         "es" : {
@@ -23826,7 +23826,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Keys-Batterie"
+            "value" : "Quick-Keys-Batterie"
           }
         },
         "en" : {
@@ -23867,7 +23867,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Keys-Einstellradtaste"
+            "value" : "Quick-Keys-Einstellradtaste"
           }
         },
         "es" : {
@@ -24042,7 +24042,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quick Keys-Sleep-Timer"
+            "value" : "Quick-Keys-Ruhezustand"
           }
         },
         "es" : {
@@ -24224,7 +24224,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tastenkombination festlegen"
+            "value" : "Kurzbefehl aufnehmen"
           }
         },
         "en" : {
@@ -24435,7 +24435,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina"
+            "value" : "Ripeti"
           }
         },
         "ja" : {
@@ -24679,13 +24679,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„%@\" entfernen?"
+            "value" : "„%@“ entfernen?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Eliminar \"%@\"?"
+            "value" : "¿Eliminar «%@»?"
           }
         },
         "fr" : {
@@ -24755,7 +24755,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Eliminar todas las anulaciones de %@ en esta pestaña"
+            "value" : "Eliminar todas las excepciones de %@ en esta pestaña"
           }
         },
         "fr" : {
@@ -25716,7 +25716,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina default del pannello"
+            "value" : "Ripristina valori predefiniti del pannello"
           }
         },
         "ja" : {
@@ -25746,7 +25746,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablece el área activa a toda la superficie de la tableta (reversible)."
+            "value" : "Restablece el área activa a toda la superficie de la tableta (se puede deshacer)."
           }
         },
         "fr" : {
@@ -25764,7 +25764,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アクティブな領域をタブレット全体にリセット（元に戻せます）。"
+            "value" : "アクティブな領域をタブレット全体にリセット（取り消し可能）。"
           }
         }
       }
@@ -25780,7 +25780,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restablece el área táctil a toda la superficie táctil (reversible)."
+            "value" : "Restablece el área táctil a toda la superficie táctil (se puede deshacer)."
           }
         },
         "fr" : {
@@ -25798,7 +25798,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "タッチエリアをタッチ面全体にリセット（元に戻せます）。"
+            "value" : "タッチエリアをタッチ面全体にリセット（取り消し可能）。"
           }
         }
       }
@@ -25827,7 +25827,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ripristina default"
+            "value" : "Ripristina valori predefiniti"
           }
         },
         "ja" : {
@@ -26008,7 +26008,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar en Finder"
+            "value" : "Mostrar en el Finder"
           }
         },
         "fr" : {
@@ -27513,7 +27513,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dreh die aktive Fläche um 180°; die lange Kante des Tabletts bleibt waagerecht."
+            "value" : "Dreh die aktive Fläche um 180°; die lange Kante des Grafiktabletts bleibt waagerecht."
           }
         },
         "es" : {
@@ -27855,7 +27855,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Testbereich"
+            "value" : "Skizzenblock"
           }
         },
         "en" : {
@@ -28400,7 +28400,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Legt fest, wie viel Druck die Spitze braucht, bevor er als Kontakt zählt. Das funktioniert wie die Empfindlichkeit, aber für den Punkt, an dem der Kontakt beginnt, statt für die Kennlinie. Höher ergibt einen festeren, bewussteren Klick, niedriger die leichtestmögliche Berührung. Bei „Aus“, dem Standard, erkennt die Spitze Druck ab der Untergrenze des Sensors."
+            "value" : "Legt fest, wie viel Druck die Spitze braucht, bevor er als Kontakt zählt. Das funktioniert wie die Empfindlichkeit, aber für den Punkt, an dem der Kontakt beginnt, statt für die Druckkurve. Höher ergibt einen festeren, bewussteren Klick, niedriger die leichtestmögliche Berührung. Bei „Aus“, dem Standard, erkennt die Spitze Druck ab der Untergrenze des Sensors."
           }
         },
         "es" : {
@@ -28418,7 +28418,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stabilisce quanta pressione serve perché la punta registri un contatto. Funziona come la sensibilità, ma per il punto in cui inizia il contatto anziché per la curva di risposta. Aumentalo per un clic più deciso e intenzionale, o riducilo per il tocco più leggero possibile. Su Disattivato, il valore di default, la punta risponde dalla soglia minima del sensore."
+            "value" : "Stabilisce quanta pressione serve perché la punta registri un contatto. Funziona come la sensibilità, ma per il punto in cui inizia il contatto anziché per la curva di risposta. Aumentalo per un clic più deciso e intenzionale, o riducilo per il tocco più leggero possibile. Su Disattivato, il valore predefinito, la punta risponde dalla soglia minima del sensore."
           }
         },
         "ja" : {
@@ -28441,7 +28441,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configuración de %@"
+            "value" : "Ajustes de %@"
           }
         },
         "fr" : {
@@ -28634,7 +28634,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar en Finder"
+            "value" : "Mostrar en el Finder"
           }
         },
         "fr" : {
@@ -28745,7 +28745,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar configuración de MockTab"
+            "value" : "Mostrar ajustes de MockTab"
           }
         },
         "fr" : {
@@ -28815,7 +28815,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tab-Leiste anzeigen"
+            "value" : "Tableiste einblenden"
           }
         },
         "en" : {
@@ -29318,7 +29318,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sleep-Timer"
+            "value" : "Ruhezustand"
           }
         },
         "es" : {
@@ -29353,7 +29353,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit dem Finger über Ring oder Streifen fahren"
+            "value" : "Mit dem Finger über Ring oder Leiste fahren"
           }
         },
         "en" : {
@@ -29949,7 +29949,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standardausrichtung, die lange Kante des Tabletts liegt waagerecht."
+            "value" : "Standardausrichtung, die lange Kante des Grafiktabletts liegt waagerecht."
           }
         },
         "es" : {
@@ -30152,7 +30152,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Arrêter et ignorer"
+            "value" : "Arrêter et supprimer"
           }
         },
         "it" : {
@@ -30671,13 +30671,13 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ruota due dita distanziate per ruotare."
+            "value" : "Ruota due dita ben distanziate."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "2本指を離して回転させます。"
+            "value" : "2本指をひねるように回すと回転します。"
           }
         }
       }
@@ -30896,7 +30896,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablets   : ninguno"
+            "value" : "Tabletas  : ninguna"
           }
         },
         "fr" : {
@@ -30914,7 +30914,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tablets   : なし"
+            "value" : "タブレット : なし"
           }
         }
       }
@@ -31694,7 +31694,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo mouse tornerà con il nome di default al prossimo utilizzo."
+            "value" : "Questo mouse tornerà con il nome predefinito al prossimo utilizzo."
           }
         },
         "ja" : {
@@ -31776,7 +31776,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa penna tornerà con il nome di default al prossimo utilizzo."
+            "value" : "Questa penna tornerà con il nome predefinito al prossimo utilizzo."
           }
         },
         "ja" : {
@@ -32019,7 +32019,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aufhebehilfe"
+            "value" : "Abhebehilfe"
           }
         },
         "en" : {
@@ -32552,7 +32552,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touch Ring-Taste"
+            "value" : "Touch-Ring-Taste"
           }
         },
         "es" : {
@@ -33025,7 +33025,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tastenkombination zuweisen…"
+            "value" : "Kurzbefehl eingeben…"
           }
         },
         "es" : {
@@ -33288,7 +33288,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usa un botón para cambiar el mapeo activo de la tableta entre las pantallas seleccionadas."
+            "value" : "Usa un botón para cambiar la asignación activa de la tableta entre las pantallas seleccionadas."
           }
         },
         "fr" : {
@@ -33324,7 +33324,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desplázate con dos dedos."
+            "value" : "Desplaza el contenido con dos dedos."
           }
         },
         "fr" : {
@@ -33371,7 +33371,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usa l’intera tavoletta e dà la sua forma all’area dello schermo, grande quanto il monitor consente."
+            "value" : "Usa l’intera tavoletta e dai all’area dello schermo la sua forma, grande quanto il monitor consente."
           }
         },
         "ja" : {
@@ -33465,7 +33465,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touch‑Eingabe verwenden; deaktivieren für nur Stift."
+            "value" : "Mit dem Finger bewegen und klicken."
           }
         },
         "es" : {
@@ -33933,7 +33933,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ウェブサイト"
+            "value" : "Webサイト"
           }
         }
       }
@@ -34067,7 +34067,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se attivo, il contenuto si muove in senso opposto alle dita, come con una classica rotella del mouse. Se disattivo, come di default, il contenuto segue le dita."
+            "value" : "Se attivo, il contenuto si muove in senso opposto alle dita, come con una classica rotella del mouse. Se disattivo, come da impostazione predefinita, il contenuto segue le dita."
           }
         },
         "ja" : {
@@ -34102,7 +34102,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se attivo, lo scorrimento con due dita continua per inerzia dopo aver sollevato le dita nelle app con aree di scorrimento. È disattivato di default."
+            "value" : "Se attivo, lo scorrimento con due dita continua per inerzia dopo aver sollevato le dita nelle app con aree di scorrimento. È disattivato per impostazione predefinita."
           }
         },
         "ja" : {
@@ -34159,7 +34159,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mientras %@ estén en ejecución, el puntero puede saltar o hacer clic por sí solo. Ciérrelos o desinstálelos."
+            "value" : "Mientras %@ estén en ejecución, el puntero puede saltar o hacer clic por sí solo. Ciérralos o desinstálalos."
           }
         },
         "fr" : {
@@ -34194,7 +34194,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mientras esté en ejecución, el puntero puede saltar o hacer clic por sí solo. Ciérrelo o desinstálelo."
+            "value" : "Mientras esté en ejecución, el puntero puede saltar o hacer clic por sí solo. Ciérralo o desinstálalo."
           }
         },
         "fr" : {
@@ -34381,7 +34381,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las interferencias inalámbricas también afectan al lápiz. Aleje de la tableta los receptores de ratón, teclado y Wi-Fi."
+            "value" : "Las interferencias inalámbricas también afectan al lápiz. Aleja de la tableta los receptores de ratón, teclado y Wi-Fi."
           }
         },
         "fr" : {
@@ -34539,7 +34539,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "トラックパッドの回転ジェスチャーが使える場所ならどこでも動作します。"
+            "value" : "トラックパッドの回転ジェスチャが使える場所ならどこでも動作します。"
           }
         }
       }
@@ -34549,7 +34549,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Für Stifte, die sich drehen lassen, etwa den Art Pen. Verfügbar, sobald einer an diesem Tablet benutzt wurde."
+            "value" : "Für Stifte, die sich drehen lassen, etwa den Art Pen. Verfügbar, sobald einer an diesem Grafiktablett benutzt wurde."
           }
         },
         "es" : {
@@ -34660,7 +34660,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Soltaste %lld apps. ¿Añadir todas como anulaciones?"
+            "value" : "Soltaste %lld apps. ¿Añadir todas como excepciones?"
           }
         },
         "fr" : {
