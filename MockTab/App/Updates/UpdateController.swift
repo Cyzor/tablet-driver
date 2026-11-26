@@ -168,7 +168,22 @@ final class UpdateController: ObservableObject {
 
     // MARK: - Launch
 
+    /// Whether the helper launched for a pending install is still running.
+    /// MockTab reopened before its swap must leave the staged copy and the
+    /// pending record to it.
+    private func installerStillRunning() -> Bool {
+        guard let pending = UserDefaults.standard.dictionary(forKey: Self.pendingKey),
+              let pid = pending["helper"] as? Int32, pid > 0
+        else { return false }
+        var path = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+        // The path check rules out a reused process ID.
+        guard proc_pidpath(pid, &path, UInt32(path.count)) > 0 else { return false }
+        return String(cString: path) == helperURL.resolvingSymlinksInPath().path
+    }
+
     func start() {
+        // The next launch, after the swap, reports how it went.
+        if installerStillRunning() { return }
         // An install cut short (logout, crash) can leave a copy of the app.
         removeLeftoverStaging()
         let failure = UserDefaults.standard.string(forKey: Self.installFailedKey)
@@ -357,6 +372,10 @@ final class UpdateController: ObservableObject {
         p.standardError = FileHandle.nullDevice
         do {
             try p.run()
+            if var pending = UserDefaults.standard.dictionary(forKey: Self.pendingKey) {
+                pending["helper"] = p.processIdentifier
+                UserDefaults.standard.set(pending, forKey: Self.pendingKey)
+            }
             return true
         } catch {
             UserDefaults.standard.removeObject(forKey: Self.pendingKey)
