@@ -489,7 +489,7 @@ extension ButtonsView {
     /// The escape hatch: what a half turn would do to the assignments, done
     /// without turning the tablet, on the settings the pane shows.
     func turnAssignmentsAround() {
-        guard let spec, let figure = Self.diagramFigure(for: spec) else { return }
+        guard let spec, let figure = Self.diagramFigure(for: spec, isWacom: tabletIsWacom) else { return }
         let orientation = settings.tabletOrientation
         settings.turnAssignmentsAround(
             figure.turnCarry(from: orientation, to: orientation.halfTurned,
@@ -505,10 +505,10 @@ extension ButtonsView {
 
     private var placedControls: [ControlTarget: ControlTarget] {
         guard !isRemote, let spec else { return [:] }
-        let key = DiagramFigureKey(productID: spec.productID, orientation: settings.tabletOrientation)
+        let key = DiagramFigureKey(productID: spec.productID, isWacom: tabletIsWacom, orientation: settings.tabletOrientation)
         if let cached = Self.placeMaps[key] { return cached }
         var map: [ControlTarget: ControlTarget] = [:]
-        if let figure = Self.diagramFigure(for: spec),
+        if let figure = Self.diagramFigure(for: spec, isWacom: key.isWacom),
            let seen = figure.landscapeEquivalents(turnedTo: key.orientation) {
             for (control, place) in seen { map[place] = control }
         }
@@ -645,26 +645,36 @@ extension ButtonsView {
     /// The tablet as it sits on the desk, turned like the Tablet Area figure.
     var tabletDiagramFigure: TabletFigure? {
         guard let spec else { return nil }
-        let key = DiagramFigureKey(productID: spec.productID, orientation: settings.tabletOrientation)
+        let key = DiagramFigureKey(productID: spec.productID, isWacom: tabletIsWacom, orientation: settings.tabletOrientation)
         if let cached = Self.diagramFigures[key] { return cached }
-        let figure = Self.diagramFigure(for: spec)?.oriented(key.orientation)
+        let figure = Self.diagramFigure(for: spec, isWacom: key.isWacom)?.oriented(key.orientation)
         Self.diagramFigures[key] = .some(figure)
         return figure
     }
 
     private struct DiagramFigureKey: Hashable {
         let productID: Int
+        let isWacom: Bool
         let orientation: TabletOrientation
+    }
+
+    /// Whether this pane's tablet is a Wacom: the live device's vendor, else
+    /// the saved one; a tablet saved before vendors were recorded counts as
+    /// Wacom. Product IDs alone collide across brands.
+    private var tabletIsWacom: Bool {
+        guard let spec else { return false }
+        let vendorID = tabletManager.context(forKey: instanceKey)?.vendorID
+            ?? registry.knownTablets.first { $0.productID == spec.productID }?.vendorID ?? 0x056A
+        return vendorID == 0x056A
     }
 
     /// Figures by model and orientation, nil for a model without one. A
     /// figure depends on nothing else, so each pane update costs a lookup.
     private static var diagramFigures: [DiagramFigureKey: TabletFigure?] = [:]
 
-    private static func diagramFigure(for spec: TabletSpec) -> TabletFigure? {
+    private static func diagramFigure(for spec: TabletSpec, isWacom: Bool) -> TabletFigure? {
         // Other brands' product IDs can match a Wacom model's, so only their own layouts count.
-        guard VendorDeviceRegistry.profile(forProductID: spec.productID) == nil
-                || TabletLayoutExtras.productIDs.contains(spec.productID),
+        guard isWacom || TabletLayoutExtras.productIDs.contains(spec.productID),
               spec.maxX > 0, spec.maxY > 0,
               let map = TabletControlMap.forDevice(productID: spec.productID, spec: spec)
         else { return nil }

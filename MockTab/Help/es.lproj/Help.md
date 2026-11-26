@@ -175,11 +175,15 @@ MockTab no admite Mission Control, Spaces, Launchpad ni App Exposé desde el tac
 
 El mapeo de pantalla determina qué pantalla trata la tableta como activa.
 
-**Todas las pantallas** – Abarca todo el escritorio de forma proporcional. Va bien para flujos de trabajo que se mueven entre varios monitores.
+**Pantalla principal** – Asigna la tableta a tu pantalla principal.
 
-**Una sola pantalla** – Haz clic en una pantalla del diagrama para asignar el área activa solo a esa pantalla.
+**Una sola pantalla** – Elige una pantalla por su nombre para asignarle solo a ella la tableta.
 
-**Cambiar pantalla** – Cambia de pantalla con un botón. Haz ⌘-clic en las pantallas del diagrama para elegir cuáles recorre, o Mayúsculas-clic para seleccionar un rango.
+**Alternar entre pantallas** – Un botón alterna la tableta entre las pantallas que selecciones. Haz ⌘-clic en las pantallas del diagrama para elegirlas, o Mayúsculas-clic para seleccionar un rango.
+
+**Distribuir en pantallas seleccionadas** – Asigna la tableta a las pantallas seleccionadas como una sola superficie.
+
+**Todos** – Asigna la tableta a todas las pantallas como una sola superficie.
 
 **Distribuir en pantallas** – Pulsa un botón con esta acción para distribuir el lápiz en las pantallas seleccionadas en Pantallas activas, y vuelve a pulsarlo para volver a tu ajuste habitual. Si no hay ninguna seleccionada, abarca todas las pantallas.
 

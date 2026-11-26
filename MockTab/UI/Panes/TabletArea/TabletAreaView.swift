@@ -62,7 +62,7 @@ struct TabletAreaView: View {
         // vendors were recorded counts as Wacom.
         let vendorID = tabletManager.context(forKey: boundKey)?.vendorID
             ?? registry.knownTablets.first { $0.productID == pid }?.vendorID ?? 0x056A
-        let isWacom = vendorID == 0x056A && VendorDeviceRegistry.profile(forProductID: pid) == nil
+        let isWacom = vendorID == 0x056A
         // Other brands' product IDs can match a Wacom model's, so only their own layouts count.
         let hasLayout = isWacom || TabletLayoutExtras.productIDs.contains(pid)
         var figure = TabletFigure(

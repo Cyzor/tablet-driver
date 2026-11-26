@@ -175,11 +175,15 @@ MockTab non supporta Mission Control, Spaces, Launchpad o App Exposé con il toc
 
 La mappatura dello schermo stabilisce quale schermo la tavoletta considera attivo.
 
-**Tutti i monitor** – Copre in proporzione l’intera scrivania. Adatto a chi lavora su più monitor.
+**Monitor principale** – Mappa la tavoletta sul monitor principale.
 
-**Un solo monitor** – Fai clic su un monitor nello schema per mappare l’area attiva solo su quello.
+**Un solo monitor** – Scegli un monitor per nome per mappare la tavoletta solo su quello.
 
-**Cambia monitor** – Cambia monitor da un pulsante. Fai ⌘-clic sui monitor nello schema per scegliere quelli tra cui passa, o Maiuscole-clic per selezionare un intervallo.
+**Alterna tra i monitor** – Un pulsante sposta la tavoletta tra i monitor selezionati. Fai ⌘-clic sui monitor nello schema per sceglierli, o Maiuscole-clic per selezionare un intervallo.
+
+**Estendi sui monitor selezionati** – Mappa la tavoletta sui monitor selezionati come un’unica superficie.
+
+**Tutti** – Mappa la tavoletta su tutti i monitor come un’unica superficie.
 
 **Estendi sui monitor** – Premi un pulsante assegnato a Estendi sui monitor per estendere la penna sui monitor selezionati in Monitor attivi, e premilo di nuovo per tornare all’impostazione abituale. Se non ne è selezionato nessuno, li copre tutti.
 

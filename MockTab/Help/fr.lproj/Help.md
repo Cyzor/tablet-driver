@@ -175,11 +175,15 @@ MockTab ne prend pas en charge Mission Control, Spaces, Launchpad ni App Exposé
 
 La correspondance d’écran détermine quel écran la tablette considère comme actif.
 
-**Tous les écrans** – Couvre tout le bureau proportionnellement. Convient au travail réparti sur plusieurs moniteurs.
+**Écran principal** – Associe la tablette à votre écran principal.
 
-**Un seul écran** – Cliquez sur un écran du schéma pour associer la zone active à cet écran uniquement.
+**Un seul écran** – Choisissez un écran par son nom pour y associer la tablette uniquement.
 
-**Changer d’écran** – Change d’écran depuis un bouton. ⌘-cliquez sur les écrans du schéma pour choisir ceux qu’il parcourt, ou Maj-cliquez pour sélectionner une plage.
+**Basculer entre les écrans** – Un bouton fait passer la tablette d’un écran sélectionné à l’autre. ⌘-cliquez sur les écrans du schéma pour les choisir, ou Maj-cliquez pour sélectionner une plage.
+
+**Étendre sur les écrans sélectionnés** – Associe la tablette aux écrans sélectionnés comme une seule surface.
+
+**Tous** – Associe la tablette à tous les écrans comme une seule surface.
 
 **Étendre sur les écrans** – Appuyez sur un bouton réglé sur Étendre sur les écrans pour étendre le stylet sur les écrans sélectionnés sous Écrans actifs, et appuyez de nouveau pour revenir à votre réglage habituel. Si aucun n’est sélectionné, il couvre tous les écrans.
 

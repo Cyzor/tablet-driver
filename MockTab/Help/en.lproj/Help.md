@@ -175,11 +175,15 @@ MockTab doesn't support Mission Control, Spaces, Launchpad, or App Exposé from 
 
 Display mapping determines which screen the tablet treats as active.
 
-**All Displays** – Spans the entire desktop proportionally. Suits workflows that move across multiple monitors.
+**Primary display** – Maps the tablet to your main display.
 
-**Single Display** – Click a display in the diagram to map the active area to just that display.
+**A single display** – Choose a display by name to map the tablet to it alone.
 
-**Toggle Display** – Switches displays from a button. ⌘-click displays in the diagram to choose which ones it cycles through, or Shift-click to select a range.
+**Toggle between displays** – A button press cycles the tablet between the displays you select. ⌘-click displays in the diagram to choose them, or Shift-click to select a range.
+
+**Span selected displays** – Maps the tablet across the selected displays as one surface.
+
+**All** – Maps the tablet across every display as one surface.
 
 **Span Displays** – Press a button assigned to Span Displays to spread the pen across the displays selected under Active Displays, and press it again to return to your usual setting. With none selected, it spans every display.
 

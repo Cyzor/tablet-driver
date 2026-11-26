@@ -175,11 +175,15 @@ MockTab unterstützt kein Mission Control, Spaces, Launchpad oder App Exposé pe
 
 Die Anzeigezuordnung legt fest, welcher Bildschirm dem Grafiktablett zugeordnet ist.
 
-**Alle Displays** – Spannt proportional über den gesamten Desktop. Eignet sich für Arbeitsabläufe über mehrere Monitore hinweg.
+**Hauptdisplay** – Bildet das Grafiktablett auf dein Hauptdisplay ab.
 
-**Einzelnes Display** – Klicke im Diagramm auf ein Display, um den aktiven Bereich genau darauf abzubilden.
+**Ein einzelnes Display** – Wähle ein Display nach Namen, um das Grafiktablett nur darauf abzubilden.
 
-**Display umschalten** – Wechselt das Display per Taste. Mit ⌘-Klick auf Displays im Diagramm legst du fest, welche es durchläuft; mit Shift-Klick wählst du einen Bereich aus.
+**Zwischen Displays wechseln** – Ein Tastendruck wechselt das Grafiktablett zwischen den ausgewählten Displays. Mit ⌘-Klick auf Displays im Diagramm wählst du sie aus, mit Shift-Klick einen Bereich.
+
+**Auf die ausgewählten Displays verteilt** – Bildet das Grafiktablett über die ausgewählten Displays als eine Fläche ab.
+
+**Alle** – Bildet das Grafiktablett über alle Displays als eine Fläche ab.
 
 **Auf Displays verteilen** – Drück eine Taste mit dieser Aktion, um den Stift auf die unter „Aktive Displays“ ausgewählten Displays zu verteilen, und drück sie erneut, um zur gewohnten Einstellung zurückzukehren. Ist keins ausgewählt, gilt es für alle Displays.
 
