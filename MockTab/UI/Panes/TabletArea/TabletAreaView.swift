@@ -498,6 +498,11 @@ struct TabletAreaView: View {
 
     /// Launch the calibration overlay on the target display.
     private func startCalibration() {
+        // One session at a time: a second click brings the running one forward.
+        if let running = calibrationWindow, running.isVisible {
+            running.makeKeyAndOrderFront(nil)
+            return
+        }
         guard let displayID = calibrationDisplayID else { return }
         let displayUUID = CalibrationKey.uuidString(for: displayID)
         guard !displayUUID.isEmpty else { return }

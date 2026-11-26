@@ -506,19 +506,14 @@ final class AppMenuController: NSObject, NSMenuDelegate, NSMenuItemValidation {
         // Return key = default button (highlighted, activates on Return).
         resetButton.keyEquivalent = "\r"
 
-        // Monitor for Command-R while dialog is open.
-        var eventMonitor: Any?
-        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Command-R (keyCode 15 = 'R')
-            if event.keyCode == 15 && event.modifierFlags.contains(.command) {
-                // Defer the reset to allow the dialog to close first
-                DispatchQueue.main.async { self?.performFactoryReset() }
-                if let monitor = eventMonitor {
-                    NSEvent.removeMonitor(monitor)
-                }
-                return nil  // consume the event
-            }
-            return event  // pass through all other keys
+        // ⌘R presses Reset, which ends the alert as a click does; the reset
+        // runs once `runModal` returns. Matched by character, for any layout.
+        let eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.modifierFlags.contains(.command),
+                  event.charactersIgnoringModifiers?.lowercased() == "r"
+            else { return event }
+            resetButton.performClick(nil)
+            return nil
         }
 
         let resultCode = alert.runModal()

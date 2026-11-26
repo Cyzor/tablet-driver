@@ -355,11 +355,21 @@ final class TabletManager: ObservableObject {
     nonisolated var calibrationActive: Bool { _calibrationActive.withLock { $0 } }
     private nonisolated let _calibrationActive = OSAllocatedUnfairLock(initialState: false)
 
-    func setCalibrationPointHandler(_ handler: ((TabletPoint) -> Void)?) {
+    func setCalibrationPointHandler(_ handler: ((TabletPoint) -> Void)?, owner: AnyObject? = nil) {
         calibrationPointHandler = handler
+        calibrationHandlerOwner = handler == nil ? nil : owner.map(ObjectIdentifier.init)
         let active = handler != nil
         _calibrationActive.withLock { $0 = active }
     }
+
+    /// Clears the handler only if `owner` installed it, so an older session
+    /// ending can't cut off a newer one.
+    func releaseCalibrationPointHandler(ownedBy owner: AnyObject) {
+        guard calibrationHandlerOwner == ObjectIdentifier(owner) else { return }
+        setCalibrationPointHandler(nil)
+    }
+
+    private var calibrationHandlerOwner: ObjectIdentifier?
 
 
     /// A contact alive this many frames or fewer when it disappears counts
