@@ -15,7 +15,7 @@ jobs:
     # has a problem, it surfaces without risking a build users install.
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           # TabletKit is a submodule; the app does not compile without it.
           submodules: true

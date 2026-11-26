@@ -8,7 +8,8 @@ else
     if [ ! -x "$DMGBUILD_VENV/bin/dmgbuild" ]; then
         echo "==> Installing dmgbuild into $DMGBUILD_VENV"
         python3 -m venv "$DMGBUILD_VENV"
-        "$DMGBUILD_VENV/bin/pip" install --quiet dmgbuild
+        # Pinned: a new release could change the image without notice.
+        "$DMGBUILD_VENV/bin/pip" install --quiet dmgbuild==1.6.7
     fi
     DMGBUILD="$DMGBUILD_VENV/bin/dmgbuild"
 fi

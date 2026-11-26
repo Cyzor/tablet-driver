@@ -90,7 +90,7 @@ if [[ "$SHIPPED_LANGUAGES" != "de en es fr it ja " ]]; then
 fi
 codesign --verify --deep --strict "$APP_PATH"
 
-tools/release/size-watch.sh "$APP_PATH"
+tools/release/size-watch.sh "$APP_PATH" || echo "size-watch: check failed; continuing (it only warns)"
 tools/release/arch-check.sh "$APP_PATH"
 if [[ "$NAME" == "snapshot" ]]; then
     tools/release/bundle-check.sh "$APP_PATH"
@@ -108,13 +108,27 @@ echo "==> Notarizing .app"
 # the .app travels with it when users drag it out of the DMG, so first-launch
 # Gatekeeper checks succeed even offline. Stapling only the DMG would leave
 # the extracted .app dependent on an online check against Apple's CDN.
+# Fails with Apple's reasons when the verdict isn't Accepted; notarytool
+# can exit 0 on a rejection.
+notarize() {
+    local result id status
+    result=$(xcrun notarytool submit "$1" "${NOTARY_AUTH[@]}" --wait --output-format json)
+    id=$(plutil -extract id raw -o - - <<<"$result")
+    status=$(plutil -extract status raw -o - - <<<"$result")
+    echo "notarytool: $status ($id)"
+    if [[ "$status" != "Accepted" ]]; then
+        xcrun notarytool log "$id" "${NOTARY_AUTH[@]}" >&2 || true
+        echo "error: notarization of $1 came back $status" >&2
+        exit 1
+    fi
+}
+
 APP_ZIP="$BUILD_DIR/MockTab-$NAME.zip"
 ditto -c -k --keepParent "$APP_PATH" "$APP_ZIP"
-xcrun notarytool submit "$APP_ZIP" \
-    "${NOTARY_AUTH[@]}" \
-    --wait
+notarize "$APP_ZIP"
 xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
+spctl --assess --type execute --verbose "$APP_PATH"
 
 echo "==> Building DMG"
 source tools/release/dmgbuild.sh
@@ -123,11 +137,10 @@ source tools/release/dmgbuild.sh
     "$TITLE" "$DMG_PATH"
 
 echo "==> Notarizing DMG"
-xcrun notarytool submit "$DMG_PATH" \
-    "${NOTARY_AUTH[@]}" \
-    --wait
+notarize "$DMG_PATH"
 xcrun stapler staple "$DMG_PATH"
 xcrun stapler validate "$DMG_PATH"
+spctl --assess --type open --context context:primary-signature --verbose "$DMG_PATH"
 
 echo
 echo "Done: $DMG_PATH"

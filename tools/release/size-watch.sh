@@ -38,6 +38,11 @@ warned=0
 check() {
     local name=$1 now=$2 was
     was=$(awk -v k="$name" '$1 == k {print $2}' "$BASELINE")
+    if [[ ! "$was" =~ ^[1-9][0-9]*$ ]]; then
+        echo "size-watch: WARNING no $name in the baseline; run with --update"
+        warned=1
+        return
+    fi
     local pct=$(( (now - was) * 100 / was ))
     echo "size-watch: $name $was → $now (${pct}%)"
     if (( pct > LIMIT_PERCENT )); then

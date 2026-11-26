@@ -52,13 +52,15 @@ if [[ $(jq -r .isDraft <<<"$INFO") == "true" ]]; then
     echo "error: $TAG is still a draft. Publish it on GitHub first." >&2
     exit 1
 fi
-URL=$(jq -r '[.assets[] | select(.name | endswith(".dmg"))][0].url // empty' <<<"$INFO")
+# The snapshot keeps the previous image beside the new one; the newest is it.
+DMG=$(jq -c '[.assets[] | select(.name | endswith(".dmg"))] | sort_by(.createdAt) | last // empty' <<<"$INFO")
+URL=$(jq -r '.url // empty' <<<"${DMG:-null}")
 [[ -n "$URL" ]] || { echo "error: $TAG has no DMG attached." >&2; exit 1; }
 
 # The site serves its own copy of an image only when the feed has its
 # checksum. GitHub records the digest at upload; an asset from before that
 # gets hashed here.
-SHA=$(jq -r '[.assets[] | select(.name | endswith(".dmg"))][0].digest // empty' <<<"$INFO")
+SHA=$(jq -r '.digest // empty' <<<"$DMG")
 SHA=${SHA#sha256:}
 if [[ -z "$SHA" ]]; then
     SHA=$(curl -fsSL --retry 3 "$URL" | shasum -a 256 | cut -d' ' -f1)

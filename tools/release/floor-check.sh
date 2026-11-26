@@ -61,9 +61,9 @@ codesign --verify "$app" 2>/dev/null || {
 
 # Share a copy, not the original, so nothing in the VM can touch it.
 staging="$(mktemp -d)"
+trap 'rm -rf "$staging"' EXIT
 ditto "$app" "$staging/MockTab.app"
 echo "floor-check: opening $vm with $(defaults read "$app/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo "this build") shared."
 echo "floor-check: in the VM, the app is in /Volumes/My Shared Files/mocktab. Log in as admin, password admin."
 echo "floor-check: checklist: tools/release/floor-check.md"
 tart run --dir="mocktab:$staging:ro" "$vm"
-rm -rf "$staging"
