@@ -411,7 +411,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "むかしは、ぼくもほんもののウミガメでしたのさ」にせウミガメはやっと口をひらきました。"
+            "value" : "「むかしは、ぼくもほんもののウミガメでしたのさ」にせウミガメはやっと口をひらきました。"
           }
         }
       }
@@ -34404,6 +34404,47 @@
         }
       }
     },
+    "Window.Zoom" : {
+      "comment" : "Window menu: zoom the window (the green button's action)",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoomen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Zoom"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduire/agrandir"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ridimensiona"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拡大/縮小"
+          }
+        }
+      }
+    },
     "Wireless Kit" : {
       "comment" : "Connection value for a tablet on the Wacom wireless kit",
       "localizations" : {
@@ -34754,7 +34795,7 @@
       }
     },
     "Zoom" : {
-      "comment" : "Ring/strip action: analog pinch-zoom\nWindow menu",
+      "comment" : "Ring/strip action: analog pinch-zoom",
       "localizations" : {
         "de" : {
           "stringUnit" : {
