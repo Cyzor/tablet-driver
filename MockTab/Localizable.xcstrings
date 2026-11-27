@@ -19392,76 +19392,6 @@
         }
       }
     },
-    "Move Right" : {
-      "comment" : "VoiceOver action on the Pointer Offset pad",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nach rechts"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mover a la derecha"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Déplacer vers la droite"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sposta a destra"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "右へ移動"
-          }
-        }
-      }
-    },
-    "Move Up" : {
-      "comment" : "VoiceOver action on the Pointer Offset pad",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nach oben"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mover arriba"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Déplacer vers le haut"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sposta in alto"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "上へ移動"
-          }
-        }
-      }
-    },
     "Move mouse, keyboard, and Wi-Fi receivers away from the tablet." : {
       "comment" : "Conflict alert body for wireless interference",
       "localizations" : {
@@ -19497,6 +19427,41 @@
         }
       }
     },
+    "Move Right" : {
+      "comment" : "VoiceOver action on the Pointer Offset pad",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach rechts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover a la derecha"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers la droite"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sposta a destra"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "右へ移動"
+          }
+        }
+      }
+    },
     "Move three fingers together to drag." : {
       "localizations" : {
         "de" : {
@@ -19527,6 +19492,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "3本指を一緒に動かすとドラッグします。"
+          }
+        }
+      }
+    },
+    "Move Up" : {
+      "comment" : "VoiceOver action on the Pointer Offset pad",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach oben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover arriba"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déplacer vers le haut"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sposta in alto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上へ移動"
           }
         }
       }
@@ -34334,6 +34334,48 @@
         }
       }
     },
+    "Window.Zoom" : {
+      "comment" : "Window menu: zoom the window (the green button's action)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoomen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Zoom"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réduire/agrandir"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ridimensiona"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拡大/縮小"
+          }
+        }
+      }
+    },
     "Wireless interference" : {
       "comment" : "Conflicts status value and alert title: wireless interference makes the pen jitter",
       "localizations" : {
@@ -34400,47 +34442,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無線干渉もペンに影響しています。マウス、キーボード、Wi-Fi の受信機をタブレットから離してください。"
-          }
-        }
-      }
-    },
-    "Window.Zoom" : {
-      "comment" : "Window menu: zoom the window (the green button's action)",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zoomen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Zoom"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zoom"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réduire/agrandir"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ridimensiona"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拡大/縮小"
           }
         }
       }
