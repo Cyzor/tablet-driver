@@ -9,7 +9,8 @@ on:
   pull_request:
 
 jobs:
-  build:
+  # Two jobs run side by side, so the wait is the longer of the two.
+  checks:
     # Xcode 26.6 is the default on this image, so no xcode-select step is
     # needed. Moved here first because it ships nothing — if the toolchain
     # has a problem, it surfaces without risking a build users install.
@@ -19,12 +20,6 @@ jobs:
         with:
           # TabletKit is a submodule; the app does not compile without it.
           submodules: true
-      - name: Build app
-        run: |
-          xcodebuild -project MockTab.xcodeproj -scheme MockTab \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-            build
       - name: Run standalone checks
         run: sh tools/tests/run-all-tests.sh
       # Swift Testing pilot. The bundle compiles the sources it tests, so the
@@ -35,8 +30,15 @@ jobs:
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" \
             -only-testing:MockTabTests
-      # Debug builds only the runner's own architecture, so this is the first
-      # place an Intel-only compile error would show up before a release.
+
+  universal:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          submodules: true
+      # Builds both architectures, so an Intel-only compile error shows up
+      # here before a release. Debug builds happen locally every day.
       - name: Build universal release
         run: |
           xcodebuild -project MockTab.xcodeproj -scheme MockTab \
