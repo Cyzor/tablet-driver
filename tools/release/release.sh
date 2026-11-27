@@ -136,6 +136,12 @@ source tools/release/dmgbuild.sh
     -D background=tools/release/dmg_background.png \
     "$TITLE" "$DMG_PATH"
 
+# Gatekeeper rejects an unsigned DMG even when it's notarized and stapled.
+# Sign it with the identity that signed the app.
+IDENTITY=$(codesign -dvv "$APP_PATH" 2>&1 | sed -n 's/^Authority=\(Developer ID Application: .*\)/\1/p' | head -1)
+[[ -n "$IDENTITY" ]] || { echo "error: no Developer ID identity on $APP_PATH" >&2; exit 1; }
+codesign --sign "$IDENTITY" --timestamp "$DMG_PATH"
+
 echo "==> Notarizing DMG"
 notarize "$DMG_PATH"
 xcrun stapler staple "$DMG_PATH"
