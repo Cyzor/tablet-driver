@@ -277,10 +277,10 @@ struct ProfilesView: View {
         var body: some View {
             VStack(spacing: 0) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    backupTileShape
                         .fill(Color(NSColor.controlBackgroundColor))
 
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    backupTileShape
                         .strokeBorder(
                             isDropTargeted
                                 ? Color.accentColor
@@ -308,7 +308,7 @@ struct ProfilesView: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Backup file")
-                .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .contentShape(backupTileShape)
                 .onHover { hovering in
                     isHovering = hovering
                 }
@@ -993,6 +993,9 @@ private struct ConfigurationSummaryView: View {
     }
 }
 
+/// The backup tile's outline, which also clips its drag image.
+private let backupTileShape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+
 // MARK: - BackupFileDragSource
 
 /// Drags the backup out as a file promise: Finder names the folder, then
@@ -1039,15 +1042,20 @@ private struct BackupFileDragSource: NSViewRepresentable {
 
         override func mouseUp(with event: NSEvent) { mouseDownEvent = nil }
 
-        /// The tile as drawn, as SwiftUI's drag showed it.
+        /// The tile as drawn, as SwiftUI's drag showed it. Clipped to the
+        /// tile's outline: the window behind its corners is opaque.
         private func snapshot() -> NSImage {
             guard let content = window?.contentView,
                   let rep = content.bitmapImageRepForCachingDisplay(in: convert(bounds, to: content))
             else { return NSWorkspace.shared.icon(for: .json) }
             content.cacheDisplay(in: convert(bounds, to: content), to: rep)
-            let image = NSImage(size: bounds.size)
-            image.addRepresentation(rep)
-            return image
+            return NSImage(size: bounds.size, flipped: false) { rect in
+                guard let context = NSGraphicsContext.current?.cgContext else { return false }
+                context.addPath(backupTileShape.path(in: rect).cgPath)
+                context.clip()
+                rep.draw(in: rect)
+                return true
+            }
         }
 
         func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
