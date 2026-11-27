@@ -1847,6 +1847,13 @@ extension TabletManager: TabletSessionDelegate {
         case .wrote(let reportID, let value, let result, let usagePage):
             CaptureEngine.recordAutoInitReport(
                 reportID: reportID, value: value, ioReturn: result, usagePage: usagePage)
+            // The pen scan switch, turned off and on when the tablet senses
+            // a pen it won't identify.
+            if reportID == 0x0D {
+                FlightRecorder.shared.note(
+                    "MockTab turned pen scanning " + (value == 0 ? "on" : "off")
+                        + (result == kIOReturnSuccess ? "" : String(format: "; the tablet refused (0x%08X)", result)))
+            }
         case .read(let purpose, let reportID, let result, let reply, let usagePage):
             CaptureEngine.recordAutoInitRead(
                 purpose: purpose, reportID: reportID, ioReturn: result, reply: reply, usagePage: usagePage)

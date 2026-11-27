@@ -62,6 +62,13 @@ struct CaptureInitRead: Codable {
     var interfaceUsagePage: String?
 }
 
+/// A pen the tablet sensed without identifying it: reports with position
+/// only. `longestSeconds` is the longest unbroken stretch.
+struct CaptureSenseOnlyPen: Codable {
+    let reports: Int
+    let longestSeconds: Double
+}
+
 // MARK: - Capture Result
 
 /// Output of a capture session. Records every report ID seen and, for each,
@@ -113,7 +120,8 @@ struct CaptureResult: Codable {
     /// - 32: `appEnvironment.macOSVersion` and `architecture`.
     /// - 33: the primary entry in `interfaces` leaves out `reports` and
     ///   `hidReportDescriptor`; the top level holds them.
-    var captureVersion: Int = 33
+    /// - 34: `senseOnlyPen`.
+    var captureVersion: Int = 34
     /// App marketing version and build-date stamp (`MockTabBuildDate` from the
     /// bundle) of the binary that recorded this capture. Nil only if the keys
     /// are somehow absent.
@@ -157,6 +165,9 @@ struct CaptureResult: Codable {
     /// leaves that empty however much the pen is used, so tool codes alone
     /// cannot answer "was a pen used". Both findings below read this instead.
     var observedPenActivity: Bool?
+    /// Reports of a pen the tablet sensed but never identified, and the
+    /// longest stretch of them. Nil when there were none.
+    var senseOnlyPen: CaptureSenseOnlyPen?
     /// The touch-related settings in force during the session. Present only
     /// for a device whose spec declares finger touch — on everything else
     /// these settings are inert and would be misleading noise.
@@ -368,6 +379,21 @@ func captureFindings(for result: CaptureResult) -> [CaptureFinding] {
                 kind: "declaredReportsNeverObserved", productID: interfacePID, detail: detail))
     }
 
+    // Position without tip, buttons, or identity: the pen moves the cursor
+    // but can't click, which no other field shows.
+    let senseOnly = result.senseOnlyPen.map { $0.longestSeconds >= 1 } ?? false
+    if let pen = result.senseOnlyPen, senseOnly {
+        found.append(
+            CaptureFinding(
+                kind: "penSensedWithoutIdentity",
+                productID: pid,
+                detail: String(
+                    format: "The tablet sensed the pen without identifying it for up to %.1f s at a time "
+                        + "(%d reports). Those reports carry position only, with no tip, pressure, side "
+                        + "buttons, or pen identity, so the pen could move the cursor but not click.",
+                    pen.longestSeconds, pen.reports)))
+    }
+
     // Already in `notes` as prose; here as a structured fact.
     if result.observedToolCodes?.isEmpty ?? true {
         found.append(
@@ -380,6 +406,10 @@ func captureFindings(for result: CaptureResult) -> [CaptureFinding] {
                     // carrying no tool code — not about pen detection. Saying
                     // otherwise tells a reporter whose pen works that it was
                     // never seen.
+                    if senseOnly {
+                        return base
+                            + "The tablet sensed the pen but never identified it; see penSensedWithoutIdentity."
+                    }
                     if result.observedPenActivity == true {
                         return base
                             + "Pen frames were decoded regardless, so this device reports no "
@@ -417,7 +447,7 @@ func captureFindings(for result: CaptureResult) -> [CaptureFinding] {
     var untested: [String] = []
     // Decoded frames, not tool codes — a tool code is absent for a whole
     // protocol family whose pen works fine.
-    if result.observedPenActivity != true, result.observedToolCodes?.isEmpty ?? true {
+    if result.observedPenActivity != true, !senseOnly, result.observedToolCodes?.isEmpty ?? true {
         untested.append("the pen")
     }
     let sawTouch = (result.interfaces ?? []).contains { iface in

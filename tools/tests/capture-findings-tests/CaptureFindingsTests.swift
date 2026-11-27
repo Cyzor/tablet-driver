@@ -234,6 +234,26 @@ expect(
     !noToolCodeDetail.contains("never detected"),
     "the tool-code finding never claims an undetected pen when frames decoded")
 
+// Issue #35, CTL-6100: 77.6 s of Sense-only reports (10,491) during the
+// collection, the pen moving the cursor but never clicking. The file said the
+// pen "was just not used while recording".
+do {
+    var result = makeResult(productID: "0x0375", toolCodes: [], penActivity: false)
+    result.senseOnlyPen = CaptureSenseOnlyPen(reports: 10_491, longestSeconds: 77.6)
+    let found = captureFindings(for: result)
+    let sensed = found.first { $0.kind == "penSensedWithoutIdentity" }?.detail ?? ""
+    expect(sensed.contains("77.6 s") && sensed.contains("not click"),
+           "a long unidentified stretch is named, with its length and effect")
+    let noTool = found.first { $0.kind == "noToolCodeObserved" }?.detail ?? ""
+    expect(!noTool.contains("not used"), "a sensed pen is never called unused")
+    expect(!found.contains { $0.kind == "subsystemsNotExercised" },
+           "a sensed pen is not reported as unexercised")
+    // A normal entry's few Sense-only reports say nothing.
+    result.senseOnlyPen = CaptureSenseOnlyPen(reports: 5, longestSeconds: 0.0)
+    expect(!captureFindings(for: result).contains { $0.kind == "penSensedWithoutIdentity" },
+           "a short lead-in is not a finding")
+}
+
 // Without pen activity the original wording stands — an untouched pen really
 // is untried, which is the issue #14 case the findings exist for.
 expect(

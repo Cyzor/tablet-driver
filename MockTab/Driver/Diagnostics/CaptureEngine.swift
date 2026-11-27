@@ -683,6 +683,11 @@ final class CaptureEngine: ObservableObject {
             let ret = IOHIDDeviceSetReport(
                 device, kIOHIDReportTypeFeature, CFIndex(reportID), &bytes, bytes.count)
             let ok = ret == kIOReturnSuccess
+            // Timed beside the reports, so a capture shows what each write did.
+            let what = String(format: "feature report 0x%02X = 0x%02X sent from the capture sheet", reportID, value)
+                + (ok ? "" : String(format: "; the tablet refused (0x%08X)", ret))
+            HIDCapture.shared.recordNote(tag: "MockTab", what)
+            FlightRecorder.shared.note(what)
             if !ok {
                 logger.info("capture modeInit \(String(format: "0x%02X", reportID), privacy: .public)=\(value): \(String(format: "0x%08x", ret), privacy: .public)")
             }
@@ -952,6 +957,12 @@ final class CaptureEngine: ObservableObject {
             observedToolCodes: toolCodeHex.isEmpty ? nil : toolCodeHex,
             everSeenTools: capturedEverSeenTools,
             observedPenActivity: penActivitySeen,
+            senseOnlyPen: {
+                let seen = CaptureActivityProbe.snapshot()
+                guard seen.senseOnlyReports > 0 else { return nil }
+                return CaptureSenseOnlyPen(
+                    reports: seen.senseOnlyReports, longestSeconds: (seen.longestSenseOnly * 10).rounded() / 10)
+            }(),
             touchSettings: capturedTouchSettings,
             appSettings: capturedAppSettings,
             settingsIdentity: capturedSettingsIdentity,

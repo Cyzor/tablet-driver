@@ -31,6 +31,12 @@ enum CaptureActivityProbe {
         /// Features this session exercised, for the file's coverage list.
         /// Finer than the rows: tilt, and rings apart from strips.
         var features: Set<TabletFeature> = []
+        /// Reports of a pen the tablet sensed without identifying it, which
+        /// carry position only, and the longest unbroken stretch of them.
+        var senseOnlyReports = 0
+        var longestSenseOnly: TimeInterval = 0
+        fileprivate var senseOnlySince: TimeInterval = 0
+        fileprivate var senseOnlyLast = -TimeInterval.infinity
 
         /// Rows a decoder has positively confirmed.
         func confirmed() -> Set<Row> { decoded }
@@ -64,7 +70,17 @@ enum CaptureActivityProbe {
         for result in results {
             switch result {
             case .pen(let point):
+                let now = ProcessInfo.processInfo.systemUptime
                 state.withLock {
+                    if point.weakSignal && point.inProximity {
+                        // Further apart than the tablet's report gaps: a new stretch.
+                        if now - $0.senseOnlyLast > 0.1 { $0.senseOnlySince = now }
+                        $0.senseOnlyLast = now
+                        $0.senseOnlyReports += 1
+                        $0.longestSenseOnly = max($0.longestSenseOnly, now - $0.senseOnlySince)
+                    } else {
+                        $0.senseOnlyLast = -.infinity
+                    }
                     // Contact, not hover: the rows ask for a touch, and only
                     // contact records pressure.
                     if point.pressure > 0 {

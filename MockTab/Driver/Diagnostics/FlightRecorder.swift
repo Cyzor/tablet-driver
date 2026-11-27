@@ -123,11 +123,13 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
     func endReport(events: [TabletEvent]) {
         guard current >= 0 else { return }
         var outcome = Outcome(rawValue: ring[current].outcome)
+        var senseOnly = false
         for event in events {
             switch event {
             case .pen(let p):
                 if !outcome.contains(.decodedPen) {
                     outcome.insert(.decodedPen)
+                    senseOnly = p.inProximity && p.weakSignal
                     // A weak frame counts as out of range here, position kept:
                     // MockTab follows it only while the pen is already in, and
                     // its moves show that.
@@ -146,7 +148,10 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             }
         }
         ring[current].outcome = outcome.rawValue
-        if outcome.contains(.decodedPen) { trackStillness(inRange: outcome.contains(.penInRange)) }
+        if outcome.contains(.decodedPen) {
+            trackStillness(inRange: outcome.contains(.penInRange))
+            trackSenseOnly(senseOnly, inRange: outcome.contains(.penInRange))
+        }
         if outcome.contains(.penInRange) { lastInRangeNs = ring[current].kernelNs }
         let now = Self.nowNs()
         let ns = ring[current].kernelNs
@@ -207,6 +212,61 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
             stillLongNoted = true
             note("pen held still in range for 30 s")
         }
+    }
+
+    // A pen the tablet senses without identifying it: its reports carry
+    // position only, so the cursor can follow while the tip and side buttons
+    // do nothing. Noted after a second, and when it ends. HIDThread-confined.
+    static let senseOnlyNoteNs: UInt64 = 1_000_000_000
+    static let senseOnlyGapNs: UInt64 = 100_000_000
+    private var senseOnlySince: UInt64 = 0
+    private var senseOnlyLast: UInt64 = 0
+    private var senseOnlyNoted = false
+
+    private func trackSenseOnly(_ senseOnly: Bool, inRange: Bool) {
+        let ns = ring[current].kernelNs
+        let continuing = senseOnlyLast != 0 && ns &- senseOnlyLast <= Self.senseOnlyGapNs
+        if senseOnly && continuing {
+            senseOnlyLast = ns
+            if !senseOnlyNoted, ns &- senseOnlySince >= Self.senseOnlyNoteNs {
+                senseOnlyNoted = true
+                note("the tablet has sensed the pen for 1 s without identifying it: position only, so the tip and side buttons can't work")
+            }
+            return
+        }
+        if senseOnlyNoted {
+            let how = !continuing
+                ? String(format: "nothing for %.1f s", Double(ns &- senseOnlyLast) / 1e9)
+                : inRange ? "it identified the pen" : "the pen left range"
+            note(senseOnlyText("sensed", then: how))
+        }
+        senseOnlyNoted = false
+        senseOnlySince = ns
+        senseOnlyLast = senseOnly ? ns : 0
+    }
+
+    /// The stretch so far, with any mouse, trackpad, or keyboard use during
+    /// it. MockTab posts no clicks while the pen is unidentified, so a click
+    /// in that time came from elsewhere.
+    private func senseOnlyText(_ verb: String, then: String) -> String {
+        let span = Double(senseOnlyLast &- senseOnlySince) / 1e9
+        let window = Double(Self.nowNs() &- senseOnlySince) / 1e9
+        var text = String(format: "the tablet %@ the pen without identifying it for %.1f s, then %@", verb, span, then)
+        let click = [CGEventType.leftMouseDown, .rightMouseDown, .otherMouseDown]
+            .map { CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: $0) }.min() ?? .infinity
+        if click < window { text += String(format: "; a mouse or trackpad button was pressed %.1f s before this note", click) }
+        let key = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown)
+        if key < window { text += String(format: "; a key was pressed %.1f s before this note", key) }
+        return text
+    }
+
+    /// An unidentified stretch still open at export, which no report has
+    /// closed yet.
+    private func noteOpenSenseOnly() {
+        guard senseOnlyNoted else { return }
+        let quiet = Self.nowNs() &- senseOnlyLast
+        note(senseOnlyText("has sensed", then: quiet > Self.senseOnlyGapNs
+            ? String(format: "nothing for %.1f s", Double(quiet) / 1e9) : "still at export"))
     }
 
     // MARK: - Pen return (HIDThread)
@@ -283,10 +343,12 @@ final class FlightRecorder: @unchecked Sendable {  // ring: HIDThread writes; ev
         final class Box: @unchecked Sendable { var reports: [Report] = [] }
         let box = Box()
         if CFRunLoopGetCurrent() === HIDThread.shared.runLoop {
+            noteOpenSenseOnly()
             box.reports = snapshotReports()
         } else {
             let taken = DispatchSemaphore(value: 0)
             HIDThread.shared.perform { [self] in
+                noteOpenSenseOnly()
                 box.reports = snapshotReports()
                 taken.signal()
             }
