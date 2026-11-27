@@ -29,6 +29,9 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    # Write access deletes older snapshot images from the release.
+    permissions:
+      contents: write
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
@@ -54,3 +57,16 @@ jobs:
 
       - name: Push
         run: git -C mocktab-web push origin HEAD:main
+
+      # Once the feed points at the newest snapshot image, the older ones
+      # only confuse anyone browsing the release page.
+      - name: Remove older snapshot images
+        if: env.TAG == 'snapshot'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view snapshot --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '[.assets[] | select(.name | endswith(".dmg"))] | sort_by(.createdAt) | .[:-1][] | .name' \
+          | while IFS= read -r name; do
+              gh release delete-asset snapshot "$name" --repo "$GITHUB_REPOSITORY" --yes
+            done
