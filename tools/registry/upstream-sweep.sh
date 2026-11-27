@@ -108,5 +108,19 @@ else
 fi
 echo >>"$OUT"
 
+# New descriptors arrive here as sysinfo issues, not commits.
+echo "## wacom-hid-descriptors submissions (Wacom, last 30)" >>"$OUT"
+echo >>"$OUT"
+if command -v gh >/dev/null 2>&1; then
+  echo '```' >>"$OUT"
+  gh issue list --repo linuxwacom/wacom-hid-descriptors \
+    --state all --search "Wacom in:title" --limit 30 \
+    --json number,title,createdAt \
+    --template '{{range .}}#{{.number}} {{.title}} ({{timeago .createdAt}}){{"\n"}}{{end}}' \
+    >>"$OUT" 2>/dev/null || echo "(gh failed)" >>"$OUT"
+  echo '```' >>"$OUT"
+fi
+echo >>"$OUT"
+
 echo "Report written to $OUT"
 echo "After review, update SHAs in $PINS."

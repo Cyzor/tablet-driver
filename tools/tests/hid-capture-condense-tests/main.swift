@@ -615,6 +615,17 @@ do {
     expect(
         HIDCapture.statusLabel(reportID: 0x13, bytes: [0x13, 0x64, 0x8E], productID: pth860) == nil,
         "a short report gets no label")
+    // The CTH-690's 0xC0 status report names its touch mute.
+    let mutedC0: [UInt8] = [0xC0, 0, 0, 0, 0, 0, 0, 0, 0x40, 0]
+    expect(
+        HIDCapture.statusLabel(reportID: 0xC0, bytes: mutedC0, productID: 0x033E) == "touch muted",
+        "bit 6 of byte 8 set means touch muted")
+    expect(
+        HIDCapture.statusLabel(reportID: 0xC0, bytes: [0xC0, 0, 0, 0, 0, 0, 0, 0, 0, 0], productID: 0x033E)
+            == "touch not muted", "bit 6 of byte 8 clear means touch not muted")
+    expect(
+        HIDCapture.statusLabel(reportID: 0xC0, bytes: mutedC0, productID: 0x033B) == nil,
+        "a pen-only model's 0xC0 gets no label")
 
     let status = { (elapsed: TimeInterval, hex: String, label: String) in
         HIDCapture.Sample(

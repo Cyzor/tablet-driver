@@ -78,12 +78,23 @@ final class HIDCapture: @unchecked Sendable {  // `state` is locked; the flush t
 
     /// The Intuos Pro (2017) status report: byte 2, bit 7 is the touch
     /// switch, set when touch is on. Confirmed on the PTH-860 over USB.
+    ///
+    /// The CTH-480/680/490/690 status report 0xC0: byte 8, bit 6 is set
+    /// when touch is muted (per the kernel's `wacom_status_irq`).
     static func statusLabel(reportID: UInt8, bytes: [UInt8], productID: Int?) -> String? {
-        guard reportID == 0x13, bytes.count == 9, let productID,
+        guard let productID else { return nil }
+        if reportID == 0xC0, bytes.count >= 10, touchMutePIDs.contains(productID) {
+            return bytes[8] & 0x40 != 0 ? "touch muted" : "touch not muted"
+        }
+        guard reportID == 0x13, bytes.count == 9,
             WacomDeviceRegistry.spec(for: productID)?.format == .intuosV2
         else { return nil }
         return bytes[2] & 0x80 != 0 ? "touch switch on" : "touch switch off"
     }
+
+    /// Pen & Touch models of the 2013 and 2015 Intuos (kernel INTUOSHT and
+    /// INTUOSHT2) that report a touch mute in 0xC0.
+    static let touchMutePIDs: Set<Int> = [0x0302, 0x0303, 0x033C, 0x033E]
 
     /// The fields that decide "same steady state" vs. "transition worth
     /// keeping verbatim." Proximity/eraser/button/tool-identity changes are
