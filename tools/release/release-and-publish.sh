@@ -84,7 +84,7 @@ if (( SNAPSHOT )); then
 
     # update-latest.sh takes the body's last line as the notes; without
     # notes, it uses CHANGELOG.md's Unreleased line.
-    BUILT_AT=$(date -u +'%Y-%m-%d %H:%M UTC')
+    BUILT_ON=$(date -u +'%Y-%m-%d')
     NOTES_FILE=${SNAPSHOT_NOTES:-}
     NOTES_LINE=""
     if [[ -n "$NOTES_FILE" && -s "$NOTES_FILE" ]]; then
@@ -92,10 +92,7 @@ if (( SNAPSHOT )); then
 
 $(grep -v '^[[:space:]]*$' "$NOTES_FILE" | tr '\n' ' ' | sed -E 's/ +$//')"
     fi
-    BODY="Rolling pre-release build of next, replaced on each snapshot run — not a numbered version.
-
-Commit: ${SHA_SHORT}
-Built: ${BUILT_AT}${NOTES_LINE}"
+    BODY="${BUILT_ON}${NOTES_LINE}"
 
     if gh release view snapshot &>/dev/null; then
         # Keep only the newest image, the one the feed points at, then add
