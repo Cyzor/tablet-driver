@@ -1854,6 +1854,13 @@ extension TabletManager: TabletSessionDelegate {
                     "MockTab turned pen scanning " + (value == 0 ? "on" : "off")
                         + (result == kIOReturnSuccess ? "" : String(format: "; the tablet refused (0x%08X)", result)))
             }
+            // Data mode, at connect, at wake, and in the last try for a pen
+            // the tablet won't identify.
+            if reportID == 0x02, value == 0x02 {
+                FlightRecorder.shared.note(
+                    "MockTab switched the tablet to tablet mode"
+                        + (result == kIOReturnSuccess ? "" : String(format: "; the tablet refused (0x%08X)", result)))
+            }
         case .read(let purpose, let reportID, let result, let reply, let usagePage):
             CaptureEngine.recordAutoInitRead(
                 purpose: purpose, reportID: reportID, ioReturn: result, reply: reply, usagePage: usagePage)
